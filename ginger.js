@@ -2,18 +2,20 @@
    Ginger MVC framework
    License: MIT or GPL as desired.
 
-   Goals:
-   - Based on CommonJS AMD modules.
-   - Seamless synchronization of model data between browser and server. 
+   Features:
+   - Modular design based on CommonJS AMD modules.
    - Designed for asynchronizity from the group up.
-   - Builds on top of proven libraries such as jQuery, underscore and socket.io
+   - Builds on top of proven libraries such as jQuery, underscore.
    - Clean class hierarchies, based on javascript prototypal inheritance.
+   - Set of views for common web "widgets". 
+  
+  Roadmap:
+    - Seamless synchronization of model data between browser and server. 
   
    Dependencies:
    - jQuery
    - Underscore
    - EventEmitter
-   - Socket.io
    
    (c) 2011 OptimalBits with selected parts from the internet
    licensed as public domain or MIT.
@@ -23,15 +25,18 @@
    - http://javascript.crockford.com/prototypal.html
    - https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object/create
    - http://jonathanfine.wordpress.com/2008/09/21/implementing-super-in-javascript/
+   - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
  */
 
-define(function(){
+define(['/js/lib/underscore.js'], function(){
 
 /**
   Define some useful jQuery plugins.
 */
 
+//
 // Populates the options of a select tag
+//
 (function( $ ){
   $.fn.comboBox = function(items, selected){
     var $comboBox = $('<select>', this)
@@ -50,7 +55,6 @@ define(function(){
     return this
   };
 })( jQuery );
-
 
 //
 // Polyfills
@@ -79,8 +83,8 @@ function Inherit(Sub, Super){
   Sub.prototype = newSub
   Sub.superproto = Super.prototype
   Sub.prototype.super = function(klass, fn){
-    if(fn) return klass.superproto[fn].apply(this, _.rest(arguments))
-    else klass.superproto.constructor.apply(this, _.rest(arguments))
+    if(fn) return klass.superproto[fn].apply(this, _.rest(arguments, 2))
+    else klass.superproto.constructor.apply(this)
   }  
 } 
 
@@ -205,8 +209,7 @@ ginger.Base.prototype.bind = function(key, object, objectKey){
   var targetKey = _.isUndefined(objectKey) ? key : objectKey
 
   base.unbind(key)
-  base[key] = object[targetKey]
-    
+  
   var observer1 = this.addObserver(key, function(newval, oldval){
     object.set(targetKey, newval)
   })
@@ -214,6 +217,8 @@ ginger.Base.prototype.bind = function(key, object, objectKey){
     base.set(key, newval)
   })
   this._addBinding(key, observer1, object, observer2)
+  
+  base.set(key, object[targetKey])
 }
 
 /**
@@ -234,10 +239,9 @@ ginger.Base.prototype.deinit = function(){
 
 
 // -----------------------------------------------------------------------------------
-
 ginger.View = ginger.Declare(ginger.Base, function(){
   this.super(ginger.View)
-  this.$el = null
+  this.$el = $('<div>')
 })
 
 ginger.View.prototype.render = function(){
@@ -246,6 +250,10 @@ ginger.View.prototype.render = function(){
     
 ginger.View.prototype.remove = function(){
     this.$el.remove()
+}
+
+ginger.View.prototype.disable = function(){
+  console.log(this+" does not implement disable")
 }
 
 // -----------------------------------------------------------------------------------
@@ -269,36 +277,26 @@ ginger.Views = {}
 // -----------------------------------------------------------------------------------
 ginger.Views.ComboBox = ginger.Declare(ginger.View, function(items, selected){
   this.super(ginger.Views.ComboBox)
-  this.value = selected
-  this.items = items
-})
-  
-ginger.Views.ComboBox.prototype.init =function(){
   var view = this
-  view.$el = $('<div>').comboBox(this.items, view.value).change(function(event){
+    
+  view.value = selected
+  view.items = items
+
+  view.$el.comboBox(view.items, view.value).change(function(event){
     view.set('value', event.target.value)
   })
   view.addObserver('value', function(value){
       $('select',view.$el).val(value)
   })
-}
-
+})
 // -----------------------------------------------------------------------------------
 ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Slider)
-  this.value = _.isUndefined(options.value) ? 0 : options.value
-  this.options = options
-})
-
-ginger.Views.Slider.prototype.init =function(){
   var view = this
-  view.$el = $('<div>').comboBox(this.items, view.value).change(function(event){
-    view.set('value', event.target.value)
-  })
-  view.addObserver('value', function(value){
-      $('select',view.$el).val(value)
-  })
   
+  view.value = _.isUndefined(options.value) ? 0 : options.value
+  view.options = options
+
   var options = _.clone(view.options)
   var oldSlideFn = options.slide
 
@@ -307,18 +305,28 @@ ginger.Views.Slider.prototype.init =function(){
     if(view.options.slide) view.options.slide(event, ui)
   }
   
-  view.$el = $('<div>').slider(options)
+  view.$el.slider(options)
     
   view.addObserver('value', function(value){
     view.$el.slider('value', value)
   })
-}
+})
 // -----------------------------------------------------------------------------------
 ginger.Views.TextField = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.TextField)
 })
-
 // -----------------------------------------------------------------------------------
+ginger.Views.CheckBox = ginger.Declare(ginger.View, function(){
+  this.super(ginger.Views.CheckBox)
+})
+// -----------------------------------------------------------------------------------
+ginger.Views.RadioButton = ginger.Declare(ginger.View, function(){
+  this.super(ginger.Views.RadioButton)
+})
+// -----------------------------------------------------------------------------------
+ginger.Views.Label = ginger.Declare(ginger.View, function(){
+  this.super(ginger.Views.Label)
+})
 
 return ginger
 })
