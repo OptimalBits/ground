@@ -247,7 +247,11 @@ ginger.View = ginger.Declare(ginger.Base, function(){
 ginger.View.prototype.render = function(){
   return this.$el
 }
-    
+
+ginger.View.prototype.clean = function(){
+  this.$el.detach()
+}
+
 ginger.View.prototype.remove = function(){
     this.$el.remove()
 }
