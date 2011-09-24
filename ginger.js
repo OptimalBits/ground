@@ -4,9 +4,9 @@
 
    Features:
    - Modular design based on CommonJS AMD modules.
-   - Designed for asynchronizity from the group up.
    - Builds on top of proven libraries such as jQuery, underscore.
    - Clean class hierarchies, based on javascript prototypal inheritance.
+   - Global and Local Events.
    - Set of views for common web "widgets". 
   
   Roadmap:
@@ -73,9 +73,39 @@ if (!Object.create) {
 //
 var ginger = {}
 
+
+//
+// Global events (we just wrap a singleton instance of EventEmitter)
+//
+
 ginger.getEventEmitter = _.once(function() {
   return new EventEmitter()
 })
+
+ginger.on = function(type, listener, scope, once){
+  var ee = ginger.getEventEmitter()
+  ee.on(type, listener, scope, once)
+  return listener
+}
+
+ginger.emit = function(type, args){
+  var ee = ginger.getEventEmitter()
+  ee.emit.apply(this, arguments)
+}
+
+ginger.removeListener = function(type, listener){
+  var ee = ginger.getEventEmitter()
+  ee.removeListener(type, listener)
+}
+
+ginger.removeAllListeners = function(type){
+  var ee = ginger.getEventEmitter()
+  ee.removeAllListeners(type)
+}
+
+//
+// Classes
+//
 
 function Inherit(Sub, Super){
   var newSub = Object.create(Super.prototype)
@@ -99,6 +129,7 @@ ginger.Declare = function( Super, Sub ){
 ginger.Base = function(){
   this.observers = null
   this.bindings = null
+  this.ee = null
 }
 
 ginger.Base.prototype._notifyObservers = function(key, type, newVal, oldVal){
@@ -132,6 +163,37 @@ ginger.Base.prototype._removeBinding = function(key){
     bindings[key][1].removeObserver(bindings[key][2])
   }
 }
+
+ginger.Base.prototype._getEventEmitter = function() {
+  if(_.isNull(this.ee)){
+    this.ee = new EventEmitter()
+  }
+  return this.ee
+}
+
+ginger.Base.prototype.on = function(type, listener, scope, once){
+  var ee = this._getEventEmitter()
+  ee.on(type, listener, scope, once)
+  return listener
+}
+
+ginger.Base.prototype.emit = function(type, args){
+  if(this.ee){
+    this.ee.emit.apply(this, arguments)
+  }
+}
+
+ginger.Base.prototype.removeListener = function(type, listener){
+  if(this.ee){
+    this.ee.removeListener(type, listener)
+  }
+}
+
+ginger.Base.prototype.removeAllListeners = function(type){
+  if(this.ee){
+    this.ee.removeAllListeners(type)
+  }
+}
   
 /**
   set - Sets a property and notifies any observers attached to it.
@@ -150,7 +212,7 @@ ginger.Base.prototype.set = function(key, val){
 }
 
 /**
-  get - Gets a property. Just declared for symetry with set.
+  get - Gets a property. Just declared for symmetry with set.
 */
 ginger.Base.prototype.get = function(key){
   return this.key
@@ -176,7 +238,7 @@ ginger.Base.prototype.addObserver = function(key, didChangeFn, willChangeFn){
   }
   return observer
 }
-  
+
 ginger.Base.prototype.removeObserver = function(observer){
   var observers = this.observers
   for (var key in observers){
@@ -269,6 +331,8 @@ ginger.Controller = ginger.Declare(ginger.Base, function(view){
 // -----------------------------------------------------------------------------------
 ginger.Model = ginger.Declare(ginger.Base, function(){
   this.super(ginger.Model)
+  // TODO: Add methods related to synchronizing model with server, add support 
+  // for caching, client side persistence, etc.
 })
 
 // -----------------------------------------------------------------------------------
@@ -288,7 +352,8 @@ ginger.Views.ComboBox = ginger.Declare(ginger.View, function(items, selected){
 
   view.$el.comboBox(view.items, view.value).change(function(event){
     view.set('value', event.target.value)
-  })
+  }).css({display:'inline'})
+  
   view.addObserver('value', function(value){
       $('select',view.$el).val(value)
   })
@@ -331,7 +396,81 @@ ginger.Views.RadioButton = ginger.Declare(ginger.View, function(){
 ginger.Views.Label = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.Label)
 })
+// -----------------------------------------------------------------------------------
+ginger.Views.Button = ginger.Declare(ginger.View, function(options){
+  this.super(ginger.Views.Button)
+  var view = this
+  view.options = options
+  
+  var $button = $('<a href="#"/>').click(function(event){
+    view.emit('click', view, event) 
+  })
+  
+  view.$el.append($button)
+ 
+  if(options.icons){
+    var $icon
+    for(var i=0;i<options.icons.length;i++){
+        $icon = $('<div>', {
+        class:options.icons[i],
+        css:{float:'left'}
+      })
+      $button.append($icon)
+    }
+  }
+  
+  if(options.label){
+    var $label = $('<div>').html('<a href="#">'+options.label+'</a>').css({float:'left'})
+    $button.append($label)
+  }
+})
+ginger.Views.Button.prototype.enable = function(enable){
+  if(enable){
+    // Enable button.
+  }else{
+    // Disable button.
+  }
+}
+// -----------------------------------------------------------------------------------
+ginger.Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
+  this.super(ginger.Views.Toolbar)
+  var view = this
+
+  if(classNames){
+    view.$el.addClass(classNames)
+  }
+  view.items = items
+  
+  var clickCallback = function(sender, event){
+    view.emit('click', sender, event)
+  }
+  
+  for(var i=0; i<items.length;i++){
+    var $item_container = $('<div>').css({
+      height:'100%',
+      margin:'1px',
+      border:'1px solid #363636', 
+      float:'left'})
+    view.$el.append($item_container)
+    $item_container.append(items[i].$el)
+    items[i].on('click', clickCallback)
+  }
+})
+/*
+ginger.Views.Toolbar.prototype.render = function(){
+ var $el = this.super(ginger.Views.Toolbar, 'render') 
+  for(var i=0; i<this.items.length;i++){
+    $el.append(this.items[i].render().css({float:'left'}))
+  }
+  
+  return $el
+}
+*/
+// -----------------------------------------------------------------------------------
+ginger.Views.ToolTip = ginger.Declare(ginger.View, function(){
+  this.super(ginger.Views.ToolTip)
+})
+// -----------------------------------------------------------------------------------
 
 return ginger
 })
-
