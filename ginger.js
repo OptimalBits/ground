@@ -15,7 +15,6 @@
    Dependencies:
    - jQuery
    - Underscore
-   - EventEmitter
    
    (c) 2011 OptimalBits with selected parts from the internet
    licensed as public domain or MIT.
@@ -41,12 +40,12 @@ define(['/js/lib/underscore.js'], function(){
   $.fn.comboBox = function(items, selected){
     var $comboBox = $('<select>', this)
     var options = ''
-    for(var value in items){
+    for(var key in items){
       options += '<option '
-      if (selected === value){
+      if (selected === key){
         options += 'selected="selected" '
       }
-      options += 'value="'+value+'">'+items[value]+'</option>'
+      options += 'value="'+key+'">'+items[key]+'</option>'
     }
     
     $comboBox.html(options)
@@ -69,39 +68,167 @@ if (!Object.create) {
 }
 
 //
-//
+// Ginger Object
 //
 var ginger = {}
 
+//
+// Event Emitter
+// (based on original work by Oliver Caldwell, olivercaldwell.co.uk)
+// Dual licensed under the MIT or GPL Version 2 licenses.
+// https://github.com/Wolfy87/EventEmitter
+//
+
+var EventEmitter = function() {}
+
+EventEmitter.prototype._getListeners = function(){
+  if (_.isUndefined(this._listeners)){
+    this._listeners = {}
+  }
+  return this._listeners
+}
+
+/**
+  * Assigns a listener to the specified event
+  * 
+  * @param {String} eventName Name of the event to assign the listener to
+  * @param {Function} listener Function to be executed when the specified event is emitted
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.addListener = function(eventName, listener) {
+  var listeners = this._getListeners()
+  if(listeners[eventName]) {
+    listeners[eventName].push(listener);
+  }
+  else {
+    listeners[eventName] = [listener];
+  }
+		
+  // Emit the new listener event
+  this.emit('newListener', eventName, listener);
+		
+  // Return the listener for easier removal.
+  return this;
+}
+
+/**
+  * Assigns a listener to the specified event (alias for addListener)
+  * 
+  * @param {String} eventName Name of the event to assign the listener to
+  * @param {Function} listener Function to be executed when the specified event is emitted
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+	
+/**
+  * Emits the specified event running all listeners associated with it
+  * 
+  * @param {String} eventName Name of the event to execute the listeners of
+  * @param {Mixed} arguments You can pass as many arguments as you want after the event name. These will be passed to the listeners
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.emit = function(eventName) {
+  var listeners = this._getListeners()
+  
+  if(listeners[eventName]) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var eventListeners = listeners[eventName]
+    
+    // Loop over the listeners executing them
+    for(var i = 0; i < eventListeners.length; i += 1) {
+      eventListeners[i].apply(null, args);
+    }
+  }		
+	
+  return this
+}
+	
+/**
+  * Returns an array of listeners for the specified event name
+  * 
+  * @param {String} eventName Name of the event to get the listeners for
+  * @returns {Array} An array of listeners for the specified event
+  */
+EventEmitter.prototype.listeners = function(eventName) {
+  var listeners = this._getListeners()
+  if(listeners[eventName]) {
+			return listeners[eventName];
+  }
+  else {
+			listeners[eventName] = [];
+			return listeners[eventName];
+		}
+}
+
+/**
+  * Assigns a listener to the specified event removes its self after the first run
+  * 
+  * @param {String} eventName Name of the event to assign the listener to
+  * @param {Function} listener Function to be executed when the specified event is emitted
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.once = function(eventName, listener) {
+  var ee = this
+  
+  // Create a wrapper function
+  function wrapper() {
+			// Call the listener and pass down the arguments
+			listener.apply(null, arguments);
+			
+			// Remove the listener
+			ee.removeListener(eventName, wrapper);
+		}
+		
+		// Add the listener for the wrapper
+		return ee.addListener(eventName, wrapper);
+};
+	
+/**
+  * Removes the specified listener
+  * 
+  * @param {String} eventName Name of the event to remove the listener from
+  * @param {Function} listener Listener function to be removed
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.removeListener = function(eventName, listener) {
+  var listeners = this._getListeners()
+  
+  if(listeners[eventName]) {
+    var index = _.indexOf(listeners[eventName], listener);
+			
+			if(index !== -1) {
+				listeners[eventName].splice(index, 1);
+			}
+		}
+		else {
+      listeners[eventName] = [];
+		}
+		
+		return this;
+};
+	
+/**
+  * Removes all listeners from the specified event
+  * 
+  * @param {String} eventName Name of the event to remove the listeners from
+  * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+EventEmitter.prototype.removeAllListeners = function(eventName) {
+  var listeners = this._getListeners()
+  listeners[eventName] = [];
+  return this;
+}
+
+EventEmitter.prototype.addObserver = function(eventName, listener){
+// DEPRECATED: just for backwards compatibility
+  this.on(eventName, listener)
+}
 
 //
-// Global events (we just wrap a singleton instance of EventEmitter)
+// Global events
 //
 
-ginger.getEventEmitter = _.once(function() {
-  return new EventEmitter()
-})
-
-ginger.on = function(type, listener, scope, once){
-  var ee = ginger.getEventEmitter()
-  ee.on(type, listener, scope, once)
-  return listener
-}
-
-ginger.emit = function(type, args){
-  var ee = ginger.getEventEmitter()
-  ee.emit.apply(this, arguments)
-}
-
-ginger.removeListener = function(type, listener){
-  var ee = ginger.getEventEmitter()
-  ee.removeListener(type, listener)
-}
-
-ginger.removeAllListeners = function(type){
-  var ee = ginger.getEventEmitter()
-  ee.removeAllListeners(type)
-}
+_.extend(ginger, new EventEmitter())
 
 //
 // Classes
@@ -112,10 +239,11 @@ function Inherit(Sub, Super){
   newSub.constructor = Sub
   Sub.prototype = newSub
   Sub.superproto = Super.prototype
+
   Sub.prototype.super = function(klass, fn){
-    if(fn) return klass.superproto[fn].apply(this, _.rest(arguments, 2))
-    else klass.superproto.constructor.apply(this)
-  }  
+      if(fn) return klass.superproto[fn].apply(this, _.rest(arguments, 2))
+      else klass.superproto.constructor.apply(this)
+  }
 } 
 
 ginger.Declare = function( Super, Sub ){
@@ -127,87 +255,21 @@ ginger.Declare = function( Super, Sub ){
 //  Base Class - All Ginger classes derive from this one.
 //
 ginger.Base = function(){
-  this.observers = null
-  this.bindings = null
-  this.ee = null
+  this.bindings = {}
 }
 
-ginger.Base.prototype._notifyObservers = function(key, type, newVal, oldVal){
-  var observers = this.observers
-  if(key in observers){
-    var keyObservers = observers[key]
-    if (_.isArray(keyObservers)){
-      for(var i=0; i<keyObservers.length;i++){
-        var fn = keyObservers[i][type]
-        if(fn){
-          fn(newVal, oldVal)
-        }
-      }
-    }else{
-      keyObservers[type](newVal, oldVal)
-    }
-  }
-}      
-      
-ginger.Base.prototype._addBinding = function(key, observer1, object, observer2){
-  if(this.bindings == null){
-    this.bindings = {};
-  }
-  this.bindings[key] = [observer1, object, observer2];
-}
-      
-ginger.Base.prototype._removeBinding = function(key){
-  var bindings = this.bindings
-  if( (bindings!=null) && (bindings[key]) ){
-    this.removeObserver(bindings[key][0])
-    bindings[key][1].removeObserver(bindings[key][2])
-  }
-}
+_.extend(ginger.Base.prototype, EventEmitter.prototype)
 
-ginger.Base.prototype._getEventEmitter = function() {
-  if(_.isNull(this.ee)){
-    this.ee = new EventEmitter()
-  }
-  return this.ee
-}
-
-ginger.Base.prototype.on = function(type, listener, scope, once){
-  var ee = this._getEventEmitter()
-  ee.on(type, listener, scope, once)
-  return listener
-}
-
-ginger.Base.prototype.emit = function(type, args){
-  if(this.ee){
-    this.ee.emit.apply(this, arguments)
-  }
-}
-
-ginger.Base.prototype.removeListener = function(type, listener){
-  if(this.ee){
-    this.ee.removeListener(type, listener)
-  }
-}
-
-ginger.Base.prototype.removeAllListeners = function(type){
-  if(this.ee){
-    this.ee.removeAllListeners(type)
-  }
-}
-  
 /**
-  set - Sets a property and notifies any observers attached to it.
+  set - Sets a property and notifies any listeners attached to it.
 
 */
 ginger.Base.prototype.set = function(key, val){
-  var observers = this.observers
-  if ((this[key] != val) && (observers != null) && (observers[key] != null)){
+  if (this[key] != val){
     var oldval = this[key]
-    this._notifyObservers(key, 0, val, oldval)
     this[key] = val
-    this._notifyObservers(key, 1, val, oldval)
-  }else{
-    this.key = val
+    this.emit(key, val, oldval)
+    this.emit('change', key, val, oldval)
   }
 }
 
@@ -216,43 +278,6 @@ ginger.Base.prototype.set = function(key, val){
 */
 ginger.Base.prototype.get = function(key){
   return this.key
-}
-
-/**
- * Adds an observer for a key.
- * 
- * @param {String} key Key to listen for.
- * @param {Function} didChangeFn Function to call when the value in the key has changed
- * @param {Function} willChangeFn Function to call when the value in the key has changed
- * @return {Object} A handle to be used in order to remove this observer.
-*/
-ginger.Base.prototype.addObserver = function(key, didChangeFn, willChangeFn){
-  observer = [willChangeFn, didChangeFn]
-  if(this.observers == null){
-    this.observers = {};
-  }
-  if(this.observers[key] == null){
-    this.observers[key] = [observer];
-  }else{
-    this.observers[key].push(observer);
-  }
-  return observer
-}
-
-ginger.Base.prototype.removeObserver = function(observer){
-  var observers = this.observers
-  for (var key in observers){
-    var keyObservers = observers[key]
-    for(var i=0;i<keyObservers.length;i++){
-      if(keyObservers[i] === observer){
-        keyObservers.splice(i,1)
-        if(keyObservers.length===0){
-          delete observers[key]
-        }
-        break
-      }
-    }
-  }
 }
     
 /**
@@ -266,21 +291,22 @@ ginger.Base.prototype.removeObserver = function(observer){
  * the value of the target object key
  */
 ginger.Base.prototype.bind = function(key, object, objectKey){
-  var base = this
-    
-  var targetKey = _.isUndefined(objectKey) ? key : objectKey
+  var dstKey = _.isUndefined(objectKey) ? key : objectKey
 
-  base.unbind(key)
+  this.unbind(key)
   
-  var observer1 = this.addObserver(key, function(newval, oldval){
-    object.set(targetKey, newval)
-  })
-  var observer2 = object.addObserver(targetKey, function(newval, oldval){
-    base.set(key, newval)
-  })
-  this._addBinding(key, observer1, object, observer2)
+  var dstListener = _.bind(object.set, object, dstKey)
+  this.on(key, dstListener)
   
-  base.set(key, object[targetKey])
+  var srcListener = _.bind(this.set, this, key)
+  object.on(dstKey, srcListener)
+  
+  this.bindings[key] = [dstListener, object, dstKey, srcListener];
+  
+  // sync
+  this.set(key, object[dstKey])
+  
+  return this
 }
 
 /**
@@ -288,7 +314,13 @@ ginger.Base.prototype.bind = function(key, object, objectKey){
 
 */
 ginger.Base.prototype.unbind = function(key){
-  this._removeBinding(key)
+  var bindings = this.bindings
+  if( (bindings!=null) && (bindings[key]) ){
+    var binding = bindings[key]
+    this.removeListener(key, binding[0])
+    binding[1].removeListener(binding[2], binding[3])
+    delete bindings[key]
+  }
 }
 
 ginger.Base.prototype.init = function(err, callback){
@@ -299,15 +331,26 @@ ginger.Base.prototype.deinit = function(){
   console.log("init method not implemented by:"+this)
 }
 
-
 // -----------------------------------------------------------------------------------
 ginger.View = ginger.Declare(ginger.Base, function(){
   this.super(ginger.View)
   this.$el = $('<div>')
 })
 
-ginger.View.prototype.render = function(){
-  return this.$el
+ginger.View.prototype.render = function($parent){
+  this.$parent = $parent
+  return this.$el.appendTo($parent)
+}
+
+ginger.View.prototype.update = function(){
+  // Updates this view.
+  /*
+    Updating can imply that if this view is composed of subviews, or of
+    many DOM elements, that this DOM elements are destroyed and recreated,
+    (or subvies are removed and re-rendered), but the most important thing
+    is that the element that this view returned in render, is still the same after
+    the update.
+  */
 }
 
 ginger.View.prototype.clean = function(){
@@ -315,11 +358,19 @@ ginger.View.prototype.clean = function(){
 }
 
 ginger.View.prototype.remove = function(){
-    this.$el.remove()
+  this.$el.remove()
 }
 
-ginger.View.prototype.disable = function(){
+ginger.View.prototype.disable = function(disable){
   console.log(this+" does not implement disable")
+}
+
+ginger.View.prototype.hide = function(duration, easing, callback) {
+  this.$el.hide(arguments)
+}
+  
+ginger.View.prototype.show = function(duration, easing, callback) {
+  this.$el.show(arguments)
 }
 
 // -----------------------------------------------------------------------------------
@@ -347,14 +398,14 @@ ginger.Views.ComboBox = ginger.Declare(ginger.View, function(items, selected){
   this.super(ginger.Views.ComboBox)
   var view = this
     
-  view.value = selected
+  view.value = selected  
   view.items = items
 
   view.$el.comboBox(view.items, view.value).change(function(event){
     view.set('value', event.target.value)
   }).css({display:'inline'})
   
-  view.addObserver('value', function(value){
+  view.on('value', function(value){
       $('select',view.$el).val(value)
   })
 })
@@ -376,10 +427,43 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
   
   view.$el.slider(options)
     
-  view.addObserver('value', function(value){
+  view.on('value', function(value){
     view.$el.slider('value', value)
   })
 })
+// -----------------------------------------------------------------------------------
+ginger.Views.ColorPicker = ginger.Declare(ginger.View, function(options){
+  this.super(ginger.Views.ColorPicker)
+  var view = this
+  
+  view.$colorPicker = $('<input>').attr({name:"color",
+                                         type:"text",
+                                         value:'#FFFFFFFF'})
+  
+  var pickerOptions = {change: function(hex, rgb) {
+                        view.set('color', hex)
+                      }}
+                      
+  if(_.isUndefined(options) == false){
+    _.extend(pickerOptions, options)
+  }
+  
+  view.$colorPicker.miniColors(pickerOptions)
+  
+  view.on('color', function(value){
+    if(value!=view.$colorPicker.attr('value')){
+      view.$colorPicker.miniColors('value', value)
+    }
+  })
+})
+ginger.Views.ColorPicker.prototype.render = function($parent){
+  this.super(ginger.Views.ColorPicker, 'render')
+  $parent.append(this.$colorPicker)
+  return this.$el
+}
+ginger.View.prototype.disable = function(disable){
+  this.$colorPicker.miniColors('disabled', disable);
+}
 // -----------------------------------------------------------------------------------
 ginger.Views.TextField = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.TextField)
