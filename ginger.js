@@ -225,6 +225,48 @@ EventEmitter.prototype.addObserver = function(eventName, listener){
 }
 
 //
+// Undo Manager
+//
+
+var UndoManager = function(){
+  this.undones = [];
+  this.actions = [];
+}
+
+UndoManager.prototype.action = function( doFn, undoFn, callback){
+  this.undones.length = 0
+  this.actions.push({do:doFn, undo:undoFn, callback:callback})
+    doFn(callback);
+}
+
+UndoManager.prototype.canUndo = function(){
+  return this.actions.length > 0;
+}
+ 
+UndoManager.prototype.canRedo = function(){
+  return this.undones.length > 0;
+}
+ 
+UndoManager.prototype.undo = function(){
+  var action = this.actions.pop();
+  if(action){
+    action.undo(action.callback);
+    this.undones.push(action);
+  }
+}
+
+UndoManager.prototype.redo = function(){
+  var action = this.undones.pop();
+  if(action){
+    action.do(action.callback),
+    this.actions.push(action);
+  }
+}
+
+ginger.undoMgr = new UndoManager()
+
+
+//
 // Global events
 //
 
@@ -431,6 +473,13 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
     view.$el.slider('value', value)
   })
 })
+ginger.View.prototype.disable = function(disable){
+  if(disable){
+    this.$el.slider('disable');
+  }else{
+    this.$el.slider('enable');
+  }
+}
 // -----------------------------------------------------------------------------------
 ginger.Views.ColorPicker = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.ColorPicker)
