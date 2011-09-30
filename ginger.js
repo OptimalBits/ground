@@ -414,13 +414,36 @@ ginger.View.prototype.hide = function(duration, easing, callback) {
 ginger.View.prototype.show = function(duration, easing, callback) {
   this.$el.show(arguments)
 }
+// -----------------------------------------------------------------------------------
+ginger.CanvasView = ginger.Declare(ginger.View, function(width, height){
+  this.super(ginger.CanvasView)
+  this.$canvas = null
+})
 
+ginger.CanvasView.prototype.render = function($parent){
+  this.super(ginger.CanvasView, 'render', $parent)
+  
+  if(this.$canvas){
+    this.$canvas.remove()
+  }
+
+  this.$canvas = $('<canvas>', {
+    css:{width:'100%', height:'100%'}}).appendTo(this.$el)
+
+  this.$canvas[0].width = $parent.width()
+  this.$canvas[0].height = $parent.height()
+  
+  this.draw()
+}
+
+ginger.CanvasView.prototype.draw = function(){
+  return this.$canvas[0].getContext('2d')
+}
 // -----------------------------------------------------------------------------------
 ginger.Controller = ginger.Declare(ginger.Base, function(view){
   this.super(ginger.Controller)
   this.view = view
 })
-
 // -----------------------------------------------------------------------------------
 ginger.Model = ginger.Declare(ginger.Base, function(){
   this.super(ginger.Model)
