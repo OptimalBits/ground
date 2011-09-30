@@ -602,11 +602,7 @@ ginger.Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
   }
   
   for(var i=0; i<items.length;i++){
-    var $item_container = $('<div>').css({
-      height:'100%',
-      margin:'1px',
-      border:'1px solid #363636', 
-      float:'left'})
+    var $item_container = $('<div>').addClass('ginger_toolbaritem');
     view.$el.append($item_container)
     $item_container.append(items[i].$el)
     items[i].on('click', clickCallback)
