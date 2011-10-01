@@ -490,6 +490,12 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
     if(view.options.slide) view.options.slide(event, ui)
   }
   
+  options.stop = function(event, ui){
+    view.set('value', ui.value)
+    if(view.options.slide) view.options.slide(event, ui)
+  }
+  
+  
   view.$el.slider(options)
     
   view.on('value', function(value){
