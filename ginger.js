@@ -374,9 +374,9 @@ ginger.Base.prototype.deinit = function(){
 }
 
 // -----------------------------------------------------------------------------------
-ginger.View = ginger.Declare(ginger.Base, function(){
+ginger.View = ginger.Declare(ginger.Base, function(classNames){
   this.super(ginger.View)
-  this.$el = $('<div>')
+  this.$el = $('<div>', {class:classNames})
 })
 
 ginger.View.prototype.render = function($parent){
@@ -415,8 +415,8 @@ ginger.View.prototype.show = function(duration, easing, callback) {
   this.$el.show(arguments)
 }
 // -----------------------------------------------------------------------------------
-ginger.CanvasView = ginger.Declare(ginger.View, function(width, height){
-  this.super(ginger.CanvasView)
+ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
+  this.super(ginger.CanvasView, 'constructor', classNames)
   this.$canvas = null
 })
 
