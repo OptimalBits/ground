@@ -106,8 +106,7 @@ EventEmitter.prototype.addListener = function(eventName, listener) {
 		
   // Emit the new listener event
   this.emit('newListener', eventName, listener);
-		
-  // Return the listener for easier removal.
+
   return this;
 }
 
@@ -306,11 +305,11 @@ _.extend(ginger.Base.prototype, EventEmitter.prototype)
   set - Sets a property and notifies any listeners attached to it.
 
 */
-ginger.Base.prototype.set = function(key, val){
-  if (this[key] != val){
+ginger.Base.prototype.set = function(key, val, args){
+  if ((this[key] != val)||(_.isEqual(this[key], val)==false)){
     var oldval = this[key]
     this[key] = val
-    this.emit(key, val, oldval)
+    this.emit(key, val, oldval, args)
     this.emit('change', key, val, oldval)
   }
 }
@@ -396,11 +395,11 @@ ginger.View.prototype.update = function(){
 }
 
 ginger.View.prototype.clean = function(){
-  this.$el.detach()
+  if(this.$el) this.$el.detach()
 }
 
 ginger.View.prototype.remove = function(){
-  this.$el.remove()
+  if(this.$el) this.$el.remove()
 }
 
 ginger.View.prototype.disable = function(disable){
