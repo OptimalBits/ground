@@ -417,6 +417,10 @@ ginger.View.prototype.show = function(duration, easing, callback) {
 ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
   this.super(ginger.CanvasView, 'constructor', classNames)
   this.$canvas = null
+  var cv = this
+  this.on('change', function(){
+    cv.draw()
+  })
 })
 
 ginger.CanvasView.prototype.render = function($parent){
@@ -436,7 +440,11 @@ ginger.CanvasView.prototype.render = function($parent){
 }
 
 ginger.CanvasView.prototype.draw = function(){
-  return this.$canvas[0].getContext('2d')
+  if(this.$canvas){
+    return this.$canvas[0].getContext('2d')
+  }else{
+    return null
+  }
 }
 // -----------------------------------------------------------------------------------
 ginger.Controller = ginger.Declare(ginger.Base, function(view){
