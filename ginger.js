@@ -569,7 +569,7 @@ ginger.Views.Label = ginger.Declare(ginger.View, function(){
 ginger.Views.Button = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Button)
   var view = this
-  view.options = options
+  _.extend(this, options)
   
   var $button = $('<a href="#"/>').click(function(event){
     view.emit('click', view, event) 
@@ -577,22 +577,32 @@ ginger.Views.Button = ginger.Declare(ginger.View, function(options){
   
   view.$el.append($button)
  
-  if(options.icons){
+  if(this.icons){
+    this.$icons = {}
     var $icon
-    for(var i=0;i<options.icons.length;i++){
-        $icon = $('<div>', {
-        class:options.icons[i],
+    for(var i=0;i<this.icons.length;i++){
+      $icon = $('<div>', {
+        class:this.icons[i],
         css:{float:'left'}
       })
-      $button.append($icon)
+      this.$icons[this.icons[i]] = $icon
     }
+    this.icon = this.icons[0]
+    $button.append(view.$icons[this.icon])
+  
+    this.on('icon', function(icon, prev){
+      $('.'+prev, $button).detach()
+      $button.append(view.$icons[icon])
+    })
   }
   
-  if(options.label){
-    var $label = $('<div>').html('<a href="#">'+options.label+'</a>').css({float:'left'})
+  if(this.label){
+    var $label = $('<div>').html('<a href="#">'+this.label+'</a>').css({float:'left'})
     $button.append($label)
   }
 })
+
+
 ginger.Views.Button.prototype.enable = function(enable){
   if(enable){
     // Enable button.
