@@ -597,10 +597,10 @@ ginger.Views.Button = ginger.Declare(ginger.View, function(options){
       this.$icons[this.icons[i]] = $icon
     }
     this.icon = this.icons[0]
-      view.$el.append(view.$icons[this.icon])
+    view.$el.append(view.$icons[this.icon])
   
     this.on('icon', function(icon, prev){
-      $('.'+prev, $button).detach()
+      $('.'+prev, view.$el).detach()
       view.$el.append(view.$icons[icon])
     })
   }
@@ -608,7 +608,6 @@ ginger.Views.Button = ginger.Declare(ginger.View, function(options){
   if(this.label){
     var $label = $('<div>').html('<a href="#">'+this.label+'</a>').css({float:'left'})
     view.$el.append($label)
-
   }
 })
 
