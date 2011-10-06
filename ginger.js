@@ -564,6 +564,10 @@ ginger.Views.RadioButton = ginger.Declare(ginger.View, function(){
 // -----------------------------------------------------------------------------------
 ginger.Views.Label = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.Label)
+  var view = this
+  this.on('text', function(value){
+    view.$el[0].innerHTML = value
+  })
 })
 // -----------------------------------------------------------------------------------
 ginger.Views.Button = ginger.Declare(ginger.View, function(options){
