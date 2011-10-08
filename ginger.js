@@ -1,14 +1,16 @@
 /**
-   Ginger MVC framework
-   License: MIT or GPL as desired.
+   Ginger MVC framework v0.1
 
    Features:
    - Modular design based on CommonJS AMD modules.
    - Builds on top of proven libraries such as jQuery, underscore.
    - Clean class hierarchies, based on javascript prototypal inheritance.
+   - Property bindings.
    - Global and Local Events.
-   - Set of views for common web "widgets". 
-  
+   - Undo/Redo Manager.
+   - Set of views for common web "widgets".
+   - Canvas View.
+
   Roadmap:
     - Seamless synchronization of model data between browser and server. 
   
@@ -17,7 +19,7 @@
    - Underscore
    
    (c) 2011 OptimalBits with selected parts from the internet
-   licensed as public domain or MIT.
+   dual licensed as public domain or MIT.
    
    Resources:
    - http://kevinoncode.blogspot.com/2011/04/understanding-javascript-inheritance.html
@@ -506,7 +508,7 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
   view.$el.slider(options)
     
   view.on('value', function(value){
-    view.$el.slider('value', value)
+    view.$el.slider('value', parseInt(value))
   })
 })
 ginger.View.prototype.disable = function(disable){
