@@ -29,7 +29,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
  */
 
-define(['/js/lib/underscore.js'], function(){
+define(function(){
 
 /**
   Define some useful jQuery plugins.
