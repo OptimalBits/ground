@@ -230,14 +230,51 @@ EventEmitter.prototype.addObserver = function(eventName, listener){
 //
 
 var UndoManager = function(){
-  this.undones = [];
-  this.actions = [];
+  this.undones = []
+  this.actions = []
+  this._undoFn = null
+  this._group = null
 }
 
-UndoManager.prototype.action = function( doFn, undoFn, callback){
+UndoManager.prototype.beginUndo = function(undoFn){
+  this._undoFn = undoFn
+}
+
+UndoManager.prototype.endUndo = function(doFn, fn){
+  this.action(doFn, this._undoFn, fn)
+  this._undoFn = null
+}
+
+UndoManager.prototype.action = function(doFn, undoFn, fn){
   this.undones.length = 0
-  this.actions.push({do:doFn, undo:undoFn, callback:callback})
-    doFn(callback);
+  var action = {do:doFn, undo:undoFn, fn:fn}
+  if(_.isNull(this._group)){
+    this.actions.push(action)
+  }else{
+    this._group.push(action)
+  }
+  doFn(fn);
+}
+
+UndoManager.prototype.beginGroup = function(){
+  this._group = []
+}
+
+UndoManager.prototype.endGroup = function(){
+  ;(function(group){
+    this.action( function(){
+      for(var i=0; i<group.length;i++){
+        group[i].do(group[i].fn)
+      }
+    },
+    function(){
+      for(var i=0; i<group.length;i++){
+        group[i].undo(group[i].fn)
+      }
+    })
+  }(this._group))
+  
+  this._group = null
 }
 
 UndoManager.prototype.canUndo = function(){
@@ -251,7 +288,7 @@ UndoManager.prototype.canRedo = function(){
 UndoManager.prototype.undo = function(){
   var action = this.actions.pop();
   if(action){
-    action.undo(action.callback);
+    action.undo(action.fn);
     this.undones.push(action);
   }
 }
@@ -259,7 +296,7 @@ UndoManager.prototype.undo = function(){
 UndoManager.prototype.redo = function(){
   var action = this.undones.pop();
   if(action){
-    action.do(action.callback),
+    action.do(action.fn),
     this.actions.push(action);
   }
 }
@@ -372,6 +409,37 @@ ginger.Base.prototype.init = function(err, callback){
 
 ginger.Base.prototype.deinit = function(){
   console.log("init method not implemented by:"+this)
+}
+
+/**
+  Begins an undo operation over setting a given key to a value.
+*/
+ginger.Base.prototype.beginUndoSet = function(key){
+  var base = this
+  ;(function(value){
+    ginger.undoMgr.beginUndo(function(){
+      base.set(key, value)
+  })}(this[key]))
+}
+
+/**
+  Ends an undo operation over setting a given key to a value.
+*/
+ginger.Base.prototype.endUndoSet = function(key, fn){
+  var base = this
+  ;(function(value){
+    ginger.undoMgr.endUndo(function(){
+      base.set(key, value)
+  })}(this[key]))
+}
+
+/**
+  Sets a key value while registering it as an undo operation
+*/
+ginger.Base.prototype.undoSet = function(key, value, fn){
+  this.beginUndoSet(key)
+  this.set(key, value)
+  this.endUndoSet(key, fn)
 }
 
 // -----------------------------------------------------------------------------------
@@ -493,6 +561,10 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
 
   var options = _.clone(view.options)
   var oldSlideFn = options.slide
+  
+  options.start = function(event, ui){
+  
+  }
 
   options.slide = function(event, ui){
     view.set('value', ui.value)
@@ -503,7 +575,6 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
     view.set('value', ui.value)
     if(view.options.slide) view.options.slide(event, ui)
   }
-  
   
   view.$el.slider(options)
     
