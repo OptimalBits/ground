@@ -556,8 +556,8 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Slider)
   var view = this
   
-  view.value = _.isUndefined(options.value) ? 0 : options.value
-  view.options = options
+  view.options = _.isUndefined(options) ? {} : options
+  view.value = _.isUndefined(view.options.value) ? 0 : view.options.value
 
   var options = _.clone(view.options)
   var oldSlideFn = options.slide
