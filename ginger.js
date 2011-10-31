@@ -416,32 +416,50 @@ ginger.Declare = function(Super, Sub, staticOrName, name){
 //
 //  Base Class - All Ginger classes derive from this one.
 //
-ginger.Base = function(){
+var Base = ginger.Base = function(){
   this._bindings = {}
 }
 
-_.extend(ginger.Base.prototype, EventEmitter.prototype)
+_.extend(Base.prototype, EventEmitter.prototype)
 
 /**
   set - Sets a property and notifies any listeners attached to it.
 
 */
-ginger.Base.prototype.set = function(key, val, args){
-  if ((this[key] != val)||(_.isEqual(this[key], val)==false)){
+Base.prototype._set = function(key, val, args){
+  if(this[key]!=val){
     var oldval = this[key]
+    val = this.willChange(key, val)
     this[key] = val
     this.emit(key, val, oldval, args)
-    this.emit('change', key, val, oldval)
+    return true
+  }else{
+    return false
   }
 }
-
+Base.prototype.set = function(keyOrObj, val, args){
+  var changed = false
+  if(_.isObject(keyOrObj)){
+    var obj = keyOrObj
+    for(var key in obj){
+      changed = this._set(key, obj[key], args)?true:changed
+    }
+  }else{
+    changed = this._set(keyOrObj, val, args)
+  }
+  if(changed){
+    this.emit('change', this)
+  }
+}
+Base.prototype.willChange = function(key, val){
+  return val
+}
 /**
   get - Gets a property. Just declared for symmetry with set.
 */
-ginger.Base.prototype.get = function(key){
+Base.prototype.get = function(key){
   return this.key
 }
-    
 /**
  * bind - Creates a binding between two keys.
  * 
