@@ -195,16 +195,12 @@ EventEmitter.prototype.on = function(eventNames, listener) {
   */
 EventEmitter.prototype.emit = function(eventName) {
   var listeners = this._getListeners()
-  var eventListeners = []
-  if(listeners[eventName]){
-    eventListeners = listeners[eventName]
-  }
   if(listeners['*']){
-    this._fire(eventListeners, arguments)
+    this._fire(listeners['*'], arguments)
   }
   if(listeners[eventName]){
     var args = _.rest(arguments)
-    this._fire(eventListeners, args)
+    this._fire(listeners[eventName], args)
   }		
   return this
 }
