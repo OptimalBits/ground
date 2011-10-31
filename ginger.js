@@ -540,7 +540,7 @@ Base.prototype.undoSet = function(key, value, fn){
 // Storage
 // (requires localStorage)
 // -----------------------------------------------------------------------------------
-var Storage = {}
+var Storage = ginger.Storage = {}
 Storage.findById = function(bucket, id){
   var objectId = bucket+'@'+id
   for (var i=0, len=localStorage.length;i<len;i++){
@@ -551,12 +551,26 @@ Storage.findById = function(bucket, id){
   }
   return null
 }
-Storage.all = function(bucket){
+Storage.all = function(bucket, parent){
   var collection = []
-  for (var i=0, len=localStorage.length;i<len;i++){
-    var key = localStorage.key(i)
-    if(key.split('@')[0] === bucket){
-      collection.push(JSON.parse(localStorage[key]))
+  if(parent){
+    var key = parent.__name+':'+parent.cid+':'+bucket
+    var ids = localStorage[key]
+    var parentKey = parent.__name+'@'+parent.cid
+    for (var i=0, len=ids.length;i<len;i++){
+      var obj = localStorage[ids[i]]
+      if(obj){
+        collection.push(JSON.parse(obj))
+      }else{
+        localStorage.removeItem(ids[i])
+      }
+    }
+  }else{
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i)
+      if(key.split('@')[0] === bucket){
+        collection.push(JSON.parse(localStorage[key]))
+      }
     }
   }
   return collection
