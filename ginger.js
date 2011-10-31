@@ -470,7 +470,7 @@ Base.prototype.get = function(key){
  * Note: If the keys have different values when binding, the caller will get
  * the value of the target object key
  */
-ginger.Base.prototype.bind = function(key, object, objectKey){
+Base.prototype.bind = function(key, object, objectKey){
   var dstKey = _.isUndefined(objectKey) ? key : objectKey
 
   this.unbind(key)
@@ -488,12 +488,11 @@ ginger.Base.prototype.bind = function(key, object, objectKey){
   
   return this
 }
-
 /**
   unbind - Removes a binding.
 
 */
-ginger.Base.prototype.unbind = function(key){
+Base.prototype.unbind = function(key){
   var bindings = this._bindings
   if( (bindings!=null) && (bindings[key]) ){
     var binding = bindings[key]
@@ -502,41 +501,36 @@ ginger.Base.prototype.unbind = function(key){
     delete bindings[key]
   }
 }
-
-ginger.Base.prototype.init = function(err, callback){
+Base.prototype.init = function(err, callback){
   console.log("init method not implemented by:"+this)
 }
-
-ginger.Base.prototype.deinit = function(){
+Base.prototype.deinit = function(){
   console.log("init method not implemented by:"+this)
 }
-
 /**
   Begins an undo operation over setting a given key to a value.
 */
-ginger.Base.prototype.beginUndoSet = function(key){
+Base.prototype.beginUndoSet = function(key){
   var base = this
   ;(function(value){
     ginger.undoMgr.beginUndo(function(){
       base.set(key, value)
   })}(this[key]))
 }
-
 /**
   Ends an undo operation over setting a given key to a value.
 */
-ginger.Base.prototype.endUndoSet = function(key, fn){
+Base.prototype.endUndoSet = function(key, fn){
   var base = this
   ;(function(value){
     ginger.undoMgr.endUndo(function(){
       base.set(key, value)
   })}(this[key]))
 }
-
 /**
   Sets a key value while registering it as an undo operation
 */
-ginger.Base.prototype.undoSet = function(key, value, fn){
+Base.prototype.undoSet = function(key, value, fn){
   this.beginUndoSet(key)
   this.set(key, value)
   this.endUndoSet(key, fn)
