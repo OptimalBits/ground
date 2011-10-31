@@ -592,25 +592,13 @@ Storage.remove = function(bucket, id){
   var objectId = bucket+'@'+id
   localStorage.removeItem(objectId)
 }
-ginger.Storage = Storage
-
-/*
-  Storage.observe(bucket, key, function(obj){
-  //
-  })
-  Storage.save(bucket, key, obj)
-  Storage.remove(bucket, key)
-  Storage.update(bucket, key, obj) // Lazy update.
-  
-  How to handle locks when offline? (ask the user what to do in case of conflict!)
-*/
 
 // -----------------------------------------------------------------------------------
 //
 // Models
 //
 // -----------------------------------------------------------------------------------
-ginger.Model = ginger.Declare(ginger.Base, function(args){
+var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   this.super(ginger.Model)
   _.extend(this, args)
   _.defaults(this, {
