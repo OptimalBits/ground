@@ -132,7 +132,19 @@ ginger.asyncForEach = function(array, fn, callback) {
     });
   }
   return deferred
-};
+}
+
+ginger.pluralize = function(noun){
+  function suffixStarts(str, suffix){
+    return str.indexOf(suffix, str.length - suffix.length)
+  }
+  var index = suffixStarts(noun, 'y')
+  if(index !==-1){
+    return noun.slice(0, index)+'ies'
+  }else{
+    return noun+'s'
+  }
+}
 
 //
 // Event Emitter
