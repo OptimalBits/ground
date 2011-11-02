@@ -996,14 +996,14 @@ ginger.Controller = ginger.Declare(ginger.Base, function(view){
 ginger.Views = {}
 
 // -----------------------------------------------------------------------------------
-ginger.Views.ComboBox = ginger.Declare(ginger.View, function(items, selected){
+ginger.Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
   this.super(ginger.Views.ComboBox)
   var view = this
   
   if(selected){
     view.value = selected
   }else{
-    view.value = _.first(items)
+    view.value = this.firstValue(items)
   }
   view.items = items
 
@@ -1015,6 +1015,18 @@ ginger.Views.ComboBox = ginger.Declare(ginger.View, function(items, selected){
       $('select',view.$el).val(value)
   })
 })
+ComboBox.prototype.firstValue = function(items){
+  for(var key in items){
+    return items[key]
+  }
+}
+ComboBox.prototype.willChange = function(key, value){
+  if((key === 'value')&&(value===null)){
+    return this.firstValue(this.items)
+  }else{
+    return value
+  }
+}
 // -----------------------------------------------------------------------------------
 ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Slider)
