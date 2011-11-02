@@ -713,14 +713,15 @@ Model.prototype.all = function(model, fn){
     fn(null)
   }
 }
-Model.prototype.save = function(socket, fn){
+Model.prototype.save = function(fn){
   var args = this.toArgs()
-  this.update(socket, args, fn)
+  this.update(args, fn)
 }
-Model.prototype.update = function(socket, args, fn){
+Model.prototype.update = function(args, fn){
   var model = this,
       name = this.__name,
-      bucket = name+'s'
+      bucket = name+'s',
+      socket = ginger.Model.socket
   if(socket){
     if(this._id) {//[this._id, args]
       socket.emit('update:'+name, {id:this._id, attrs:args}, function(){
