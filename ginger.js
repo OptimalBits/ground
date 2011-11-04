@@ -11,9 +11,6 @@
    - Undo/Redo Manager.
    - Set of views for common web "widgets".
    - Canvas View.
-
-  Roadmap:
-    - Seamless synchronization of model data between browser and server. 
   
    Dependencies:
    - jQuery
@@ -553,16 +550,14 @@ Storage.findById = function(bucket, id){
 }
 Storage.all = function(bucket, parent){
   var collection = []
-  if(parent){
-    var key = parent.__name+':'+parent.cid+':'+bucket
-    var ids = localStorage[key]
-    var parentKey = parent.__name+'@'+parent.cid
-    for (var i=0, len=ids.length;i<len;i++){
-      var obj = localStorage[ids[i]]
+  var keys = Storage._subCollectionKeys(bucket, parent)
+  if(keys){
+    for (var i=0, len=keys.length;i<len;i++){
+      var obj = localStorage[keys[i]]
       if(obj){
         collection.push(JSON.parse(obj))
       }else{
-        localStorage.removeItem(ids[i])
+        localStorage.removeItem(keys[i])
       }
     }
   }else{
@@ -574,6 +569,26 @@ Storage.all = function(bucket, parent){
     }
   }
   return collection
+}
+Storage.first = function(bucket, parent){
+  var keys = Storage._subCollectionKeys(bucket, parent)
+  if(keys){
+    return localStorage[keys[0]]
+  }else{
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i)
+      if(key.split('@')[0] === bucket){
+        return JSON.parse(localStorage[key])
+      }
+    }
+  }
+}
+Storage._subCollectionKeys = function(bucket, parent){
+  if(parent){
+  var value = localStorage[parent.__name+':'+parent.cid+':'+bucket]
+  return value?JSON.parse(value):null
+  }
+  return null
 }
 Storage.update = function(bucket, id, args){
   var obj = Storage.findById(bucket, id)
@@ -602,21 +617,18 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   this.super(ginger.Model)
   _.extend(this, args)
   _.defaults(this, {
-    socket:ginger.Model.socket,
+    _socket:ginger.Model.socket,
     __model:true
   })
-  if(_.isUndefined(this._id) || _.isNull(this._id)){
-    this.cid = uuid()
-  }else{
-    this.cid = this._id
-  }
+  this.cid = this._id ? this._id : this.cid
+  this.cid = _.isUndefined(this.cid) ? uuid() : this.cid
 },
 { // TODO: use socket.connected to avoid unnecessary emits.
   findById : function(id, fn){
     var model = this,
         socket = ginger.Model.socket,
         name = this.__name,
-        bucket = name+'s'
+        bucket = ginger.pluralize(name)
     if(socket){
       socket.emit('read:'+name, id, function(args){
         args = args !== null ? args : Storage.findById(bucket, id)
@@ -653,10 +665,31 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     }
     return this
   },
-  first : function(fn){
-    this.all(function(collection){
-      fn(collection?collection.first() : null)
-    })
+  first : function(fn, parent){
+    this.local().first(fn, parent)
+  },
+  local : function(){
+    if(this._local){
+      return this._local
+    }else{
+      var self = this
+      var bucket = ginger.pluralize(this.__name)
+      this._local = {
+        findById : function(id, fn){
+          var args = Storage.findById(bucket, id)
+          _instantiate(self, args, fn)
+        },
+        all: function(fn, parent){
+          var collection = Storage.all(bucket, parent)
+          _instantiateCollection(bucket, self, collection, fn)
+        },
+        first: function(fn, parent){
+          var args = Storage.first(bucket, parent)
+          _instantiate(self, args, fn)
+        }
+      }
+      return this._local
+    }
   },
   fromJSON : function(args, fn){
     fn(new this(args))
@@ -706,6 +739,26 @@ Model.prototype.key = function(){
 Model.prototype.init = function(fn){
   fn(this)
 }
+Model.prototype.local = function(){
+  if(this._local){
+    return this._local
+  }else{
+    var self = this
+    var bucket = ginger.pluralize(this.__name)
+    this._local = {
+      save : function(){
+        Storage.save(bucket, self.cid, self.toJSON())
+      },
+      update: function(args){
+        Storage.update(bucket, self.cid, args)
+      },
+      remove: function(){
+        Storage.remove(bucket, self.cid)
+      }
+    }
+    return this._local
+  }
+}
 Model.prototype.all = function(model, fn){
   if(this._id){
     model.all(fn, this)
@@ -713,31 +766,34 @@ Model.prototype.all = function(model, fn){
     fn(null)
   }
 }
-Model.prototype.save = function(fn){
+Model.prototype.save = function(fn, options){
   var args = this.toArgs()
   this.update(args, fn)
 }
-Model.prototype.update = function(args, fn){
+// NOTE: save as update is not fully correct. If the object 
+// to be saved has some attributes deleted, these attributes will still be
+// left in the stored model.
+Model.prototype.update = function(args, fn, options){
   var model = this,
       name = this.__name,
-      bucket = name+'s',
+      bucket = ginger.pluralize(name),
       socket = ginger.Model.socket
   if(socket){
     if(this._id) {//[this._id, args]
       socket.emit('update:'+name, {id:this._id, attrs:args}, function(){
-        ginger.Storage.update(bucket, model._id, args)
+        model.local().update(args)
         fn?fn(model._id):ginger.noop()
       })
     }else{
-      socket.emit('create:'+name, attrs, function(id){
-        args.cid = model._id = id
-        ginger.Storage.remove(bucket, model.cid)
-        ginger.Storage.update(bucket, id, args)
+      socket.emit('create:'+name, args, function(id){
+        model.local().remove()
+        model.cid = model._id = id
+        model.local().save()
         fn?fn(id):ginger.noop()
       })
     }
   }else{
-    ginger.Storage.save(bucket, args.cid, args)
+    this.local().update(args)
     fn?fn(this.cid):ginger.noop()
   }
 }
@@ -758,16 +814,16 @@ Model.prototype.toJSON = ginger.Model.prototype.toArgs
 */
 Model.prototype.keepSynced = function(){
   var socket = ginger.Model.socket
-  var _this = this
+  var self = this
   if(this._id){
-    var bucket = ginger.pluralize(_this.__name)
+    var bucket = ginger.pluralize(self.__name)
     socket.on('update:'+this.key(), function(doc){
-      _this.set(doc)
-      ginger.Storage.update(bucket, _this._id, doc)
+      self.set(doc)
+      self.local().update(doc)
     })
     socket.on('delete:'+this.key(), function(id){
-      ginger.Storage.remove(bucket, _this._id)
-      _this.emit('delete', id)
+      self.local().remove()
+      self.emit('delete', id)
     })
   }
 }
@@ -787,9 +843,9 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(urn, m
   this.urn = urn
   this.model = model
   
-  var _this = this
+  var self = this
   this.on('sortByFn', function(fn){
-    _this.sortBy(fn)
+    self.sortBy(fn)
   })
 })
 Collection.prototype.models = function(){
@@ -840,27 +896,27 @@ Collection.prototype.lock = function(){
   // no other user can modify it.
 }
 Collection.prototype.keepSynced = function(){
-  var _this = this
+  var self = this
   var socket = ginger.Model.socket
   socket.on('add:'+this.urn, function(entry){
-    _this.model.fromJSON(entry, function(instance){
+    self.model.fromJSON(entry, function(instance){
       instance.init(function(){
-        _this.add(instance)
-        _this.emit('add', instance)
+        self.add(instance)
+        self.emit('add', instance)
       })
     })
   })
   socket.on('remove:'+this.urn, function(entryId){
-    _this.remove(entryId)
-    _this.emit('remove', entryId)
+    self.remove(entryId)
+    self.emit('remove', entryId)
   })
   this.on('change', function(entry){
-    _this.update(entry)
-    _this.emit('update', entry)
+    self.update(entry)
+    self.emit('update', entry)
   })
   this.on('delete', function(entryId){
-    _this.remove(entryId)
-    _this.emit('remove', entryId)
+    self.remove(entryId)
+    self.emit('remove', entryId)
   })
   this._keepSynced = true
   var models = this._models
@@ -870,7 +926,7 @@ Collection.prototype.keepSynced = function(){
   return this
 }
 Collection.prototype._add = function(model, sortByFn){
-  var _this = this
+  var self = this
   if(sortByFn){
     var i = _.sortedIndex(this._models, model, sortByFn)
     this._models.splice(i, 0, model)
@@ -878,7 +934,7 @@ Collection.prototype._add = function(model, sortByFn){
     this._models.push(model)
   }
   model.on('*', function(){
-    _this._proxyEvent.apply(_this, arguments)
+    self._proxyEvent.apply(self, arguments)
   })
   if(this._keepSynced){
     model.keepSynced()
