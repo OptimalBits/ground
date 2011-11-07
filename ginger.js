@@ -426,7 +426,7 @@ _.extend(Base.prototype, EventEmitter.prototype)
 Base.prototype._set = function(key, val, args){
   if(this[key]!=val){
     var oldval = this[key]
-    val = this.willChange(key, val)
+    var val = this.willChange? this.willChange(key, val):val
     this[key] = val
     this.emit(key, val, oldval, args)
     return true
@@ -968,13 +968,16 @@ _.each(methods, function(method) {
 // in render to create the proper element.
 ginger.View = ginger.Declare(ginger.Base, function(classNames){
   this.super(ginger.View)
-  this.$el = $('<div>', {class:classNames})
-  
+  if(_.isUndefined(this.$el)){
+    this.$el = $('<div>')
+  }
+  if(classNames){
+    this.$el.addClass(classNames)
+  }
   this.classNames = classNames
   this.tag = '<div>'
 })
 ginger.View.prototype.render = function($parent){
-// this.$el = $(tag, {class:this.classNames})
   this.$parent = $parent
   return this.$el.appendTo($parent)
 }
@@ -1016,7 +1019,6 @@ ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
     cv.draw()
   })
 })
-
 ginger.CanvasView.prototype.render = function($parent){
   this.super(ginger.CanvasView, 'render', $parent)
   
@@ -1032,7 +1034,6 @@ ginger.CanvasView.prototype.render = function($parent){
   
   this.draw()
 }
-
 ginger.CanvasView.prototype.draw = function(){
   if(this.$canvas){
     return this.$canvas[0].getContext('2d')
@@ -1041,19 +1042,14 @@ ginger.CanvasView.prototype.draw = function(){
   }
 }
 // -----------------------------------------------------------------------------------
-ginger.Controller = ginger.Declare(ginger.Base, function(view){
-  this.super(ginger.Controller)
-  this.view = view
-})
-// -----------------------------------------------------------------------------------
 //
 // Views
 //
 // -----------------------------------------------------------------------------------
-ginger.Views = {}
+var Views = ginger.Views = {}
 
 // -----------------------------------------------------------------------------------
-ginger.Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
+Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
   this.super(ginger.Views.ComboBox)
   var view = this
   
@@ -1085,7 +1081,7 @@ ComboBox.prototype.willChange = function(key, value){
   }
 }
 // -----------------------------------------------------------------------------------
-ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
+Views.Slider = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Slider)
   var view = this
   
@@ -1113,7 +1109,7 @@ ginger.Views.Slider = ginger.Declare(ginger.View, function(options){
     view.$el.slider('value', parseInt(value))
   })
 })
-ginger.View.prototype.disable = function(disable){
+Views.Slider.prototype.disable = function(disable){
   if(disable){
     this.$el.slider('disable');
   }else{
@@ -1121,7 +1117,7 @@ ginger.View.prototype.disable = function(disable){
   }
 }
 // -----------------------------------------------------------------------------------
-ginger.Views.ColorPicker = ginger.Declare(ginger.View, function(options){
+Views.ColorPicker = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.ColorPicker)
   var view = this
   
@@ -1145,36 +1141,38 @@ ginger.Views.ColorPicker = ginger.Declare(ginger.View, function(options){
     }
   })
 })
-ginger.Views.ColorPicker.prototype.render = function($parent){
+Views.ColorPicker.prototype.render = function($parent){
   this.super(ginger.Views.ColorPicker, 'render')
   $parent.append(this.$colorPicker)
   return this.$el
 }
-ginger.View.prototype.disable = function(disable){
+Views.ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 // -----------------------------------------------------------------------------------
-ginger.Views.TextField = ginger.Declare(ginger.View, function(){
+Views.TextField = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.TextField)
 })
 // -----------------------------------------------------------------------------------
-ginger.Views.CheckBox = ginger.Declare(ginger.View, function(){
+Views.CheckBox = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.CheckBox)
 })
 // -----------------------------------------------------------------------------------
-ginger.Views.RadioButton = ginger.Declare(ginger.View, function(){
+Views.RadioButton = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.RadioButton)
 })
 // -----------------------------------------------------------------------------------
-ginger.Views.Label = ginger.Declare(ginger.View, function(){
-  this.super(ginger.Views.Label)
+Views.Label = ginger.Declare(ginger.View, function(classNames){
+  this.$el = $('<span>')
+  this.super(ginger.Views.Label, 'constructor', classNames)
+
   var view = this
   this.on('text', function(value){
-    view.$el[0].innerHTML = value
+    view.$el.html(value)
   })
 })
 // -----------------------------------------------------------------------------------
-ginger.Views.Button = ginger.Declare(ginger.View, function(options){
+Views.Button = ginger.Declare(ginger.View, function(options){
   this.super(ginger.Views.Button)
   var view = this
   _.extend(this, options)
@@ -1214,7 +1212,7 @@ ginger.Views.Button = ginger.Declare(ginger.View, function(options){
     view.$el.append($label)
   }
 })
-ginger.Views.Button.prototype.enable = function(enable){
+Views.Button.prototype.enable = function(enable){
   if(enable){
     // Enable button.
   }else{
@@ -1222,13 +1220,9 @@ ginger.Views.Button.prototype.enable = function(enable){
   }
 }
 // -----------------------------------------------------------------------------------
-ginger.Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
-  this.super(ginger.Views.Toolbar)
+Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
+  this.super(ginger.Views.Toolbar, 'constructor', classNames)
   var view = this
-
-  if(classNames){
-    view.$el.addClass(classNames)
-  }
   view.items = items
   
   var clickCallback = function(sender, event){
@@ -1236,6 +1230,7 @@ ginger.Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
   }
   
   for(var i=0; i<items.length;i++){
+    // do we really need to add this classes? 
     var $item_container = $('<div>').addClass('ginger_toolbaritem');
     view.$el.append($item_container)
     $item_container.append(items[i].$el)
@@ -1253,7 +1248,7 @@ ginger.Views.Toolbar.prototype.render = function(){
 }
 */
 // -----------------------------------------------------------------------------------
-ginger.Views.ToolTip = ginger.Declare(ginger.View, function(){
+Views.ToolTip = ginger.Declare(ginger.View, function(){
   this.super(ginger.Views.ToolTip)
 })
 // -----------------------------------------------------------------------------------
