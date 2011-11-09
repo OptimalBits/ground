@@ -1005,15 +1005,16 @@ _.each(methods, function(method) {
 // different than a div, we will introcude the tag property, which will be used
 // in render to create the proper element.
 ginger.View = ginger.Declare(ginger.Base, function(classNames){
-  this.super(ginger.View)
-  if(_.isUndefined(this.$el)){
-    this.$el = $('<div>')
+  var self = this
+  self.super(ginger.View)
+  if(_.isUndefined(self.$el)){
+    self.$el = $('<div>')
   }
   if(classNames){
-    this.$el.addClass(classNames)
+    self.$el.addClass(classNames)
   }
-  this.classNames = classNames
-  this.tag = '<div>'
+  self.classNames = classNames
+  self.tag = '<div>'  
 })
 ginger.View.prototype.render = function($parent){
   this.$parent = $parent
