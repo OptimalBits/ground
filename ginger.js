@@ -301,18 +301,20 @@ var UndoManager = function(){
   this._group = null
 }
 
-UndoManager.prototype.beginUndo = function(undoFn){
+UndoManager.prototype.beginUndo = function(undoFn, name){
   this._undoFn = undoFn
+  this._name = name
 }
 
 UndoManager.prototype.endUndo = function(doFn, fn){
-  this.action(doFn, this._undoFn, fn)
+  this.action(doFn, this._undoFn, fn, this._name)
   this._undoFn = null
 }
 
-UndoManager.prototype.action = function(doFn, undoFn, fn){
+UndoManager.prototype.action = function(doFn, undoFn, fn, name){
   this.undones.length = 0
-  var action = {do:doFn, undo:undoFn, fn:fn}
+  name = _.isString(fn)?fn:name
+  var action = {do:doFn, undo:undoFn, fn:fn, name:name}
   if(_.isNull(this._group)){
     this.actions.push(action)
   }else{
@@ -321,22 +323,24 @@ UndoManager.prototype.action = function(doFn, undoFn, fn){
   doFn(fn);
 }
 
-UndoManager.prototype.beginGroup = function(){
-  this._group = []
+UndoManager.prototype.beginGroup = function(name){
+  this._group = {name: name, actions:[]}
 }
 
 UndoManager.prototype.endGroup = function(){
   ;(function(group){
     this.action( function(){
       for(var i=0, len = group.length; i<len; i++){
-        group[i].do(group[i].fn)
+        group[i].action.do(group[i].action.fn)
       }
     },
     function(){
       for(var i=0, len=group.length; i<len;i++){
-        group[i].undo(group[i].fn)
+        group[i].action.undo(group[i].action.fn)
       }
-    })
+    },
+    ginger.noop,
+    group.name)
   }(this._group))
   
   this._group = null
@@ -353,7 +357,9 @@ UndoManager.prototype.canRedo = function(){
 UndoManager.prototype.undo = function(){
   var action = this.actions.pop();
   if(action){
-    action.undo(action.fn);
+    action.undo(action.fn)
+    var name = action.name?action.name:''
+    this.emit('undo', name)
     this.undones.push(action);
   }
 }
@@ -361,13 +367,15 @@ UndoManager.prototype.undo = function(){
 UndoManager.prototype.redo = function(){
   var action = this.undones.pop();
   if(action){
-    action.do(action.fn),
+    action.do(action.fn)
+    var name = action.name?action.name:''
+    this.emit('redo', name)
     this.actions.push(action);
   }
 }
 
 ginger.undoMgr = new UndoManager()
-
+_.extend(ginger.undoMgr, new EventEmitter())
 
 //
 // Global events
@@ -507,12 +515,12 @@ Base.prototype.deinit = function(){
 /**
   Begins an undo operation over setting a given key to a value.
 */
-Base.prototype.beginUndoSet = function(key){
+Base.prototype.beginUndoSet = function(key, name){
   var base = this
   ;(function(value){
     ginger.undoMgr.beginUndo(function(){
       base.set(key, value)
-  })}(this[key]))
+  }, name)}(this[key]))
 }
 /**
   Ends an undo operation over setting a given key to a value.
@@ -1050,7 +1058,7 @@ var Views = ginger.Views = {}
 
 // -----------------------------------------------------------------------------------
 Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
-  this.super(ginger.Views.ComboBox)
+  this.super(Views.ComboBox)
   var view = this
   
   if(selected){
@@ -1082,7 +1090,7 @@ ComboBox.prototype.willChange = function(key, value){
 }
 // -----------------------------------------------------------------------------------
 Views.Slider = ginger.Declare(ginger.View, function(options){
-  this.super(ginger.Views.Slider)
+  this.super(Views.Slider)
   var view = this
   
   view.options = _.isUndefined(options) ? {} : options
@@ -1118,7 +1126,7 @@ Views.Slider.prototype.disable = function(disable){
 }
 // -----------------------------------------------------------------------------------
 Views.ColorPicker = ginger.Declare(ginger.View, function(options){
-  this.super(ginger.Views.ColorPicker)
+  this.super(Views.ColorPicker)
   var view = this
   
   view.$colorPicker = $('<input>').attr({name:"color",
@@ -1142,7 +1150,7 @@ Views.ColorPicker = ginger.Declare(ginger.View, function(options){
   })
 })
 Views.ColorPicker.prototype.render = function($parent){
-  this.super(ginger.Views.ColorPicker, 'render')
+  this.super(Views.ColorPicker, 'render')
   $parent.append(this.$colorPicker)
   return this.$el
 }
@@ -1151,20 +1159,20 @@ Views.ColorPicker.prototype.disable = function(disable){
 }
 // -----------------------------------------------------------------------------------
 Views.TextField = ginger.Declare(ginger.View, function(){
-  this.super(ginger.Views.TextField)
+  this.super(Views.TextField)
 })
 // -----------------------------------------------------------------------------------
 Views.CheckBox = ginger.Declare(ginger.View, function(){
-  this.super(ginger.Views.CheckBox)
+  this.super(Views.CheckBox)
 })
 // -----------------------------------------------------------------------------------
 Views.RadioButton = ginger.Declare(ginger.View, function(){
-  this.super(ginger.Views.RadioButton)
+  this.super(Views.RadioButton)
 })
 // -----------------------------------------------------------------------------------
 Views.Label = ginger.Declare(ginger.View, function(classNames){
   this.$el = $('<span>')
-  this.super(ginger.Views.Label, 'constructor', classNames)
+  this.super(Views.Label, 'constructor', classNames)
 
   var view = this
   this.on('text', function(value){
@@ -1173,7 +1181,7 @@ Views.Label = ginger.Declare(ginger.View, function(classNames){
 })
 // -----------------------------------------------------------------------------------
 Views.Button = ginger.Declare(ginger.View, function(options){
-  this.super(ginger.Views.Button)
+  this.super(Views.Button)
   var view = this
   _.extend(this, options)
   
@@ -1221,7 +1229,7 @@ Views.Button.prototype.enable = function(enable){
 }
 // -----------------------------------------------------------------------------------
 Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
-  this.super(ginger.Views.Toolbar, 'constructor', classNames)
+  this.super(Views.Toolbar, 'constructor', classNames)
   var view = this
   view.items = items
   
@@ -1243,13 +1251,40 @@ ginger.Views.Toolbar.prototype.render = function(){
   for(var i=0; i<this.items.length;i++){
     $el.append(this.items[i].render().css({float:'left'}))
   }
-  
   return $el
 }
 */
 // -----------------------------------------------------------------------------------
+var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, options){
+  this.super(PopUp, 'constructor', classNames)
+  this.$el.css({position: 'absolute', display:'none'})
+  
+  _.extend(this, options)
+  _.defaults(this,{
+    startTime:500,
+    endTime:300,
+    showTime:500,
+  })
+  this._isShown = false
+  this.$body = $('body')
+  this.$body.prepend(this.$el)
+})
+PopUp.prototype.show = function($el, css, anim){
+  var self = this
+  clearTimeout(this._timer)
+  this.$el.stop(false, true)
+  this.$el.css(css)
+  this.$el.empty()
+  this.$el.append($el)
+  this.$el.fadeIn(this.startTime, anim, function(){
+    self._timer = setTimeout(function(){
+      self.$el.fadeOut(self.endTime)
+    }, self.showTime)
+  })
+}
+// -----------------------------------------------------------------------------------
 Views.ToolTip = ginger.Declare(ginger.View, function(){
-  this.super(ginger.Views.ToolTip)
+  this.super(Views.ToolTip)
 })
 // -----------------------------------------------------------------------------------
 
