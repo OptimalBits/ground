@@ -1285,7 +1285,9 @@ ginger.Views.Toolbar.prototype.render = function(){
 }
 */
 // -----------------------------------------------------------------------------------
-var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, options){
+var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, 
+                                                               $parent,
+                                                               options){
   this.super(PopUp, 'constructor', classNames)
   this.$el.css({position: 'absolute', display:'none'})
   
@@ -1295,22 +1297,47 @@ var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, optio
     endTime:300,
     showTime:500,
   })
-  this._isShown = false
-  this.$body = $('body')
-  this.$body.prepend(this.$el)
+  this._timer = null
+  this._fadingIn = false
+  this._fadingOut = false
+  this._state = 0 // 0 = hidden, 1 = fadeIn, 2 = show, 3 = fadeOut
+  this.attachTo($parent)
 })
-PopUp.prototype.show = function($el, css, anim){
+PopUp.prototype.attachTo = function($parent){
+  this.$el.detach()
+  if(_.isUndefined($parent)){
+    this.$parent = $('body')
+  }else{
+    this.$parent = $parent
+  }
+  this.$parent.prepend(this.$el)
+}
+PopUp.prototype._setFadeOut = function(){
+  var self = this
+  self._timer = setTimeout(function(){
+    self._state = 3
+    self.$el.fadeOut(self.endTime, function(){
+      self._state = 0
+    })
+  }, self.showTime)
+}
+PopUp.prototype.show = function(html, css, anim){
   var self = this
   clearTimeout(this._timer)
-  this.$el.stop(false, true)
-  this.$el.css(css)
-  this.$el.empty()
-  this.$el.append($el)
-  this.$el.fadeIn(this.startTime, anim, function(){
-    self._timer = setTimeout(function(){
-      self.$el.fadeOut(self.endTime)
-    }, self.showTime)
-  })
+  self.$el.html(html)
+  self.$el.css(css)
+  switch(self._state){
+    case 3: self.$el.stop(false,true)
+
+    case 0: self._state = 1
+            self.$el.fadeIn(self.startTime, anim, function(){
+              self._state = 2
+              self._setFadeOut()
+            })
+            break;
+    case 2: self._setFadeOut()
+    default:
+  }
 }
 // -----------------------------------------------------------------------------------
 Views.ToolTip = ginger.Declare(ginger.View, function(){
