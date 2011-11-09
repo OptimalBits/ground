@@ -384,6 +384,36 @@ _.extend(ginger.undoMgr, new EventEmitter())
 _.extend(ginger, new EventEmitter())
 
 //
+// Key Handling
+//
+function keyEventToString(event){
+  var s = ''
+  s = event.shiftKey?s+':shift':s
+  s = event.ctrlKey?s+':ctrl':s
+  s = event.altKey?s+':alt':s
+  s = event.metaKey?s+':meta':s
+  if(event.which>32){
+    s += ':'+String.fromCharCode(event.which).toLowerCase()
+  }else{
+    switch(event.which){
+      case 8: s+=':backspace';break;
+      case 20: s+=':caps';break;
+      case 27: s+=':esc';break;
+      case 32: s+=':space';break;
+    }
+  }
+  return s
+}
+
+$(document)
+  .keydown(function(event){
+    ginger.emit('keydown'+keyEventToString(event))
+  })
+  .keyup(function(event){
+    ginger.emit('keyup'+keyEventToString(event))
+  })
+
+//
 // Classes
 //
 
