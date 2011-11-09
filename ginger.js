@@ -1101,7 +1101,7 @@ Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected
 
   view.$el.comboBox(view.items, view.value).change(function(event){
     view.set('value', event.target.value)
-  }).css({display:'inline'})
+  })
   
   view.on('value', function(value){
       $('select',view.$el).val(value)
