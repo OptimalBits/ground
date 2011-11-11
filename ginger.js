@@ -1204,7 +1204,7 @@ Views.RadioButton = ginger.Declare(ginger.View, function(){
 })
 //------------------------------------------------------------------------------
 Views.Label = ginger.Declare(ginger.View, function(classNames){
-  this.$el = $('<span>')
+  this.$el = $('<span>').addClass('label');
   this.super(Views.Label, 'constructor', classNames)
 
   var view = this
