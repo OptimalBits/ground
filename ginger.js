@@ -3,12 +3,13 @@
 
    Features:
    - Modular design.
-   - Builds on top of proven libraries such as jQuery, underscore.
+   - Builds on top of proven libraries such as jQuery and underscore.
    - Clean class hierarchies, based on javascript prototypal inheritance.
    - Property bindings.
    - Models with persistence and synchronization.
    - Global and Local Events.
    - Undo/Redo Manager.
+   - Keyboard handling.
    - Set of views for common web "widgets".
    - Canvas View.
   
@@ -570,11 +571,11 @@ Base.prototype.undoSet = function(key, value, fn){
   this.set(key, value)
   this.endUndoSet(key, fn)
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //
 // Storage
 // (requires localStorage)
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 var Storage = ginger.Storage = {}
 Storage.findById = function(bucket, id){
   var objectId = bucket+'@'+id
@@ -646,11 +647,11 @@ Storage.remove = function(bucket, id){
   localStorage.removeItem(objectId)
 }
 
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //
 // Models
 //
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   this.super(ginger.Model)
   _.extend(this, args)
@@ -995,7 +996,7 @@ _.each(methods, function(method) {
   }
 })
 
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 // FIX:
 // $el.remove will indeed destroy all the DOM nodes in $el including $el
@@ -1049,7 +1050,7 @@ ginger.View.prototype.hide = function(duration, easing, callback) {
 ginger.View.prototype.show = function(duration, easing, callback) {
   this.$el.show(arguments)
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
   this.super(ginger.CanvasView, 'constructor', classNames)
   this.$canvas = null
@@ -1080,14 +1081,14 @@ ginger.CanvasView.prototype.draw = function(){
     return null
   }
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 //
 // Views
 //
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 var Views = ginger.Views = {}
 
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
   this.super(Views.ComboBox)
   var view = this
@@ -1119,7 +1120,7 @@ ComboBox.prototype.willChange = function(key, value){
     return value
   }
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.Slider = ginger.Declare(ginger.View, function(options){
   this.super(Views.Slider)
   var view = this
@@ -1155,7 +1156,7 @@ Views.Slider.prototype.disable = function(disable){
     this.$el.slider('enable');
   }
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.ColorPicker = ginger.Declare(ginger.View, function(options){
   this.super(Views.ColorPicker)
   var view = this
@@ -1188,19 +1189,19 @@ Views.ColorPicker.prototype.render = function($parent){
 Views.ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.TextField = ginger.Declare(ginger.View, function(){
   this.super(Views.TextField)
 })
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.CheckBox = ginger.Declare(ginger.View, function(){
   this.super(Views.CheckBox)
 })
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.RadioButton = ginger.Declare(ginger.View, function(){
   this.super(Views.RadioButton)
 })
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.Label = ginger.Declare(ginger.View, function(classNames){
   this.$el = $('<span>')
   this.super(Views.Label, 'constructor', classNames)
@@ -1210,7 +1211,7 @@ Views.Label = ginger.Declare(ginger.View, function(classNames){
     view.$el.html(value)
   })
 })
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.Button = ginger.Declare(ginger.View, function(options){
   this.super(Views.Button)
   var view = this
@@ -1258,7 +1259,7 @@ Views.Button.prototype.enable = function(enable){
     // Disable button.
   }
 }
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
   this.super(Views.Toolbar, 'constructor', classNames)
   var view = this
@@ -1285,7 +1286,7 @@ ginger.Views.Toolbar.prototype.render = function(){
   return $el
 }
 */
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, 
                                                                $parent,
                                                                options){
@@ -1313,19 +1314,16 @@ PopUp.prototype.attachTo = function($parent){
   }
   this.$parent.prepend(this.$el)
 }
-PopUp.prototype._setFadeOut = function(){
-  var self = this
-  self._timer = setTimeout(function(){
-    self._state = 3
-    self.$el.fadeOut(self.endTime, function(){
-      self._state = 0
-    })
-  }, self.showTime)
-}
 PopUp.prototype.show = function(html, css, anim){
   var self = this
+  if (_.isString(html)){
+    self.$el.html(html)
+  }else{
+    self.$el.empty()
+    self.$el.append(html)
+  }
+  
   clearTimeout(this._timer)
-  self.$el.html(html)
   self.$el.css(css)
   switch(self._state){
     case 3: self.$el.stop(false,true)
@@ -1340,11 +1338,82 @@ PopUp.prototype.show = function(html, css, anim){
     default:
   }
 }
-// -----------------------------------------------------------------------------------
-Views.ToolTip = ginger.Declare(ginger.View, function(){
-  this.super(Views.ToolTip)
+PopUp.prototype.hide = function(){
+  var self = this
+  self._state = 3
+  self.$el.fadeOut(self.endTime, function(){
+    self._state = 0
+  })
+}
+PopUp.prototype._setFadeOut = function(){
+  var self = this
+  if(self.showTime>0){
+    self._timer = setTimeout(function(){
+      self.hide()
+    }, self.showTime)
+  }
+}
+//------------------------------------------------------------------------------
+/**
+  Valid Pos: [w, e, n, s]
+*/
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+Views.ToolTip = ginger.Declare(PopUp, function(classNames, 
+                                               $target, 
+                                               pos, 
+                                               $tt,
+                                               options){
+  var self = this
+  self.super(Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
+
+  _.extend(self, options)
+  _.defaults(self, {
+    delay:500
+  })
+  var $el = self.$el
+  $el.append($tt)
+  $target.append($el)
+
+  var css = $target.offset()
+  var ttw = $el.width()
+  var tth = $el.height()
+  var targetWidth = $target.width()
+  var targetHeight = $target.height()
+
+  switch(pos){
+    case 'n':
+      css.top -=tth
+      css.left -=(ttw-targetWidth)/2
+    break;
+    case 'w':
+      css.left -=ttw
+    break;
+    case 'e':
+      css.left += targetWidth+5
+    break;
+    case 's':
+      css.top += $target.height()
+      css.left -=(ttw-targetWidth)/2
+    break;
+  }
+  $el.css(css)
+  self._timer = null
+  
+  $target.hover(
+    function(event){
+      clearTimeout(self._delayTimer)
+      self._delayTimer = setTimeout(function(){
+        $el.fadeIn(self.startTime)
+      }, self.delay)
+    },
+    function(event){
+      clearTimeout(self._delayTimer)
+      $el.fadeOut(self.endTime)
+    }
+  )
 })
-// -----------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 return ginger
 })
