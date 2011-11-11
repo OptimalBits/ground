@@ -1362,7 +1362,7 @@ PopUp.prototype._setFadeOut = function(){
 Views.ToolTip = ginger.Declare(PopUp, function(classNames, 
                                                $target, 
                                                pos, 
-                                               $tt,
+                                               $content,
                                                options){
   var self = this
   self.super(Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
@@ -1372,14 +1372,37 @@ Views.ToolTip = ginger.Declare(PopUp, function(classNames,
     delay:500
   })
   var $el = self.$el
-  $el.append($tt)
-  $target.append($el)
+  self.$target = $target
+  self.$content = $content
+  
+  $target.append($el.append($content))
 
-  var css = $target.offset()
-  var ttw = $el.width()
-  var tth = $el.height()
-  var targetWidth = $target.width()
-  var targetHeight = $target.height()
+  self._timer = null
+  
+  $target.hover(
+    function(event){
+      clearTimeout(self._delayTimer)
+      self._delayTimer = setTimeout(function(){
+        self._updatePosition(pos)
+        $el.fadeIn(self.startTime)
+      }, self.delay)
+    },
+    function(event){
+      clearTimeout(self._delayTimer)
+      $el.fadeOut(self.endTime)
+    }
+  )
+})
+Views.ToolTip.prototype._updatePosition = function(pos){
+  var $el = this.$el,
+      $target = this.$target
+      $content = this.$content
+
+  var css = $target.offset(),
+      ttw = $el.width(),
+      tth = $el.height(),
+      targetWidth = $target.width(),
+      targetHeight = $target.height()
 
   switch(pos){
     case 'n':
@@ -1398,21 +1421,7 @@ Views.ToolTip = ginger.Declare(PopUp, function(classNames,
     break;
   }
   $el.css(css)
-  self._timer = null
-  
-  $target.hover(
-    function(event){
-      clearTimeout(self._delayTimer)
-      self._delayTimer = setTimeout(function(){
-        $el.fadeIn(self.startTime)
-      }, self.delay)
-    },
-    function(event){
-      clearTimeout(self._delayTimer)
-      $el.fadeOut(self.endTime)
-    }
-  )
-})
+}
 //------------------------------------------------------------------------------
 
 return ginger
