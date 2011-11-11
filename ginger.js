@@ -1018,8 +1018,10 @@ ginger.View = ginger.Declare(ginger.Base, function(classNames){
   self.tag = '<div>'  
 })
 ginger.View.prototype.render = function($parent){
-  this.$parent = $parent
-  return this.$el.appendTo($parent)
+  if($parent){
+    this.$parent = $parent
+  }
+  return this.$el.detach().appendTo(this.$parent)
 }
 ginger.View.prototype.update = function(){
   // Updates this view.
@@ -1061,17 +1063,16 @@ ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
 })
 ginger.CanvasView.prototype.render = function($parent){
   this.super(ginger.CanvasView, 'render', $parent)
-  
-  if(this.$canvas){
-    this.$canvas.remove()
+  if(this.$parent){
+    if(this.$canvas){
+      this.$canvas.remove()
+    }
+    this.$canvas = $('<canvas>', {
+      css:{width:'100%', height:'100%'}}).appendTo(this.$el)
+
+    this.$canvas[0].width = this.$parent.width()
+    this.$canvas[0].height = this.$parent.height()
   }
-
-  this.$canvas = $('<canvas>', {
-    css:{width:'100%', height:'100%'}}).appendTo(this.$el)
-
-  this.$canvas[0].width = $parent.width()
-  this.$canvas[0].height = $parent.height()
-  
   this.draw()
 }
 ginger.CanvasView.prototype.draw = function(){
