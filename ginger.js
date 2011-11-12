@@ -1191,8 +1191,24 @@ Views.ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
-Views.TextField = ginger.Declare(ginger.View, function(){
-  this.super(Views.TextField)
+Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
+  var $el = this.$el = $('<textarea>')
+  this.super(Views.TextField, 'constructor', classNames)
+  
+  _.extend(this, options)
+  _.defaults(this, {
+    rows:1,
+    cols:20,
+    text:''
+  })
+  var self = this
+  $el.html(self.text)
+  $el.change(function(event){
+    self.set('text', event.target.value)
+  })
+  this.on('text', function(text){
+    $el.html(text)
+  })
 })
 //------------------------------------------------------------------------------
 Views.CheckBox = ginger.Declare(ginger.View, function(){
