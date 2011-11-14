@@ -1005,7 +1005,7 @@ _.each(methods, function(method) {
 // therefore $el must be created in render. But since $el could be something
 // different than a div, we will introcude the tag property, which will be used
 // in render to create the proper element.
-ginger.View = ginger.Declare(ginger.Base, function(classNames){
+ginger.View = ginger.Declare(ginger.Base, function(classNames, css){
   var self = this
   self.super(ginger.View)
   if(_.isUndefined(self.$el)){
@@ -1014,8 +1014,12 @@ ginger.View = ginger.Declare(ginger.Base, function(classNames){
   if(classNames){
     self.$el.addClass(classNames)
   }
+  if(css){
+    self.$el.css(css)
+  }
   self.classNames = classNames
-  self.tag = '<div>'  
+  self.tag = '<div>'
+  self.css = css
 })
 ginger.View.prototype.render = function($parent){
   if($parent){
@@ -1219,9 +1223,9 @@ Views.RadioButton = ginger.Declare(ginger.View, function(){
   this.super(Views.RadioButton)
 })
 //------------------------------------------------------------------------------
-Views.Label = ginger.Declare(ginger.View, function(classNames){
+Views.Label = ginger.Declare(ginger.View, function(classNames, css){
   this.$el = $('<span>').addClass('label');
-  this.super(Views.Label, 'constructor', classNames)
+  this.super(Views.Label, 'constructor', classNames, css)
 
   var view = this
   this.on('text', function(value){
@@ -1265,7 +1269,9 @@ Views.Button = ginger.Declare(ginger.View, function(options){
   }
 
   if(this.label){
-    var $label = $('<div>').html('<a href="#">'+this.label+'</a>').css({float:'left'})
+    var $label = $('<div>')
+      .html('<a href="#">'+this.label+'</a>')
+      .css({float:'left'})
     view.$el.append($label)
   }
 })
@@ -1277,23 +1283,31 @@ Views.Button.prototype.enable = function(enable){
   }
 }
 //------------------------------------------------------------------------------
-Views.Toolbar = ginger.Declare(ginger.View, function(items, classNames){
+var Toolbar = Views.Toolbar = 
+  ginger.Declare(ginger.View, function(classNames, itemsClassNames){
   this.super(Views.Toolbar, 'constructor', classNames)
-  var view = this
-  view.items = items
+  var self = this
+  self.itemsClassNames = itemsClassNames
   
-  var clickCallback = function(sender, event){
-    view.emit('click', sender, event)
-  }
-  
-  for(var i=0; i<items.length;i++){
-    // do we really need to add this classes? 
-    var $item_container = $('<div>').addClass('ginger_toolbaritem');
-    view.$el.append($item_container)
-    $item_container.append(items[i].$el)
-    items[i].on('click', clickCallback)
+  self.clickCallback = function(sender, event){
+    self.emit('click', sender, event)
   }
 })
+Toolbar.prototype.addItems = function(items, leftMargin){
+  var self = this
+  items = _.isArray(items)?items:[items]
+  for(var i=0, len=items.length; i<len;i++){
+    var $itemContainer = $('<div>').append(items[i].$el)
+    if(this.itemsClassNames){
+      $itemContainer.addClass(this.itemsClassNames)
+    }
+    if(leftMargin&&(i===0)){
+      $itemContainer.css('margin-left',leftMargin+'px')
+    }
+    self.$el.append($itemContainer)
+    items[i].on('click', self.clickCallback)
+  }
+}
 /*
 ginger.Views.Toolbar.prototype.render = function(){
  var $el = this.super(ginger.Views.Toolbar, 'render') 
