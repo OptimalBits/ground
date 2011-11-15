@@ -1151,7 +1151,7 @@ Views.Slider = ginger.Declare(ginger.View, function(options){
   view.$el.slider(options)
     
   view.on('value', function(value){
-    view.$el.slider('value', parseInt(value))
+    view.$el.slider('value', parseFloat(value))
   })
 })
 Views.Slider.prototype.disable = function(disable){
