@@ -1196,20 +1196,39 @@ Views.ColorPicker.prototype.disable = function(disable){
 }
 //------------------------------------------------------------------------------
 Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
-  var $el = this.$el = $('<textarea>')
+  var $el
+  if((options)&&(options.area)){
+    $el = this.$el = $('<textarea>')
+  }else{
+    $el = this.$el = $('<input>')
+  }
   this.super(Views.TextField, 'constructor', classNames)
   
   _.extend(this, options)
   _.defaults(this, {
     rows:1,
     cols:20,
-    text:''
+    text:'',
+    outline:false,
+    keypress:false
   })
+  
+  if(this.outline===false){
+    $el.attr('outline','none')
+  }
+  
   var self = this
   $el.html(self.text)
   $el.change(function(event){
     self.set('text', event.target.value)
   })
+  
+  if(this.keypress){
+    $el.keyup(function(){
+      self.set('text', $el.val())
+    })
+  }
+  
   this.on('text', function(text){
     $el.html(text)
   })
