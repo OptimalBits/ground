@@ -1348,12 +1348,14 @@ var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames,
     startTime:500,
     endTime:300,
     showTime:500,
+    center:false
   })
   this._timer = null
   this._fadingIn = false
   this._fadingOut = false
   this._state = 0 // 0 = hidden, 1 = fadeIn, 2 = show, 3 = fadeOut
-  this.attachTo($parent)
+  this.attachTo()
+  this.$parent = $parent
 })
 PopUp.prototype.attachTo = function($parent){
   this.$el.detach()
@@ -1374,7 +1376,21 @@ PopUp.prototype.show = function(html, css, anim){
   }
   
   clearTimeout(this._timer)
-  self.$el.css(css)
+  if(css){
+    self.$el.css(css)
+  }
+  
+  if(self.$parent){
+    var left, top
+    if(self.center){
+      var pos = self.$parent.offset()
+      console.log(self.$el.width())
+      left = pos.left + (self.$parent.width()- self.$el.outerWidth())/2
+      top = pos.top + (self.$parent.height() - self.$el.outerHeight())/2
+      self.$el.css({left:left, top:top})
+    }
+  }
+  
   switch(self._state){
     case 3: self.$el.stop(false,true)
 
@@ -1449,8 +1465,8 @@ Views.ToolTip.prototype._updatePosition = function(pos){
       $content = this.$content
 
   var css = $target.offset(),
-      ttw = $el.width(),
-      tth = $el.height(),
+      ttw = $el.outerWidth(),
+      tth = $el.outerHeight(),
       targetWidth = $target.width(),
       targetHeight = $target.height()
 
