@@ -672,6 +672,43 @@ Storage.remove = function(bucket, id){
   localStorage.removeItem(objectId)
 }
 
+//
+var ServerStorage = ginger.ServerStorage = {}
+
+ServerStorage.all = function(bucket, parent, fn){
+  var socket = ginger.Model.socket,
+         url = ginger.Model.url,
+         id = null,
+         collectionKey,
+         urn;
+  
+  if(parent){
+    id = parent.cid;
+    urn = parent.__name+':'+bucket
+    collectionKey = parent.__name+':'+parent.cid+':'+bucket
+    url = url+'/'+ginger.pluralize(parent.__name)+'/'+parent.cid+'/'+bucket;
+  }else{
+    urn = bucket;
+    collectionKey = urn;
+    url = url+'/'+bucket;
+  }
+    
+  if(socket){
+    var urn = bucket;
+    
+    //FIXME: socket.emit('read', {bucket:bucket, parent:parent.__name, parentId:id}
+    socket.emit('read:'+urn, id, function(array){
+      fn(null, array, collectionKey);
+    })
+  }else if(url){
+    ginger.ajax.get(url, function(err, array){
+      fn(err, array, collectionKey);
+    })
+  }else{
+    fn(null, null);
+  }
+}
+
 //------------------------------------------------------------------------------
 //
 // Models
@@ -706,27 +743,15 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   },
   all : function(fn, parent){
     var model = this,
-        socket = ginger.Model.socket,
-        bucket = ginger.pluralize(this.__name),
-        urn = bucket,
-        collectionKey = urn,
-        collection,
-        id = null
-    if(parent){
-      id = parent.cid
-      urn = parent.__name+':'+bucket
-      collectionKey = parent.__name+':'+parent.cid+':'+bucket
-    }
-    if(socket){
-      socket.emit('read:'+urn, id, function(array){
-        collection = array !== null ? array : Storage.all(bucket, parent)
+        bucket = ginger.pluralize(this.__name);
         
-        _instantiateCollection(collectionKey, model, collection, fn)
-      })
-    }else{
-      collection = Storage.all(bucket, parent)
-      _instantiateCollection(urn, model, collection, fn)
-    }
+    ServerStorage.all(bucket, parent, function(err, array, key){
+      if(err) fn(err);
+      else{
+        collection = array !== null ? array : Storage.all(bucket, parent)
+        _instantiateCollection(key, model, collection, fn)
+      }
+    })
     return this
   },
   first : function(fn, parent){
