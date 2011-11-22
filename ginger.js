@@ -571,6 +571,31 @@ Base.prototype.undoSet = function(key, value, fn){
   this.set(key, value)
   this.endUndoSet(key, fn)
 }
+
+//------------------------------------------------------------------------------
+//
+// Ajax
+// 
+//------------------------------------------------------------------------------
+
+var ajax = ginger.ajax = {}
+
+ajax.get = function(url, fn, obj){
+  $.ajax({
+    url:url,
+    contentType:'application/json',
+    dataType:'json',
+    success:function(data, textStatus, jqXHR){
+      fn(null, data)
+    },
+    data:obj,
+    error:function(jqXHR, status, errorThrown){
+      fn(jqXHR)
+    }
+  })
+}
+
+
 //------------------------------------------------------------------------------
 //
 // Storage
