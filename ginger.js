@@ -1513,7 +1513,6 @@ PopUp.prototype.show = function(html, css, anim){
     var left, top
     if(self.center){
       var pos = self.$parent.offset()
-      console.log(self.$el.width())
       left = pos.left + (self.$parent.width()- self.$el.outerWidth())/2
       top = pos.top + (self.$parent.height() - self.$el.outerHeight())/2
       self.$el.css({left:left, top:top})
