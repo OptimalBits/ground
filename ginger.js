@@ -78,6 +78,37 @@ var ginger = {}
 //
 ginger.noop = function(){}
 
+ginger.asyncDebounce = function (func) {
+    var delayedFunc = null,
+    executing = false;
+
+    return function debounced () {
+        var obj = this,
+            args = Array.prototype.slice.call(arguments),
+            nargs = args.length,
+            callback = args[nargs-1],
+            delayed = function() {
+            executing = true;
+            func.apply(obj, args);
+        };
+
+        args[nargs-1] = function(){
+            callback.apply(obj, arguments);
+            executing = false;
+            if(delayedFunc){
+                delayedFunc();
+            }
+            delayedFunc = null;
+        }
+
+        if(executing){
+            delayedFunc = delayed;
+        }else{
+            delayed();
+        }
+    };
+};
+
 // Filters the keys of an object.
 ginger.filter = function(object, fn){
   var filtered = {}
@@ -1224,8 +1255,8 @@ ComboBox.prototype.willChange = function(key, value){
   }
 }
 //------------------------------------------------------------------------------
-Views.Slider = ginger.Declare(ginger.View, function(options){
-  this.super(Views.Slider)
+Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
+  this.super(Views.Slider, 'constructor', classNames)
   var view = this
   
   view.options = _.isUndefined(options) ? {} : options
