@@ -408,6 +408,200 @@ UndoManager.prototype.redo = function(){
 ginger.undoMgr = new UndoManager()
 _.extend(ginger.undoMgr, new EventEmitter())
 
+//------------------------------------------------------------------------------
+//
+// Ajax
+// 
+//------------------------------------------------------------------------------
+
+var ajax = ginger.ajax = {}
+
+var ajaxBase = function(url, fn, obj){
+  obj = obj ? JSON.stringify(obj) : undefined;
+  return {
+    url:url,
+    data:obj,
+    contentType:'application/json',
+    dataType:'json',
+    success:function(data, textStatus, jqXHR){
+      fn(null, data)
+    },
+    error:function(jqXHR, status, errorThrown){
+      fn(jqXHR)
+    }
+  }
+}
+
+ajax.get = function(url, fn, obj){
+  var base = ajaxBase(url, fn, obj);
+  return $.ajax(base)
+}
+
+ajax.put = function(url, fn, obj){
+  var base = ajaxBase(url, fn, obj);
+  base.type = 'PUT';
+  return $.ajax(base);
+}
+
+ajax.post = function(url, fn, obj){
+  var base = ajaxBase(url, fn, obj);
+  base.type = 'POST';
+  return $.ajax(base);
+}
+
+//------------------------------------------------------------------------------
+//
+// Storage
+// (requires localStorage)
+//------------------------------------------------------------------------------
+var Storage = ginger.Storage = {}
+Storage.findById = function(bucket, id){
+  var objectId = bucket+'@'+id
+  for (var i=0, len=localStorage.length;i<len;i++){
+    var key = localStorage.key(i)
+    if(key === objectId){
+      return JSON.parse(localStorage[key])
+    }
+  }
+  return null
+}
+Storage.all = function(bucket, parent){
+  var collection = []
+  var keys = Storage._subCollectionKeys(bucket, parent)
+  if(keys){
+    for (var i=0, len=keys.length;i<len;i++){
+      var obj = localStorage[keys[i]]
+      if(obj){
+        collection.push(JSON.parse(obj))
+      }else{
+        localStorage.removeItem(keys[i])
+      }
+    }
+  }else{
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i)
+      if(key.split('@')[0] === bucket){
+        collection.push(JSON.parse(localStorage[key]))
+      }
+    }
+  }
+  return collection
+}
+Storage.first = function(bucket, parent){
+  var keys = Storage._subCollectionKeys(bucket, parent)
+  if(keys){
+    return localStorage[keys[0]]
+  }else{
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i)
+      if(key.split('@')[0] === bucket){
+        return JSON.parse(localStorage[key])
+      }
+    }
+  }
+}
+Storage._subCollectionKeys = function(bucket, parent){
+  if(parent){
+  var value = localStorage[parent.__bucket+':'+parent.cid+':'+bucket]
+  return value?JSON.parse(value):null
+  }
+  return null
+}
+Storage.update = function(bucket, id, args){
+  var obj = Storage.findById(bucket, id)
+  if(obj){
+    _.extend(obj, args)
+    Storage.save(bucket, id, obj)
+  }else{
+    Storage.save(bucket, id, args)
+  }
+}
+Storage.save = function(bucket, id, args){
+  var objectId = bucket+'@'+id
+  localStorage[objectId] = JSON.stringify(args)
+}
+Storage.remove = function(bucket, id){
+  var objectId = bucket+'@'+id
+  localStorage.removeItem(objectId)
+}
+
+//
+var ServerStorage = ginger.ServerStorage = {}
+// opts = {pagestart:0, pageend:20}}
+ServerStorage.all = function(bucket, parent, fn, opts){
+  var socket,
+         url,
+         id = parent?parent.cid:null,
+         collectionKey,
+         urn = parent?parent.__bucket+':'+bucket:bucket;
+  
+  collectionKey = parent?parent.__bucket+':'+parent.cid+':'+bucket:urn;
+    
+  if(socket = ginger.Model.socket){
+    socket.emit('read:'+urn, id, function(array){
+      fn(null, array, collectionKey);
+    })
+  }else if(url = ginger.Model.url){
+    url = parent?url+'/'+parent.__bucket+'/'+parent.cid+'/'+bucket:
+                 url+'/'+bucket;
+    ginger.ajax.get(url, function(err, array){
+      fn(err, array, collectionKey);
+    }, opts)
+  }else{
+    fn(null, null);
+  }
+}
+ServerStorage.findById = function(bucket, id, fn){
+  var socket = ginger.Model.socket,
+         url = ginger.Model.url;
+  if(socket){
+    socket.emit('read:'+bucket, id, function(args){
+      fn(null, args);
+    })
+  }else if(url){
+    url = url+'/'+bucket+'/'+id;
+    ginger.ajax.get(url, fn);
+  }else{
+    fn(null, null);
+  }
+}
+ServerStorage.create = function(bucket, args, fn){
+  var socket = ginger.Model.socket,
+         url = ginger.Model.url;
+  
+  if(socket){
+    socket.emit('create:'+bucket, args, function(id){
+      fn(null, id)
+    })
+  }else if(url){
+    url = url+'/'+bucket;
+    ginger.ajax.post(url, fn);
+  }else{
+    fn(null, null);
+  }
+}
+ServerStorage.update = function(bucket, id, args, fn){
+  var socket = ginger.Model.socket,
+         url = ginger.Model.url;
+  
+  fn = fn?fn:ginger.noop;
+  
+  if(socket){
+    socket.emit('update:'+bucket, {id:id, attrs:args}, fn)
+  }else if(url){
+    url = url+'/'+bucket+'/'+id;
+    ginger.ajax.put(url, fn);
+  }else{
+    fn(null, null);
+  }
+}
+
+ServerStorage.count = function(bucket, fn){
+  // TODO: Implement.
+  fn(null, 0);
+}
+
+
 //
 // Global events
 //
@@ -604,197 +798,46 @@ Base.prototype.undoSet = function(key, value, fn){
 
 //------------------------------------------------------------------------------
 //
-// Ajax
-// 
-//------------------------------------------------------------------------------
-
-var ajax = ginger.ajax = {}
-
-var ajaxBase = function(url, fn, obj){
-  obj = obj ? JSON.stringify(obj) : undefined;
-  return {
-    url:url,
-    data:obj,
-    contentType:'application/json',
-    dataType:'json',
-    success:function(data, textStatus, jqXHR){
-      fn(null, data)
-    },
-    error:function(jqXHR, status, errorThrown){
-      fn(jqXHR)
-    }
-  }
-}
-
-ajax.get = function(url, fn, obj){
-  var base = ajaxBase(url, fn, obj);
-  return $.ajax(base)
-}
-
-ajax.put = function(url, fn, obj){
-  var base = ajaxBase(url, fn, obj);
-  base.type = 'PUT';
-  return $.ajax(base);
-}
-
-ajax.post = function(url, fn, obj){
-  var base = ajaxBase(url, fn, obj);
-  base.type = 'POST';
-  return $.ajax(base);
-}
-
-//------------------------------------------------------------------------------
+// Utility Classes
 //
-// Storage
-// (requires localStorage)
 //------------------------------------------------------------------------------
-var Storage = ginger.Storage = {}
-Storage.findById = function(bucket, id){
-  var objectId = bucket+'@'+id
-  for (var i=0, len=localStorage.length;i<len;i++){
-    var key = localStorage.key(i)
-    if(key === objectId){
-      return JSON.parse(localStorage[key])
-    }
-  }
-  return null
-}
-Storage.all = function(bucket, parent){
-  var collection = []
-  var keys = Storage._subCollectionKeys(bucket, parent)
-  if(keys){
-    for (var i=0, len=keys.length;i<len;i++){
-      var obj = localStorage[keys[i]]
-      if(obj){
-        collection.push(JSON.parse(obj))
-      }else{
-        localStorage.removeItem(keys[i])
-      }
-    }
-  }else{
-    for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key.split('@')[0] === bucket){
-        collection.push(JSON.parse(localStorage[key]))
-      }
-    }
-  }
-  return collection
-}
-Storage.first = function(bucket, parent){
-  var keys = Storage._subCollectionKeys(bucket, parent)
-  if(keys){
-    return localStorage[keys[0]]
-  }else{
-    for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key.split('@')[0] === bucket){
-        return JSON.parse(localStorage[key])
-      }
-    }
-  }
-}
-Storage._subCollectionKeys = function(bucket, parent){
-  if(parent){
-  var value = localStorage[parent.__bucket+':'+parent.cid+':'+bucket]
-  return value?JSON.parse(value):null
-  }
-  return null
-}
-Storage.update = function(bucket, id, args){
-  var obj = Storage.findById(bucket, id)
-  if(obj){
-    _.extend(obj, args)
-    Storage.save(bucket, id, obj)
-  }else{
-    Storage.save(bucket, id, args)
-  }
-}
-Storage.save = function(bucket, id, args){
-  var objectId = bucket+'@'+id
-  localStorage[objectId] = JSON.stringify(args)
-}
-Storage.remove = function(bucket, id){
-  var objectId = bucket+'@'+id
-  localStorage.removeItem(objectId)
-}
 
-//
-var ServerStorage = ginger.ServerStorage = {}
-// opts = {pagestart:0, pageend:20}}
-ServerStorage.all = function(bucket, parent, fn, opts){
-  var socket,
-         url,
-         id = parent?parent.cid:null,
-         collectionKey,
-         urn = parent?parent.__bucket+':'+bucket:bucket;
+/**
+  Self-correcting Accurate Interval
+*/
+var Interval = ginger.Interval = ginger.Declare(ginger.Base, function(){
+  this.super(Interval);
+  this.timer = null;
+});
+Interval.prototype.run = function(freq, duration){
+  clearTimeout(this.timer);
+  this.baseline = Date.now();
+  this._iter(freq, duration);
+}
+Interval.prototype.isRunning = function(){
+  return (this.timer!==null);
+}
+Interval.prototype._iter = function(freq, duration){
+  var self = this;
+  var error = Date.now() - self.baseline;
   
-  collectionKey = parent?parent.__bucket+':'+parent.cid+':'+bucket:urn;
-    
-  if(socket = ginger.Model.socket){
-    socket.emit('read:'+urn, id, function(array){
-      fn(null, array, collectionKey);
-    })
-  }else if(url = ginger.Model.url){
-    url = parent?url+'/'+parent.__bucket+'/'+parent.cid+'/'+bucket:
-                 url+'/'+bucket;
-    ginger.ajax.get(url, function(err, array){
-      fn(err, array, collectionKey);
-    }, opts)
+  if(self.time >= duration){
+    self.stop();
+    self.emit('ended', self.baseline);
   }else{
-    fn(null, null);
+    var nextTick = freq - error;
+    self.timer = setTimeout(function(){
+      self.set('time', self.time+freq);
+      self.baseline += freq;
+      self._iter(freq, duration);
+    }, nextTick>=0?nextTick:0);
   }
 }
-ServerStorage.findById = function(bucket, id, fn){
-  var socket = ginger.Model.socket,
-         url = ginger.Model.url;
-  if(socket){
-    socket.emit('read:'+bucket, id, function(args){
-      fn(null, args);
-    })
-  }else if(url){
-    url = url+'/'+bucket+'/'+id;
-    ginger.ajax.get(url, fn);
-  }else{
-    fn(null, null);
-  }
+Interval.prototype.stop = function(){
+  clearTimeout(this.timer);
+  this.timer = null;
+  this.emit('stop', this.baseline);
 }
-ServerStorage.create = function(bucket, args, fn){
-  var socket = ginger.Model.socket,
-         url = ginger.Model.url;
-  
-  if(socket){
-    socket.emit('create:'+bucket, args, function(id){
-      fn(null, id)
-    })
-  }else if(url){
-    url = url+'/'+bucket;
-    ginger.ajax.post(url, fn);
-  }else{
-    fn(null, null);
-  }
-}
-ServerStorage.update = function(bucket, id, args, fn){
-  var socket = ginger.Model.socket,
-         url = ginger.Model.url;
-  
-  fn = fn?fn:ginger.noop;
-  
-  if(socket){
-    socket.emit('update:'+bucket, {id:id, attrs:args}, fn)
-  }else if(url){
-    url = url+'/'+bucket+'/'+id;
-    ginger.ajax.put(url, fn);
-  }else{
-    fn(null, null);
-  }
-}
-
-ServerStorage.count = function(bucket, fn){
-  // TODO: Implement.
-  fn(null, 0);
-}
-
 //------------------------------------------------------------------------------
 //
 // Models
