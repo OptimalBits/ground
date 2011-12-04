@@ -28,7 +28,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
  */
 
-define(['math/uuid'], function(uuid){
+define(['underscore','math/uuid'], function(_, uuid){
 
 /**
   Define some useful jQuery plugins.
@@ -88,9 +88,9 @@ ginger.asyncDebounce = function (func) {
             nargs = args.length,
             callback = args[nargs-1],
             delayed = function() {
-            executing = true;
-            func.apply(obj, args);
-        };
+              executing = true;
+              func.apply(obj, args);
+            };
 
         args[nargs-1] = function(){
             callback.apply(obj, arguments);
@@ -107,6 +107,31 @@ ginger.asyncDebounce = function (func) {
             delayed();
         }
     };
+};
+
+ginger.waitTrigger = function(func, start, end, delay){
+  return function waiter(){
+    var obj = this,
+    waiting = false,
+    timer = null,
+    args = Array.prototype.slice.call(arguments),
+    nargs = args.length,
+    callback = args[nargs-1];
+
+    args[nargs-1] = function(){
+      clearTimeout(timer);
+      if(waiting){
+        end();
+      }
+      callback.apply(obj, arguments);
+    }
+    
+    timer = setTimeout(function(){
+      waiting = true;
+      start();
+    }, delay);
+    func.apply(this, args);
+  }
 };
 
 // Filters the keys of an object.
