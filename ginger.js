@@ -1408,7 +1408,10 @@ Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
 //------------------------------------------------------------------------------
 Views.CheckBox = ginger.Declare(ginger.View, function(css){
   this.super(Views.CheckBox)
-  this.$el.css(css);
+  if(css) {
+    this.$el.css(css);
+  }
+  
   this.$checkbox = $('<input type="checkbox">').appendTo(this.$el)
   this.$text = $('<span/>').appendTo(this.$el)
   
