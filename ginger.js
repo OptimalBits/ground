@@ -1406,8 +1406,29 @@ Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
   })
 })
 //------------------------------------------------------------------------------
-Views.CheckBox = ginger.Declare(ginger.View, function(){
+Views.CheckBox = ginger.Declare(ginger.View, function(css){
   this.super(Views.CheckBox)
+  this.$el.css(css);
+  this.$checkbox = $('<input type="checkbox">').appendTo(this.$el)
+  this.$text = $('<span/>').appendTo(this.$el)
+  
+  var view = this;
+  
+  this.checked = function(){
+    return view.$checkbox.attr('checked')
+  }
+  
+  this.$checkbox.on('change',function(event){
+    if( $(this).is(':checked') ) {
+      view.emit('checked',view,event);
+    } else {
+      view.emit('unchecked',view,event)
+    }
+  })
+  
+  this.on('text',function(value) {
+    view.$text.html(value)
+  })
 })
 //------------------------------------------------------------------------------
 Views.RadioButton = ginger.Declare(ginger.View, function(){
@@ -1415,7 +1436,7 @@ Views.RadioButton = ginger.Declare(ginger.View, function(){
 })
 //------------------------------------------------------------------------------
 Views.Label = ginger.Declare(ginger.View, function(classNames, css){
-  this.$el = $('<span>').addClass('label');
+  this.$el = $('<span>');
   this.super(Views.Label, 'constructor', classNames, css)
 
   var view = this
