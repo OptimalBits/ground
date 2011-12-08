@@ -1334,7 +1334,7 @@ Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   var oldSlideFn = options.slide
   
   options.start = function(event, ui){
-  
+    view.emit('start');
   }
   options.slide = function(event, ui){
     view.set('value', ui.value)
@@ -1343,6 +1343,7 @@ Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   options.stop = function(event, ui){
     view.set('value', ui.value)
     if(view.options.slide) view.options.slide(event, ui)
+    view.emit('stop');
   }
   
   view.$el.slider(options)
