@@ -79,34 +79,35 @@ var ginger = {}
 ginger.noop = function(){}
 
 ginger.asyncDebounce = function (func) {
-    var delayedFunc = null,
-    executing = false;
+  var delayedFunc = null,
+        executing = false;
 
-    return function debounced () {
-        var obj = this,
-            args = Array.prototype.slice.call(arguments),
-            nargs = args.length,
-            callback = args[nargs-1],
-            delayed = function() {
-              executing = true;
-              func.apply(obj, args);
-            };
-
-        args[nargs-1] = function(){
-            callback.apply(obj, arguments);
-            executing = false;
-            if(delayedFunc){
-                delayedFunc();
-            }
-            delayedFunc = null;
-        }
-
-        if(executing){
-            delayedFunc = delayed;
-        }else{
-            delayed();
-        }
+  return function debounced () {
+    var context = this,
+      args = _.toArray(arguments),
+      nargs = args.length,
+      callback = args[nargs-1];
+        
+    var delayed = function() {
+      executing = true;
+      func.apply(context, args);
     };
+
+    args[nargs-1] = function(){
+      callback.apply(context, arguments);
+      executing = false;
+      if(delayedFunc){
+        delayedFunc();
+      }
+      delayedFunc = null;
+    }
+
+    if(executing){
+      delayedFunc = delayed;
+    }else{
+      delayed();
+    }
+  };
 };
 
 ginger.waitTrigger = function(func, start, end, delay){
