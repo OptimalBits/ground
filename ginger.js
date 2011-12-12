@@ -80,7 +80,7 @@ ginger.noop = function(){}
 
 ginger.asyncDebounce = function (func) {
   var delayedFunc = null,
-        executing = false;
+        executing = null;
 
   return function debounced () {
     var context = this,
@@ -89,20 +89,20 @@ ginger.asyncDebounce = function (func) {
       callback = args[nargs-1];
         
     var delayed = function() {
-      executing = true;
+      executing = func;
       func.apply(context, args);
     };
 
     args[nargs-1] = function(){
       callback.apply(context, arguments);
-      executing = false;
+      executing = null;
       if(delayedFunc){
         delayedFunc();
       }
       delayedFunc = null;
     }
 
-    if(executing){
+    if(executing !== null){
       delayedFunc = delayed;
     }else{
       delayed();
