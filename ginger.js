@@ -17,6 +17,11 @@
    - jQuery
    - Underscore
    
+   Roadmap:
+   - namespaces for events and bindings.
+   - destroy function (will clean all bindings, etc).
+   - reference counting?
+   
    (c) 2011 OptimalBits with selected parts from the internet
    dual licensed as public domain or MIT.
    
@@ -1442,22 +1447,13 @@ Views.CheckBox = ginger.Declare(ginger.View, function(css){
   this.$checkbox = $('<input type="checkbox">').appendTo(this.$el)
   this.$text = $('<span/>').appendTo(this.$el)
   
-  var view = this;
-  
-  this.checked = function(){
-    return view.$checkbox.attr('checked')
-  }
-  
+  var self = this;
   this.$checkbox.on('change',function(event){
-    if( $(this).is(':checked') ) {
-      view.emit('checked',view,event);
-    } else {
-      view.emit('unchecked',view,event)
-    }
+    self.set('checked',  $(this).is(':checked'));
   })
   
   this.on('text',function(value) {
-    view.$text.html(value)
+    self.$text.html(value)
   })
 })
 //------------------------------------------------------------------------------
