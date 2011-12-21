@@ -12,6 +12,7 @@
    - Keyboard handling.
    - Set of views for common web "widgets".
    - Canvas View.
+   - Middleware for express.
   
    Dependencies:
    - jQuery
@@ -19,7 +20,10 @@
    
    Roadmap:
    - namespaces for events and bindings.
+   - instantiate classes without new operator.
+   - use getter/setters to simplify the events and bindings.
    - destroy function (will clean all bindings, etc).
+   - validation (willChange is already a validator).
    - reference counting?
    
    (c) 2011 OptimalBits with selected parts from the internet
@@ -146,7 +150,7 @@ ginger.filter = function(object, fn){
   for(var key in object){
     var value = object[key]
     var result = fn(key, value)
-    filtered[key] = result ? result : value
+    filtered[key] = result || value
   }
   return filtered
 }
@@ -193,18 +197,6 @@ ginger.asyncForEach = function(array, fn, callback) {
   return deferred
 }
 
-ginger.pluralize = function(noun){
-  function suffixStarts(str, suffix){
-    return str.indexOf(suffix, str.length - suffix.length)
-  }
-  var index = suffixStarts(noun, 'y')
-  if(index !==-1){
-    return noun.slice(0, index)+'ies'
-  }else{
-    return noun+'s'
-  }
-}
-
 //
 // Event Emitter
 // (based on original work by Oliver Caldwell, olivercaldwell.co.uk)
@@ -215,10 +207,13 @@ ginger.pluralize = function(noun){
 var EventEmitter = function() {}
 
 EventEmitter.prototype._getListeners = function(){
-  if (_.isUndefined(this._listeners)){
-    this._listeners = {}
-  }
+  this._listeners = this._listeners || {}
   return this._listeners
+}
+
+EventEmitter.prototype._getNamespaces = function(){
+  this._namespaces = this._namespaces || {}
+  return this._namespaces
 }
 
 /**
@@ -233,13 +228,27 @@ EventEmitter.prototype.on = function(eventNames, listener) {
   var listeners = this._getListeners()
   
   for(var i=0, len=events.length;i<len;i++){
-    var event = events[i]
+    var eventAndNamespace = events[i].split('.')
+        event = eventAndNamespace[0];
+
     if(listeners[event]) {
       listeners[event].push(listener);
-    }
-    else{
+    }else{
       listeners[event] = [listener];
     }
+    
+    if(eventAndNamespace.length === 2){
+      var namespaces = this._getNamespaces(),
+          namespace = eventAndNamespace[1]
+      
+      namespaces[event] = namespaces[event] || {}
+      if(namespaces[event][namespace]){
+        namespaces[event][namespace].push(listener);
+      }else{
+        namespaces[event][namespaces] = [listener];
+      }
+    }
+    
     this.emit('newListener', event, listener);
   }
   return this;
@@ -277,13 +286,7 @@ EventEmitter.prototype._fire = function(eventListeners, args){
   */
 EventEmitter.prototype.listeners = function(eventName) {
   var listeners = this._getListeners()
-  if(listeners[eventName]) {
-    return listeners[eventName];
-  }
-  else {
-    listeners[eventName] = [];
-    return listeners[eventName];
-  }
+  return listeners[eventName] = listeners[eventName] || [];
 }
 
 /**
@@ -307,40 +310,69 @@ EventEmitter.prototype.once = function(eventName, listener) {
 /**
   * Removes the specified listener
   * 
-  * @param {String} eventName Name of the event to remove the listener from
-  * @param {Function} listener Listener function to be removed
+  * @param [{String}] eventName Name of the event to remove the listener from
+  * @param [{Function}] listener Listener function to be removed
   * @returns {Object} The current instance of EventEmitter to allow chaining
   */
 EventEmitter.prototype.off = function(eventNames, listener) {
-  var events = eventNames.split(' ')
-  var listeners = this._getListeners()
-  
-  for(var i=0, len=events.length;i<len;i++){
-    var event = events[i]
-    if(listeners[event]) { 
-      var index = _.indexOf(listeners[event], listener);
-      if(index !== -1) {
-        listeners[event].splice(index, 1);
-			}
-		}
-		else {
-      listeners[event] = [];
-		}
+  if(listener){
+    var events = eventNames.split(' ')
+      
+    for(var i=0, len=events.length;i<len;i++){
+      this._removeListener(events[i], listener);
+    }
+  }else{
+    this.removeAllListeners(eventNames);
   }
+  
   return this;
 };
-	
+
+EventEmitter.prototype._removeListener = function(event, listener){
+ var listeners = this._getListeners(), index;
+     
+  if(listeners[event]) { 
+    index = _.indexOf(listeners[event], listener);
+    if(index !== -1) {
+      listeners[event].splice(index, 1);
+    }
+  }
+}
+
+EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, namespaces){
+  var eventAndNamespace = event.split('.')
+      event = eventAndNamespace[0]
+      
+  if(eventAndNamespace.length === 1){
+    delete listeners[event]
+    delete namespaces[event];
+  }else{
+    var namespace = eventAndNamespace[2];
+        
+    if(namespaces[event]){
+      var listeners = namespaces[event][namespace];
+      if(listeners){
+        for(var i=0, len=listeners.length;i<len;i++){
+          this.off(event, listeners[i]);
+        }
+      }
+    }
+  }
+}
+
 /**
-  * Removes all listeners from the specified event
+  * Removes all listeners from the specified (namespaced) events
   * 
   * @param {String} eventName Name of the event to remove the listeners from
   * @returns {Object} The current instance of EventEmitter to allow chaining
   */
 EventEmitter.prototype.removeAllListeners = function(eventNames) {
-  var events = eventNames.split(' ')
-  var listeners = this._getListeners()
+  var events = eventNames.split(' '),
+      listeners = this._getListeners(),
+      namespaces = this._getNamespaces();
+  
   for(var i=0, len=events.length;i<len;i++){
-    listeners[events[i]] = [];
+    this._removeNamespacedEvent(events[i], listeners, namespaces)
   }
   return this;
 }
@@ -420,7 +452,7 @@ UndoManager.prototype.undo = function(){
   var action = this.actions.pop();
   if(action){
     action.undo(action.fn)
-    var name = action.name?action.name:''
+    var name = action.name || ''
     this.emit('undo', name)
     this.undones.push(action);
   }
@@ -430,7 +462,7 @@ UndoManager.prototype.redo = function(){
   var action = this.undones.pop();
   if(action){
     action.do(action.fn)
-    var name = action.name?action.name:''
+    var name = action.name || ''
     this.emit('redo', name)
     this.actions.push(action);
   }
@@ -615,7 +647,7 @@ ServerStorage.update = function(bucket, id, args, fn){
   var socket = ginger.Model.socket,
          url = ginger.Model.url;
   
-  fn = fn?fn:ginger.noop;
+  fn = fn || ginger.noop;
   
   if(socket){
     socket.emit('update:'+bucket, {id:id, attrs:args}, fn)
@@ -680,12 +712,13 @@ function Inherit(Sub, Super){
   Sub.superproto = Super.prototype
 
   Sub.prototype.super = function(klass, fn){
-      if(fn) return klass.superproto[fn].apply(this, _.rest(arguments, 2))
-      else klass.superproto.constructor.apply(this)
+    return klass.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2))
   }
-} 
+}
 
 ginger.Declare = function(Super, Sub, staticOrName, bucket){
+  // Sub = makeClass(Sub)
+
   Inherit(Sub, Super)
   if(Super.__staticMethods){
     _.extend(Sub, Super.__staticMethods)
@@ -712,6 +745,39 @@ var Base = ginger.Base = function(){
 }
 
 _.extend(Base.prototype, EventEmitter.prototype)
+
+//
+// Listening to changed Properties are just expressed as the property name
+// All other events should end with : (changed:), (clicked:), etc.
+// TODO: Handle namespaces.
+
+// This is experimental stuff for now. (As far as we now, it works)
+/*
+Base.prototype.on = function(eventNames, listener){
+  var events = eventNames.split(' '),
+      self = this,
+      prop, pprop;
+      
+  for(var i=0, len=events.length;i<len;i++){
+    prop = events[i].split(':')
+    if(prop.length===1){
+      prop = prop[0]
+      var desc = Object.getOwnPropertyDescriptor(self, prop)
+      if (desc && !desc.set){
+        pprop = '_'+prop
+        self[pprop] = self[prop]
+        Object.defineProperty(self, prop, {
+          set:_.bind(self.set, self, pprop),
+          get:function(){return self[pprop]}
+          });
+        
+        console.log(typeof self[prop])
+      }
+    }
+  }
+  return EventEmitter.prototype.on.apply(this, arguments);
+}
+*/
 
 /**
   set - Sets a property and notifies any listeners attached to it.
@@ -762,7 +828,7 @@ Base.prototype.get = function(key){
  * the value of the target object key
  */
 Base.prototype.bind = function(key, object, objectKey){
-  var dstKey = _.isUndefined(objectKey) ? key : objectKey
+  var dstKey = objectKey || key
 
   this.unbind(key)
   
@@ -881,8 +947,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     _socket:ginger.Model.socket,
     __model:true
   })
-  this.cid = this._id ? this._id : this.cid
-  this.cid = _.isUndefined(this.cid) ? uuid() : this.cid
+  this.cid = this._id || this.cid || uuid()
 },
 {
   findById : function(id, fn){
@@ -892,7 +957,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     ServerStorage.findById(bucket, id, function(err, args){
       if(err) fn(err);
       else{
-        args = args !== null ? args : Storage.findById(bucket, id)
+        args = args || Storage.findById(bucket, id)
         _instantiate(model, args, fn)
       }
     })
@@ -905,7 +970,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     ServerStorage.all(bucket, parent, function(err, array, key){
       if(err) fn(err);
       else{
-        var collection = array !== null ? array : Storage.all(bucket, parent)
+        var collection = array || Storage.all(bucket, parent)
         _instantiateCollection(key, model, collection, fn)
       }
     })
@@ -1021,12 +1086,12 @@ Model.prototype.update = function(args, fn){
   var model = this,
      bucket = this.__bucket;
     
-  fn = fn?fn:ginger.noop;
+  fn = fn || ginger.noop;
 
   if(this._id){
     ServerStorage.update(bucket, this._id, args, function(err, id){
       if(!err){
-        id = id?id:this.cid;
+        id = id || this.cid;
         model.local().update(args)
       }
     })
@@ -1333,8 +1398,8 @@ Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   this.super(Views.Slider, 'constructor', classNames)
   var view = this
   
-  view.options = _.isUndefined(options) ? {} : options
-  view.value = _.isUndefined(view.options.value) ? 0 : view.options.value
+  view.options = options || {}
+  view.value = view.options.value || 0
 
   var options = _.clone(view.options)
   var oldSlideFn = options.slide
