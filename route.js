@@ -8,9 +8,7 @@ require.register('showdown.js', function(module, exports, require){
   module.exports = showdown;  
 });
 
-var ginger = {};
-
-var route = ginger.route= {};
+var route = {};
 
 var parseQuery = function(keyValues){
   return {}
@@ -294,6 +292,6 @@ route.redirect = function(url) {
 
 route.prevUrl = null;
 
-return ginger;
+return route;
   
 });
