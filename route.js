@@ -133,6 +133,21 @@ Request.prototype.enter = function(cb){
   return self;
 }
 
+Request.prototype.anim = function(name, speed){
+  if(this.needRender()){
+    var self = this,
+     promise = new Promise();
+  
+    (function(done){
+      self.promise.then(function(){
+        self.$el[name](speed || 'slow', done);
+      });
+    })(_.bind(promise.accept, promise));
+    self.promise = promise;
+  }
+  return this;
+}
+
 // ( templateUrl, [locals, cb])
 Request.prototype.render = function(templateUrl, css, locals, cb){
   var self = this;
