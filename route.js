@@ -147,7 +147,7 @@ Request.prototype.render = function(templateUrl, css, locals, cb){
     cb = css;
     css = undefined;
   }
-  if(isFunction(locals)){
+  if(_.isFunction(locals)){
     cb = locals;
   }
   
