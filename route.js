@@ -8,9 +8,7 @@ require.register('showdown.js', function(module, exports, require){
   module.exports = showdown;  
 });
 
-var ginger = {};
-
-var route = ginger.route= {};
+var route = {};
 
 var parseQuery = function(keyValues){
   return {}
@@ -135,6 +133,21 @@ Request.prototype.enter = function(cb){
   return self;
 }
 
+Request.prototype.anim = function(name, speed){
+  if(this.needRender()){
+    var self = this,
+     promise = new Promise();
+  
+    (function(done){
+      self.promise.then(function(){
+        self.$el[name](speed || 'slow', done);
+      });
+    })(_.bind(promise.accept, promise));
+    self.promise = promise;
+  }
+  return this;
+}
+
 // ( templateUrl, [locals, cb])
 Request.prototype.render = function(templateUrl, css, locals, cb){
   var self = this;
@@ -147,7 +160,7 @@ Request.prototype.render = function(templateUrl, css, locals, cb){
     cb = css;
     css = undefined;
   }
-  if(isFunction(locals)){
+  if(_.isFunction(locals)){
     cb = locals;
   }
   
@@ -294,6 +307,6 @@ route.redirect = function(url) {
 
 route.prevUrl = null;
 
-return ginger;
+return route;
   
 });

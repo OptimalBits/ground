@@ -38,7 +38,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
  */
 
-define(['route', 'underscore','math/uuid'], function(route, _, uuid){
+define(['underscore', 'ginger/route','ginger/uuid'], function(_, route, uuid){
 
 /**
   Define some useful jQuery plugins.
