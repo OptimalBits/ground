@@ -256,7 +256,9 @@ Request.prototype.isLast = function(){
 }
 
 Request.prototype.redirect = function(url){
-  this.promise.then(function(){ 
+  var self = this;
+  self.promise.then(function(){
+    self.nodes = [];
     route.redirect(url);
   });
 }
