@@ -4,6 +4,7 @@
    Features:
    - Modular design.
    - Builds on top of proven libraries such as jQuery and underscore.
+   - Hierarchical routing system.
    - Clean class hierarchies, based on javascript prototypal inheritance.
    - Property bindings.
    - Models with persistence and synchronization.
@@ -24,9 +25,9 @@
    - use getter/setters to simplify the events and bindings.
    - destroy function (will clean all bindings, etc).
    - validation (willChange is already a validator).
-   - reference counting?
+   - reference counting for easier resource management?
    
-   (c) 2011 OptimalBits with selected parts from the internet
+   (c) 2011-2012 OptimalBits with selected parts from the internet
    dual licensed as public domain or MIT.
    
    Resources:
