@@ -1,12 +1,6 @@
-define(['showdown', 'underscore', 'js!jade.js'], function(showdown, _){
-
-var counter = 0;
+define(['underscore', 'js!jade.js'], function(_){
 
 var jade = require('jade');
-
-require.register('showdown.js', function(module, exports, require){
-  module.exports = showdown;  
-});
 
 var route = {};
 
@@ -20,12 +14,10 @@ var parseQuery = function(keyValues){
 // This is because we fire the callbacks when queueing, if the queued promise
 // so far already fired, it will fire every time a new promise is enqueued).
 var Promise = function(){
-  this.results = [];
+  this.results = [];  
   this.callbacks = [];
   this.counter = 0;
   this.accepted = null;
-  this.id = counter;
-  counter++;
 };
 Promise.prototype.queue = function(promise){
   var index = this.results.length,
@@ -45,8 +37,11 @@ Promise.prototype.queue = function(promise){
   })(index);
 }
 Promise.prototype.then = function(cb){
-  this.callbacks.push(cb);
-  this._fireCallbacks();
+  if(this.accepted === null){
+    this.callbacks.push(cb);
+  }else{
+    cb(this.accepted);
+  }
 }
 Promise.prototype.accept = function(){
   this.accepted = arguments;
@@ -63,10 +58,32 @@ Promise.prototype._fireCallbacks = function(){
     }
   }
 }
+
 //
-// Request (TODO: Rename to Request).
+// Node Command wrapper.
+// This wrapping allows us to chain asynchronous commands after each other.
 //
-var Request = function(url, prevUrl){
+var wrap = function(fn, args, cb){
+  return function(ctx){
+    var promise = new Promise();
+  
+    (function(done){
+      ctx.promise.then(function(){
+        args.push(function(){
+          cb && cb(done);
+          !cb && done();
+        });
+        fn.apply(ctx, args);
+      });
+    })(_.bind(promise.accept, promise));
+    ctx.promise = promise;
+  }
+}
+
+//
+// Request
+//
+var Request = function(url){
   var s = url.split('?'), components, last;
   
   components = s[0].split('/')
@@ -80,16 +97,32 @@ var Request = function(url, prevUrl){
     components.splice(last, 1);
   }
   
+  this.nodes = [];
+  for (var i=0, len=components.length;i<len;i++){
+    var node = {component:components[i]};
+    this.nodes.push(node);
+  }
+  
   this.url = url;
-  this.prevUrl = prevUrl;
   this.query = parseQuery(s[1]);
   this.params = {};
   this.components = components;
+  
   this.promise = new Promise();
   this.promise.accept();
 }
 
+Request.prototype.node = function(){
+  var index = this.index-1;
+  index = index < 0? 0:index;
+  return this.nodes[index];
+}
+
 // TODO: Add queries.
+
+//
+// Commands
+//
 Request.prototype.get = function(component, selector, cb){
   var self = this;
 
@@ -105,132 +138,111 @@ Request.prototype.get = function(component, selector, cb){
     cb = component;
   }
   
-  self.promise.then(function(){
-    self.$el = $(selector);
-    self.promise = new Promise();
-    self.promise.accept();
-    cb && cb.call(self, self);
-  });
+  (function(node){
+    node.select = wrap(function(cb){
+      node.$el = self.$el = $(selector);
+      cb();
+    }, []);
+    node.selector = selector;
+    node.hide = wrap(function(cb){
+      node.$el.hide();
+      cb();
+    }, []);
+  })(self.node());
+  
+  cb && cb.call(self, self);
   
   return self;
 }
 
-Request.prototype.enter = function(cb){
-  var self = this;
-      promise = new Promise();
-
-  (function(done){
-    self.promise.then(function(){
-      if(self.needRender()){
-        cb.call(self, done);
-      }else{
-        promise.accept();
-      }
-    });
-  })(_.bind(promise.accept, promise));
-  
-  self.promise = promise;
-  return self;
-}
-
-Request.prototype.anim = function(name, speed){
-  if(this.needRender()){
-    var self = this,
-     promise = new Promise();
-  
-    (function(done){
-      self.promise.then(function(){
-        self.$el[name](speed || 'slow', done);
-      });
-    })(_.bind(promise.accept, promise));
-    self.promise = promise;
-  }
+Request.prototype.custom = function(cb){
+  this.node().custom =  wrap(function(cb){cb()},[],cb);
   return this;
 }
 
-// ( templateUrl, [locals, cb])
+Request.prototype.exit = function(name, speed, cb){
+  var node = this.node();
+  node.exit =  wrap(this._anim,[node, name, speed], cb);
+  return this;
+}
+
+Request.prototype.enter = function(name, speed, cb){
+  var node = this.node();
+  node.enter = wrap(this._anim,[node,name,speed], cb);
+  return this;
+}
+
 Request.prototype.render = function(templateUrl, css, locals, cb){
-  var self = this;
-          
-  if(_.isObject(css)){
-    cb = locals;
-    locals = css;
-    css = undefined;
-  }else if(_.isFunction(css)){
-    cb = css;
-    css = undefined;
-  }
-  if(_.isFunction(locals)){
-    cb = locals;
-  }
-  
-  if(self.needRender()){
-    var promise = new Promise(),  
-      items = ['text!'+templateUrl];
-      
-    if(css){
-      items.push('css!'+css)
-    }
-    (function(done){
-      self.promise.then(function(){
-        curl(items, function(t){
-          var args = {}
-          if(locals){
-            args[locals] = self.data;
-          }
-          var fn = jade.compile(t,{locals:args});
-          self.$el.html(fn(args));
-          if(cb){
-            cb.call(self, done);
-          }else{
-            done();
-          }
-        });
-      });
-    })(_.bind(promise.accept, promise));
-    self.promise = promise;
-  }else{
-    cb && cb.call(self, function(){}); 
-  }
-  return self;
+  this.node().render = wrap(this._render,[templateUrl, css, locals], cb);
+  return this;
 }
 
 Request.prototype.load = function(urls, cb){
-  var base = this._currentSubPath(),
-      self = this,
-      promise = new Promise();
+  cb = _.last(arguments);
+  urls = _.isFunction(urls)?null:urls;
   
-  if(!_.isArray(urls)){
-    urls = [urls];
+  this.node().load = wrap(this._load,[urls], cb);
+  return this;
+}
+
+Request.prototype.exec = function(prevs){
+  var start,
+     nodes = this.nodes;
+  
+  //
+  // Find first index where re-rendering is needed. (common base).
+  //
+  for(start=0,len=nodes.length;start<len;start++){
+    var node = nodes[start],
+        prev = prevs[start];
+        
+    if(!prev || (prev.component !== node.component)){
+      break;
+    }
   }
   
-  var _urls = [];
-  for(var i=0, len=urls.length;i<len;i++){
-    _urls.push('text!'+urls[i])
+  //
+  // Check for selector overwrites (prev route overwrite some DOM element from
+  // (the common base).
+  //
+  for(var i=0,len=start;i<len;i++){
+    if(findSel(nodes[i].selector, start, prevs)){
+      start = i;
+      break;
+    }
   }
   
-  (function(done){
-    self.promise.then(function(){ 
-      curl(_urls, function(){
-        var args = arguments;
-        var objs = [];
-        for(var i=0, len=args.length;i<len;i++){
-          objs.push(JSON.parse(arguments[i]))
-        }
-        objs = objs.length===1?objs[0]:objs;
-        self.data = objs;
-        if(cb){
-          cb.call(self, done);
-        }else{
-          done();  
-        }
-      });
-    });
-  })(_.bind(promise.accept, promise));
+  //
+  // "Exit" from all the old nodes
+  //
+  for(var i=start, len=prevs.length;i<len;i++){
+    var node = prevs[i];
     
-  self.promise = promise;
+    !node.$el && node.select && node.select(this);
+    node.exit && node.exit(this);
+    !node.exit && node.hide(this);
+  }
   
-  return self;
+  //
+  // Call all the functions for every node that needs it.
+  //
+  for(var i=start, len=nodes.length;i<len;i++){
+    var node = nodes[i],
+        prev = prevs[i];
+    
+    this.index = i+1;
+       
+    node.select && node.select(this);
+    
+  //  prev && prev.exit && prev.exit(this);
+    node.hide && node.hide(this);    
+    
+    node.custom && node.custom(this);
+    
+    node.load && node.load(this);
+    node.render && node.render(this);
+    node.enter && node.enter(this); 
+  } 
 }
 
 Request.prototype.resourceRoute = function(resource){
@@ -243,23 +255,92 @@ Request.prototype.isLast = function(){
   return this.index >= this.components.length
 }
 
-Request.prototype.needRender = function(){
-  if(this.prevUrl){
-    var subPath = this._currentSubPath()
-    
-    if(subPath === this.prevUrl.substring(0, subPath.length)){
-      if(this.index<this.components.length){
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 Request.prototype.redirect = function(url){
   this.promise.then(function(){ 
     route.redirect(url);
   });
+}
+
+//
+// Private methods
+//
+
+Request.prototype._anim = function(node, name, speed, cb){
+  node.$el[name](speed || 'slow', cb);
+}
+
+// ( templateUrl, [locals, cb])
+Request.prototype._render = function(templateUrl, css, locals, cb){
+  var self = this;
+  
+  if(_.isObject(css)){
+    cb = locals;
+    locals = css;
+    css = undefined;
+  }else if(_.isFunction(css)){
+    cb = css;
+    css = undefined;
+  }
+  if(_.isFunction(locals)){
+    cb = locals;
+  }
+      
+  var items = ['text!'+templateUrl];
+          
+  if(css){
+    items.push('css!'+css)
+  }
+      
+  curl(items, function(t){
+    var args = {}
+    if(locals){
+      args[locals] = self.data;
+    }
+    var fn = jade.compile(t,{locals:args});
+    self.$el.html(fn(args));
+    cb && cb();
+  });
+}
+
+Request.prototype._load = function(urls, cb){
+  var base = this._currentSubPath(),
+      self = this;
+      
+  if(urls === null){
+    urls = self.data;
+  }
+      
+  if(!_.isArray(urls)){
+    urls = [urls];
+  }
+  
+  var _urls = [];
+  for(var i=0, len=urls.length;i<len;i++){
+    _urls.push('text!'+urls[i])
+  }
+  
+  curl(_urls, function(){
+    var args = arguments;
+    var objs = [];
+    for(var i=0, len=args.length;i<len;i++){
+      objs.push(JSON.parse(arguments[i]))
+    }
+    objs = objs.length===1?objs[0]:objs;
+    self.data = objs;
+    cb && cb();
+  });
+}
+
+//
+// Utils
+//
+var findSel = function(selector, start, nodes){
+  for(var i=start,len=nodes.length;i<len;i++){
+    if(selector === nodes[i].selector){
+      return true;
+    }
+  }
+  return false;
 }
 
 Request.prototype._currentSubPath = function(){
@@ -273,11 +354,23 @@ Request.prototype._currentSubPath = function(){
   return subPath;
 }
 
+//
+// Route
+//
+
 route.listen = function (cb) {
+  var prevNodes = [];
+
   var fn = function(){
     if(route.prevUrl !== location.hash){
-      var prevUrl = location.hash;
-      cb && cb(new Request(location.hash, route.prevUrl));
+      var prevUrl = location.hash,
+          req = new Request(location.hash);
+          
+      cb && cb(req);
+
+      req.exec(prevNodes);
+      prevNodes = req.nodes;
+        
       route.prevUrl = prevUrl;
     }
   }
