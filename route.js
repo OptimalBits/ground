@@ -297,8 +297,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
       args[locals] = self.data;
     }
     var fn = jade.compile(t,{locals:args});
+    self.$el.load(function(){
+      cb && cb();
+    });
     self.$el.html(fn(args));
-    cb && cb();
   });
 }
 
