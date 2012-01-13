@@ -301,17 +301,27 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     var fn = jade.compile(t,{locals:args});
     
     self.$el.html(fn(args));
-    var $img = $('img',self.$el);
-    
-    if($img.length>0){
-      $img.load(function(){
-        console.log($img);
-        cb && cb();
-      });
-    }else{
+    waitForImages(self.$el, function(){
       cb && cb();
-    }
+    });
   });
+}
+
+function waitForImages($el, cb) {
+  var $imgs = $('img', $el),
+        len = $imgs.length,
+    counter = 0;
+
+  if(len>0){
+    $imgs.load(function(){
+      counter++;
+      if(counter===len){
+        cb();
+      }
+    });
+  }else{
+    cb && cb();
+  }
 }
 
 Request.prototype._load = function(urls, cb){
