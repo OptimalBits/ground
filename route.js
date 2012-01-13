@@ -9,46 +9,26 @@ var parseQuery = function(keyValues){
 }
 
 //
-// Promise
-// (Note: If used wrongly, the same callback can be called multiple times.
-// This is because we fire the callbacks when queueing, if the queued promise
-// so far already fired, it will fire every time a new promise is enqueued).
+// Promise (Minimal promise implementation).
+//
 var Promise = function(){
   this.results = [];  
   this.callbacks = [];
-  this.counter = 0;
-  this.accepted = null;
+  this.resolved = null;
 };
-Promise.prototype.queue = function(promise){
-  var index = this.results.length,
-      self = this;
-  
-  results.push(null);
-  
-  (function(index){
-    promise.then(function(){
-      self.counter++;
-      self.results[index] = arguments;
-      if(self.counter===self.promises.length){
-        self.accepted = self.results;
-        self._fireCallbacks();
-      }
-    })
-  })(index);
-}
 Promise.prototype.then = function(cb){
-  if(this.accepted === null){
+  if(this.resolved === null){
     this.callbacks.push(cb);
   }else{
-    cb(this.accepted);
+    cb(this.resolved);
   }
 }
-Promise.prototype.accept = function(){
-  this.accepted = arguments;
+Promise.prototype.resolve = function(){
+  this.resolved = arguments;
   this._fireCallbacks(); 
 }
 Promise.prototype._fireCallbacks = function(){
-  var args = this.accepted;
+  var args = this.resolved;
   if(args!=null){
     var len = this.callbacks.length;
     if(len>0){
@@ -75,7 +55,7 @@ var wrap = function(fn, args, cb){
         });
         fn.apply(ctx, args);
       });
-    })(_.bind(promise.accept, promise));
+    })(_.bind(promise.resolve, promise));
     ctx.promise = promise;
   }
 }
@@ -109,7 +89,7 @@ var Request = function(url){
   this.components = components;
   
   this.promise = new Promise();
-  this.promise.accept();
+  this.promise.resolve();
 }
 
 Request.prototype.node = function(){
