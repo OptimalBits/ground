@@ -51,7 +51,7 @@ var wrap = function(fn, args, cb){
       ctx.promise.then(function(){
         args.push(function(){
           cb && cb(done);
-          !cb && done();
+          cb || done();
         });
         fn.apply(ctx, args);
       });
@@ -165,6 +165,9 @@ Request.prototype.load = function(urls, cb){
   return this;
 }
 
+// FIX: Only call hide on the nodes that will been "overwritten" by the new request
+// and that not have an exit function, and that no node in prev request that has overwritten the
+// node and that have own exit function...
 Request.prototype.exec = function(prevs){
   var start,
      nodes = this.nodes;
@@ -198,9 +201,9 @@ Request.prototype.exec = function(prevs){
   for(var i=start, len=prevs.length;i<len;i++){
     var node = prevs[i];
     
-    !node.$el && node.select && node.select(this);
+    node.$el || (node.select && node.select(this));
     node.exit && node.exit(this);
-    !node.exit && node.hide(this);
+    node.exit || (node.hide && node.hide(this));
   }
   
   //
@@ -215,7 +218,7 @@ Request.prototype.exec = function(prevs){
     node.select && node.select(this);
     
   //  prev && prev.exit && prev.exit(this);
-    node.hide && node.hide(this);    
+    node.hide && node.hide(this);
     
     node.custom && node.custom(this);
     
