@@ -1,7 +1,5 @@
 define(['underscore', 'js!jade.js'], function(_){
 
-var jade = require('jade');
-
 var route = {};
 
 var parseQuery = function(keyValues){
