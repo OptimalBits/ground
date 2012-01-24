@@ -48,8 +48,9 @@ var wrap = function(fn, args, cb){
     (function(done){
       ctx.promise.then(function(){
         args.push(function(){
-          cb && cb(done);
           cb || done();
+          cb && cb(done);
+          cb && cb.length === 0 && done();
         });
         fn.apply(ctx, args);
       });
@@ -133,8 +134,13 @@ Request.prototype.get = function(component, selector, cb){
   return self;
 }
 
-Request.prototype.custom = function(cb){
-  this.node().custom =  wrap(function(cb){cb()},[],cb);
+Request.prototype.before = function(cb){
+  this.node().before =  wrap(function(cb){cb()},[],cb);
+  return this;
+}
+
+Request.prototype.after = function(cb){
+  this.node().after =  wrap(function(cb){cb()},[],cb);
   return this;
 }
 
@@ -215,14 +221,16 @@ Request.prototype.exec = function(prevs){
        
     node.select && node.select(this);
     
-  //  prev && prev.exit && prev.exit(this);
+    //prev && prev.exit && prev.exit(this);
     node.hide && node.hide(this);
     
-    node.custom && node.custom(this);
+    node.before && node.before(this);
     
     node.load && node.load(this);
     node.render && node.render(this);
-    node.enter && node.enter(this); 
+    node.enter && node.enter(this);
+    
+    node.after && node.after(this);
   } 
 }
 
