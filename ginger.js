@@ -1694,11 +1694,12 @@ PopUp.prototype.show = function(html, css, anim){
     default:
   }
 }
-PopUp.prototype.hide = function(){
+PopUp.prototype.hide = function(cb){
   var self = this
   self._state = 3
   self.$el.fadeOut(self.endTime, function(){
     self._state = 0
+    cb && cb();
   })
 }
 PopUp.prototype._setFadeOut = function(){
