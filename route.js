@@ -45,7 +45,7 @@ var wrap = function(fn, args, cb){
   return function(ctx){
     var promise = new Promise();
   
-    (function(done){
+    (function(done, args ){
       ctx.promise.then(function(){
         args.push(function(){
           cb || done();
@@ -54,7 +54,7 @@ var wrap = function(fn, args, cb){
         });
         fn.apply(ctx, args);
       });
-    })(_.bind(promise.resolve, promise));
+    })(_.bind(promise.resolve.bind,promise), _.clone(args));
     ctx.promise = promise;
   }
 }
