@@ -109,7 +109,7 @@ Request.prototype.get = function(component, selector, cb){
     if(component.charAt(0) === ':'){
       self.params[component.replace(':','')] = self.components[self.index];
     } else if(component !== self.components[self.index]){
-       return;
+       return self;
     }
     self.index++;
   }else{
