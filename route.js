@@ -123,10 +123,17 @@ Request.prototype.get = function(component, selector, cb){
       cb();
     }, []);
     node.selector = selector;
+    
     node.hide = wrap(function(cb){
       node.$el.hide();
       cb();
     }, []);
+    
+    node.show = wrap(function(cb){
+      node.$el.show();
+      cb();
+    }, []);
+    
   })(self.node());
   
   cb && cb.call(self, self);
@@ -228,7 +235,9 @@ Request.prototype.exec = function(prevs){
     
     node.load && node.load(this);
     node.render && node.render(this);
+
     node.enter && node.enter(this);
+    node.enter || node.show(this);
     
     node.after && node.after(this);
   } 
