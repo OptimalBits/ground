@@ -54,7 +54,7 @@ var wrap = function(fn, args, cb){
         });
         fn.apply(ctx, args);
       });
-    })(_.bind(promise.resolve.bind,promise), _.clone(args));
+    })(_.bind(promise.resolve,promise), _.clone(args));
     ctx.promise = promise;
   }
 }
