@@ -117,25 +117,8 @@ Request.prototype.get = function(component, selector, cb){
     cb = component;
   }
   
-  (function(node){
-    node.select = wrap(function(cb){
-      node.$el = self.$el = $(selector);
-      cb();
-    }, []);
-    node.selector = selector;
-    
-    node.hide = wrap(function(cb){
-      node.$el.hide();
-      cb();
-    }, []);
-    
-    node.show = wrap(function(cb){
-      node.$el.show();
-      cb();
-    }, []);
-    
-  })(self.node());
-  
+  self._initNode(selector, cb);
+ 
   cb && cb.call(self, self);
   
   return self;
@@ -264,6 +247,27 @@ Request.prototype.redirect = function(url){
 //
 // Private methods
 //
+Request.prototype._initNode = function(selector){
+  var self = this;
+  
+  (function(node){
+     node.select = wrap(function(cb){
+       node.$el = self.$el = $(selector);
+       cb();
+     }, []);
+     node.selector = selector;
+   
+     node.hide = wrap(function(cb){
+       node.$el.hide();
+       cb();
+     }, []);
+   
+     node.show = wrap(function(cb){
+       node.$el.show();
+       cb();
+     }, []);
+ })(self.node());
+}
 
 Request.prototype._anim = function(node, name, speed, cb){
   node.$el[name](speed || 'slow', cb);
@@ -387,7 +391,18 @@ route.listen = function (cb) {
           req = new Request(location.hash);
           
       cb && cb(req);
-
+      
+      if(req.index !== req.nodes.length){
+        if(req.notFound && _.isFunction(req.notFound)){
+          req.index = 1;
+          req._initNode('body')
+          req.notFound.call(req, req);
+        }else{
+          console.log('Undefined route:'+location.hash);
+          return;
+        }
+      }
+  
       req.exec(prevNodes);
       prevNodes = req.nodes;
         
