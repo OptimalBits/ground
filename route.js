@@ -3,18 +3,19 @@ define(['underscore', 'js!jade.js'], function(_){
 var route = {};
 
 var parseQuery = function(queryString){
-  var keyValues = queryString.split('&'),
-      i,
-      len = keyValues.length;
+  if(queryString){
+    var keyValues = queryString.split('&'),
+        i,
+        len = keyValues.length;
   
-  var obj = {}
+    var obj = {}
   
-  for(i=0;i<len;i++){
-    var keyValue = keyValues[i].split('=');
-    obj[keyValue[0]] = keyValue[1] ? keyValue[1]:'';
+    for(i=0;i<len;i++){
+      var keyValue = keyValues[i].split('=');
+      obj[keyValue[0]] = keyValue[1] ? keyValue[1]:'';
+    }
+    return obj;
   }
-  console.log(obj);
-  return obj;
 }
 
 //
