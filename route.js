@@ -15,6 +15,8 @@ var parseQuery = function(queryString){
       obj[keyValue[0]] = keyValue[1] ? keyValue[1]:'';
     }
     return obj;
+  }else{
+    return {};
   }
 }
 
