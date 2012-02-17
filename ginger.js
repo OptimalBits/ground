@@ -651,6 +651,7 @@ ServerStorage.create = function(bucket, args, fn){
     fn(null, null);
   }
 }
+
 ServerStorage.update = function(bucket, id, args, fn){
   var socket = ginger.Model.socket,
          url = ginger.Model.url;
