@@ -486,6 +486,7 @@ _.extend(ginger.undoMgr, new EventEmitter())
 
 var ajax = ginger.ajax = {}
 
+// Fix so that obj is before fn, but make it optional.
 var ajaxBase = function(url, fn, obj){
   obj = obj ? JSON.stringify(obj) : undefined;
   return {
@@ -645,7 +646,7 @@ ServerStorage.create = function(bucket, args, fn){
     })
   }else if(url){
     url = url+'/'+bucket;
-    ginger.ajax.post(url, fn);
+    ginger.ajax.post(url, fn, args);
   }else{
     fn(null, null);
   }
@@ -660,7 +661,7 @@ ServerStorage.update = function(bucket, id, args, fn){
     socket.emit('update:'+bucket, {id:id, attrs:args}, fn)
   }else if(url){
     url = url+'/'+bucket+'/'+id;
-    ginger.ajax.put(url, fn);
+    ginger.ajax.put(url, fn, args);
   }else{
     fn(null, null);
   }
@@ -1085,22 +1086,34 @@ Model.prototype.all = function(model, fn){
     fn(null)
   }
 }
-Model.prototype.save = function(fn, options){
+// Parent bucket is optional
+Model.prototype.save = function(parent, fn){
   var args = this.toArgs()
-  this.update(args, fn)
+  if(_.isFunction(parent)){
+    this.update(args, parent)
+  }else{
+    this.update(parent, args, fn);
+  }
 }
-Model.prototype.update = function(args, fn){
+Model.prototype.update = function(parent, args, fn){
   var model = this,
      bucket = this.__bucket;
+     
+  if(arguments.length >= 3){
+    bucket = parent.__bucket + '/' + parent._id + '/' + bucket;
+  }else{
+    fn = args;
+    args = parent;
+  }
     
   fn = fn || ginger.noop;
 
   if(this._id){
-    ServerStorage.update(bucket, this._id, args, function(err, id){
+    ServerStorage.update(bucket, this._id, args, function(err){
       if(!err){
-        id = id || this.cid;
         model.local().update(args)
       }
+      fn(err)
     })
   }else{
     ServerStorage.create(bucket, args, function(err, id){
@@ -1114,7 +1127,7 @@ Model.prototype.update = function(args, fn){
           this.local().update(args)
           fn(this.cid)
         }
-      }
+      } // TODO: We should call fn(err, id);
     })
   }
 }
