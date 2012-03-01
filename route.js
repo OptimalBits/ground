@@ -1,5 +1,10 @@
 define(['underscore', 'js!jade.js'], function(_){
 
+// TODO: 
+// Remove jade dependency, provide a .use kind of api to register external 
+// plugins.
+
+
 var route = {};
 
 var parseQuery = function(queryString){
@@ -103,6 +108,11 @@ var Request = function(url){
   
   this.promise = new Promise();
   this.promise.resolve();
+  
+  this.nodePromise = new Promise();
+  this.nodePromise.resolve();
+  
+  this.endPromise = new Promise();
 }
 
 Request.prototype.node = function(){
@@ -111,32 +121,67 @@ Request.prototype.node = function(){
   return this.nodes[index];
 }
 
-// TODO: Add queries.
+/**
+  get - Define a GET route.
+  
+  get(cb:{Function})
+  
+  get(component:{String}, selector:{String}, cb:{Function})
+  
+  get(component:{String}, selector:{String}, handler:{String})
+  
+  Handler is a AMD module that returns a function with the signature: function(req).
 
-//
-// Commands
-//
+*/
 Request.prototype.get = function(component, selector, cb){
   var self = this;
 
-  if(_.isString(component)){
+  if(_.isFunction(component)){
+    selector = ('body');
+    cb = component;
+  }else{
     if(component.charAt(0) === ':'){
       self.params[component.replace(':','')] = self.components[self.index];
     } else if(component !== self.components[self.index]){
        return self;
     }
     self.index++;
-  }else{
-    selector = ('body');
-    cb = component;
   }
   
-  self._initNode(selector, cb);
- 
-  cb && cb.call(self, self);
+  self.nodePromise.then(function(){
+    self.nodePromise = new Promise();
+    ;(function(promise){
+      self._initNode(selector);
+  
+      if(_.isFunction(cb)){
+        cb && cb.call(self, self);
+        promise.resolve();
+        if(promise.callbacks.length===0){
+          self.endPromise.resolve();
+        }
+      } else {
+        curl([cb], function(f){
+          f && f.call(self, self);
+          promise.resolve();
+          if(promise.callbacks.length===0){
+            self.endPromise.resolve();
+          }
+        });
+      }
+    })(self.nodePromise);
+  });
   
   return self;
 }
+
+/**
+  Promise for last initialized node.
+  
+  Callback can only be called when the promise has been resolved.
+
+  In exec, we have also to wait until the last node promise has been resolved before we can start
+  executing.
+*/
 
 Request.prototype.before = function(cb){
   this.node().before =  wrap(function(cb){cb()},[],cb);
@@ -177,8 +222,8 @@ Request.prototype.load = function(urls, cb){
 // and that not have an exit function, and that no node in prev request that has overwritten the
 // node and that have own exit function...
 Request.prototype.exec = function(prevs){
-  var start,
-     nodes = this.nodes;
+  var self = this;
+  var start, nodes = self.nodes;
   
   //
   // Find first index where re-rendering is needed. (common base).
@@ -209,9 +254,9 @@ Request.prototype.exec = function(prevs){
   for(var i=start, len=prevs.length;i<len;i++){
     var node = prevs[i];
     
-    node.$el || (node.select && node.select(this));
-    node.exit && node.exit(this);
-    node.exit || (node.hide && node.hide(this));
+    node.$el || (node.select && node.select(self));
+    node.exit && node.exit(self);
+    node.exit || (node.hide && node.hide(self));
   }
   
   //
@@ -221,23 +266,23 @@ Request.prototype.exec = function(prevs){
     var node = nodes[i],
         prev = prevs[i];
     
-    this.index = i+1;
+    self.index = i+1;
        
-    node.select && node.select(this);
+    node.select && node.select(self);
     
     //prev && prev.exit && prev.exit(this);
-    node.hide && node.hide(this);
+    node.hide && node.hide(self);
     
-    node.before && node.before(this);
+    node.before && node.before(self);
     
-    node.load && node.load(this);
-    node.render && node.render(this);
+    node.load && node.load(self);
+    node.render && node.render(self);
 
-    node.enter && node.enter(this);
-    node.enter || node.show(this);
+    node.enter && node.enter(self);
+    node.enter || node.show(self);
     
-    node.after && node.after(this);
-  } 
+    node.after && node.after(self);
+  }
 }
 
 Request.prototype.resourceRoute = function(resource){
@@ -260,7 +305,7 @@ Request.prototype.redirect = function(url){
 
 //
 // Private methods
-//
+// TODO: Generate error if selector returns empty set or more than one DOM node!
 Request.prototype._initNode = function(selector){
   var self = this;
   
@@ -406,6 +451,8 @@ route.listen = function (cb) {
           
       cb && cb(req);
       
+      req.endPromise.then(function(){
+      
       if(req.index !== req.nodes.length){
         if(req.notFound && _.isFunction(req.notFound)){
           req.index = 1;
@@ -421,6 +468,7 @@ route.listen = function (cb) {
       prevNodes = req.nodes;
         
       route.prevUrl = prevUrl;
+      });
     }
   }
 
