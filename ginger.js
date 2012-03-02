@@ -1148,15 +1148,14 @@ Model.prototype.toJSON = ginger.Model.prototype.toArgs
   Events will be produced when the model is updated.
 */
 Model.prototype.keepSynced = function(){
-  var socket = ginger.Model.socket
-  var self = this
-  if(this._id){
-    var bucket = self.__bucket
-    socket.on('update:'+this.key(), function(doc){
+  var socket = ginger.Model.socket,
+    self = this
+  if(self._id){
+    socket.on('update:'+self.key(), function(doc){
       self.set(doc)
       self.local().update(doc)
     })
-    socket.on('delete:'+this.key(), function(id){
+    socket.on('delete:'+self.key(), function(id){
       self.local().remove()
       self.emit('delete', id)
     })
@@ -1166,6 +1165,34 @@ Model.prototype.destroy = function(){
 // clean all the associated events, etc
 }
 Model.socket = null
+
+Model.use = function(capability, value){
+  switch(capability){
+    case 'socket': Model.socket = value;
+  }
+}
+
+Model.sync = function(id, updated, deleted){
+  var socket = ginger.Model.socket;
+  if(socket){
+    socket.emit('sync', id);
+    
+    socket.on('update:'+id, function(doc){
+      updated(doc);
+    });
+    socket.on('delete:'+id, function(){
+      deleted(doc);
+    });
+  }
+}
+Model.unsync = function(id){
+  var socket = ginger.Model.socket;
+  if(socket){
+    socket.emit('unsync', id);
+    socket.off('update:'+id);
+    socket.off('delete:'+id);
+  }
+}
 
 /**
   A collection is a set of ordered models. 
