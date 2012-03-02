@@ -1434,7 +1434,7 @@ Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected
 })
 ComboBox.prototype.firstValue = function(items){
   for(var key in items){
-    return items[key]
+    return key
   }
 }
 ComboBox.prototype.willChange = function(key, value){
