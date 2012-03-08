@@ -1,9 +1,8 @@
-define(['underscore', 'js!jade.js'], function(_){
+define(['underscore'], function(_){
 
 // TODO: 
 // Remove jade dependency, provide a .use kind of api to register external 
 // plugins.
-
 
 var route = {};
 
@@ -115,10 +114,27 @@ var Request = function(url){
   this.endPromise = new Promise();
 }
 
-Request.prototype.node = function(){
-  var index = this.index-1;
-  index = index < 0? 0:index;
-  return this.nodes[index];
+/**
+  use - Define plugins to be used for different tasks.
+  
+  use(kind, plugin)
+  
+  kind can be one of several:
+    'template'
+    
+    Template plugin. A template plugin is a function with this signature:
+    template({String}, {Object}), where string is the template, and object
+    is an object with arguments to pass to the template.
+  
+
+*/
+Request.prototype.use = function(kind, plugin){
+
+  switch(kind){
+    case 'template':
+      this.template = plugin;
+    break;
+  }
 }
 
 /**
@@ -303,6 +319,12 @@ Request.prototype.redirect = function(url){
   });
 }
 
+Request.prototype.node = function(){
+  var index = this.index-1;
+  index = index < 0? 0:index;
+  return this.nodes[index];
+}
+
 //
 // Private methods
 // TODO: Generate error if selector returns empty set or more than one DOM node!
@@ -354,14 +376,13 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     items.push('css!'+css)
   }
       
-  curl(items, function(t){
+  curl(items, function(templ){
     var args = {}
     if(locals){
       args[locals] = self.data;
     }
-    var fn = jade.compile(t,{locals:args});
-    
-    self.$el.html(fn(args));
+    var html = self.template ? self.template(templ, {locals:args}) : templ
+    self.$el.html(html);
     waitForImages(self.$el, function(){
       cb && cb();
     });
