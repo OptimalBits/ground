@@ -144,12 +144,12 @@ Request.prototype.use = function(kind, plugin){
   
   get(component:{String}, selector:{String}, cb:{Function})
   
-  get(component:{String}, selector:{String}, handler:{String})
+  get(component:{String}, selector:{String}, handler:{String}, [args:{Object}])
   
   Handler is a AMD module that returns a function with the signature: function(req).
 
 */
-Request.prototype.get = function(component, selector, cb){
+Request.prototype.get = function(component, selector, cb, args){
   var self = this;
 
   if(_.isFunction(component)){
@@ -177,7 +177,7 @@ Request.prototype.get = function(component, selector, cb){
         }
       } else {
         curl([cb], function(f){
-          f && f.call(self, self);
+          f && f.call(self, self, args);
           promise.resolve();
           if(promise.callbacks.length===0){
             self.endPromise.resolve();
