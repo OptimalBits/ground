@@ -23,9 +23,7 @@
    - namespaces for events and bindings.
    - instantiate classes without new operator.
    - use getter/setters to simplify the events and bindings.
-   - destroy function (will clean all bindings, etc).
    - validation (willChange is already a validator).
-   - reference counting for easier resource management?
    
    (c) 2011-2012 OptimalBits with selected parts from the internet
    dual licensed as public domain or MIT.
