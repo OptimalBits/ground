@@ -848,17 +848,21 @@ Base.prototype._set = function(key, val, args){
   }
 }
 Base.prototype.set = function(keyOrObj, val, args){
-  var changed = false
+  var changed = false, obj, self = this;
+  
   if(_.isObject(keyOrObj)){
-    var obj = keyOrObj
-    for(var key in obj){
-      changed = this._set(key, obj[key], args)?true:changed
-    }
+    args = val;
+    obj = keyOrObj;
+    _.each(obj, function(val, key){
+      changed = self._set(key, val, args)?true:changed;
+    });
   }else{
-    changed = this._set(keyOrObj, val, args)
+    obj = {}
+    obj[keyOrObj] = val;
+    changed = self._set(keyOrObj, val, args)
   }
   if(changed){
-    this.emit('change', this)
+    self.emit('changed:', obj, args);
   }
 }
 Base.prototype.willChange = function(key, val){
