@@ -180,30 +180,37 @@ ginger.indexOf = function(array, val, iter, isSorted){
 }
 
 // Apply asynchronous functions to every element in the array
-ginger.asyncForEach = function(array, fn, callback) {
-  var deferred = $.Deferred()
-  var completed = 0;
-  if(array.length === 0) {
-    if(_.isUndefined(callback)===false){
-      callback(); // done immediately
-    }
-    deferred.resolve()
-  }
-  for(var i=0,len = array.length;i<len;i++) {
-    fn(array[i], function(err) {
-      if(_.isNull(err)||_.isUndefined(err)){
+ginger.asyncForEach = function(array, fn, cb) {
+  var deferred = $.Deferred(), completed = 0;
+  
+  function iter(item, fn, len){
+    fn(item, function(err) {
+      if(!err){
         completed++;
         if(completed === len) {
-          if(_.isUndefined(callback)===false){
-            callback();
-          }
+          cb && cb(null);
           deferred.resolve()
-        }
+         }
       }else{
-        deferred.reject()
+       deferred.reject()
+       cb && cb(err);
       }
     });
   }
+  
+  if(_.isArray(array)){
+    if(array.length === 0) {
+      cb && cb(null);
+      deferred.resolve()
+    }else{
+      for(var i=0,len = array.length;i<len;i++) {
+        iter(array[i], fn, len);
+      }
+    }
+  }else{
+    iter(array, fn, 1);
+  }
+  
   return deferred
 }
 
