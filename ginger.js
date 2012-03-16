@@ -637,18 +637,27 @@ ServerStorage.all = function(bucket, parent, fn, opts){
     fn(null, null);
   }
 }
-ServerStorage.findById = function(bucket, id, fn){
+ServerStorage.find = function(bucket, id, query, cb){
+  var socket, url;
+  if(socket = ginger.Model.socket){
+    socket.emit('find', bucket, id, query, cb);
+  }else if(url = ginger.Model.url){
+    url += '/'+bucket+'/'+id+'/'+query.collection;
+    ginger.ajax.get(url, cb);
+  }else{
+    cb();
+  }
+}
+ServerStorage.findById = function(bucket, id, cb){
   var socket = ginger.Model.socket,
          url = ginger.Model.url;
   if(socket){
-    socket.emit('read:'+bucket, id, function(args){
-      fn(null, args);
-    })
+    socket.emit('read', bucket, id, cb);
   }else if(url){
     url = url+'/'+bucket+'/'+id;
-    ginger.ajax.get(url, fn);
+    ginger.ajax.get(url, cb);
   }else{
-    fn(null, null);
+    cb();
   }
 }
 ServerStorage.create = function(bucket, args, fn){
@@ -656,8 +665,8 @@ ServerStorage.create = function(bucket, args, fn){
          url = ginger.Model.url;
   
   if(socket){
-    socket.emit('create:'+bucket, args, function(id){
-      fn(null, id)
+    socket.emit('create', bucket, args, function(err, id){
+      fn(err, id);
     })
   }else if(url){
     url = url+'/'+bucket;
@@ -666,7 +675,6 @@ ServerStorage.create = function(bucket, args, fn){
     fn(null, null);
   }
 }
-
 ServerStorage.update = function(bucket, id, args, fn){
   var socket = ginger.Model.socket,
          url = ginger.Model.url;
@@ -674,7 +682,7 @@ ServerStorage.update = function(bucket, id, args, fn){
   fn = fn || ginger.noop;
   
   if(socket){
-    socket.emit('update:'+bucket, {id:id, attrs:args}, fn)
+    socket.emit('update', bucket, id, args, fn);
   }else if(url){
     url = url+'/'+bucket+'/'+id;
     ginger.ajax.put(url, fn, args);
@@ -682,12 +690,26 @@ ServerStorage.update = function(bucket, id, args, fn){
     fn(null, null);
   }
 }
-
+ServerStorage.add = function(bucket, id, collection, objIds, cb){
+  var socket = ginger.Model.socket;
+  if(socket){
+    socket.emit('add', bucket, id, collection, objIds, cb);
+  } else {
+    cb(null);
+  }
+}
+ServerStorage.remove = function(bucket, id, collection, objIds, cb){
+  var socket = ginger.Model.socket;
+  if(socket){
+    socket.emit('remove', bucket, id, collection, objIds, cb);
+  } else {
+    cb(null);
+  }
+}
 ServerStorage.count = function(bucket, fn){
   // TODO: Implement.
   fn(null, 0);
 }
-
 
 //
 // Global events
