@@ -1560,7 +1560,7 @@ ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
   this.super(ginger.CanvasView, 'constructor', classNames)
   this.$canvas = null
   var cv = this
-  this.on('change', function(){
+  this.on('changed:', function(){
     cv.draw()
   })
 })
@@ -1744,7 +1744,7 @@ Views.CheckBox = ginger.Declare(ginger.View, function(css){
   this.$text = $('<span/>').appendTo(this.$el)
   
   var self = this;
-  this.$checkbox.on('change',function(event){
+  this.$checkbox.on('changed:',function(event){
     self.set('checked',  $(this).is(':checked'));
   })
   
