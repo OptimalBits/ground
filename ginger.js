@@ -794,6 +794,7 @@ ginger.Declare = function(Super, Sub, staticOrName, bucket){
 //  Base Class - All Ginger classes derive from this one.
 //
 var Base = ginger.Base = function(){
+  this._refCounter = 1;
   this._bindings = {}
 }
 
@@ -949,7 +950,38 @@ Base.prototype.undoSet = function(key, value, fn){
   this.set(key, value)
   this.endUndoSet(key, fn)
 }
-
+Base.prototype.destroy = function(){
+  // TODO: call all the properties .release function if they have one
+  this.off();
+}
+Base.prototype.retain = function(){
+  this._refCounter++;
+  return this;
+}
+Base.prototype.release = function(){
+  this._refCounter--;
+  if(this._refCounter===0){
+    this.destroy();
+    this._destroyed = true;
+    this._destroyedTrace = new Error().stack;
+  }else if(this._refCounter < 0){
+    var msg;
+    if(this._destroyed){
+      msg = "Object has already been released";
+      if(this._destroyedTrace){
+        msg += '\n'+this._destroyedTrace;
+      }
+      throw new Error(msg);
+    }else{
+      msg = "Invalid reference count!";
+    }
+    throw new Error(msg);
+  }
+  return this;
+}
+Base.prototype.isDestroyed = function(){
+  return this._refCounter === 0;
+}
 //------------------------------------------------------------------------------
 //
 // Utility Classes
