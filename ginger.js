@@ -1264,6 +1264,13 @@ Model.use = function(capability, value){
     case 'socket': Model.socket = value;
   }
 }
+
+Model.set = function(attribute, value){
+  switch(attribute){
+    case 'socket': Model.socket = value;
+  }
+}
+
 /**
   A collection is a set of ordered models. 
   It provides delegation and proxing of events.
