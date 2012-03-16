@@ -1039,15 +1039,15 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   this.cid = this._id || this.cid || uuid()
 },
 {
-  findById : function(id, fn){
+  findById : function(id, cb){
     var model = this,
         socket = ginger.Model.socket,
         bucket = this.__bucket;
     ServerStorage.findById(bucket, id, function(err, args){
-      if(err) fn(err);
+      if(err) cb(err);
       else{
         args = args || Storage.findById(bucket, id)
-        _instantiate(model, args, fn)
+        _instantiate(model, args, cb)
       }
     })
     return this
@@ -1056,13 +1056,16 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     var model = this,
         bucket = this.__bucket;
         
-    ServerStorage.all(bucket, parent, function(err, array, key){
-      if(err) fn(err);
-      else{
-        var collection = array || Storage.all(bucket, parent)
-        _instantiateCollection(key, model, collection, fn)
-      }
-    })
+    ServerStorage.find(parent.__bucket, 
+                       parent.cid, 
+                       {collection:bucket}, function(err, docs){
+      if(!err){
+        var collection = docs || Storage.all(bucket, parent);
+        _instantiateCollection(parent, model, collection, fn)
+      }else{
+        fn(err);
+      }                  
+    });
     return this
   },
   first : function(fn, parent){
@@ -1081,7 +1084,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
         },
         all: function(fn, parent){
           var collection = Storage.all(bucket, parent)
-          _instantiateCollection(bucket, self, collection, fn)
+          _instantiateCollection(parent, self, collection, fn)
         },
         first: function(fn, parent){
           var args = Storage.first(bucket, parent)
@@ -1091,47 +1094,48 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
       return this._local
     }
   },
-  fromJSON : function(args, fn){
-    fn(new this(args))
+  fromJSON : function(args, cb){
+    cb(new this(args))
   }
 })
-var _instantiate = function(model, args, fn){
+var _instantiate = function(model, args, cb){
   if(args){
     model.fromJSON(args, function(instance){
       if(instance){
         instance.__bucket = model.__bucket;
         instance.init(function(){
-          fn(null, instance)
+          cb(null, instance)
         })
       }else{
-        fn(null, null)
+        cb(null, null)
       }
     })
   }else{
-    fn(null, null)
+    cb(null, null)
   }
 }
-var _instantiateCollection = function(urn, model, array, callback){
+var _instantiateCollection = function(parent, model, array, cb){
   if(array){
-    collection = new ginger.Collection(urn, model)
+    var collection = new ginger.Collection(parent, model)
+    collection.keepSynced(parent._keepSynced);
     ginger.asyncForEach(array, function(data, fn){
       _instantiate(model, data, function(err, instance){
         if((!err)&&(instance)){
-          collection.add(instance)
-          fn()
+          collection.add(instance, fn, true);
+          instance.release();
         }else{
           fn('Error instantiating instance:'+err)
         }
       })
     }, function(err){
       if(err){
-        callback(err, null)
+        cb(err, null)
       }else{
-        callback(null, collection)
+        cb(null, collection)
       }
     })
   }else{
-    callback(null, null)
+    cb(null, null)
   }
 }
 Model.prototype.key = function(){
@@ -1167,53 +1171,41 @@ Model.prototype.all = function(model, fn){
     fn(null)
   }
 }
-// Parent bucket is optional
-Model.prototype.save = function(parent, fn){
-  var args = this.toArgs()
-  if(_.isFunction(parent)){
-    this.update(args, parent)
-  }else{
-    this.update(parent, args, fn);
-  }
+Model.prototype.save = function(cb){
+  this.update(this.toArgs(),cb);
 }
-Model.prototype.update = function(parent, args, fn){
-  var model = this,
-     bucket = this.__bucket;
-     
-  if(arguments.length >= 3){
-    bucket = parent.__bucket + '/' + parent._id + '/' + bucket;
-  }else{
-    fn = args;
-    args = parent;
-  }
+Model.prototype.update = function(args, cb){
+  var self = this, bucket = self.__bucket;
     
-  fn = fn || ginger.noop;
+  cb = cb || ginger.noop;
 
-  if(this._id){
-    ServerStorage.update(bucket, this._id, args, function(err){
+  if(self._id){
+    ServerStorage.update(bucket, self._id, args, function(err){
       if(!err){
-        model.local().update(args)
+        self.local().update(args)
       }
-      fn(err)
+      cb(err)
     })
   }else{
     ServerStorage.create(bucket, args, function(err, id){
       if(!err){
         if(id){
-          model.local().remove()
-          model.cid = model._id = id
-          model.local().save()
-          fn(id)
+          self.local().remove()
+          self.cid = self._id = id
+          self.local().save()
+          cb(null, id)
         }else{
-          this.local().update(args)
-          fn(this.cid)
+          self.local().update(args)
+          cb(null, self.cid)
         }
-      } // TODO: We should call fn(err, id);
+      } else {
+        cb(err);
+      }
     })
   }
 }
 Model.prototype.toArgs = function(){
-  var args = {}  
+  var args = {};
   for(var key in this){
     if((_.isFunction(this[key])===false)&&(key[0] !== '_')){
       args[key] = this[key]
@@ -1223,26 +1215,49 @@ Model.prototype.toArgs = function(){
   return args
 }
 Model.prototype.toJSON = ginger.Model.prototype.toArgs
-/**
-  This will try to keep this model synchronized with the server.
-  Events will be produced when the model is updated.
-*/
+
 Model.prototype.keepSynced = function(){
-  var socket = ginger.Model.socket,
-    self = this
-  if(self._id){
-    socket.on('update:'+self.key(), function(doc){
-      self.set(doc)
-      self.local().update(doc)
-    })
-    socket.on('delete:'+self.key(), function(id){
-      self.local().remove()
-      self.emit('delete', id)
-    })
+  if(this._keepSynced===true){
+    return;
+  }
+  var socket = ginger.Model.socket;
+  if(socket){
+    var self = this, newDoc, id = this._id;
+    self._keepSynced = true;
+    
+    socket.emit('sync', id);
+    
+    socket.on('update:'+id, function(doc){
+      newDoc = doc;
+      self.set(doc, {sync:'false'});
+      self.local().update(doc);
+    });
+    
+    socket.on('delete:'+id, function(){
+      self.local().remove();
+      self.emit('delete', self._id)
+    });
+
+    self.on('changed:', function(doc, args){
+      if((doc !== newDoc) && (!args || (args.sync != false))){
+        self.update(doc, function(res){
+          // TODO: Use asyncdebounce to avoid faster updates than we 
+          // manage to process.
+        });
+      }
+    });
   }
 }
 Model.prototype.destroy = function(){
-// clean all the associated events, etc
+  this.super(Model, 'destroy');
+  
+  var socket = ginger.Model.socket;
+  if(socket && this._keepSynced){
+    var id = this._id;
+    socket.emit('unsync', id);
+    socket.removeListener('update:'+id);
+    socket.removeListener('delete:'+id);
+  }
 }
 Model.socket = null
 
@@ -1251,128 +1266,218 @@ Model.use = function(capability, value){
     case 'socket': Model.socket = value;
   }
 }
-
-Model.sync = function(id, updated, deleted){
-  var socket = ginger.Model.socket;
-  if(socket){
-    socket.emit('sync', id);
-    
-    socket.on('update:'+id, function(doc){
-      updated(doc);
-    });
-    socket.on('delete:'+id, function(){
-      deleted(doc);
-    });
-  }
-}
-Model.unsync = function(id){
-  var socket = ginger.Model.socket;
-  if(socket){
-    socket.emit('unsync', id);
-    socket.off('update:'+id);
-    socket.off('delete:'+id);
-  }
-}
-
 /**
   A collection is a set of ordered models. 
   It provides delegation and proxing of events.
 **/
-var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(urn, model){
+var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(parent, model, sortByFn){
   this.super(ginger.Collection)
   this._keepSynced = false
-  this._models = []
-  this.urn = urn
+  this.items = []
+  this._added = [];
+  this._removed = [];
+  this.parent = parent
   this.model = model
+  this.sortByFn = sortByFn
+  this.socket = ginger.Model.socket;
   
   var self = this
   this.on('sortByFn', function(fn){
-    self.sortBy(fn)
+    self.items = self.sortBy(fn)
   })
 })
-Collection.prototype.models = function(){
-  return this._models
-}
-Collection.prototype.add = function(model){
-  if(_.isArray(model)){
-    for(var i=0, len=model.length;i<len;i++){
-      this._add(model[i], this.sortByFn)
-    }
-  }else{
-    this._add(model, this.sortByFn)
-  }
-}
-Collection.prototype.remove = function(modelId){
-  var i, len
-  var models = this._models
-  for(i=0,len=models.length;i<len;i++){
-    if(models[i].cid === modelId){
-      break;
+Collection.prototype.save = function(cb){
+  var counter = 0, results = [];
+  
+  function callback(err){
+    if(err) {
+      counter = 0;
+      cb(err);
+    }else if(counter > 0){
+      counter--;
+      if(counter === 0){
+        this._added = [];
+        this._removed = [];
+        cb(null);
+      }
     }
   }
-  if(i!=models.length){
-    models[i].off('*', this._proxyEvent)
-    models.splice(i,1)
+  
+  if(this._removed.length>0){
+    counter++;
+    ServerStorage.remove(this.parent.__bucket, 
+                         this.parent._id,
+                         this.model.__bucket, 
+                         this._removed,
+                         callback);
   }
+  if(this._added.length>0){
+    counter++;
+    // TODO: Save items that have not yet been saved...
+    ServerStorage.add(this.parent.__bucket, 
+                      this.parent._id,
+                      this.__bucket, 
+                      this._added,
+                      callback);
+  }
+  if(counter===0) cb(null);
 }
-Collection.prototype.update = function(model){
-  var i = ginger.indexOf(this._models, model._id, function(a){return a._id}, true)
-  if(i>=0){
-    var updated = _.extend(this._models[i], model)
-    if(this.sortByFn){
-      this._models.splice(i,1)
-      i = _.sortedIndex(this._models, updated, this.sortByFn)
-      this._models.splice(i, 0, updated)
+Collection.prototype.add = function(items, cb, nosync){
+  var self = this;
+  cb = cb ? cb : ginger.noop;
+  ginger.asyncForEach(items, function(item, fn){
+    self._add(item, function(err){
+      if(!err){
+        if(self._keepSynced){
+          item.keepSynced();
+        }
+      }
+      fn(err);
+    }, nosync);
+  }, cb);
+}
+Collection.prototype.remove = function(itemIds, cb, nosync){
+  var self = this;
+  cb = cb?cb : ginger.noop;
+  ginger.asyncForEach(itemIds, function(itemId, fn){
+    var item = self.find(function(item){return item._id === itemId}),
+      cb = cb?cb:ginger.noop;
+  
+    if(item){
+      item.release();
+      item.off('changed:', self._update);
+      self.items = self.without(item);
+      if(item._id){
+        if(self._keepSynced){
+          if(nosync !== true){
+            ServerStorage.remove(self.parent.__bucket, 
+                                 self.parent._id,
+                                 self.model.__bucket,
+                                 item._id,
+                                 cb);
+          }
+        }else{
+          self._removed.push(itemId);
+          cb(null);
+        }
+      }else{
+        cb(null);
+      }
+      self.emit('removed:', item);
+    }else{
+      cb(null);
     }
-  }
+  },cb);
 }
 Collection.prototype.lock = function(){
   // Tries to lock this collection so that 
   // no other user can modify it.
 }
-Collection.prototype.keepSynced = function(){
-  var self = this
-  var socket = ginger.Model.socket
-  socket.on('add:'+this.urn, function(entry){
-    self.model.fromJSON(entry, function(instance){
-      instance.init(function(){
-        self.add(instance)
-        self.emit('add', instance)
-      })
-    })
-  })
-  socket.on('remove:'+this.urn, function(entryId){
-    self.remove(entryId)
-    self.emit('remove', entryId)
-  })
-  this.on('change', function(entry){
-    self.update(entry)
-    self.emit('update', entry)
-  })
-  this.on('delete', function(entryId){
-    self.remove(entryId)
-    self.emit('remove', entryId)
-  })
-  this._keepSynced = true
-  var models = this._models
-  for(var i=0, len=models.length;i<len;i++){
-    models[i].keepSynced()
+Collection.prototype.keepSynced = function(enable){
+  if(!enable||!ginger.Model.socket||this._keepSynced){
+    return;
   }
+  var self = this, 
+      socket = self.socket, 
+      bucket = self.model.__bucket,
+      id = self.parent._id;
+  
+  self._keepSynced = true
+  
+  socket.emit('sync', id);
+  
+  self._addListenerFn = _.bind(function(itemId){
+    var self = this;
+    this.model.findById(itemId, function(err, item){
+      if(item){
+        item.init(function(){
+          self.add(item, ginger.noop, true)
+          item.release();
+        })
+      }
+    })
+  }, self);
+  
+  self._removeListenerFn = _.bind(function(itemId){
+    this.remove(itemId, ginger.noop, true);
+  }, self);
+  
+  socket.on('add:'+id+':'+bucket, self._addListenerFn)
+  socket.on('remove:'+id+':'+bucket, self._removeListenerFn)
+  
+  this.map(function(item){
+    item.keepSynced()
+    item.on('deleted:', function(item){
+      self.remove(item._id);
+    });
+  });
+
   return this
 }
-Collection.prototype._add = function(model, sortByFn){
-  var self = this
-  if(sortByFn){
-    var i = _.sortedIndex(this._models, model, sortByFn)
-    this._models.splice(i, 0, model)
-  }else{
-    this._models.push(model)
+Collection.prototype.destroy = function(){
+  this.super(Collection, 'destroy');
+   
+  if(this.socket){
+    var bucket = this.model.__bucket, id = this.parent._id;
+    this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
+    this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
+    this._keepSynced && socket.emit('unsync', id);
   }
-  model.on('*', function(){
-    self._proxyEvent.apply(self, arguments)
-  })
-  if(this._keepSynced){
-    model.keepSynced()
+  this.each(function(item){item.release()});
+  this.items = null;
+}
+Collection.prototype._add = function(item, cb, nosync){
+  var self = this
+  
+  if(self.find(function(i){return i.cid===item.cid})){
+    cb && cb(null);
+    return;
+  }
+  if(self.sortByFn){
+    var i = this.sortedIndex(item, self.sortByFn)
+    self.items.splice(i, 0, item)
+  }else{
+    self.items.push(item)
+  }
+
+  item.retain();
+  self.emit('added:', item)
+  
+  self._updateFn = _.bind(function(item){
+    if(this.sortByFn){
+      var i= this.indexOf(item);
+      this.items.splice(i,1);
+      i = this.sortedIndex(item, this.sortByFn)
+      this.items.splice(i, 0, item)
+    }
+    this.emit('updated:', item);
+  }, self, item);
+  
+  item.on('changed:', self._updateFn);
+  
+  if(self._keepSynced){
+    if(nosync !== true){
+      function storageAdd(){
+        ServerStorage.add(self.parent.__bucket, 
+                          self.parent._id,
+                          item.__bucket,
+                          item._id,
+                          cb);    
+      }
+      if(item._id){
+        storageAdd()
+      }else{
+        item.save(function(err){
+          err && cb(err);
+          !err && storageAdd();
+        });
+      }
+    }else{
+      cb && cb(null);
+    }
+  }else{
+    self._added.push(item);
+    cb && cb(null);
   }
 }
 Collection.prototype._proxyEvent = function(){
@@ -1385,10 +1490,10 @@ var methods =
     'contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex', 'toArray', 'size',
     'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty', 'groupBy']
 
-// Mix in each Underscore method as a proxy to `Collection#_models`.
+// Mix in each Underscore method as a proxy to `Collection#items`.
 _.each(methods, function(method) {
   Collection.prototype[method] = function() {
-    return _[method].apply(_, [this._models].concat(_.toArray(arguments)))
+    return _[method].apply(_, [this.items].concat(_.toArray(arguments)))
   }
 })
 
