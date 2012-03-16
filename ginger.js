@@ -764,11 +764,20 @@ function Inherit(Sub, Super){
 
 ginger.Declare = function(Super, Sub, staticOrName, bucket){
   // Sub = makeClass(Sub)
-
+  if(!Sub){
+    Sub = function(){
+      Super.prototype.constructor.apply(this, arguments);
+    };
+  }
   Inherit(Sub, Super)
   if(Super.__staticMethods){
     _.extend(Sub, Super.__staticMethods)
   }
+  
+  Sub.bucket = function(bucket){
+    Sub.__bucket = Sub.prototype.__bucket = bucket
+  }
+  
   if(staticOrName){
     if(_.isObject(staticOrName)){
       Sub.__staticMethods = staticOrName
@@ -776,9 +785,7 @@ ginger.Declare = function(Super, Sub, staticOrName, bucket){
     }else{
       bucket = staticOrName
     }
-  }
-  if(bucket){
-    Sub.__bucket = Sub.prototype.__bucket = bucket
+    bucket && Sub.bucket(bucket);
   }
   return Sub
 }
