@@ -156,12 +156,16 @@ Request.prototype.get = function(component, selector, cb, args){
     selector = ('body');
     cb = component;
   }else{
-    if(component.charAt(0) === ':'){
-      self.params[component.replace(':','')] = self.components[self.index];
-    } else if(component !== self.components[self.index]){
-       return self;
+    if(self.index < self.components.length){
+      if(component.charAt(0) === ':'){
+        self.params[component.replace(':','')] = self.components[self.index];
+      } else if(component !== self.components[self.index]){
+        return self;
+      }
+      self.index++;
+    }else{
+      return self;
     }
-    self.index++;
   }
   
   self.nodePromise.then(function(){
