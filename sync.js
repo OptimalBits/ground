@@ -30,7 +30,7 @@
   
 */
 
-var sync = function(subClient, pubClient, sio, sockets){
+var sync = function(pubClient, subClient, sio, sockets){
   var self = this;
     
   this.pubClient = pubClient;
@@ -107,7 +107,4 @@ sync.prototype.remove = function(objId, bucket, ids){
 }
 
 exports = module.exports = sync; 
-
-
-
 

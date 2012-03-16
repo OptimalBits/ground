@@ -48,7 +48,7 @@ exports = module.exports = function(models, redisPort, redisAddress, sio, socket
   var pubClient = redis.createClient(redisPort, redisAddress),
       subClient = redis.createClient(redisPort, redisAddress);
       
-  var sync = this.sync = new Sync(subClient, pubClient, sio, sockets);
+  var sync = this.sync = new Sync(pubClient, subClient, sio, sockets);
 
   function getModel(bucket, cb){
     if(bucket in models){
