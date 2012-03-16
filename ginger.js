@@ -361,9 +361,9 @@ EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, names
       event = eventAndNamespace[0]
       
   if(eventAndNamespace.length === 1){
-    delete listeners[event]
-    delete namespaces[event];
-  }else{
+    listeners && delete listeners[event]
+    namespaces && delete namespaces[event];
+  }else if(namespaces){
     var namespace = eventAndNamespace[2];
         
     if(namespaces[event]){
@@ -384,12 +384,17 @@ EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, names
   * @returns {Object} The current instance of EventEmitter to allow chaining
   */
 EventEmitter.prototype.removeAllListeners = function(eventNames) {
-  var events = eventNames.split(' '),
-      listeners = this._getListeners(),
-      namespaces = this._getNamespaces();
+  var listeners = this._listeners, namespaces = this._namespaces;
   
-  for(var i=0, len=events.length;i<len;i++){
-    this._removeNamespacedEvent(events[i], listeners, namespaces)
+  if(listeners){
+    if(eventNames){
+      var events = eventNames.split(' ')
+      for(var i=0, len=events.length;i<len;i++){
+        this._removeNamespacedEvent(events[i], listeners, namespaces)
+      }
+    }else{
+      this._listeners = undefined;
+    }
   }
   return this;
 }
