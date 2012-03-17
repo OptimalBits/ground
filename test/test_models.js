@@ -1,9 +1,10 @@
 define(['ginger'], function(ginger){
 
-ginger.Model.use('socket', socket);
+ginger.Model.set('socket', socket);
 
 var Animal = ginger.Declare(ginger.Model);
 Animal.bucket('animals');
+Animal.use('transport', 'socket');
 
 describe('Model', function(){
   var animal = new Animal();

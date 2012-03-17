@@ -1,9 +1,10 @@
 define(['ginger'], function(ginger){
 
-ginger.Model.use('socket', socket);
+ginger.Model.set('socket', socket);
 
 var Animal = ginger.Declare(ginger.Model);
 Animal.bucket('animals');
+Animal.use('socket');
 
 
 describe('Collections', function(){
@@ -58,6 +59,7 @@ describe('Collections', function(){
       mirrorZoo.keepSynced();
       
       zoo.all(Animal, function(err, animals){
+        expect(animals).to.be.an(Object);
         animals.on('added:', function(instance){
           expect(instance).to.have.property('name');
           expect(instance.name).to.be.eql('fox');
