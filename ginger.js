@@ -34,12 +34,9 @@
    - https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Object/create
    - http://jonathanfine.wordpress.com/2008/09/21/implementing-super-in-javascript/
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
- */
+*/
 
-define(['jquery', 
-        'underscore', 
-        'ginger/route',
-        'ginger/uuid'], function($, _, route, uuid){
+define(['jquery', 'underscore', 'ginger/route', 'ginger/uuid'], function($, _, route, uuid){
 
 /**
   Define some useful jQuery plugins.
@@ -95,31 +92,33 @@ ginger.route = route;
 //
 ginger.noop = function(){}
 
-ginger.asyncDebounce = function (func) {
-  var delayedFunc = null,
-        executing = null;
+ginger.uuid = uuid;
+
+ginger.asyncDebounce = function (fn) {
+  var delayedFunc = null, executing = null;
 
   return function debounced () {
     var context = this,
-      args = _.toArray(arguments),
+      args = arguments,
       nargs = args.length,
-      callback = args[nargs-1];
+      cb = args[nargs-1];
         
     var delayed = function() {
-      executing = func;
-      func.apply(context, args);
+      executing = fn;
+      fn.apply(context, args);
     };
 
     args[nargs-1] = function(){
-      callback.apply(context, arguments);
+      cb.apply(context, arguments);
       executing = null;
       if(delayedFunc){
-        delayedFunc();
+        var f = delayedFunc;
+        delayedFunc = null;
+        f();
       }
-      delayedFunc = null;
     }
 
-    if(executing !== null){
+    if(executing){
       delayedFunc = delayed;
     }else{
       delayed();
@@ -181,7 +180,7 @@ ginger.indexOf = function(array, val, iter, isSorted){
 ginger.asyncForEach = function(array, fn, cb) {
   var deferred = $.Deferred(), completed = 0;
   
-  function iter(item, fn, len){
+  function iter(item, len){
     fn(item, function(err) {
       if(!err){
         completed++;
@@ -202,11 +201,11 @@ ginger.asyncForEach = function(array, fn, cb) {
       deferred.resolve()
     }else{
       for(var i=0,len = array.length;i<len;i++) {
-        iter(array[i], fn, len);
+        iter(array[i], len);
       }
     }
   }else{
-    iter(array, fn, 1);
+    iter(array, 1);
   }
   
   return deferred
@@ -1587,6 +1586,7 @@ Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected
   })
 })
 ComboBox.prototype.firstValue = function(items){
+//  return _.find(items, function(key){return true});
   for(var key in items){
     return key
   }
