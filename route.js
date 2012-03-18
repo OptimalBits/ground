@@ -1,9 +1,27 @@
-define(['underscore', 'js!jade.js'], function(_){
+define(['underscore'], function(_){
+
+// TODO: 
+// Remove jade dependency, provide a .use kind of api to register external 
+// plugins.
 
 var route = {};
 
-var parseQuery = function(keyValues){
-  return {}
+var parseQuery = function(queryString){
+  if(queryString){
+    var keyValues = queryString.split('&'),
+        i,
+        len = keyValues.length;
+  
+    var obj = {}
+  
+    for(i=0;i<len;i++){
+      var keyValue = keyValues[i].split('=');
+      obj[keyValue[0]] = keyValue[1] ? keyValue[1]:'';
+    }
+    return obj;
+  }else{
+    return {};
+  }
 }
 
 //
@@ -45,7 +63,7 @@ var wrap = function(fn, args, cb){
   return function(ctx){
     var promise = new Promise();
   
-    (function(done){
+    (function(done, args ){
       ctx.promise.then(function(){
         args.push(function(){
           cb || done();
@@ -54,7 +72,7 @@ var wrap = function(fn, args, cb){
         });
         fn.apply(ctx, args);
       });
-    })(_.bind(promise.resolve, promise));
+    })(_.bind(promise.resolve,promise), _.clone(args));
     ctx.promise = promise;
   }
 }
@@ -89,50 +107,101 @@ var Request = function(url){
   
   this.promise = new Promise();
   this.promise.resolve();
+  
+  this.nodePromise = new Promise();
+  this.nodePromise.resolve();
+  
+  this.endPromise = new Promise();
 }
 
-Request.prototype.node = function(){
-  var index = this.index-1;
-  index = index < 0? 0:index;
-  return this.nodes[index];
+/**
+  use - Define plugins to be used for different tasks.
+  
+  use(kind, plugin)
+  
+  kind can be one of several:
+    'template'
+    
+    Template plugin. A template plugin is a function with this signature:
+    template({String}, {Object}), where string is the template, and object
+    is an object with arguments to pass to the template.
+  
+
+*/
+Request.prototype.use = function(kind, plugin){
+
+  switch(kind){
+    case 'template':
+      this.template = plugin;
+    break;
+  }
 }
 
-// TODO: Add queries.
+/**
+  get - Define a GET route.
+  
+  get(cb:{Function})
+  
+  get(component:{String}, selector:{String}, cb:{Function})
+  
+  get(component:{String}, selector:{String}, handler:{String}, [args:{Object}])
+  
+  Handler is a AMD module that returns a function with the signature: function(req).
 
-//
-// Commands
-//
-Request.prototype.get = function(component, selector, cb){
+*/
+Request.prototype.get = function(component, selector, cb, args){
   var self = this;
 
-  if(_.isString(component)){
-    if(component.charAt(0) === ':'){
-      self.params[component.replace(':','')] = self.components[self.index];
-    } else if(component !== self.components[self.index]){
-       return;
-    }
-    self.index++;
-  }else{
+  if(_.isFunction(component)){
     selector = ('body');
     cb = component;
+  }else{
+    if(self.index < self.components.length){
+      if(component.charAt(0) === ':'){
+        self.params[component.replace(':','')] = self.components[self.index];
+      } else if(component !== self.components[self.index]){
+        return self;
+      }
+      self.index++;
+    }else{
+      return self;
+    }
   }
   
-  (function(node){
-    node.select = wrap(function(cb){
-      node.$el = self.$el = $(selector);
-      cb();
-    }, []);
-    node.selector = selector;
-    node.hide = wrap(function(cb){
-      node.$el.hide();
-      cb();
-    }, []);
-  })(self.node());
+  self.nodePromise.then(function(){
+    self.nodePromise = new Promise();
+    ;(function(promise){
+      self._initNode(selector);
   
-  cb && cb.call(self, self);
+      if(_.isFunction(cb)){
+        cb && cb.call(self, self);
+        promise.resolve();
+        if(promise.callbacks.length===0){
+          self.endPromise.resolve();
+        }
+      } else {
+        curl([cb], function(f){
+          f && f.call(self, self, args);
+          promise.resolve();
+          if(promise.callbacks.length===0){
+            self.endPromise.resolve();
+          }
+        });
+      }
+    })(self.nodePromise);
+  });
   
   return self;
 }
+
+/**
+  Promise for last initialized node.
+  
+  Callback can only be called when the promise has been resolved.
+
+  In exec, we have also to wait until the last node promise has been resolved before we can start
+  executing.
+*/
 
 Request.prototype.before = function(cb){
   this.node().before =  wrap(function(cb){cb()},[],cb);
@@ -173,8 +242,8 @@ Request.prototype.load = function(urls, cb){
 // and that not have an exit function, and that no node in prev request that has overwritten the
 // node and that have own exit function...
 Request.prototype.exec = function(prevs){
-  var start,
-     nodes = this.nodes;
+  var self = this;
+  var start, nodes = self.nodes;
   
   //
   // Find first index where re-rendering is needed. (common base).
@@ -205,9 +274,9 @@ Request.prototype.exec = function(prevs){
   for(var i=start, len=prevs.length;i<len;i++){
     var node = prevs[i];
     
-    node.$el || (node.select && node.select(this));
-    node.exit && node.exit(this);
-    node.exit || (node.hide && node.hide(this));
+    node.$el || (node.select && node.select(self));
+    node.exit && node.exit(self);
+    node.exit || (node.hide && node.hide(self));
   }
   
   //
@@ -217,21 +286,23 @@ Request.prototype.exec = function(prevs){
     var node = nodes[i],
         prev = prevs[i];
     
-    this.index = i+1;
+    self.index = i+1;
        
-    node.select && node.select(this);
+    node.select && node.select(self);
     
     //prev && prev.exit && prev.exit(this);
-    node.hide && node.hide(this);
+    node.hide && node.hide(self);
     
-    node.before && node.before(this);
+    node.before && node.before(self);
     
-    node.load && node.load(this);
-    node.render && node.render(this);
-    node.enter && node.enter(this);
+    node.load && node.load(self);
+    node.render && node.render(self);
+
+    node.enter && node.enter(self);
+    node.enter || node.show(self);
     
-    node.after && node.after(this);
-  } 
+    node.after && node.after(self);
+  }
 }
 
 Request.prototype.resourceRoute = function(resource){
@@ -252,9 +323,36 @@ Request.prototype.redirect = function(url){
   });
 }
 
+Request.prototype.node = function(){
+  var index = this.index-1;
+  index = index < 0? 0:index;
+  return this.nodes[index];
+}
+
 //
 // Private methods
-//
+// TODO: Generate error if selector returns empty set or more than one DOM node!
+Request.prototype._initNode = function(selector){
+  var self = this;
+  
+  (function(node){
+     node.select = wrap(function(cb){
+       node.$el = self.$el = $(selector);
+       cb();
+     }, []);
+     node.selector = selector;
+   
+     node.hide = wrap(function(cb){
+       node.$el.hide();
+       cb();
+     }, []);
+   
+     node.show = wrap(function(cb){
+       node.$el.show();
+       cb();
+     }, []);
+ })(self.node());
+}
 
 Request.prototype._anim = function(node, name, speed, cb){
   node.$el[name](speed || 'slow', cb);
@@ -282,14 +380,13 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     items.push('css!'+css)
   }
       
-  curl(items, function(t){
+  curl(items, function(templ){
     var args = {}
     if(locals){
       args[locals] = self.data;
     }
-    var fn = jade.compile(t,{locals:args});
-    
-    self.$el.html(fn(args));
+    var html = self.template ? self.template(templ, {locals:args}) : templ
+    self.$el.html(html);
     waitForImages(self.$el, function(){
       cb && cb();
     });
@@ -378,11 +475,25 @@ route.listen = function (cb) {
           req = new Request(location.hash);
           
       cb && cb(req);
-
+      
+      req.endPromise.then(function(){
+      
+      if(req.index !== req.nodes.length){
+        if(req.notFound && _.isFunction(req.notFound)){
+          req.index = 1;
+          req._initNode('body')
+          req.notFound.call(req, req);
+        }else{
+          console.log('Undefined route:'+location.hash);
+          return;
+        }
+      }
+  
       req.exec(prevNodes);
       prevNodes = req.nodes;
         
       route.prevUrl = prevUrl;
+      });
     }
   }
 
