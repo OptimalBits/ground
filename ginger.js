@@ -1575,7 +1575,7 @@ Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected
   }else{
     view.value = this.firstValue(items)
   }
-  view.items = items
+  view.items = items || {};
 
   view.$el.comboBox(view.items, view.value).change(function(event){
     view.set('value', event.target.value)
@@ -1597,6 +1597,24 @@ ComboBox.prototype.willChange = function(key, value){
   }else{
     return value
   }
+}
+ComboBox.prototype.add = function(item,selected) {  
+  this.items[item.key] = item.value;
+  
+  var option = '<option value="'+item.key+'">'+item.value+'</option>';
+  var $select = $('select', this.$el);
+  $select.append(option);
+  var view = this;
+  view.on('value', function(value){
+      $('select',view.$el).val(value)
+  })
+  if(selected) {
+    $select.val(item.key);
+  }
+}
+ComboBox.prototype.remove = function(key) {
+  delete this.items[key];
+  $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
 Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
