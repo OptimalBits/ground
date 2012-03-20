@@ -1112,7 +1112,7 @@ var _instantiateCollection = function(parent, model, array, cb){
   }
 }
 Model.prototype.transport = function(){
-  return this.__transport; 
+  return this.__transport || Model.transport();
 }
 Model.prototype.key = function(){
   return this.__bucket+':'+this._id
