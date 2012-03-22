@@ -85,7 +85,7 @@ describe('Collections', function(){
       });  
     });
   });
-/*
+
   it('update item propagates to the same item in a collection', function(done){
     Zoo.findById(zoo._id, function(err, zoo){
       var testAnimal;
@@ -116,9 +116,8 @@ describe('Collections', function(){
       });
     });
   });
-  */
+  
   describe('Remove', function(){
-  /*
     it('remove item from collection', function(done){
       Zoo.findById(zoo._id, function(err, zoo){
         zoo.all(Animal, function(err, animals){
@@ -151,7 +150,6 @@ describe('Collections', function(){
         });
       });
     });
-    */
     
     it('remove item from collection propagates', function(done){
       Zoo.findById(zoo._id, function(err, zoo){
