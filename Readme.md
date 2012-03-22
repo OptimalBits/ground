@@ -178,7 +178,7 @@ Lets give some examples:
     // Create a class with a custom constructor.
     var House = ginger.Declare(ginger.Base, function(floors, colour){
       // Don't forget to  call super class constructor!
-      this.super(ginger.Base);
+      this.super(House);
       this.floors = floors;
       this.colour = colour;
     });
