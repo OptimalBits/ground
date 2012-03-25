@@ -242,7 +242,7 @@ EventEmitter.prototype.on = function(eventNames, listener) {
   var listeners = this._getListeners()
   
   for(var i=0, len=events.length;i<len;i++){
-    var eventAndNamespace = events[i].split('.')
+    var eventAndNamespace = events[i].split('/')
         event = eventAndNamespace[0];
 
     if(listeners[event]) {
@@ -354,7 +354,7 @@ EventEmitter.prototype._removeListener = function(event, listener){
 }
 
 EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, namespaces){
-  var eventAndNamespace = event.split('.')
+  var eventAndNamespace = event.split('/')
       event = eventAndNamespace[0]
       
   if(eventAndNamespace.length === 1){
@@ -400,8 +400,8 @@ EventEmitter.prototype.removeAllListeners = function(eventNames) {
   Aliases
 */
 EventEmitter.prototype.addListener = EventEmitter.prototype.on;
-EventEmitter.prototype.addObserver = EventEmitter.prototype.on
-EventEmitter.prototype.removeListener = EventEmitter.prototype.off
+EventEmitter.prototype.addObserver = EventEmitter.prototype.on;
+EventEmitter.prototype.removeListener = EventEmitter.prototype.off;
 
 //
 // Undo Manager
@@ -727,15 +727,11 @@ ginger.Declare = function(Super, Sub, staticOrName, bucket){
       Super.prototype.constructor.apply(this, arguments);
     };
   }
+  _.extend(Sub, Super);
   Inherit(Sub, Super)
-  if(Super.__staticMethods){
-    _.extend(Sub, Super.__staticMethods)
-  }
-  
   if(staticOrName){
     if(_.isObject(staticOrName)){
-      Sub.__staticMethods = staticOrName
-      _.extend(Sub, staticOrName)
+      _.extend(Sub, staticOrName);
     }else{
       bucket = staticOrName
     }
@@ -789,14 +785,24 @@ Base.prototype.on = function(eventNames, listener){
 
 /**
   set - Sets a property and notifies any listeners attached to it.
-
 */
-Base.prototype._set = function(key, val, args){
-  if(this[key]!=val){
-    var oldval = this[key]
-    var val = this.willChange? this.willChange(key, val):val
-    this[key] = val
-    this.emit(key, val, oldval, args)
+Base.prototype._set = function(keypath, val, args){
+  var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
+  
+  for(var i=0;i<len;i++){
+    var t = obj[path[i]];
+    if (!t){
+      obj = obj[path[i]] ={};
+    }else{
+      obj = t;
+    }
+  }
+  
+  if(obj[key]!=val){
+    var oldval = obj[key]
+    var val = this.willChange ? this.willChange(key, val):val
+    obj[key] = val
+    this.emit(keypath, val, oldval, args)
     return true
   }else{
     return false
@@ -805,29 +811,38 @@ Base.prototype._set = function(key, val, args){
 Base.prototype.set = function(keyOrObj, val, args){
   var changed = false, obj, self = this;
   
-  if(_.isObject(keyOrObj)){
+  if(typeof keyOrObj == 'object'){
     args = val;
     obj = keyOrObj;
     _.each(obj, function(val, key){
       changed = self._set(key, val, args)?true:changed;
     });
   }else{
-    obj = {}
-    obj[keyOrObj] = val;
     changed = self._set(keyOrObj, val, args)
   }
   if(changed){
+    if(!obj){
+      obj = {}
+      obj[keyOrObj] = val;
+    }
     self.emit('changed:', obj, args);
   }
 }
 Base.prototype.willChange = function(key, val){
-  return val
+  return val;
 }
+
 /**
-  get - Gets a property. Just declared for symmetry with set.
+  get - Gets a property. Accepts key paths for accessing deep properties.
 */
 Base.prototype.get = function(key){
-  return this.key
+  var path = key.split('.'), result;
+  
+  result = this[path[0]];
+  for(var i=1, len=path.length;i<len;i++){
+    result = result[path[i]];
+  }
+  return result;
 }
 /**
  * bind - Creates a binding between two keys.
@@ -870,11 +885,19 @@ Base.prototype.unbind = function(key){
     delete bindings[key]
   }
 }
-Base.prototype.init = function(err, callback){
-  console.log("init method not implemented by:"+this)
-}
-Base.prototype.deinit = function(){
-  console.log("init method not implemented by:"+this)
+Base.prototype.format = function(property, fn){
+  if(arguments.length==1){
+    if(property in this._formatters){
+      return this._formatters[property](this.get(property));
+    }else{
+      return this.get(property);
+    }
+  }else{
+    if(!this._formatters){
+      this._formatters = {};
+    }
+    this._formatters[property] = fn;
+  }
 }
 /**
   Begins an undo operation over setting a given key to a value.
@@ -1121,7 +1144,7 @@ var _instantiateCollection = function(parent, model, array, cb){
   }
 }
 Model.prototype.transport = function(){
-  return this.__transport || Model.transport();
+  return this.__transport || this.constructor.transport();
 }
 Model.prototype.key = function(){
   return this.__bucket+':'+this._id
@@ -1149,11 +1172,11 @@ Model.prototype.local = function(){
     return this._local
   }
 }
-Model.prototype.all = function(model, fn){
+Model.prototype.all = function(model, cb){
   if(this._id){
-    model.all(fn, this)
+   model.all(cb, this)
   }else{
-    fn(null)
+   cb(null)
   }
 }
 
@@ -1208,12 +1231,15 @@ Model.prototype.toArgs = function(){
 Model.prototype.toJSON = ginger.Model.prototype.toArgs
 
 Model.prototype.keepSynced = function(){
-  if(this._keepSynced===true){
+  var self = this;
+  if(self._keepSynced===true){
     return;
   }
-  var socket = ginger.Model.socket;
-  if(socket){
-    var self = this, newDoc, id = this._id;
+  
+  if(self.transport() === 'socket'){
+    var socket = ginger.Model.socket;
+    
+    var newDoc, id = self._id;
     self._keepSynced = true;
     
     socket.emit('sync', id);
@@ -1228,17 +1254,17 @@ Model.prototype.keepSynced = function(){
       self.local().remove();
       self.emit('delete', self._id)
     });
-
-    self.on('changed:', function(doc, args){
-      if((doc !== newDoc) && (!args || (args.sync != false))){
-        self.update(doc, function(res){
-          // TODO: Use asyncdebounce to avoid faster updates than we 
-          // manage to process.
-        });
-      }
-    });
   }
+  
+  self.on('changed:', function(doc, args){
+    if((doc !== newDoc) && (!args || (args.sync != false))){
+      self.update(doc, function(res){
+        // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
+      });
+    }
+  });
 }
+
 Model.prototype.destroy = function(){
   this.super(Model, 'destroy');
   
