@@ -887,7 +887,12 @@ Base.prototype.unbind = function(key){
 }
 Base.prototype.format = function(property, fn){
   if(arguments.length==1){
-    if(property in this._formatters){
+    if(_.isObject(property)){
+      if(!this._formatters){
+        this._formatters = {};
+      }
+      _.extend(this._formatters, property);
+    } else if((this._formatters)&&(property in this._formatters)){
       return this._formatters[property](this.get(property));
     }else{
       return this.get(property);
