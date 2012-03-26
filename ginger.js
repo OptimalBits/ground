@@ -1188,11 +1188,22 @@ Model.prototype.all = function(model, cb){
 
 // TODO: Add a __dirty flag so we do not save unncessarily.
 // this flag a easily be maintained by listening to the changed: event.
-Model.prototype.save = function(cb){
-  this.update(this.toArgs(),cb);
+Model.prototype.save = function(transport, cb){
+  this.update(this.toArgs(), transport, cb);
 }
-Model.prototype.update = function(args, cb){
-  var self = this, bucket = self.__bucket, transport = this.transport();
+/*
+  update model
+  update(args, [transpor, cb])
+*/
+Model.prototype.update = function(args, transport, cb){
+  transport= transport ? transport : this.transport();
+  
+  if(_.isFunction(transport)){
+    cb = transport;
+    transport = this.transport();
+  }
+  
+  var self = this, bucket = self.__bucket;
     
   cb = cb || ginger.noop;
 
