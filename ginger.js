@@ -1016,7 +1016,8 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   _.extend(this, args)
   _.defaults(this, {
     _socket:ginger.Model.socket,
-    __model:true
+    __model:true,
+    __dirty:false
   })
   this.cid = this._id || this.cid || uuid()
   this.__transport = Model.__transport;
