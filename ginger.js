@@ -786,7 +786,7 @@ Base.prototype.on = function(eventNames, listener){
 /**
   set - Sets a property and notifies any listeners attached to it.
 */
-Base.prototype._set = function(keypath, val, args){
+Base.prototype._set = function(keypath, val, options){
   var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
   
   for(var i=0;i<len;i++){
@@ -799,33 +799,33 @@ Base.prototype._set = function(keypath, val, args){
   }
   
   if(obj[key]!=val){
-    var oldval = obj[key]
-    var val = this.willChange ? this.willChange(key, val):val
+    var oldval = obj[key],
+      val = this.willChange ? this.willChange(key, val):val;
     obj[key] = val
-    this.emit(keypath, val, oldval, args)
+    this.emit(keypath, val, oldval, options)
     return true
   }else{
     return false
   }
 }
-Base.prototype.set = function(keyOrObj, val, args){
+Base.prototype.set = function(keyOrObj, val, options){
   var changed = false, obj, self = this;
   
   if(typeof keyOrObj == 'object'){
     args = val;
     obj = keyOrObj;
     _.each(obj, function(val, key){
-      changed = self._set(key, val, args)?true:changed;
+      changed = self._set(key, val, options)?true:changed;
     });
   }else{
-    changed = self._set(keyOrObj, val, args)
+    changed = self._set(keyOrObj, val, options)
   }
   if(changed){
     if(!obj){
       obj = {}
       obj[keyOrObj] = val;
     }
-    self.emit('changed:', obj, args);
+    self.emit('changed:', obj, options);
   }
 }
 Base.prototype.willChange = function(key, val){
