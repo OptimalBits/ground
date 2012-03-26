@@ -30,17 +30,17 @@
   
 */
 
-var sync = function(pubClient, subClient, sio, sockets){
+var sync = function(pubClient, subClient, sockets, sio){
   var self = this;
     
   this.pubClient = pubClient;
     
-  if(sio){
-    if(!sockets){
-      sockets = sio.sockets;
+  if(sockets){
+    if(!sio){
+      sio = sockets;
     }
     
-    sockets.on('connection', function(socket){
+    sio.on('connection', function(socket){
       console.log("Socket %s connected in the Sync Module", socket.id);
       socket.on('sync', function(id){
         if(self.check){

@@ -44,11 +44,11 @@ var Sync = require('./sync'),
     util = require('util'),
     _ = require('underscore');
 
-exports = module.exports = function(models, redisPort, redisAddress, sio, sockets){
+exports = module.exports = function(models, redisPort, redisAddress, sockets, sio){
   var pubClient = redis.createClient(redisPort, redisAddress),
       subClient = redis.createClient(redisPort, redisAddress);
       
-  var sync = this.sync = new Sync(pubClient, subClient, sio, sockets);
+  var sync = this.sync = new Sync(pubClient, subClient, sockets, sio);
 
   function getModel(bucket, cb){
     if(bucket in models){
@@ -59,11 +59,13 @@ exports = module.exports = function(models, redisPort, redisAddress, sio, socket
     }
   }
   
-  if(!sockets){
-    sockets = sio.sockets;
+  if(!sio){
+    sio = sockets;
   }
 
-  sockets.on('connection', function(socket){
+  sio.on('connection', function(socket){
+    console.log('Connection to:'+socket);
+  
     socket.on('create', function(bucket, args, cb){
       var Model = getModel(bucket, cb);
       if(Model){
@@ -94,8 +96,10 @@ exports = module.exports = function(models, redisPort, redisAddress, sio, socket
     });
 
     socket.on('read', function(bucket, id, cb){
+      console.log("BUCKET:"+bucket);
       var Model = getModel(bucket, cb);
       if(Model){
+        console.log(Model);
         Model.findById(id).exclude(Model.exclude).run(cb);
       }
     });
