@@ -63,6 +63,33 @@ describe('Model', function(){
     });
   });
   
+  describe('fetch', function(){
+    var dolphin, whale, shark;
+    
+    before(function(done){
+      dolphin = new Animal({name:'dolphin'});
+      dolphin.save(function(err){
+        whale = new Animal({name:'whale'});
+        whale.save(function(err){
+          shark = new Animal({name:'shark'});
+          shark.save(function(err){
+            done();  
+          });
+        });  
+      });
+    });
+    
+    it('all instances of a model', function(done){
+      Animal.fetch(function(err, animals){
+        expect(err).to.be(null);
+        expect(animals).to.be.an(Array);
+        done();
+      })
+    });
+    
+  });
+  
+  
   describe('delete', function(){
     it('deletes and propagates delete event', function(done){
       done();/*

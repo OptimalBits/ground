@@ -17,7 +17,6 @@ describe('Collections', function(){
   it('save to server', function(done){
     zoo.save(function(err){
       expect(err).to.be(null);
-    
       zoo.all(Animal, function(err, animals){
         expect(err).to.be(null);
         expect(animals).to.be.an(Object);

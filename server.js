@@ -108,19 +108,26 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     
     });
   
-    socket.on('find', function(bucket, id, query, cb){
+    socket.on('find', function(bucket, id, collection, query, cb){
       var Model = getModel(bucket, cb);
       if(Model){
-        Model
-          .findById(id)
-          .populate(query.collection, query.fields, query.cond, query.options)
-          .run(function(err, doc){
-            if(err){
-              cb(err);
-            }else{
-              cb(null, doc[query.collection]);
-            }
+        if(collection){
+          query = query?query:{};
+          Model
+            .findById(id)
+            .populate(collection, query.fields, query.cond, query.options)
+            .run(function(err, doc){
+              if(err){
+                cb(err);
+              }else{
+                cb(null, doc[collection]);
+              }
+            });
+        }else{
+          Model.find(function(err, docs){
+            cb(err, docs);
           });
+        }
       }
     });
   

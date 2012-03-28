@@ -613,12 +613,12 @@ ServerStorage.ajax = {
     url = Model.url+'/'+bucket;
     ginger.ajax.post(url, args, cb);
   },
-  find:function(bucket, id, query, cb){
-    var url = Model.url + '/';
-    if(bucket&&id){
-      url += bucket+'/'+id+'/'
-    }
-    url += query.collection;
+  find:function(bucket, id, collection, query, cb){
+    var url = Model.url;
+    if(bucket) url += '/' + bucket;
+    if(id) url += '/'+id;
+    if(collection) url += '/'+collection;
+    if(query) url += '?'+$.param(query);
     ginger.ajax.get(url, cb);
   },
   findById:function(bucket, id, cb){
@@ -649,8 +649,8 @@ ServerStorage.socket = {
   create: function(bucket, args, cb){
     Model.socket.emit('create', bucket, args, cb);
   },
-  find:function(bucket, id, query, cb){
-    Model.socket.emit('find', bucket, id, query, cb);
+  find:function(bucket, id, collection, query, cb){
+    Model.socket.emit('find', bucket, id, collection, query, cb);
   },
   findById:function(bucket, id, cb){
     Model.socket.emit('read', bucket, id, cb);
@@ -812,7 +812,7 @@ Base.prototype.set = function(keyOrObj, val, options){
   var changed = false, obj, self = this;
   
   if(typeof keyOrObj == 'object'){
-    args = val;
+    options = val;
     obj = keyOrObj;
     _.each(obj, function(val, key){
       changed = self._set(key, val, options)?true:changed;
@@ -1060,21 +1060,57 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     })
     return this
   },
-  all : function(fn, parent){
-    var model = this,
-        bucket = this.__bucket,
-        parentBucket = parent?parent.__bucket:undefined,
-        id = parent?parent.cid:undefined;
-        
-    ServerStorage[this.transport()].find(parentBucket, id, {collection:bucket}, function(err, docs){
-      if(!err){
+  /*
+    fetch(cb)
+    fetch(query, cb)
+    fetch(bucket, id, cb)
+    fetch(bucket, id, query, cb)
+    fetch(bucket, id, collection, cb)
+    fetch(bucket, id, collection, query, cb)
+  */
+  fetch : function(bucket, id, collection, query, cb){
+    switch(arguments.length){
+      case 1:
+        cb = bucket; 
+        bucket = this.__bucket;
+        break;
+      case 2: 
+        query = bucket;
+        cb = id;
+        id = undefined;
+        bucket = this.__bucket;
+        break;
+      case 3:
+        cb = collection;
+        query = undefined;
+        break;
+      case 4:
+        cb = query;
+        if(_.isObject(collection)){
+          query = collection;
+          collection = undefined;
+        }else{
+          query = undefined;
+        }      
+        break;
+    }
+    ServerStorage[this.transport()].find(bucket, id, collection, query, cb);
+  },
+  all : function(cb, parent){
+    var self = this, bucket, id;
+    if(parent){
+      bucket = parent.__bucket;
+      id = parent.cid;
+    }
+    this.fetch(bucket, id, this.__bucket, function(err, docs){
+      if(docs){
         var collection = docs || Storage.all(bucket, parent);
-        _instantiateCollection(parent, model, collection, fn)
+        _instantiateCollection(parent, self, collection, cb)
       }else{
-        fn(err);
-      }                  
+        cb(err);
+      }
     });
-    return this
+    return this;
   },
   first : function(fn, parent){
     this.local().first(fn, parent)
@@ -1415,10 +1451,6 @@ Collection.prototype.remove = function(itemIds, cb, nosync){
       cb(null);
     }
   },cb);
-}
-Collection.prototype.lock = function(){
-  // Tries to lock this collection so that 
-  // no other user can modify it.
 }
 Collection.prototype.keepSynced = function(enable){
   if(!enable||!ginger.Model.socket||this._keepSynced){

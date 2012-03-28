@@ -13,7 +13,7 @@ app.use(express.static(__dirname));
 
 mongoose.connect('mongodb://localhost/testGingerSync');
 
-var server = new Server(models, 6379, 'localhost', sio);
+var server = new Server(models, 6379, 'localhost', sio.sockets);
 
 app.listen(8080);
 console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
