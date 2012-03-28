@@ -1758,6 +1758,123 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
     view.$el.html(value)
   })
 })
+
+//------------------------------------------------------------------------------
+/* Creates a html structure to use with simplemodal
+ * param: obj options
+ * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
+ */
+Views.Modal = ginger.Declare(ginger.View, function(options){
+  this.super(Views.Modal)
+  var view = this;
+  view.$el.addClass('modalForm');
+  // header
+  var $header = $('<div class="modalTop">');
+  var $title = $('<div class="modalTitle">').text(options.title);
+  $header.append($title);
+  
+  // close
+  if(options.close) {
+    var $closeButton = $('<div class="modalClose">').html('<div class="buttonContent">X</div></div></div>');
+    var $modalClose = $('<div class="modalClose">').append($closeButton);
+
+    view.$close = $closeButton;
+    
+    $header.prepend('<div class="modalClose"><div class="circularButton"><div class="buttonContent">X</div></div></div>')
+  }
+  
+  // content
+  var $content = $('<div class="modalContent">');
+  $content.append(options.content);
+  
+  // form
+  if (options.form) {
+   view.inputs = {};
+    var $form = $('<form>');
+    view.$form = $form;
+
+    // error handling
+    view.$errorForm = $('<div id="formError">').html('<div id="errorIcon"><span>?</span></div></div>');
+    view.$errorText = $('<span id="errorText"></span>');
+    view.$errorForm.append(view.$errorText);
+    $form.append(view.$errorForm).attr('id',options.form.id);
+    
+    // inputs
+    var $table = $('<table border="0" cellspacing="5" cellpadding="0"/>');
+    $form.append($table);
+    
+    for(var i = 0;i<options.form.inputs.length;i++) {
+      var item = options.form.inputs[i];
+      var $input = $('<input type="'+item.type+'" id="'+item.id+'" name="'+item.name+'" placeholder="'+item.placeholder+'"></input>');
+      var $tr = $('<tr>');
+      var $td = $('<td>');
+      $td.append($input);
+      $tr.append($td);
+      view.inputs['$' + item.id] = $input;
+      $table.append($tr);
+    }
+    // Form submit button
+    if(options.submitButtonText) {
+      view.$submitButton = $('<button type="submit" class="genericButton">'+options.submitButtonText+'</button>');
+      $form.append(view.$submitButton);
+    }
+    // add content to modal
+    $content.prepend($form);
+  }
+
+  // buttons
+  if(options.cancelButtonText) {
+    view.$cancelButton = $('<button class="genericButton">'+options.cancelButtonText+'</button>');
+    $content.append(view.$cancelButton);
+  }
+  if(options.acceptButtonText) {
+    view.$acceptButton = $('<button class="genericButton">'+options.acceptButtonText+'</button>');
+    $content.append(view.$acceptButton);
+  }
+  
+  // bottom
+  if(options.bottom) {
+    $content.append(options.bottom)
+  }
+  
+  // make the modal
+  view.$el.prepend($header);
+  view.$el.append($content);
+})
+
+Views.Modal.prototype.disable = function() {
+  var view = this;
+  for (var key in view.inputs) {
+    var $input = view.inputs[key];
+    $input.attr("disabled", "disabled"); 
+  }
+  if(view.$submitButton) {
+    view.$submitButton.css('opacity', 0.6).attr("disabled", "disabled");
+  }
+  if(view.$acceptButton) {
+    view.$acceptButton.css('opacity', 0.6).attr("disabled", "disabled");
+  }
+  if(view.$cancelButton) {
+    view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
+  }
+}
+
+Views.Modal.prototype.enable = function() {
+  var view = this;
+  for(var i = 0;i<view.inputs.length;i++) {
+    var $input = view.form.inputs[i];
+    $input.removeAttr("disabled", "disabled");
+  }
+  if(view.$submitButton) {
+    view.$submitButton.css('opacity', 1).removeAttr("disabled", "disabled");
+  }
+  if(view.$acceptButton) {
+    view.$acceptButton.css('opacity', 1).removeAttr("disabled", "disabled");
+  }
+  if(view.$cancelButton) {
+    view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
+  }
+}
 //------------------------------------------------------------------------------
 Views.Button = ginger.Declare(ginger.View, function(options){
   this.super(Views.Button)
