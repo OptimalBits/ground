@@ -299,7 +299,7 @@ Request.prototype.exec = function(prevs){
     node.render && node.render(self);
 
     node.enter && node.enter(self);
-    node.enter || node.show(self);
+    node.enter || (node.show && node.show(self));
     
     node.after && node.after(self);
   }
