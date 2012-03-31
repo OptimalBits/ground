@@ -1896,12 +1896,10 @@ Views.Modal = ginger.Declare(ginger.View, function(options){
   
   // close
   if(options.close) {
-    var $closeButton = $('<div class="modalClose">').html('<div class="buttonContent">X</div></div></div>');
-    var $modalClose = $('<div class="modalClose">').append($closeButton);
-
-    view.$close = $closeButton;
+    view.$close = $('<div class="modalClose">');
+    view.$close.html('<div class="circularButton"><div class="buttonContent">X</div></div></div>');
     
-    $header.prepend('<div class="modalClose"><div class="circularButton"><div class="buttonContent">X</div></div></div>')
+    $header.prepend(view.$close);
   }
   
   // content
@@ -1926,7 +1924,7 @@ Views.Modal = ginger.Declare(ginger.View, function(options){
     
     for(var i = 0;i<options.form.inputs.length;i++) {
       var item = options.form.inputs[i];
-      var $input = $('<input type="'+item.type+'" id="'+item.id+'" name="'+item.name+'" placeholder="'+item.placeholder+'"></input>');
+      var $input = $('<input/>',item);
       var $tr = $('<tr>');
       var $td = $('<td>');
       $td.append($input);
@@ -1935,8 +1933,8 @@ Views.Modal = ginger.Declare(ginger.View, function(options){
       $table.append($tr);
     }
     // Form submit button
-    if(options.submitButtonText) {
-      view.$submitButton = $('<button type="submit" class="genericButton">'+options.submitButtonText+'</button>');
+    if(options.submitButton) {
+      view.$submitButton = $('<button/>', options.submitButton);
       $form.append(view.$submitButton);
     }
     // add content to modal
@@ -1944,12 +1942,12 @@ Views.Modal = ginger.Declare(ginger.View, function(options){
   }
 
   // buttons
-  if(options.cancelButtonText) {
-    view.$cancelButton = $('<button class="genericButton">'+options.cancelButtonText+'</button>');
+  if(options.cancelButton) {
+    view.$cancelButton = $('<button/>',options.cancelButton);
     $content.append(view.$cancelButton);
   }
-  if(options.acceptButtonText) {
-    view.$acceptButton = $('<button class="genericButton">'+options.acceptButtonText+'</button>');
+  if(options.acceptButton) {
+    view.$acceptButton = $('<button/>',options.acceptButton);
     $content.append(view.$acceptButton);
   }
   
