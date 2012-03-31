@@ -827,6 +827,7 @@ Base.prototype.set = function(keyOrObj, val, options){
     }
     self.emit('changed:', obj, options);
   }
+  return this;
 }
 Base.prototype.willChange = function(key, val){
   return val;
@@ -1023,6 +1024,29 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   this.__transport = Model.__transport;
 },
 {
+  create : function(args, keepSynced, cb){
+    if(_.isFunction(keepSynced)){
+      cb = keepSynced;
+    }
+    var self = this;
+    if(args){
+      this.fromJSON(args, function(instance){
+        if(instance){
+          instance.__bucket = self.__bucket;
+          if(keepSynced == true){
+            instance.keepSynced();
+          }
+          instance.init(function(){
+            cb(null, instance)
+          })
+        }else{
+          cb(null, null)
+        }
+      })
+    }else{
+      cb(null, null)
+    }
+  },
   transport : function(){
     return this.__transport || 
            Model.__transport || 
@@ -1049,13 +1073,16 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   update : function(id, args, cb){
     // TODO Implement.
   },
-  findById : function(id, cb){
-    var model = this, bucket = model.__bucket;
-    ServerStorage[model.transport()].findById(bucket, id, function(err, args){
+  findById : function(id, keepSynced, cb){
+    if(_.isFunction(keepSynced)){
+      cb = keepSynced;
+    }
+    var self = this, bucket = self.__bucket;
+    ServerStorage[self.transport()].findById(bucket, id, function(err, args){
       if(err) cb(err);
       else{
         args = args || Storage.findById(bucket, id)
-        _instantiate(model, args, cb)
+        self.create(args, keepSynced, cb)
       }
     })
     return this
@@ -1091,7 +1118,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
           collection = undefined;
         }else{
           query = undefined;
-        }      
+        }
         break;
     }
     ServerStorage[this.transport()].find(bucket, id, collection, query, cb);
@@ -1122,17 +1149,17 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
       var self = this,
         bucket = this.__bucket;
       this._local = {
-        findById : function(id, fn){
+        findById : function(id, cb){
           var args = Storage.findById(bucket, id)
-          _instantiate(self, args, fn)
+          self.create(args, cb)
         },
-        all: function(fn, parent){
+        all: function(cb, parent){
           var collection = Storage.all(bucket, parent)
-          _instantiateCollection(parent, self, collection, fn)
+          _instantiateCollection(parent, self, collection, cb)
         },
-        first: function(fn, parent){
+        first: function(cb, parent){
           var args = Storage.first(bucket, parent)
-          _instantiate(self, args, fn)
+          self.create(args, cb)
         }
       }
       return this._local
@@ -1142,27 +1169,11 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     cb(new this(args))
   }
 })
-var _instantiate = function(model, args, cb){
-  if(args){
-    model.fromJSON(args, function(instance){
-      if(instance){
-        instance.__bucket = model.__bucket;
-        instance.init(function(){
-          cb(null, instance)
-        })
-      }else{
-        cb(null, null)
-      }
-    })
-  }else{
-    cb(null, null)
-  }
-}
 var _instantiateCollection = function(parent, model, array, cb){
   if(array){
     var items = [];
-    ginger.asyncForEach(array, function(data, fn){
-      _instantiate(model, data, function(err, instance){
+    ginger.asyncForEach(array, function(args, fn){
+      model.create(args, function(err, instance){
         if(instance){
           items.push(instance);
         }
