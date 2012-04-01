@@ -182,15 +182,16 @@ ginger.asyncForEach = function(array, fn, cb) {
   
   function iter(item, len){
     fn(item, function(err) {
-      if(!err){
+      if(err){
+        deferred.reject()
+        cb && cb(err);
+        cb = ginger.noop;
+      }else{
         completed++;
         if(completed === len) {
           cb && cb(null);
           deferred.resolve()
          }
-      }else{
-       deferred.reject()
-       cb && cb(err);
       }
     });
   }
@@ -1079,8 +1080,9 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     }
     var self = this, bucket = self.__bucket;
     ServerStorage[self.transport()].findById(bucket, id, function(err, args){
-      if(err) cb(err);
-      else{
+      if(err){
+        cb(err);
+      }else{
         args = args || Storage.findById(bucket, id)
         self.create(args, keepSynced, cb)
       }
