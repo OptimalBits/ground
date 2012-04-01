@@ -96,7 +96,6 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     });
 
     socket.on('read', function(bucket, id, cb){
-      console.log("BUCKET:"+bucket);
       var Model = getModel(bucket, cb);
       if(Model){
         console.log(Model);
@@ -112,17 +111,21 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
       var Model = getModel(bucket, cb);
       if(Model){
         if(collection){
-          query = query?query:{};
-          Model
-            .findById(id)
-            .populate(collection, query.fields, query.cond, query.options)
-            .run(function(err, doc){
-              if(err){
-                cb(err);
-              }else{
-                cb(null, doc[collection]);
-              }
-            });
+          if(Model.get){
+            Model.get(id, collection, query, cb);
+          }else{
+            query = query?query:{};
+            Model
+              .findById(id)
+              .populate(collection, query.fields, query.cond, query.options)
+              .run(function(err, doc){
+                if(err){
+                  cb(err);
+                }else{
+                  cb(null, doc[collection]);
+                }
+              });
+          }
         }else{
           Model.find(function(err, docs){
             cb(err, docs);
