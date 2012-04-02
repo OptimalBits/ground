@@ -239,28 +239,33 @@ EventEmitter.prototype._getNamespaces = function(){
   * @returns {Object} The current instance of EventEmitter to allow chaining
   */
 EventEmitter.prototype.on = function(eventNames, listener) {
-  var events = eventNames.split(' ')
-  var listeners = this._getListeners()
+  var events = eventNames.split(' '), listeners = this._getListeners();
   
   for(var i=0, len=events.length;i<len;i++){
-    var eventAndNamespace = events[i].split('/')
-        event = eventAndNamespace[0];
-
+    var eventAndNamespace = events[i].split('/'), event, namespace;
+    
+    if(eventAndNamespace.length > 1){
+      namespace = eventAndNamespace[0];
+      event = eventAndNamespace[1];
+    }else{
+      namespace = null;
+      event = eventAndNamespace[0];
+    }
+    
     if(listeners[event]) {
       listeners[event].push(listener);
     }else{
       listeners[event] = [listener];
     }
     
-    if(eventAndNamespace.length === 2){
-      var namespaces = this._getNamespaces(),
-          namespace = eventAndNamespace[1]
+    if(namespace){
+      var namespaces = this._getNamespaces();
       
-      namespaces[event] = namespaces[event] || {}
-      if(namespaces[event][namespace]){
-        namespaces[event][namespace].push(listener);
+      namespaces[namespace] = namespaces[namespace] || {}
+      if(namespaces[namespace][event]){
+        namespaces[namespace][event].push(listener);
       }else{
-        namespaces[event][namespaces] = [listener];
+        namespaces[namespace][event] = [listener];
       }
     }
     
@@ -343,38 +348,6 @@ EventEmitter.prototype.off = function(eventNames, listener) {
   return this;
 };
 
-EventEmitter.prototype._removeListener = function(event, listener){
- var listeners = this._getListeners(), index;
-     
-  if(listeners[event]) { 
-    index = _.indexOf(listeners[event], listener);
-    if(index !== -1) {
-      listeners[event].splice(index, 1);
-    }
-  }
-}
-
-EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, namespaces){
-  var eventAndNamespace = event.split('/')
-      event = eventAndNamespace[0]
-      
-  if(eventAndNamespace.length === 1){
-    listeners && delete listeners[event]
-    namespaces && delete namespaces[event];
-  }else if(namespaces){
-    var namespace = eventAndNamespace[2];
-        
-    if(namespaces[event]){
-      var listeners = namespaces[event][namespace];
-      if(listeners){
-        for(var i=0, len=listeners.length;i<len;i++){
-          this.off(event, listeners[i]);
-        }
-      }
-    }
-  }
-}
-
 /**
   * Removes all listeners from the specified (namespaced) events
   * 
@@ -382,19 +355,80 @@ EventEmitter.prototype._removeNamespacedEvent = function(event, listeners, names
   * @returns {Object} The current instance of EventEmitter to allow chaining
   */
 EventEmitter.prototype.removeAllListeners = function(eventNames) {
-  var listeners = this._listeners, namespaces = this._namespaces;
+  var listeners = this._listeners;
   
   if(listeners){
     if(eventNames){
       var events = eventNames.split(' ')
       for(var i=0, len=events.length;i<len;i++){
-        this._removeNamespacedEvent(events[i], listeners, namespaces)
+        this._removeNamespacedEvent(events[i], listeners)
       }
     }else{
-      this._listeners = undefined;
+      delete this['_listeners'];
     }
   }
   return this;
+}
+EventEmitter.prototype.namespace = function(namespace){
+  var self = this;
+  var namespaced = {
+    self:self, 
+    namespace:namespace, 
+    on:function(event, listener){
+      this.self.on(this.namespace+'/'+event, listener);
+      return namespaced;
+    },
+    off:function(event){
+      var eventName = this.namespace+'/';
+      event && (eventName += event);
+      this.self.off(eventName);
+      return namespaced;
+    }
+  }
+  return namespaced;
+}
+EventEmitter.prototype._removeListener = function(event, listener){
+ var listeners = this._listeners, index;
+     
+  if(listeners && listeners[event]) { 
+    index = _.indexOf(listeners[event], listener);
+    if(index !== -1) {
+      listeners[event].splice(index, 1);
+    }
+  }
+}
+
+EventEmitter.prototype._removeNamespacedEvent = function(event, listeners){
+  var namespaces = this._namespaces, eventAndNamespace = event.split('/'), event;
+      
+  if(eventAndNamespace.length === 1){
+    event = eventAndNamespace[0];
+    listeners && delete listeners[event]
+    namespaces && delete namespaces[event];
+  }else if(namespaces){
+    var namespace = eventAndNamespace[0];
+    event = eventAndNamespace[1];
+        
+    if(namespaces[namespace]){
+      var _listeners;
+      if(event == ''){
+        var events = namespaces[namespace];
+        for(event in events){
+          var listeners = events[event];
+          for(var i=0, len=listeners.length;i<len;i++){
+            this._removeListener(event, listeners[i]);
+          }   
+        }
+      }else{
+        _listeners = _.union(_listeners, namespaces[namespace][event]);
+        if(_listeners){
+          for(var i=0, len=listeners.length;i<len;i++){
+            this._removeListener(event, _listeners[i]);
+          }
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -935,7 +969,7 @@ Base.prototype.undoSet = function(key, value, fn){
   this.endUndoSet(key, fn)
 }
 Base.prototype.destroy = function(){
-  // TODO: call all the properties .release function if they have one
+  // TODO: set to null all non function properties?
   this.off();
 }
 Base.prototype.retain = function(){

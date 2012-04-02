@@ -36,6 +36,78 @@ describe('Events', function(){
     expect(counter).to.be(0);
   });
   
+  it('listen to namespaced events', function(done){
+    var counter = 2;
+    
+    obj.on('foo/qux', function(val){
+      expect(val).to.be(42);
+      counter--;
+      if(counter==0){
+        done();
+      }
+    });
+    
+    obj.on('foo/baz foo/bar', function(val){
+      expect(val).to.be(43);
+      counter--;
+      if(counter==0){
+        done();
+      }
+    });
+    
+    obj.emit('qux', 42);
+    obj.emit('bar', 43);
+  });
+  
+  it('removed events associated to a namespace', function(done){
+    obj.on('qux', function(val){
+      expect(val).to.be(44);
+      done();
+    });
+  
+    obj.on('foo/bar', function(val){
+      expect(1).to.be(0);
+    });
+    
+    obj.off('foo/')
+  
+    obj.emit('bar', 32);
+    obj.emit('qux', 44);
+  });
+  
+  it('added namespaced events using namespace chain', function(done){
+    var counter = 2;
+    
+    obj
+      .namespace('fox')
+      .on('baz', function(val){
+        expect(val).to.be(55);
+        counter--;
+        if(counter==0){
+          done();
+        }
+      })
+      .on('bar', function(val){
+        expect(val).to.be(99);
+        counter--;
+        if(counter==0){
+          done();
+        }
+      })
+  
+    obj.emit('baz', 55);
+    obj.emit('bar', 99);
+  });
+
+  it('removed events associated to a namespace using namespace chain', function(){
+    obj.namespace('fox').on('bar', function(val){
+      expect(1).to.be(0);
+    });
+    
+    obj.namespace('fox').off();  
+    obj.emit('bar', 32);
+  });
+  
   it('remove all events', function(){
     var counter = 4;
     obj.on('flip flop swap swop', function(val){
