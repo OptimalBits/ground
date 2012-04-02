@@ -61,10 +61,15 @@ Promise.prototype._fireCallbacks = function(){
 //
 var wrap = function(fn, args, cb){
   return function(ctx){
+    if(_.isFunction(args)){
+      cb = args;
+      args = undefined;
+    }
     var promise = new Promise();
-  
+    cb = _.isFunction(cb)?cb:undefined;
     (function(done, args ){
       ctx.promise.then(function(){
+        args = args?args:[];
         args.push(function(){
           cb || done();
           cb && cb(done);
@@ -96,7 +101,10 @@ var Request = function(url){
   
   this.nodes = [];
   for (var i=0, len=components.length;i<len;i++){
-    var node = {component:components[i]};
+    var node = {
+      component:components[i],
+      autoreleasePool:[]
+    };
     this.nodes.push(node);
   }
   
@@ -125,11 +133,8 @@ var Request = function(url){
     Template plugin. A template plugin is a function with this signature:
     template({String}, {Object}), where string is the template, and object
     is an object with arguments to pass to the template.
-  
-
 */
 Request.prototype.use = function(kind, plugin){
-
   switch(kind){
     case 'template':
       this.template = plugin;
@@ -204,28 +209,35 @@ Request.prototype.get = function(component, selector, cb, args){
 */
 
 Request.prototype.before = function(cb){
-  this.node().before =  wrap(function(cb){cb()},[],cb);
+  this.node().before =  wrap(function(cb){cb()},cb);
   return this;
 }
 
 Request.prototype.after = function(cb){
-  this.node().after =  wrap(function(cb){cb()},[],cb);
+  this.node().after =  wrap(function(cb){cb()},cb);
   return this;
 }
 
 Request.prototype.exit = function(name, speed, cb){
+  cb = _.last(arguments);
+  speed = _.isFunction(speed)?undefined:speed;
   var node = this.node();
   node.exit =  wrap(this._anim,[node, name, speed], cb);
   return this;
 }
 
 Request.prototype.enter = function(name, speed, cb){
+  cb = _.last(arguments);
+  speed = _.isFunction(speed)?undefined:speed;
   var node = this.node();
   node.enter = wrap(this._anim,[node,name,speed], cb);
   return this;
 }
 
 Request.prototype.render = function(templateUrl, css, locals, cb){
+  cb = _.last(arguments);
+  css = _.isFunction(css)?undefined:css;
+  locals = _.isFunction(locals)?undefined:locals;
   this.node().render = wrap(this._render,[templateUrl, css, locals], cb);
   return this;
 }
@@ -236,6 +248,9 @@ Request.prototype.load = function(urls, cb){
   
   this.node().load = wrap(this._load,[urls], cb);
   return this;
+}
+Request.prototype.autorelease = function(obj){
+  this.node().autoreleasePool.push(obj);
 }
 
 // FIX: Only call hide on the nodes that will been "overwritten" by the new request
@@ -277,6 +292,7 @@ Request.prototype.exec = function(prevs){
     node.$el || (node.select && node.select(self));
     node.exit && node.exit(self);
     node.exit || (node.hide && node.hide(self));
+    node.drain(self);
   }
   
   //
@@ -339,18 +355,27 @@ Request.prototype._initNode = function(selector){
      node.select = wrap(function(cb){
        node.$el = self.$el = $(selector);
        cb();
-     }, []);
+     });
      node.selector = selector;
    
      node.hide = wrap(function(cb){
        node.$el.hide();
        cb();
-     }, []);
+     });
    
      node.show = wrap(function(cb){
        node.$el.show();
        cb();
-     }, []);
+     });
+     
+     node.drain = wrap(function(cb){
+       var pool = node.autoreleasePool;
+       for(var i=0, len=pool.length;i<len;i++){
+         pool[i].release();
+       }
+       cb();
+     });
+     
  })(self.node());
 }
 
@@ -508,12 +533,23 @@ route.listen = function (cb) {
   if ('onhashchange' in window) {
     window.onhashchange = fn;
   } else {
-    setInterval(fn, 50);
+    route.interval = setInterval(fn, 50);
   }
 }
 
+route.stop = function(){
+  if(route.interval){
+    clearInterval(route.interval);
+    route.interval = null;
+  }
+  if ('onhashchange' in window) {
+    window.onhashchange = null;
+  }
+  route.prevUrl = '';
+}
+
 route.redirect = function(url) {
-  route.prevUrl = location.hash;
+  //route.prevUrl = location.hash;
   location.hash = url;
   if ('onhashchange' in window) {
     $(window).trigger('onhashchange');
