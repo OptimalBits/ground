@@ -51,6 +51,26 @@ Promise.prototype._fireCallbacks = function(){
     }
   }
 }
+var AutoreleasePool = function(){
+  this.pool = [];
+}
+AutoreleasePool.prototype.autorelease = function(){
+  var pool = this.pool;
+  _.each(arguments, function(obj){
+    if(_.isArray(obj)){
+      pool.apply(pool, obj);
+    }else{
+      pool.push(obj);
+    }
+  });
+}
+AutoreleasePool.prototype.drain = function(){
+  for(var i=0, len=this.pool.length;i<len;i++){
+    this.pool[i].release();
+  }
+  this.pool = [];
+}
+
 
 //
 // Node Command wrapper.
@@ -64,7 +84,7 @@ var wrap = function(fn, args, cb){
     }
     var promise = new Promise();
     cb = _.isFunction(cb)?cb:undefined;
-    (function(done, args ){
+    (function(done, args, node){
       ctx.promise.then(function(){
         args = args?args:[];
         args.push(function(){
@@ -74,7 +94,7 @@ var wrap = function(fn, args, cb){
         });
         fn.apply(ctx, args);
       });
-    })(_.bind(promise.resolve,promise), _.clone(args));
+    })(_.bind(promise.resolve,promise), _.clone(args), this);
     ctx.promise = promise;
   }
 }
@@ -82,8 +102,8 @@ var wrap = function(fn, args, cb){
 //
 // Request
 //
-var Request = function(url){
-  var s = url.split('?'), components, last;
+var Request = function(url, prevNodes){
+  var s = url.split('?'), components, last, i, len;
   
   components = s[0].split('/')
   if(components[0] === '#'){
@@ -97,12 +117,21 @@ var Request = function(url){
   }
   
   this.nodes = [];
-  for (var i=0, len=components.length;i<len;i++){
-    var node = {
-      component:components[i],
-      autoreleasePool:[]
-    };
-    this.nodes.push(node);
+  this.startIndex = 0;
+  for (i=0, len=components.length;i<len;i++){
+    var prev = prevNodes[i]; 
+    if(prev && (prev.component === components[i])){
+      this.nodes.push({
+        component:components[i], 
+        autoreleasePool:prev.autoreleasePool
+      });
+    }else{
+      break;
+    }
+  }
+  this.startIndex = i;
+  for (i=this.startIndex, len=components.length;i<len;i++){
+    this.nodes.push({component:components[i], autoreleasePool:new AutoreleasePool()});
   }
   
   this.url = url;
@@ -173,17 +202,20 @@ Request.prototype.get = function(component, selector, cb, args){
   self.nodePromise.then(function(){
     self.nodePromise = new Promise();
     ;(function(promise){
+      var autoreleasePool = self.node().autoreleasePool;
+      
       self._initNode(selector);
   
       if(_.isFunction(cb)){
-        cb && cb.call(self, self);
+        cb && cb.call(self, autoreleasePool);
         promise.resolve();
         if(promise.callbacks.length===0){
           self.endPromise.resolve();
         }
       } else {
         curl([cb], function(f){
-          f && f.call(self, self, args);
+          args = args?args:autoreleasePool;
+          f && f.call(self, self, args, autoreleasePool);
           promise.resolve();
           if(promise.callbacks.length===0){
             self.endPromise.resolve();
@@ -204,17 +236,14 @@ Request.prototype.get = function(component, selector, cb, args){
   In exec, we have also to wait until the last node promise has been resolved before we can start
   executing.
 */
-
 Request.prototype.before = function(cb){
   this.node().before =  wrap(function(cb){cb()},cb);
   return this;
 }
-
 Request.prototype.after = function(cb){
   this.node().after =  wrap(function(cb){cb()},cb);
   return this;
 }
-
 Request.prototype.exit = function(name, speed, cb){
   cb = _.last(arguments);
   speed = _.isFunction(speed)?undefined:speed;
@@ -222,7 +251,6 @@ Request.prototype.exit = function(name, speed, cb){
   node.exit =  wrap(this._anim,[node, name, speed], cb);
   return this;
 }
-
 Request.prototype.enter = function(name, speed, cb){
   cb = _.last(arguments);
   speed = _.isFunction(speed)?undefined:speed;
@@ -230,7 +258,6 @@ Request.prototype.enter = function(name, speed, cb){
   node.enter = wrap(this._anim,[node,name,speed], cb);
   return this;
 }
-
 Request.prototype.render = function(templateUrl, css, locals, cb){
   cb = _.last(arguments);
   css = _.isFunction(css)?undefined:css;
@@ -238,7 +265,6 @@ Request.prototype.render = function(templateUrl, css, locals, cb){
   this.node().render = wrap(this._render,[templateUrl, css, locals], cb);
   return this;
 }
-
 Request.prototype.load = function(urls, cb){
   cb = _.last(arguments);
   urls = _.isFunction(urls)?null:urls;
@@ -246,10 +272,6 @@ Request.prototype.load = function(urls, cb){
   this.node().load = wrap(this._load,[urls], cb);
   return this;
 }
-Request.prototype.autorelease = function(obj){
-  this.node().autoreleasePool.push(obj);
-}
-
 // FIX: Only call hide on the nodes that will been "overwritten" by the new request
 // and that not have an exit function, and that no node in prev request that has overwritten the
 // node and that have own exit function...
@@ -260,6 +282,7 @@ Request.prototype.exec = function(prevs){
   //
   // Find first index where re-rendering is needed. (common base).
   //
+  /*
   for(start=0,len=nodes.length;start<len;start++){
     var node = nodes[start],
         prev = prevs[start];
@@ -268,6 +291,9 @@ Request.prototype.exec = function(prevs){
       break;
     }
   }
+  */
+  
+  start = self.startIndex;
   
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
@@ -331,7 +357,7 @@ Request.prototype.isLast = function(){
 Request.prototype.redirect = function(url){
   var self = this;
   self.promise.then(function(){
-    self.nodes = [];
+    //self.nodes = [];
     route.redirect(url);
   });
 }
@@ -366,13 +392,9 @@ Request.prototype._initNode = function(selector){
      });
      
      node.drain = wrap(function(cb){
-       var pool = node.autoreleasePool;
-       for(var i=0, len=pool.length;i<len;i++){
-         pool[i].release();
-       }
+       node.autoreleasePool.drain();
        cb();
      });
-     
  })(self.node());
 }
 
@@ -494,7 +516,7 @@ route.listen = function (cb) {
   var fn = function(){
     if(route.prevUrl !== location.hash){
       var prevUrl = location.hash,
-          req = new Request(location.hash);
+          req = new Request(location.hash, prevNodes);
           
       cb && cb(req);
       
