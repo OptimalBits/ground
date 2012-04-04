@@ -1386,14 +1386,14 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
   
   var self = this;
   
-  self._updateFn = function(){
+  self._updateFn = function(args){
     if(self.sortByFn){
       var i = self.indexOf(this);
       self.items.splice(i,1);
       i = self.sortedIndex(this, self.sortByFn)
       self.items.splice(i, 0, this)
     }
-    self.emit('updated:', this);
+    self.emit('updated:', this, args);
   };
   
   if(_.isArray(items)){
