@@ -116,6 +116,28 @@ describe('Collections', function(){
     });
   });
   
+  it('update item in collection generates changed: event on collection', function(done){
+    Zoo.findById(zoo._id, function(err, zoo){      
+      zoo.all(Animal, function(err, animals){
+        var tiger = animals.find(function(item){ return item.name==='tiger'});
+        
+        expect(tiger).to.be.an(Object);
+        expect(tiger.name).to.be.eql('tiger');
+        
+        animals.on('updated:', function(item, args){
+          expect(item).to.be(tiger);
+          expect(args).to.be.an(Object);
+          expect(args.legs).to.be(6);
+          zoo.release();
+          animals.release();
+          done();
+        });
+        
+        tiger.set('legs', 6);
+      });
+    });
+  });
+  
   describe('Remove', function(){
     it('remove item from collection', function(done){
       Zoo.findById(zoo._id, function(err, zoo){
