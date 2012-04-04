@@ -1517,7 +1517,7 @@ Collection.prototype.keepSynced = function(enable){
     this.model.findById(itemId, function(err, item){
       if(item){
         item.init(function(){
-          self.add(item, ginger.noop, true)
+          self.add(item, ginger.noop, true);
           item.release();
         })
       }
@@ -1669,21 +1669,21 @@ ginger.View.prototype.update = function(){
 ginger.View.prototype.clean = function(){
   if(this.$el) this.$el.detach()
 }
-
 ginger.View.prototype.remove = function(){
   if(this.$el) this.$el.remove()
 }
-
 ginger.View.prototype.disable = function(disable){
   console.log(this+" does not implement disable")
 }
-
 ginger.View.prototype.hide = function(duration, easing, callback) {
   this.$el.hide(arguments)
 }
-  
 ginger.View.prototype.show = function(duration, easing, callback) {
   this.$el.show(arguments)
+}
+ginger.View.prototype.destroy = function(){
+  this.remove();
+  this.super(ginger.View, 'destroy');
 }
 //------------------------------------------------------------------------------
 ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
