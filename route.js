@@ -1,8 +1,5 @@
-define(['underscore'], function(_){
 
-// TODO: 
-// Remove jade dependency, provide a .use kind of api to register external 
-// plugins.
+define(['jquery', 'underscore'], function($, _){
 
 var route = {};
 
