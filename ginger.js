@@ -929,7 +929,7 @@ Base.prototype.format = function(property, fn){
       }
       _.extend(this._formatters, property);
     } else if((this._formatters)&&(property in this._formatters)){
-      return this._formatters[property](this.get(property));
+      return this._formatters[property].call(this, this.get(property));
     }else{
       return this.get(property);
     }
@@ -1168,7 +1168,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     this.fetch(bucket, id, this.__bucket, function(err, docs){
       if(docs){
         var collection = docs || Storage.all(bucket, parent);
-        _instantiateCollection(parent, self, collection, cb)
+        Collection.instantiate(self, parent, collection, cb)
       }else{
         cb(err);
       }
@@ -1191,7 +1191,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
         },
         all: function(cb, parent){
           var collection = Storage.all(bucket, parent)
-          _instantiateCollection(parent, self, collection, cb)
+          Collection.instantiate(self, parent, collection, cb)
         },
         first: function(cb, parent){
           var args = Storage.first(bucket, parent)
@@ -1205,33 +1205,6 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     cb(new this(args))
   }
 })
-var _instantiateCollection = function(parent, model, array, cb){
-  if(array){
-    var items = [];
-    ginger.asyncForEach(array, function(args, fn){
-      model.create(args, function(err, instance){
-        if(instance){
-          items.push(instance);
-        }
-        fn(err);
-      })
-    }, function(err){
-      if(err){
-        cb(err, null)
-      }else{
-        var collection = new ginger.Collection(items, parent, model)
-        _.each(items, function(item){item.release()});
-        
-        if(parent){
-          collection.keepSynced(parent._keepSynced);
-        }
-        cb(null, collection)
-      }
-    })
-  }else{
-    cb(null, null)
-  }
-}
 Model.prototype.transport = function(){
   return this.__transport || this.constructor.transport();
 }
@@ -1381,7 +1354,7 @@ Model.prototype.destroy = function(){
   A collection is a set of ordered models. 
   It provides delegation and proxing of events.
 **/
-var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items, parent, model, sortByFn){
+var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items, model, parent, sortByFn){
   this.super(ginger.Collection);
   
   var self = this;
@@ -1409,7 +1382,7 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
   self._keepSynced = false
   self._added = [];
   self._removed = [];
-  self.parent = parent
+  self.parent = parent;
   self.model = model || Model;
   self.sortByFn = sortByFn
   self.socket = ginger.Model.socket;
@@ -1417,8 +1390,42 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
   self.on('sortByFn', function(fn){
     self.items = self.sortBy(fn)
   });
-
 })
+Collection.instantiate = function(model, parent, array, cb){
+  if(_.isArray(parent)){
+    cb = array;
+    array = parent;
+    parent = null;
+  }
+  cb = cb || ginger.noop;
+  
+  if(array){
+    var items = [];
+    ginger.asyncForEach(array, function(args, fn){
+      model.create(args, function(err, instance){
+        if(instance){
+          items.push(instance);
+        }
+        fn(err);
+      })
+    }, function(err){
+      if(err){
+        cb(err, null)
+      }else{
+        var collection = new ginger.Collection(items, model, parent)
+        _.each(items, function(item){item.release()});
+        
+        if(parent){
+          collection.keepSynced(parent._keepSynced);
+        }
+        cb(null, collection)
+      }
+    })
+  }else{
+    cb(null, null)
+  }
+}
+
 Collection.prototype.save = function(cb){
   var transport = this.model.transport(), self = this;
   
@@ -1915,7 +1922,67 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
     view.$el.html(value)
   })
 })
+//------------------------------------------------------------------------------
+var TableRow = ginger.Declare(ginger.View, function(doc, fields){
+  var $tr = $('<tr>').data('id', doc.cid);
+  fields = fields || _.keys(doc);
+  
+  for(var i=0, len=fields.length;i<len;i++){
+    var $td = $('<td>').append(doc.format(fields[i])).appendTo($tr)
+  }
+  this.$el = $tr;
+});
+/**
+  options:
+    headers : ['header1', 'header2', ...] (html text or jquery or DOM
+    fields : ['username', 'account.plan.storage', ...]
+    formatters : { prop1: fn1, prop2: fn2 ... }
+*/
+var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
+  var self = this;
+  self.$tbody = $('<tbody>');
+  self.$el = $('<table>');
+  
+  _.extend(self, options);
+  self.super(Views.Table, 'constructor', options.classNames, options.css);
+  
+  if(self.headers){
+    var $header = $('<thead>'),
+      $row = $('<tr>').appendTo($header);
+    
+    for(var header in self.headers){
+      $('<th>').append(self.headers[header]).appendTo($row);
+    }
+    self.$el.append($header);
+  }
+  
+  self.$el.append(self.$tbody);
+  
+  self.$tbody.on('click', 'tr', function(event) {
+    var $this = $(this), cid = $this.data('id');
+    console.log(cid);
+    self.emit('clicked:', collection.find(function(item){return item.cid==cid}), $this);
+  });
 
+  self.on('collection', function(val, old){
+    old && old.release();
+    val.retain();
+    val.on('updated: added: removed: sortByFn', function(){
+      self.$tbody.empty();
+      val.each(function(item){
+        self.formatters && item.format(self.formatters);
+        var row = new TableRow(item, self.fields);
+        row.render(self.$tbody);
+      });
+    });
+  });
+  self.set('collection', collection);
+  
+  collection.emit('updated:');
+});
+Table.prototype.destroy = function(){
+  this.collection && this.collection.release();
+}
 //------------------------------------------------------------------------------
 /* Creates a html structure to use with simplemodal
  * param: obj options
