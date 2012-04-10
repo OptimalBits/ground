@@ -1551,9 +1551,14 @@ Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
    
   if(this.socket){
-    var bucket = this.model.__bucket, id = this.parent._id;
-    this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
-    this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
+    var bucket = this.model.__bucket;
+    
+    if(this.parent){
+      id = this.parent.cid;
+      this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
+      this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
+    }
+    
     this._keepSynced && socket.emit('unsync', id);
   }
   this.each(function(item){item.release()});
