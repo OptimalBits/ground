@@ -1942,6 +1942,9 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields){
     headers : ['header1', 'header2', ...] (html text or jquery or DOM
     fields : ['username', 'account.plan.storage', ...]
     formatters : { prop1: fn1, prop2: fn2 ... }
+    widths : [ '10%', '20%', '15%', ... ],
+    css : { },
+    classNames : 'name1 name2 ...'
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
   var self = this;
@@ -1950,7 +1953,12 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   
   _.extend(self, options);
   self.super(Views.Table, 'constructor', options.classNames, options.css);
-  
+  if(self.widths){
+    for(var i=0,len=self.widths.length;i<len;i++){
+      var $col = $('<colgroup>').attr('width', self.widths[i]);
+      self.$el.append($col);
+    }
+  }
   if(self.headers){
     var $header = $('<thead>'),
       $row = $('<tr>').appendTo($header);
@@ -1960,12 +1968,10 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     }
     self.$el.append($header);
   }
-  
   self.$el.append(self.$tbody);
   
   self.$tbody.on('click', 'tr', function(event) {
     var $this = $(this), cid = $this.data('id');
-    console.log(cid);
     self.emit('clicked:', collection.find(function(item){return item.cid==cid}), $this);
   });
 
