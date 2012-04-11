@@ -1984,6 +1984,7 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields){
     widths : [ '10%', '20%', '15%', ... ],
     css : { },
     classNames : 'name1 name2 ...'
+    filter : fn(doc, filterData)
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
   var self = this;
@@ -1999,9 +2000,7 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     }
   }
   if(self.headers){
-    var $header = $('<thead>'),
-      $row = $('<tr>').appendTo($header);
-    
+    var $header = $('<thead>'), $row = $('<tr>').appendTo($header);
     for(var header in self.headers){
       $('<th>').append(self.headers[header]).appendTo($row);
     }
@@ -2020,18 +2019,31 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     val.on('updated: added: removed: sortByFn', function(){
       self.$tbody.empty();
       val.each(function(item){
-        self.formatters && item.format(self.formatters);
-        var row = new TableRow(item, self.fields);
-        row.render(self.$tbody);
+        if(!self.filter || self.filter(item, self.filterData, self.fields)){
+          self.formatters && item.format(self.formatters);
+          var row = new TableRow(item, self.fields);
+          row.render(self.$tbody);
+        }
       });
     });
   });
   self.set('collection', collection);
-  
   collection.emit('updated:');
+  self.on('filterData', function(){this.collection.emit('updated:')});
 });
 Table.prototype.destroy = function(){
   this.collection && this.collection.release();
+}
+Table.searchFilter = function(doc, filterData, fields){
+  if(filterData){
+    result = false;
+    for(var i=0,len=fields.length;i<len;i++){
+      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
+    }
+    return result;
+  }else {
+    return true;
+  }
 }
 //------------------------------------------------------------------------------
 /* Creates a html structure to use with simplemodal
