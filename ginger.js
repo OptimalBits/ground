@@ -1363,8 +1363,7 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
     if(self.sortByFn){
       var i = self.indexOf(this);
       self.items.splice(i,1);
-      i = self.sortedIndex(this, self.sortByFn)
-      self.items.splice(i, 0, this)
+      self._sortedAdd(this);
     }
     self.emit('updated:', this, args);
   };
@@ -1379,16 +1378,21 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
     parent = items;  
   }
   
-  self._keepSynced = false
-  self._added = [];
-  self._removed = [];
-  self.parent = parent;
-  self.model = model || Model;
-  self.sortByFn = sortByFn
-  self.socket = ginger.Model.socket;
-  
-  self.on('sortByFn', function(fn){
-    self.items = self.sortBy(fn)
+  _.defaults(self, {
+    _keepSynced : false,
+    _added : [],
+    _removed : [],
+    parent : parent,
+    model : model || Model,
+    sortByFn : sortByFn,
+    sortOrder : 'asc',
+    socket : ginger.Model.socket
+  });
+  self.on('sortByFn sortOrder', function(fn){
+    if(self.sortByFn){
+      self.items = self.sortBy(self.sortByFn)
+    }
+    (self.sortOrder == 'desc') && self.items.reverse();
   });
 })
 Collection.instantiate = function(model, parent, array, cb){
@@ -1425,7 +1429,6 @@ Collection.instantiate = function(model, parent, array, cb){
     cb(null, null)
   }
 }
-
 Collection.prototype.save = function(cb){
   var transport = this.model.transport(), self = this;
   
@@ -1547,6 +1550,13 @@ Collection.prototype.keepSynced = function(enable){
 
   return this
 }
+Collection.prototype.toggleSortOrder = function(){
+  if(this.sortOrder == 'asc'){
+    this.set('sortOrder', 'desc');
+  }else{
+    this.set('sortOrder', 'asc');
+  }
+}
 Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
    
@@ -1554,12 +1564,11 @@ Collection.prototype.destroy = function(){
     var bucket = this.model.__bucket;
     
     if(this.parent){
-      id = this.parent.cid;
+      var id = this.parent.cid;
       this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
       this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
+      this._keepSynced && socket.emit('unsync', id);
     }
-    
-    this._keepSynced && socket.emit('unsync', id);
   }
   this.each(function(item){item.release()});
   this.items = null;
@@ -1578,7 +1587,12 @@ Collection.prototype._initItems = function(items){
     items.on('changed:', self._updateFn);
   }
 };
-
+Collection.prototype._sortedAdd = function(item){
+  (this.sortOrder == 'desc') && this.items.reverse();
+  var i = this.sortedIndex(item, this.sortByFn)
+  this.items.splice(i, 0, item);
+  (this.sortOrder == 'desc') && this.items.reverse();
+}
 Collection.prototype._add = function(item, cb, nosync){
   var self = this;
   
@@ -1587,8 +1601,7 @@ Collection.prototype._add = function(item, cb, nosync){
     return;
   }
   if(self.sortByFn){
-    var i = this.sortedIndex(item, self.sortByFn)
-    self.items.splice(i, 0, item)
+    self._sortedAdd(item);
   }else{
     self.items.push(item)
   }
@@ -1636,6 +1649,32 @@ _.each(methods, function(method) {
     return _[method].apply(_, [this.items].concat(_.toArray(arguments)))
   }
 })
+Collection.prototype.reverse = function(){
+  this.items.reverse();
+  return this;
+}
+/*
+// Human sort from: http://my.opera.com/GreyWyvern/blog/show.dml/1671288
+Array.prototype.humanSort = function() {
+  return this.sort(function(a, b) {
+    aa = a.split(/(\d+)/);
+    bb = b.split(/(\d+)/);
+
+    for(var x = 0, len=Math.max(aa.length, bb.length); x < len; x++) {
+      if(aa[x] != bb[x]) {
+        var cmp1 = (isNaN(parseInt(aa[x],10)))? aa[x] : parseInt(aa[x],10);
+        var cmp2 = (isNaN(parseInt(bb[x],10)))? bb[x] : parseInt(bb[x],10);
+        if(cmp1 == undefined || cmp2 == undefined)
+          return aa.length - bb.length;
+        else
+          return (cmp1 < cmp2) ? -1 : 1;
+      }
+    }
+    return 0;
+  });
+}
+*/
+
 
 //------------------------------------------------------------------------------
 
