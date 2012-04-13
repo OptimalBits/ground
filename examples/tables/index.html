@@ -1,0 +1,77 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tables Examples</title>  
+  <script type="text/javascript">
+    curl = {
+      baseUrl: 'http://localhost:8080/',
+        packages: {
+          'ginger': {
+          path: 'http://localhost:8080/',
+          main: 'ginger',
+          lib: ''
+        },
+        'jquery': {
+          path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
+          main:'jquery.min'
+        },
+        'underscore':{
+          path:'https://raw.github.com/amdjs/underscore/master/',
+          main:'underscore-min'
+        }
+     }
+   };
+  </script>
+  
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  
+  <script>
+    curl(['ginger'], function(ginger){
+      // Generate table programmatically.
+      var Animal = ginger.Declare(ginger.Model);
+    
+      ginger.Collection.instantiate(Animal, [
+        {name:'fox', colour:'brown'}, 
+        {name:'tiger', colour:'white'},
+        {name:'cat', colour:'black'}, 
+        {name:'cow', colour:'red'}, 
+        {name:'dog', colour:'gray'}
+      ], function(err, zoo){
+        var table = new ginger.Views.Table(zoo, {
+          headers:['name', 'colour'],
+          fields:['name', 'colour'],
+          widths:['70%', '10%'],
+          css:{width:'600px'},
+        });
+        table.render($('#example1'));
+        
+        table.set('filter', ginger.Views.Table.searchFilter);
+        table.set('filterData', '');
+        
+        zoo.set('sortByFn', function(item){
+          return item.colour;
+        });
+
+        zoo.set('sortOrder', 'asc');
+
+        var item = zoo.find(function(item){
+          return item.name == 'dog';
+        });
+        zoo.remove(item.cid);
+        
+        zoo.add(new Animal({name:'fly', colour:'green'}));
+        
+        table.on('clicked:', function(item, $el){
+          console.log(item);
+          console.log($el);
+        });
+
+      });
+    });
+    
+  </script>
+</head>
+<body>
+  <div id="example1"></div>
+</body>
+</html>
