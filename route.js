@@ -13,7 +13,7 @@ var parseQuery = function(queryString){
   
     for(i=0;i<len;i++){
       var keyValue = keyValues[i].split('=');
-      obj[keyValue[0]] = keyValue[1] ? keyValue[1]:'';
+      obj[decodeURIComponent(keyValue[0])] = keyValue[1] ? decodeURIComponent(keyValue[1]):'';
     }
     return obj;
   }else{
@@ -402,10 +402,12 @@ Request.prototype.isLast = function(){
 Request.prototype.nextComponent = function(){
   return this.components[this.index];
 }
-Request.prototype.redirect = function(url){
+Request.prototype.redirect = function(url, params){
   var self = this;
   self.promise.then(function(){
-    //self.nodes = [];
+    if(params){
+      url+='?'+$.param(params);
+    }
     route.redirect(url);
   });
 }
