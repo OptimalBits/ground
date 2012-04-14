@@ -36,7 +36,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
 */
 
-define(['jquery', 'underscore', 'ginger/route', 'ginger/uuid'], function($, _, route, uuid){
+define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
 
 /**
   Define some useful jQuery plugins.
@@ -80,12 +80,6 @@ if (!Object.create) {
 // Ginger Object
 //
 var ginger = {}
-
-//
-// Routes
-//
-
-ginger.route = route;
 
 //
 // Utils
@@ -2054,8 +2048,21 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   });
   self.set('collection', collection);
   collection.emit('updated:');
-  self.on('filterData', function(){this.collection.emit('updated:')});
+  self.on('filterData', function(){
+    this.collection.emit('updated:')
+  });
 });
+Table.searchFilter = function(doc, filterData, fields){
+  if(filterData){
+    result = false;
+    for(var i=0,len=fields.length;i<len;i++){
+      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
+    }
+    return result;
+  }else {
+    return true;
+  }
+}
 Table.prototype._selectRow = function($row){
   var selected = this.selectedRowClass;
   if(selected){
@@ -2067,17 +2074,6 @@ Table.prototype._selectRow = function($row){
 Table.prototype.select = function(itemId){
   var $row = $("tr[data-id='" + itemId +"']");
   $row && this._selectRow($row);
-}
-Table.prototype.searchFilter = function(doc, filterData, fields){
-  if(filterData){
-    result = false;
-    for(var i=0,len=fields.length;i<len;i++){
-      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
-    }
-    return result;
-  }else {
-    return true;
-  }
 }
 Table.prototype.destroy = function(){
   this.collection && this.collection.release();
