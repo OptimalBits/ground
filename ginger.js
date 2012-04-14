@@ -713,32 +713,37 @@ _.extend(ginger, new EventEmitter())
 //
 // Key Handling
 //
-function keyEventToString(event){
-  var s = ''
-  s = event.shiftKey?s+':shift':s
-  s = event.ctrlKey?s+':ctrl':s
-  s = event.altKey?s+':alt':s
-  s = event.metaKey?s+':meta':s
-  if(event.which>32){
-    s += ':'+String.fromCharCode(event.which).toLowerCase()
-  }else{
-    switch(event.which){
-      case 8: s+=':backspace';break;
-      case 20: s+=':caps';break;
-      case 27: s+=':esc';break;
-      case 32: s+=':space';break;
-    }
+function keyToString(key){
+  switch (key) {
+    case 8:  return 'backspace';
+    case 20: return 'caps';
+    case 27: return 'esc';
+    case 32: return 'space';
+    case 37: return 'left';
+    case 38: return 'up';
+    case 39: return 'right';
+    case 40: return 'down';
+    default: 
+      return String.fromCharCode(key).toLowerCase();
   }
-  return s
 }
-
-$(document)
-  .keydown(function(event){
-    ginger.emit('keydown'+keyEventToString(event))
-  })
-  .keyup(function(event){
-    ginger.emit('keyup'+keyEventToString(event))
-  })
+function keyEventToString(event){
+  var keys = [];
+  
+  event.shiftKey && keys.push('shift');
+  event.ctrlKey && keys.push('ctrl');
+  event.altKey && keys.push('alt');
+  event.metaKey && keys.push('meta');
+  
+  keys.push(keyToString(event.which));
+  
+  return keys.join(':');
+}
+$(document).keydown(function(event){
+  ginger.emit('keydown:'+keyEventToString(event))
+}).keyup(function(event){
+  ginger.emit('keyup:'+keyEventToString(event))
+})
 
 //
 // Classes
@@ -1968,7 +1973,7 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
 })
 //------------------------------------------------------------------------------
 var TableRow = ginger.Declare(ginger.View, function(doc, fields){
-  var $tr = $('<tr>').data('id', doc.cid);
+  var $tr = $('<tr>').attr('data-id', doc.cid);
   fields = fields || _.keys(doc);
   
   for(var i=0, len=fields.length;i<len;i++){
@@ -1984,15 +1989,18 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields){
     widths : [ '10%', '20%', '15%', ... ],
     css : { },
     classNames : 'name1 name2 ...'
+    selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
   var self = this;
   self.$tbody = $('<tbody>');
   self.$el = $('<table>');
+  self.$selected = null;
   
   _.extend(self, options);
   self.super(Views.Table, 'constructor', options.classNames, options.css);
+  
   if(self.widths){
     for(var i=0,len=self.widths.length;i<len;i++){
       var $col = $('<colgroup>').attr('width', self.widths[i]);
@@ -2012,7 +2020,24 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     var $this = $(this), cid = $this.data('id');
     self.emit('clicked:', collection.find(function(item){return item.cid==cid}), $this);
   });
-
+  self.on('clicked:', function(item, $row){
+    self._selectRow($row);
+  });
+  self._keydownEventName = 'keydown.'+uuid();
+  $(document).on(self._keydownEventName, function(event){
+    switch (keyToString(event.which)){
+      case 'down':
+        var $next = self.$selected.next();
+        ($next.length>0) && self._selectRow($next);
+      break;
+      case 'up':
+        var $prev = self.$selected.prev();
+        ($prev.length>0) && self._selectRow($prev);
+      break;
+      default: return true; 
+    }
+    return false;
+  });
   self.on('collection', function(val, old){
     old && old.release();
     val.retain();
@@ -2031,10 +2056,19 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   collection.emit('updated:');
   self.on('filterData', function(){this.collection.emit('updated:')});
 });
-Table.prototype.destroy = function(){
-  this.collection && this.collection.release();
+Table.prototype._selectRow = function($row){
+  var selected = this.selectedRowClass;
+  if(selected){
+    this.$selected && this.$selected.removeClass(selected);
+    this.set('$selected', $row);
+    $row.addClass(selected);
+  }
 }
-Table.searchFilter = function(doc, filterData, fields){
+Table.prototype.select = function(itemId){
+  var $row = $("tr[data-id='" + itemId +"']");
+  $row && this._selectRow($row);
+}
+Table.prototype.searchFilter = function(doc, filterData, fields){
   if(filterData){
     result = false;
     for(var i=0,len=fields.length;i<len;i++){
@@ -2044,6 +2078,11 @@ Table.searchFilter = function(doc, filterData, fields){
   }else {
     return true;
   }
+}
+Table.prototype.destroy = function(){
+  this.collection && this.collection.release();
+  $(document).off(self._keydownEventName);
+  this.super(Table, 'destroy');
 }
 //------------------------------------------------------------------------------
 /* Creates a html structure to use with simplemodal
