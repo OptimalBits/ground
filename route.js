@@ -1,5 +1,5 @@
 
-define(['jquery', 'underscore'], function($, _){
+define(['jquery', 'underscore', 'ginger'], function($,_, ginger){
 
 var route = {};
 
@@ -171,22 +171,63 @@ Request.prototype.use = function(kind, plugin){
 /**
   get - Define a GET route.
   
-  get(cb:{Function})
+  get([middleware, ...], cb:{Function})
   
-  get(component:{String}, selector:{String}, cb:{Function})
+  get(component:{String}, selector:{String}, [middleware, ...], cb:{Function})
   
-  get(component:{String}, selector:{String}, handler:{String}, [args:{Object}])
+  get(component:{String}, selector:{String}, [middleware, ...], handler:{String}, [args:{Object}])
   
   Handler is a AMD module that returns a function with the signature: function(req).
 
+  Middleware is a function with signature: function(req, next)
+  The middlewares can perform any operation it wants, asynchronous or not, and call next 
+  when ready. If next can be called with false or an error in order to stop the execution of 
+  this route.
 */
-Request.prototype.get = function(component, selector, cb, args){
-  var self = this;
 
-  if(_.isFunction(component)){
-    selector = ('body');
-    cb = component;
+function parseGetArguments(args){
+  var result = {middlewares:[], selector:'body'}, i = 0, len=args.length;
+  
+  if(_.isFunction(args[0])){
+    result.middlewares = _.initial(args);
+    result.cb = _.last(args);
   }else{
+    result.component = args[0];
+    result.selector = args[1];
+    i = 2;
+    if(_.isFunction(args[i])){
+      while(_.isFunction(args[i])&&(i<len-1)){
+        result.middlewares.push(args[i]);
+        i++;
+      }
+    }
+    if(i<len){
+      if(_.isFunction(args[i])){
+        result.cb = args[i];
+      }else{
+        result.handler = args[i];
+      }
+      i++;
+      (i<len) && (result.args = _.rest(args,i));
+    }
+  }
+  return result;
+}
+function processMiddlewares(req, middlewares, cb){
+  ginger.asyncForEach(middlewares, function(fn, cb){
+    fn(req, cb);
+  },cb);  
+}
+Request.prototype.get = function(){
+  var self = this, 
+    a = parseGetArguments(arguments),
+    component = a.component, 
+    handler = a.handler, 
+    selector = a.selector,
+    cb = a.cb,
+    args = a.args;
+
+  if(component){
     if(self.index < self.components.length){
       if(component.charAt(0) === ':'){
         self.params[component.replace(':','')] = self.components[self.index];
@@ -201,28 +242,33 @@ Request.prototype.get = function(component, selector, cb, args){
   
   self.nodePromise.then(function(){
     self.nodePromise = new Promise();
-    ;(function(promise){
-      var autoreleasePool = self.node().autoreleasePool;
+    
+    processMiddlewares(self, a.middlewares, function(err){
+      if(!err){
+        ;(function(promise){
+          var autoreleasePool = self.node().autoreleasePool;
       
-      self._initNode(selector);
+          self._initNode(selector);
   
-      if(_.isFunction(cb)){
-        cb && cb.call(self, autoreleasePool);
-        promise.resolve();
-        if(promise.callbacks.length===0){
-          self.endPromise.resolve();
-        }
-      } else {
-        curl([cb], function(f){
-          args = args?args:autoreleasePool;
-          f && f.call(self, self, args, autoreleasePool);
-          promise.resolve();
-          if(promise.callbacks.length===0){
-            self.endPromise.resolve();
+          if(cb){
+            cb && cb.call(self, autoreleasePool);
+            promise.resolve();
+            if(promise.callbacks.length===0){
+              self.endPromise.resolve();
+            }
+          } else {
+            curl([handler], function(f){
+              args = args?args:autoreleasePool;
+              f && f.call(self, self, args, autoreleasePool);
+              promise.resolve();
+              if(promise.callbacks.length===0){
+                self.endPromise.resolve();
+              }
+            });
           }
-        });
+        })(self.nodePromise);
       }
-    })(self.nodePromise);
+    });
   });
   
   return self;
@@ -353,7 +399,9 @@ Request.prototype.resourceRoute = function(resource){
 Request.prototype.isLast = function(){
   return this.index >= this.components.length
 }
-
+Request.prototype.nextComponent = function(){
+  return this.components[this.index];
+}
 Request.prototype.redirect = function(url){
   var self = this;
   self.promise.then(function(){
@@ -361,7 +409,6 @@ Request.prototype.redirect = function(url){
     route.redirect(url);
   });
 }
-
 Request.prototype.node = function(){
   var index = this.index-1;
   index = index < 0? 0:index;
@@ -521,22 +568,21 @@ route.listen = function (cb) {
       cb && cb(req);
       
       req.endPromise.then(function(){
-      
-      if(req.index !== req.nodes.length){
-        if(req.notFound && _.isFunction(req.notFound)){
-          req.index = 1;
-          req._initNode('body')
-          req.notFound.call(req, req);
-        }else{
-          console.log('Undefined route:'+location.hash);
-          return;
+        if(req.index !== req.nodes.length){
+          if(req.notFound && _.isFunction(req.notFound)){
+            req.index = 1;
+            req._initNode('body')
+            req.notFound.call(req, req);
+          }else{
+            console.log('Undefined route:'+location.hash);
+            return;
+          }
         }
-      }
   
-      req.exec(prevNodes);
-      prevNodes = req.nodes;
+        req.exec(prevNodes);
+        prevNodes = req.nodes;
         
-      route.prevUrl = prevUrl;
+        route.prevUrl = prevUrl;
       });
     }
   }
