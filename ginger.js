@@ -542,7 +542,6 @@ var ajaxBase = function(method, url, obj, cb){
     }
   }
 }
-
 var ajax = ginger.ajax = {
   get:function(url, obj, cb){
     return $.ajax(ajaxBase('GET', url, obj, cb))
@@ -664,7 +663,9 @@ ServerStorage.ajax = {
     }
   },
   remove:function(bucket, id, collection, objIds, cb){
-    if(objIds.length>0){
+    if(_.isFunction(collection)){
+      ginger.ajax.del(Model.url+'/'+bucket+'/'+id, collection);    
+    } else if(objIds.length>0){
       ginger.ajax.del(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
     }else{
       cb();
@@ -1066,7 +1067,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     if(args){
       this.fromJSON(args, function(instance){
         if(instance){
-          instance.__bucket = self.__bucket;
+          _.defaults(instance, {__bucket:self.__bucket});
           if(keepSynced == true){
             instance.keepSynced();
           }
@@ -1240,6 +1241,20 @@ Model.prototype.all = function(model, cb){
    cb(null)
   }
 }
+Model.prototype.toArgs = function(){
+  var args = {};
+  for(var key in this){
+    if((_.isFunction(this[key])===false)&&(key[0] !== '_')){
+      if(_.isFunction(this[key].toArgs)){
+        args[key] = this[key].toArgs();
+      }else if(!_.isObject(this[key])){
+        args[key] = this[key]
+      }
+    }
+  }
+  return args
+}
+Model.prototype.toJSON = ginger.Model.prototype.toArgs
 
 // TODO: Add a __dirty flag so we do not save unncessarily.
 // this flag a easily be maintained by listening to the changed: event.
@@ -1287,21 +1302,17 @@ Model.prototype.update = function(args, transport, cb){
     })
   }
 }
-Model.prototype.toArgs = function(){
-  var args = {};
-  for(var key in this){
-    if((_.isFunction(this[key])===false)&&(key[0] !== '_')){
-      if(_.isFunction(this[key].toArgs)){
-        args[key] = this[key].toArgs();
-      }else if(!_.isObject(this[key])){
-        args[key] = this[key]
-      }
-    }
+Model.prototype.delete = function(transport, cb){
+  var self = this;
+  if(_.isFunction(transport)){
+    cb = transport;
+    transport = this.transport();
   }
-  return args
-}
-Model.prototype.toJSON = ginger.Model.prototype.toArgs
-
+  ServerStorage[transport].remove(this.__bucket, this._id, function(err){
+    !err && self.emit('deleted:', self._id);
+    cb(err);
+  });
+};
 Model.prototype.keepSynced = function(){
   var self = this;
   if(self._keepSynced===true){
@@ -1367,6 +1378,10 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
     self.emit('updated:', this, args);
   };
   
+  self._deleteFn = _.bind(function(itemId){
+    self.remove(itemId);
+  }, self);
+  
   if(_.isArray(items)){
     self.items = items;
     self._initItems(items);
@@ -1428,6 +1443,9 @@ Collection.instantiate = function(model, parent, array, cb){
     cb(null, null)
   }
 }
+Collection.prototype.findById = function(id){
+  return this.find(function(item){return item.cid == id});
+}
 Collection.prototype.save = function(cb){
   var transport = this.model.transport(), self = this;
   
@@ -1484,16 +1502,18 @@ Collection.prototype.remove = function(itemIds, cb, nosync){
   
     if(item){
       item.release();
-      item.off('changed:', self._update);
+      item.off('changed:', self._updateFn);
+      item.off('deleted:', self._deleteFn);
       self.items = self.without(item);
       if(item._id){
         if(self._keepSynced){
           if(nosync !== true){
-            ServerStorage[transport].remove(self.parent.__bucket, 
-                                 self.parent._id,
-                                 self.model.__bucket,
-                                 item._id,
-                                 cb);
+            ServerStorage[transport].remove(
+              self.parent.__bucket, 
+              self.parent._id,
+              self.model.__bucket,
+              item._id,
+              cb);
           }
         }else{
           self._removed.push(itemId);
@@ -1542,9 +1562,6 @@ Collection.prototype.keepSynced = function(enable){
   
   this.map(function(item){
     item.keepSynced()
-    item.on('deleted:', function(item){
-      self.remove(item._id);
-    });
   });
 
   return this
@@ -1575,15 +1592,12 @@ Collection.prototype.destroy = function(){
 Collection.prototype._initItems = function(items){
   var self = this;
   
-  if(_.isArray(items)){ 
-    for (var i=0,len=items.length; i<len;i++){
-      var item = items[i];
-      item.retain();
-      item.on('changed:', self._updateFn);
-    }
-  }else{
-    items.retain();
-    items.on('changed:', self._updateFn);
+  items = _.isArray(items)? items:[items];
+  for (var i=0,len=items.length; i<len;i++){
+    var item = items[i];
+    item.retain();
+    item.on('changed:', self._updateFn);
+    item.on('deleted:', self._deleteFn);
   }
 };
 Collection.prototype._sortedAdd = function(item){
@@ -1595,10 +1609,11 @@ Collection.prototype._sortedAdd = function(item){
 Collection.prototype._add = function(item, cb, nosync){
   var self = this;
   
-  if(self.find(function(i){return i.cid===item.cid})){
+  if(self.findById(item.cid)){
     cb && cb(null);
     return;
   }
+  
   if(self.sortByFn){
     self._sortedAdd(item);
   }else{
@@ -1606,8 +1621,8 @@ Collection.prototype._add = function(item, cb, nosync){
   }
 
   self._initItems(item);
-  self.emit('added:', item)
-  
+  self.emit('added:', item);
+    
   if(self._keepSynced){
     var transport = this.model.transport();
     if(nosync !== true){
@@ -2067,9 +2082,9 @@ Table.prototype._selectRow = function($row){
   var selected = this.selectedRowClass;
   if(selected){
     this.$selected && this.$selected.removeClass(selected);
-    this.set('$selected', $row);
-    $row.addClass(selected);
   }
+  this.set('$selected', $row);
+  $row.addClass(selected);
 }
 Table.prototype.select = function(itemId){
   var $row = $("tr[data-id='" + itemId +"']");
