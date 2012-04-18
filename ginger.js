@@ -1981,12 +1981,13 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
   })
 })
 //------------------------------------------------------------------------------
-var TableRow = ginger.Declare(ginger.View, function(doc, fields){
+var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
   var $tr = $('<tr>').attr('data-id', doc.cid);
   fields = fields || _.keys(doc);
   
   for(var i=0, len=fields.length;i<len;i++){
-    var $td = $('<td>').append(doc.format(fields[i])).appendTo($tr)
+    var value = doc.format(fields[i]) || 'undefined';
+    var $td = $('<td>').append(value).appendTo($tr).attr('width', widths[i]||0);
   }
   this.$el = $tr;
 });
@@ -2002,33 +2003,49 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields){
     filter : fn(doc, filterData)
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
-  var self = this;
-  self.$tbody = $('<tbody>');
-  self.$el = $('<table>');
+  var self = this, 
+    $colgroups, 
+    $tableWrapper = $('<div>'), 
+    $table = $('<table>').appendTo($tableWrapper),
+    $tbody = $('<tbody>');
+
+  self.$el = $('<div>');
   self.$selected = null;
   
   _.extend(self, options);
+  _.defaults(self, {widths:[]});
+  
   self.super(Views.Table, 'constructor', options.classNames, options.css);
   
   if(self.widths){
+    $colgroups = [];
     for(var i=0,len=self.widths.length;i<len;i++){
       var $col = $('<colgroup>').attr('width', self.widths[i]);
-      self.$el.append($col);
+      $colgroups.push($col);
     }
   }
   if(self.headers){
-    var $header = $('<thead>'), $row = $('<tr>').appendTo($header);
-    for(var header in self.headers){
-      $('<th>').append(self.headers[header]).appendTo($row);
+    var $headerTable = $('<table>'), $row = $('<tr>'), $header = $('<thead>').appendTo($headerTable);
+    $colgroups && _.each($colgroups,function(item){
+//      $headerTable.append(item);
+    });
+    $header.append($row);
+    for(var i=0, len=self.headers.length;i<len;i++){
+      var header = self.headers[i];
+      $('<th>').append(header).appendTo($row).attr('width', self.widths[i]||0);
     }
-    self.$el.append($header);
+    self.$el.append($headerTable);
   }
-  self.$el.append(self.$tbody);
-  
-  self.$tbody.on('click', 'tr', function(event) {
-    var $this = $(this), cid = $this.data('id');
-    self.emit('clicked:', collection.find(function(item){return item.cid==cid}), $this);
+  self.$el.append($tableWrapper);
+  $colgroups && _.each($colgroups,function(item){
+    //$table.append(item);
   });
+  $table.append($tbody);
+  $tbody.on('click', 'tr', function(event) {
+    var $this = $(this), cid = $this.data('id');
+    self.emit('clicked:', collection.findById(cid), $this);
+  });
+  
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
@@ -2051,12 +2068,12 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     old && old.release();
     val.retain();
     val.on('updated: added: removed: sortByFn', function(){
-      self.$tbody.empty();
+      $tbody.empty();
       val.each(function(item){
         if(!self.filter || self.filter(item, self.filterData, self.fields)){
           self.formatters && item.format(self.formatters);
-          var row = new TableRow(item, self.fields);
-          row.render(self.$tbody);
+          var row = new TableRow(item, self.fields, self.widths);
+          row.render($tbody);
         }
       });
     });
