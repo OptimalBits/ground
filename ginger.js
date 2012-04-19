@@ -1161,6 +1161,11 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   },
   all : function(cb, parent){
     var self = this, bucket, id;
+    if(_.isFunction(parent)){
+      var tmp = cb;
+      cb = parent;
+      parent = tmp;
+    }
     if(parent){
       bucket = parent.__bucket;
       id = parent.cid;
