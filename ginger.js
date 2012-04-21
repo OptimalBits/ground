@@ -2010,13 +2010,12 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
   var self = this, 
-    $colgroups, 
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'scroll'}), 
-    $table = $('<table>').appendTo($tableWrapper),
-    $tbody = $('<tbody>');
-
+    $table = $('<table>').appendTo($tableWrapper);
+    
   self.$el = $('<div>');
   self.$selected = null;
+  self.$tbody = $('<tbody>');
   
   _.extend(self, options);
   _.defaults(self, {widths:[]});
@@ -2032,9 +2031,6 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   }
   if(self.headers){
     var $headerTable = $('<table>'), $row = $('<tr>'), $header = $('<thead>').appendTo($headerTable);
-    $colgroups && _.each($colgroups,function(item){
-//      $headerTable.append(item);
-    });
     $header.append($row);
     for(var i=0, len=self.headers.length;i<len;i++){
       var header = self.headers[i];
@@ -2043,11 +2039,8 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     self.$el.append($headerTable);
   }
   self.$el.append($tableWrapper);
-  $colgroups && _.each($colgroups,function(item){
-    //$table.append(item);
-  });
-  $table.append($tbody);
-  $tbody.on('click', 'tr', function(event) {
+  $table.append(self.$tbody);
+  self.$tbody.on('click', 'tr', function(event) {
     var $this = $(this), cid = $this.data('id');
     self.emit('clicked:', collection.findById(cid), $this);
   });
@@ -2056,32 +2049,43 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
     self._selectRow($row);
   });
   self._keydownEventName = 'keydown.'+uuid();
-  $(document).on(self._keydownEventName, function(event){
-    switch (keyToString(event.which)){
-      case 'down':
-        var $next = self.$selected.next();
-        ($next.length>0) && self._selectRow($next);
-      break;
-      case 'up':
-        var $prev = self.$selected.prev();
-        ($prev.length>0) && self._selectRow($prev);
-      break;
-      default: return true; 
-    }
-    return false;
-  });
+  if(!self.ignoreKeyboard){
+    $(document).on(self._keydownEventName, function(event){
+      if(self.$selected){
+        switch (keyToString(event.which)){
+          case 'down':
+            var $next = self.$selected.next();
+            ($next.length>0) && self._selectRow($next);
+          break;
+          case 'up':
+            var $prev = self.$selected.prev();
+            ($prev.length>0) && self._selectRow($prev);
+          break;
+          default: return true; 
+        }
+      }
+      return false;
+    });
+  }
   self.on('collection', function(val, old){
     old && old.release();
     val.retain();
-    val.on('updated: added: removed: sortByFn', function(){
-      $tbody.empty();
-      val.each(function(item){
-        if(!self.filter || self.filter(item, self.filterData, self.fields)){
-          self.formatters && item.format(self.formatters);
-          var row = new TableRow(item, self.fields, self.widths);
-          row.render($tbody);
+    val.on('updated: added: sortByFn', function(){
+      self.populate();
+    }).on('removed:', function(val){
+      var $row;
+      if(self.$selected.data('id') == val._id){
+        var $row = self.$selected.prev();
+        if($row.length == 0){
+          $row = self.$selected.next();
         }
-      });
+      }
+      self.populate();
+      if($row.length){
+        self.select($row.data('id'));
+      }else{
+        self.set('$selected', null);
+      }
     });
   });
   self.set('collection', collection);
@@ -2100,6 +2104,17 @@ Table.searchFilter = function(doc, filterData, fields){
   }else {
     return true;
   }
+}
+Table.prototype.populate = function(){
+  var self=this;
+  self.$tbody.empty();
+  self.collection.each(function(item){
+    if(!self.filter || self.filter(item, self.filterData, self.fields)){
+      self.formatters && item.format(self.formatters);
+      var row = new TableRow(item, self.fields, self.widths);
+      row.render(self.$tbody);
+    }
+  });
 }
 Table.prototype._selectRow = function($row){
   var selected = this.selectedRowClass;
