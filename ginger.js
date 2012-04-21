@@ -876,6 +876,7 @@ Base.prototype.get = function(key){
   
   result = this[path[0]];
   for(var i=1, len=path.length;i<len;i++){
+    if(!_.isObject(result)) break;
     result = result[path[i]];
   }
   return result;
