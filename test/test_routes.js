@@ -1,6 +1,6 @@
-define(['ginger'], function(ginger){
+define(['ginger', 'ginger/route'], function(ginger, route){
 
-ginger.route.root = '/';
+route.root = '/';
 
 
 var goToUrl = function(url){
@@ -14,21 +14,21 @@ describe('Routes', function(){
 
 describe('simple routes', function(){
   it('root route', function(done){
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
-        ginger.route.stop();
+        route.stop();
         done();
       });
     });
   });
   
   it('hierarchical route', function(done){
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
             req.get('bar', '#foo', function(){
-              ginger.route.stop();
+              route.stop();
               done();  
             });
           });
@@ -44,9 +44,9 @@ describe('simple routes', function(){
   });
   
   it('change from one deep route to another deep route', function(done){
-    ginger.route.stop();
+    route.stop();
     goToUrl('');
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -66,9 +66,9 @@ describe('simple routes', function(){
   });
   
   it('change one route component in the middle of a route', function(done){
-    ginger.route.stop();
+    route.stop();
     goToUrl('');
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#foo', function(){
@@ -92,9 +92,9 @@ describe('simple routes', function(){
     var foo = new ginger.Base();
     var bar = new ginger.Base();
     
-    ginger.route.stop();
+    route.stop();
     goToUrl('');
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -138,9 +138,9 @@ describe('simple routes', function(){
     var foo = new ginger.Base();
     var bar = new ginger.Base();
   
-    ginger.route.stop();
+    route.stop();
     goToUrl('');
-    ginger.route.listen(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -174,7 +174,7 @@ describe('simple routes', function(){
   });  
   
   it('stop listening route', function(){
-    ginger.route.stop();
+    route.stop();
   });
 
 
