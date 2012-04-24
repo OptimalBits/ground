@@ -1109,17 +1109,33 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   update : function(id, args, cb){
     // TODO Implement.
   },
-  findById : function(id, keepSynced, cb){
-    if(_.isFunction(keepSynced)){
-      cb = keepSynced;
+  /**
+    findById(id, cb)
+    findById(id, keepSynced, cb)
+    findById(id, args, cb)
+    findById(id, keepSynced, args, cb)
+  */
+  findById : function(id, keepSynced, args, cb){
+    switch(arguments.length){
+      case 2:
+        cb = keepSynced;break;
+      case 3:
+        cb = args;
+        if(_.isObject(keepSynced)){
+          args = keepSynced;
+        }else{
+          args = undefined;
+        }
+        break;  
     }
     var self = this, bucket = self.__bucket;
-    ServerStorage[self.transport()].findById(bucket, id, function(err, args){
+    ServerStorage[self.transport()].findById(bucket, id, function(err, doc){
       if(err){
         cb(err);
       }else{
-        args = args || Storage.findById(bucket, id)
-        self.create(args, keepSynced, cb)
+        doc = doc || Storage.findById(bucket, id)
+        args && _.extend(doc, args);
+        self.create(doc, keepSynced, cb)
       }
     })
     return this
@@ -1160,7 +1176,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     }
     ServerStorage[this.transport()].find(bucket, id, collection, query, cb);
   },
-  all : function(cb, parent){
+  all : function(cb, parent, args){
     var self = this, bucket, id;
     if(_.isFunction(parent)){
       var tmp = cb;
@@ -1173,6 +1189,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
     }
     this.fetch(bucket, id, this.__bucket, function(err, docs){
       if(docs){
+        args && _.each(docs, function(doc){_.extend(doc, args)});
         var collection = docs || Storage.all(bucket, parent);
         Collection.instantiate(self, parent, collection, cb)
       }else{
@@ -1240,9 +1257,13 @@ Model.prototype.local = function(){
     return this._local
   }
 }
-Model.prototype.all = function(model, cb){
+Model.prototype.all = function(model, args, cb){
   if(this._id){
-   model.all(cb, this)
+    if(_.isFunction(args)){
+      cb = args;
+      args = undefined;
+    }
+    model.all(cb, this, args)
   }else{
    cb(null)
   }
