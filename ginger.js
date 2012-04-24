@@ -2151,7 +2151,7 @@ Table.prototype.select = function(itemId){
 }
 Table.prototype.destroy = function(){
   this.collection && this.collection.release();
-  $(document).off(self._keydownEventName);
+  $(document).off(this._keydownEventName);
   this.super(Table, 'destroy');
 }
 //------------------------------------------------------------------------------
