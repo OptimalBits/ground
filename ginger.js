@@ -1058,6 +1058,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
   })
   this.cid = this._id || this.cid || uuid()
   this.__transport = Model.__transport;
+  this.__bucket = this.__bucket || this.constructor.__bucket;
 },
 {
   create : function(args, keepSynced, cb){
@@ -1335,7 +1336,7 @@ Model.prototype.delete = function(transport, cb){
     cb = transport;
     transport = this.transport();
   }
-  ServerStorage[transport].remove(this.__bucket, this._id, function(err){
+  ServerStorage[transport].remove(self.__bucket, self._id, function(err){
     !err && self.emit('deleted:', self._id);
     cb(err);
   });
