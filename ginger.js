@@ -2032,7 +2032,7 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
 */
 var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
   var self = this, 
-    $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'scroll'}), 
+    $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
     
   self.$el = $('<div>');
