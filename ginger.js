@@ -819,7 +819,7 @@ Base.prototype.on = function(eventNames, listener){
 */
 
 /**
-  set - Sets a property and notifies any listeners attached to it.
+  set - Sets a property and notifies any listeners attached to it if changed.
 */
 Base.prototype._set = function(keypath, val, options){
   var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
@@ -833,7 +833,7 @@ Base.prototype._set = function(keypath, val, options){
     }
   }
   
-  if(obj[key]!=val){
+  if( _.isEqual(obj[key], val) == false){
     var oldval = obj[key],
       val = this.willChange ? this.willChange(key, val):val;
     obj[key] = val
