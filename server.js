@@ -43,6 +43,16 @@ var Sync = require('./sync'),
     redis = require('redis'),
     util = require('util'),
     _ = require('underscore');
+    
+function shouldUpdate(keys, args, doc){
+  for(var i=0, len=keys.length;i<len;i++){
+    var key = keys[i];
+    if(_.isEqual(args[key], doc[key]) == false){
+      return true;
+    }
+  }
+  return false;
+}
 
 exports = module.exports = function(models, redisPort, redisAddress, sockets, sio){
   var pubClient = redis.createClient(redisPort, redisAddress),
@@ -86,11 +96,19 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     
       var Model = getModel(bucket, cb);
       if(Model){
-        Model.update({_id:id}, args, function(err){
-          if(!err){
-            sync.update(id, args);
+        // TODO: Use revisions TO AVOID infinite loops
+        var keys = _.keys(args);
+        Model.findById(id, keys, function(err, doc){          
+          if(shouldUpdate(keys, args, doc)){ 
+            // if(shouldUpdate(keys, args, doc)) && (args._rev == doc._rev)){
+            // Model.update({_id:id, _rev:doc._rev}, {$set:args, $inc:'_rev'}, function(err){
+            Model.update({_id:id}, args, function(err){
+              if(!err){
+                sync.update(id, args);
+              }
+              cb(err);
+            }); 
           }
-          cb(err);
         });
       }
     });

@@ -49,7 +49,7 @@ var sync = function(pubClient, subClient, sockets, sio){
           }
         }else{
           console.log("Socket %s started synchronization for id:%s",socket.id, id);
-          socket.join(String(id));
+          socket.join(id);
         }
       });
     
@@ -74,13 +74,13 @@ var sync = function(pubClient, subClient, sockets, sio){
           cmd = comps[0],
           objId = comps[1],
           bucket = comps[2];
-          
+
       msg = JSON.parse(msg);
     
       if(pattern === 'update:*'){
-        sockets.in(objId).json.emit(cmd+':'+objId, msg);
+        sio.in(objId).emit(cmd+':'+objId, msg);
       }else{
-        sockets.in(objId).emit(cmd+':'+objId+':'+bucket, msg);
+        sio.in(objId).emit(cmd+':'+objId+':'+bucket, msg);
       }
       // TODO: Implement except to avoid the sender to receive the message it sent
       // Note that this has the implication that if you have several instances of one
@@ -91,6 +91,7 @@ var sync = function(pubClient, subClient, sockets, sio){
 }
 
 sync.prototype.update = function(id, doc){
+  console.log("Sending an update pub to:%s with doc:%s",id, doc)
   this.pubClient.publish('update:'+id, JSON.stringify(doc));
 }
 
