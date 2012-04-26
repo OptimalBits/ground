@@ -44,30 +44,14 @@ var Sync = require('./sync'),
     util = require('util'),
     _ = require('underscore');
     
-function shouldUpdate(keys, args, doc){
-  for(var i=0, len=keys.length;i<len;i++){
-    var key = keys[i];
-    if(_.isEqual(args[key], doc[key]) == false){
-      return true;
-    }
-  }
-  return false;
-}
-
-exports = module.exports = function(models, redisPort, redisAddress, sockets, sio){
+var Server = function(models, redisPort, redisAddress, sockets, sio){
   var pubClient = redis.createClient(redisPort, redisAddress),
-      subClient = redis.createClient(redisPort, redisAddress);
-      
-  var sync = this.sync = new Sync(pubClient, subClient, sockets, sio);
-
-  function getModel(bucket, cb){
-    if(bucket in models){
-      return models[bucket];
-    } else {
-      cb(new Error('Invalid bucket %s', bucket));
-      return null;
-    }
-  }
+      subClient = redis.createClient(redisPort, redisAddress),
+      self = this;
+  
+  self.models = models;
+  
+  var sync = self.sync = new Sync(pubClient, subClient, sockets, sio);
   
   if(!sio){
     sio = sockets;
@@ -77,7 +61,7 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     console.log('Connection to:'+socket);
   
     socket.on('create', function(bucket, args, cb){
-      var Model = getModel(bucket, cb);
+      var Model = self._getModel(bucket, cb);
       if(Model){
         var instance = new models[bucket](args);
         instance.save(function(err){
@@ -93,28 +77,12 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     socket.on('update', function(bucket, id, args, cb){
       console.log("Update bucket:%s with id:%s and args "+util.inspect(args), 
       bucket, id);
-    
-      var Model = getModel(bucket, cb);
-      if(Model){
-        // TODO: Use revisions TO AVOID infinite loops
-        var keys = _.keys(args);
-        Model.findById(id, keys, function(err, doc){          
-          if(shouldUpdate(keys, args, doc)){ 
-            // if(shouldUpdate(keys, args, doc)) && (args._rev == doc._rev)){
-            // Model.update({_id:id, _rev:doc._rev}, {$set:args, $inc:'_rev'}, function(err){
-            Model.update({_id:id}, args, function(err){
-              if(!err){
-                sync.update(id, args);
-              }
-              cb(err);
-            }); 
-          }
-        });
-      }
+      
+      self.update(bucket, id, args, cb);
     });
 
     socket.on('read', function(bucket, id, cb){
-      var Model = getModel(bucket, cb);
+      var Model = self._getModel(bucket, cb);
       if(Model){
         console.log(Model);
         Model.findById(id).exclude(Model.exclude).run(cb);
@@ -126,7 +94,7 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     });
   
     socket.on('find', function(bucket, id, collection, query, cb){
-      var Model = getModel(bucket, cb);
+      var Model = self._getModel(bucket, cb);
       if(Model){
         if(collection){
           if(Model.get){
@@ -156,7 +124,7 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
       itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
 
       if(itemIds.length > 0){
-        var Model = getModel(bucket, cb);
+        var Model = self._getModel(bucket, cb);
         if(Model){
           Model.findById(id, function(err, doc){
             if(err) cb(err);
@@ -185,7 +153,7 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     socket.on('remove', function(bucket, id, collection, itemIds, cb){
       itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
       if(itemIds.length > 0){
-        var Model = getModel(bucket, cb);
+        var Model = self._getModel(bucket, cb);
         if(Model){
           Model.findById(id, function(err, doc){
             if(err) cb(err);
@@ -212,3 +180,54 @@ exports = module.exports = function(models, redisPort, redisAddress, sockets, si
     });
   });
 }
+
+function shouldUpdate(keys, args, doc){
+  for(var i=0, len=keys.length;i<len;i++){
+    var key = keys[i];
+    if(_.isEqual(args[key], doc[key]) == false){
+      return true;
+    }
+  }
+  return false;
+}
+
+
+// TODO: Use revisions TO AVOID infinite loops
+Server.prototype.update = function(bucket, id, args, cb){
+  var self = this;
+  var Model = self._getModel(bucket, cb);
+  if(Model){  
+    var keys = _.keys(args);
+    Model.findById(id, keys, function(err, doc){          
+      if(shouldUpdate(keys, args, doc)){ 
+        // if(shouldUpdate(keys, args, doc)) && (args._rev == doc._rev)){
+        // Model.update({_id:id, _rev:doc._rev}, {$set:args, $inc:'_rev'}, function(err){
+        Model.update({_id:id}, args, function(err){
+          if(!err){
+            self.sync.update(id, args);
+          }
+          cb(err);
+        }); 
+      }
+    });
+  }
+}
+
+Server.prototype._getModel = function(bucket, cb){
+  var models = this.models;
+  if(bucket in models){
+    return models[bucket];
+  } else {
+    cb(new Error('Invalid bucket %s', bucket));
+    return null;
+  }
+}
+
+
+
+exports = module.exports = Server;
+
+
+
+
+
