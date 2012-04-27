@@ -1130,8 +1130,8 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
         }
         break;  
     }
-    var self = this, bucket = self.__bucket;
-    ServerStorage[self.transport()].findById(bucket, id, function(err, doc){
+    var self = this, bucket = self.__bucket, transport = self.transport();
+    ServerStorage[transport].findById(bucket, id, function(err, doc){
       if(err){
         cb(err);
       }else{
@@ -1337,10 +1337,14 @@ Model.prototype.delete = function(transport, cb){
     cb = transport;
     transport = this.transport();
   }
-  ServerStorage[transport].remove(self.__bucket, self._id, function(err){
-    !err && self.emit('deleted:', self._id);
-    cb(err);
-  });
+  if(transport){
+    ServerStorage[transport].remove(self.__bucket, self._id, function(err){
+      !err && self.emit('deleted:', self._id);
+      cb(err);
+    });
+  }else{
+    cb();
+  }
 };
 Model.prototype.keepSynced = function(){
   var self = this;
