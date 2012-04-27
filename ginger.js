@@ -1340,10 +1340,11 @@ Model.prototype.delete = function(transport, cb){
   if(transport){
     ServerStorage[transport].remove(self.__bucket, self._id, function(err){
       !err && self.emit('deleted:', self._id);
-      cb(err);
+      cb && cb(err);
     });
   }else{
-    cb();
+    self.emit('deleted:', self._id);
+    cb && cb();
   }
 };
 Model.prototype.keepSynced = function(){
