@@ -980,6 +980,7 @@ Base.prototype.retain = function(){
 Base.prototype.release = function(){
   this._refCounter--;
   if(this._refCounter===0){
+    this.emit('destroy:');
     this.destroy();
     this._destroyed = true;
     this._destroyedTrace = new Error().stack;
