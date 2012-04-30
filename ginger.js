@@ -1113,6 +1113,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
     }else{
       cb(null, null)
     }
+    return this;
   },
   transport : function(){
     return this.__transport || 
@@ -1127,15 +1128,18 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
         this.__transport = this.prototype.__transport = value;
         break;
     }
+    return this;
   },
   set : function(attribute, value){
     switch(attribute){
       case 'socket': this.socket = value;break;
       case 'url': this.url = value;break;
     }
+    return this;
   },
   bucket : function(bucket){
     this.__bucket = this.prototype.__bucket = bucket
+    return this;
   },
   update : function(id, args, cb){
     // TODO Implement.
@@ -1260,7 +1264,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
   }
 })
 Model.prototype.transport = function(){
-  return this.__transport || this.constructor.transport();
+  return this.__transport || Model.transport();
 }
 Model.prototype.key = function(){
   return this.__bucket+':'+this._id
