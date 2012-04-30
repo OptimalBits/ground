@@ -448,7 +448,7 @@ Request.prototype._initNode = function(selector){
 }
 
 Request.prototype._anim = function(node, name, speed, cb){
-  node.$el[name](speed || 'slow', cb);
+  node.$el[name](speed || 'fast', cb);
 }
 
 // ( templateUrl, [locals, cb])
