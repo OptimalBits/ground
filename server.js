@@ -37,6 +37,22 @@
   
   Remove existing documents from a collection
   'remove' : (bucket, id, collection, itemIds) : (err) -> 'remove:id:collection', (itemIds)
+  
+  Integration Notes:
+  
+  Collections are represented as an array of Ids. This array of Ids can be part of some other 
+  model in a field 1), or it can be a ids of standalone documents 2). In this case, memebership of
+  the collection is represented by having a field of the kind "parentId", where the item belongs
+  to.
+  
+  Arrays of embedded documents cannot be used for representing collections.
+  
+  A Model that includes a collection as in type 1 only needs to name the field with the collection
+  name. If the model uses type 2 collection, then a static method with the with the parent field
+  for the model part of the collection is necessary:
+  
+  Animal.static('parent', function(){ return 'zooId' });
+  
 */
 
 var Sync = require('./sync'),    
