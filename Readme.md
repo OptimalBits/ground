@@ -244,51 +244,89 @@ Besides models there are also ***collections***. A collection is a special class
 
 So lets start with some examples:
       
-      // Define the root url for storing models
-      ginger.Model.set('url', '/models');
+    // Define the root url for storing models
+    ginger.Model.set('url', '/models');
 
-      // Declare a Animal Model
-      var Animal = ginger.Declare(ginger.Model);
-      Animal.use('transport', 'ajax');      
+    // Declare a Animal Model
+    var Animal = ginger.Declare(ginger.Model);
+    Animal.use('transport', 'ajax');      
 
-      var fox = new Animal({legs:4, colour:'brown'});
+    var fox = new Animal({legs:4, colour:'brown'});
 
-      // Save the model
-      fox.save(function(err){
-        console.log(err);
-      })
+    // Save the model
+    fox.save(function(err){
+      console.log(err);
+    })
 
-      // Find all animals
-      Animal.all(function(err, animals){
-		// animals is a collection
-      });
+    // Find all animals
+    Animal.all(function(err, animals){
+		  // animals is a collection
+    });
+
 
 If there is a connection to the server using socket.io, we can also have synchronization support:
 
-      // Set a socket for realtime communication with a server.
-      ginger.Model.set('socket', socket);
+    // Set a socket for realtime communication with a server.
+    ginger.Model.set('socket', socket);
 
-      // Select socket as transport
-      Animal.transport('transport', 'ajax');
+    // Select socket as transport
+    Animal.transport('transport', 'ajax');
 
-      fox.keepSynced();
+    fox.keepSynced();
 
-      // Now we don't need to explicitly save anymore
-      fox.set('colour', 'white');
+    // Now we don't need to explicitly save anymore
+    fox.set('colour', 'white');
 
-      // Lets find this fox in the server
-      Animal.findById(fox._id, function(err, whiteFox){
-        // The white box will have color white.
-        console.log(whiteFox);
-        whiteFox.release();
-      });
+    // Lets find this fox in the server
+    Animal.findById(fox._id, function(err, whiteFox){
+      // The white box will have color white.
+      console.log(whiteFox);
+      whiteFox.release();
+    });
 
-      // Clean up
-      fox.release();
+    // Clean up
+    fox.release();
 
 In the example above we achieved automatic synchronization between the client and the server, but also with other remote clients that had an instance of Animal with the same ._id as fox and that had enabled synchronization with keepSynced().
 
-Besides Models we also have Collections, which provides a convenient way to represent several models in a collection, and support automatic synchronization for keeping all the instances in the collection synchronized as well as support for objects that are added and removed to the collection.
+##Collections
+
+Besides Models we also have Collections, which provides a convenient way to represent an *ordered set* of models. A Collection is able to keep itself synchronized with a server. If elements are added or remove from a collection, all instances of that collection can be kept synchronized, including the server backend that persists all the objects.
+
+Usually a collection is instantiated by using the *all* function on a model:
+
+    // Gets all the animals
+    Animal.all(function(err, animals){
+      // animals will be a collection of Animal models.
+    
+      // We can listen to events on a collection
+      animals.on('removed:', function(item){
+        // item was removed from the collection.
+      });
+      
+      animlals.on('added:', function(item){
+        // item was added to a collection.
+      });
+    });
+    
+    
+
+Collections *retains* all the items that are part of it. So if we for example add a item to a collection, we can safely (and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed from it.
+
+
+Oftem times a collection is a *subcollection*, i.e., it is a collection part of some other model. For example:
+
+    // find a zoo
+    Zoo.findById(zooId, function(err, parisZoo){
+    
+      // Gets all the animals from Paris zoo.
+      parisZoo.all(Animal, function(err, animals){
+        // animals includes all the animals of Paris Zoo.
+      });
+    });
+      
+
+Subcollections is a powerfull concept that allows us to define very complex hierarchies of models and collections.
 
 
 ##Events
