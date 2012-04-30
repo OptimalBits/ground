@@ -1293,11 +1293,11 @@ Model.prototype.local = function(){
   }
 }
 Model.prototype.all = function(model, args, cb){
-  if(this._id){
-    if(_.isFunction(args)){
-      cb = args;
-      args = undefined;
-    }
+  if(_.isFunction(args)){
+    cb = args;
+    args = undefined;
+  }
+  if(this._id){ 
     model.all(cb, this, args)
   }else{
    cb(null)
