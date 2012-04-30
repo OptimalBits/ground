@@ -324,21 +324,7 @@ Request.prototype.load = function(urls, cb){
 Request.prototype.exec = function(prevs){
   var self = this;
   var start, nodes = self.nodes;
-  
-  //
-  // Find first index where re-rendering is needed. (common base).
-  //
-  /*
-  for(start=0,len=nodes.length;start<len;start++){
-    var node = nodes[start],
-        prev = prevs[start];
-        
-    if(!prev || (prev.component !== node.component)){
-      break;
-    }
-  }
-  */
-  
+    
   start = self.startIndex;
   
   //
@@ -375,7 +361,6 @@ Request.prototype.exec = function(prevs){
        
     node.select && node.select(self);
     
-    //prev && prev.exit && prev.exit(this);
     node.hide && node.hide(self);
     
     node.before && node.before(self);
@@ -616,7 +601,6 @@ route.stop = function(){
 }
 
 route.redirect = function(url) {
-  //route.prevUrl = location.hash;
   location.hash = url;
   if ('onhashchange' in window) {
     $(window).trigger('onhashchange');
