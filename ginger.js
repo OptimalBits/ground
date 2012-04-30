@@ -1306,7 +1306,7 @@ Model.prototype.all = function(model, args, cb){
 Model.prototype.toArgs = function(){
   var args = {};
   for(var key in this){
-    if((_.isFunction(this[key])===false)&&(key[0] !== '_')){
+    if( (key[0] !== '_') && !_.isUndefined(this[key]) && !_.isFunction(this[key]) ){
       if(_.isFunction(this[key].toArgs)){
         args[key] = this[key].toArgs();
       }else if(!_.isObject(this[key])){
