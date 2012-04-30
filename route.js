@@ -361,7 +361,7 @@ Request.prototype.exec = function(prevs){
     node.$el || (node.select && node.select(self));
     node.exit && node.exit(self);
     node.exit || (node.hide && node.hide(self));
-    node.drain(self);
+    node.drain && node.drain(self);
   }
   
   //
