@@ -568,7 +568,9 @@ Storage.findById = function(bucket, id){
   for (var i=0, len=localStorage.length;i<len;i++){
     var key = localStorage.key(i)
     if(key === objectId){
-      return JSON.parse(localStorage[key])
+      var doc = JSON.parse(localStorage[key])
+      doc._id = doc.cid;
+      return doc;
     }
   }
   return null
@@ -603,7 +605,9 @@ Storage.first = function(bucket, parent){
     for (var i=0, len=localStorage.length;i<len;i++){
       var key = localStorage.key(i)
       if(key.split('@')[0] === bucket){
-        return JSON.parse(localStorage[key])
+        var doc = JSON.parse(localStorage[key])
+        doc._id = doc.cid;
+        return doc;
       }
     }
   }
