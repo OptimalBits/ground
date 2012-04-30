@@ -136,36 +136,55 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       }
     });
   
+    //
+    // Add items to a collection.
+    //
+    
     socket.on('add', function(bucket, id, collection, itemIds, cb){
       itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
-
+    
       if(itemIds.length > 0){
-        var Model = self._getModel(bucket, cb);
-        if(Model){
-          Model.findById(id, function(err, doc){
-            if(err) cb(err);
-            else{
-              var current = _.map(doc[collection], function(item){ return String(item)}),
-                added = _.difference(itemIds, current);
-              if(added.length>0){
-                doc[collection] = _.union(added, current);
-                doc.save(function(err){
-                  if(!err){
-                    sync.add(id, collection, added);
-                  }
-                  cb(err);
-                });
-              }else{
-                cb(null);
-              }
+        var Collection = self._getModel(collection, cb);
+        if(Collection && Collection.parent){
+          var doc = {};
+          doc[Collection.parent()] = id;
+          Collection.update({ _id : { $in : itemIds }}, doc, function(err){
+            if(!err){
+              // TODO: Only notify for really added items
+              sync.add(id, collection, itemIds);
             }
+            cb(err);
           });
+        }else{
+          var Model = self._getModel(bucket, cb);
+          if(Model){
+           // Model.update({_id:id}, { $addToSet: {collection:{$each:itemIds}}}, cb);
+            Model.findById(id, function(err, doc){
+              if(err){
+                 cb(err);
+              } else{
+                var current = _.map(doc[collection], function(item){ return String(item)}),
+                  added = _.difference(itemIds, current);
+                if(added.length>0){
+                  doc[collection] = _.union(added, current);
+                  doc.save(function(err){
+                    if(!err){
+                      sync.add(id, collection, added);
+                    }
+                    cb(err);
+                  });
+                }else{
+                  cb(null);
+                }
+              }
+            });
+          }else{
+            cb();
+          }
         }
-      }else{
-        cb();
       }
     });
-
+    
     socket.on('remove', function(bucket, id, collection, itemIds, cb){
       itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
       if(itemIds.length > 0){
@@ -198,6 +217,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
 }
 
 function shouldUpdate(keys, args, doc){
+  //  if(!doc.__rev || (doc.__rev == args.__rev)){
   for(var i=0, len=keys.length;i<len;i++){
     var key = keys[i];
     if(_.isEqual(args[key], doc[key]) == false){
@@ -207,7 +227,6 @@ function shouldUpdate(keys, args, doc){
   return false;
 }
 
-
 // TODO: Use revisions TO AVOID infinite loops
 Server.prototype.update = function(bucket, id, args, cb){
   var self = this;
@@ -216,9 +235,13 @@ Server.prototype.update = function(bucket, id, args, cb){
     var keys = _.keys(args);
     Model.findById(id, keys, function(err, doc){          
       if(shouldUpdate(keys, args, doc)){ 
-        // if(shouldUpdate(keys, args, doc)) && (args._rev == doc._rev)){
-        // Model.update({_id:id, _rev:doc._rev}, {$set:args, $inc:'_rev'}, function(err){
-        Model.update({_id:id}, args, function(err){
+        var query = {_id:id};
+        /*
+          if(doc.__rev){
+            query.__rev = args.__rev;
+          }
+        */
+        Model.update(query, {$set:args, $inc:{'__rev':1}}, function(err){
           if(!err){
             self.sync.update(id, args);
           }
@@ -239,11 +262,6 @@ Server.prototype._getModel = function(bucket, cb){
   }
 }
 
-
-
 exports = module.exports = Server;
-
-
-
 
 
