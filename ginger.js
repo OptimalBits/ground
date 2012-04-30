@@ -1596,7 +1596,7 @@ Collection.prototype.remove = function(itemIds, cb, nosync){
   },cb);
 }
 Collection.prototype.keepSynced = function(enable){
-  if(!enable||!ginger.Model.socket||this._keepSynced){
+  if(enable==false||!Model.socket||this._keepSynced){
     return;
   }
   var self = this, 
