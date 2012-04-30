@@ -759,14 +759,35 @@ function Inherit(Sub, Super){
   }
 }
 
+/**
+  Declare(Super, [constructor{Function}|methods{Object}, statics{[Function]}, bucket{String}]);
+*/
 ginger.Declare = function(Super, Sub, staticOrName, bucket){
-  // Sub = makeClass(Sub)
+  var methods;
+  
+  if(_.isObject(Sub)&&!_.isFunction(Sub)){
+    methods = Sub;
+    console.log(methods);
+    if(methods.constructor){
+      Sub = methods.constructor;
+    }else{
+      Sub = null;
+    }
+  }else if(_.isString(Sub)){
+    bucket = Sub;
+    Sub = null;
+  }
+  
+  // Sub = makeClass(Sub) // so that new is not necessary...
   if(!Sub){
-    Sub = function(){
+    Sub = function Ground(){
       Super.prototype.constructor.apply(this, arguments);
     };
   }
+  
+  _.extend(Sub.prototype, methods);
   _.extend(Sub, Super);
+  
   Inherit(Sub, Super)
   if(staticOrName){
     if(_.isObject(staticOrName)){
@@ -774,20 +795,24 @@ ginger.Declare = function(Super, Sub, staticOrName, bucket){
     }else{
       bucket = staticOrName
     }
-    bucket && Sub.bucket(bucket);
   }
+  bucket && Sub.bucket(bucket);
   return Sub
 }
 
 //
 //  Base Class - All Ginger classes derive from this one.
 //
-var Base = ginger.Base = function(){
+var Base = ginger.Base = function Base(){
   this._refCounter = 1;
   this._bindings = {}
 }
 
-_.extend(Base.prototype, EventEmitter.prototype)
+_.extend(Base.prototype, EventEmitter.prototype);
+
+Base.extend = function(Sub, staticOrName, bucket){
+  return ginger.Declare(this, Sub, staticOrName, bucket);
+}
 
 //
 // Listening to changed Properties are just expressed as the property name
@@ -1053,7 +1078,7 @@ Interval.prototype.stop = function(){
 // Models
 // TODO: Change .cid to _cid to avoid serialization.
 //------------------------------------------------------------------------------
-var Model = ginger.Model = ginger.Declare(ginger.Base, function(args){
+var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
   this.super(ginger.Model)
   _.extend(this, args)
   _.defaults(this, {
