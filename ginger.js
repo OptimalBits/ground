@@ -1,5 +1,5 @@
 /**
-   Ginger MVC framework v0.1
+   Ground MVC framework v0.1
 
    Features:
    - Modular design.
@@ -1672,6 +1672,12 @@ Collection.prototype.toggleSortOrder = function(){
     this.set('sortOrder', 'asc');
   }
 }
+Collection.prototype.setFormatters = function(formatters){
+  this._formatters = formatters;
+  this.each(function(item){
+    item.format(formatters);
+  });
+}
 Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
    
@@ -1707,6 +1713,8 @@ Collection.prototype._sortedAdd = function(item){
 }
 Collection.prototype._add = function(item, cb, nosync){
   var self = this;
+  
+  this._formatters && item.format(this._formatters);
   
   if(self.findById(item.cid)){
     cb && cb(null);
