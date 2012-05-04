@@ -88,6 +88,7 @@ ginger.noop = function(){}
 
 ginger.uuid = uuid;
 
+// TODO: Add an optional timeout parameter.
 ginger.asyncDebounce = function (fn) {
   var delayedFunc = null, executing = null;
 
@@ -120,6 +121,7 @@ ginger.asyncDebounce = function (fn) {
   };
 };
 
+// TODO: rename to delayedTrigger(fn, triggerStart, triggerEnd, threshold)
 ginger.waitTrigger = function(func, start, end, delay){
   return function waiter(){
     var obj = this,
@@ -563,18 +565,36 @@ var ajax = ginger.ajax = {
 // (requires localStorage)
 //------------------------------------------------------------------------------
 var Storage = ginger.Storage = {}
-Storage.findById = function(bucket, id){
+
+Storage.create = function(bucket, args, cb){
+  var objectId = bucket+'@'+args.cid;
+  localStorage[objectId] = JSON.stringify(args)
+  cb && cb(null, args.cid);
+}
+Storage.findById = function(bucket, id, cb){
   var objectId = bucket+'@'+id
   for (var i=0, len=localStorage.length;i<len;i++){
     var key = localStorage.key(i)
     if(key === objectId){
       var doc = JSON.parse(localStorage[key])
       doc._id = doc.cid;
-      return doc;
+      cb(null, doc);
+      return;
     }
   }
-  return null
+  cb();  
 }
+/*
+find:function(bucket, id, collection, query, cb){
+  var url = Model.url;
+  if(bucket) url += '/' + bucket;
+  if(id) url += '/'+id;
+  if(collection) url += '/'+collection;
+  if(query) url += '?'+$.param(query);
+  ginger.ajax.get(url, cb);
+},
+*/
+//find:function(bucket, id, collection, query, cb){
 Storage.all = function(bucket, parent){
   var collection = []
   var keys = Storage._subCollectionKeys(bucket, parent)
@@ -612,6 +632,34 @@ Storage.first = function(bucket, parent){
     }
   }
 }
+Storage.update = function(bucket, id, args, cb){
+  Storage.findById(bucket, id, function(err, obj){
+    if(!err){
+      if(!obj){
+        obj = {};
+      }
+      _.extend(obj, args)
+      Storage.create(bucket, obj, cb);
+    }else{
+      cb(err);
+    }
+  })
+}
+Storage.add = function(bucket, id, collection, objIds, cb){
+  // TODO: Implement
+},
+Storage.remove = function(bucket, id, collection, objIds, cb){
+  if(_.isFunction(collection)){
+    cb = collection;
+    var objectId = bucket+'@'+id
+    localStorage.removeItem(objectId)
+    cb();    
+  } else if(objIds.length>0){
+    // TODO: Implement
+  }else{
+    cb();
+  }
+}
 Storage._subCollectionKeys = function(bucket, parent){
   if(parent){
   var value = localStorage[parent.__bucket+':'+parent.cid+':'+bucket]
@@ -619,26 +667,10 @@ Storage._subCollectionKeys = function(bucket, parent){
   }
   return null
 }
-Storage.update = function(bucket, id, args){
-  var obj = Storage.findById(bucket, id)
-  if(obj){
-    _.extend(obj, args)
-    Storage.save(bucket, id, obj)
-  }else{
-    Storage.save(bucket, id, args)
-  }
-}
-Storage.save = function(bucket, id, args){
-  var objectId = bucket+'@'+id
-  localStorage[objectId] = JSON.stringify(args)
-}
-Storage.remove = function(bucket, id){
-  var objectId = bucket+'@'+id
-  localStorage.removeItem(objectId)
-}
-
 //
 var ServerStorage = ginger.ServerStorage = {}
+
+ServerStorage.local = Storage;
 
 ServerStorage.ajax = {
   create: function(bucket, args, cb){
@@ -1119,7 +1151,8 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
     return this.__transport || 
            Model.__transport || 
            (this.socket?'socket':this.url?'ajax':undefined) ||
-           (Model.socket?'socket':Model.url?'ajax':undefined);
+           (Model.socket?'socket':Model.url?'ajax':undefined) ||
+           'local';
   },
   use : function(attr, value){
     switch(attr){
@@ -1280,13 +1313,13 @@ Model.prototype.local = function(){
       bucket = this.__bucket;
     this._local = {
       save : function(){
-        Storage.save(bucket, self.cid, self.toJSON())
+        Storage.create(bucket, self.toJSON())
       },
       update: function(args){
         Storage.update(bucket, self.cid, args)
       },
       remove: function(){
-        Storage.remove(bucket, self.cid)
+        Storage.remove(bucket, self.cid, ginger.noop)
       }
     }
     return this._local
@@ -1454,18 +1487,17 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
     self._initItems(items);
   }else {
     self.items = [];
-    sortByFn = model;
-    model = parent;
-    parent = items;  
+    parent = items;
+    //model = items;
   }
   
   _.defaults(self, {
     _keepSynced : false,
     _added : [],
     _removed : [],
-    parent : parent,
+    parent:parent,
+    sortByFn:sortByFn,
     model : model || Model,
-    sortByFn : sortByFn,
     sortOrder : 'asc',
     socket : ginger.Model.socket
   });
@@ -1602,7 +1634,7 @@ Collection.prototype.keepSynced = function(enable){
   var self = this, 
       socket = self.socket, 
       bucket = self.model.__bucket,
-      id = self.parent._id;
+      id = self.parent && self.parent._id;
   
   self._keepSynced = true
   
