@@ -1587,8 +1587,8 @@ Collection.prototype.save = function(cb){
     }                           
   });
 }
-Collection.prototype.add = function(items, cb, nosync){
-  var self = this;
+Collection.prototype.add = function(items, cb, nosync, pos){
+  var self = this;  
   cb = cb ? cb : ginger.noop;
   ginger.asyncForEach(items, function(item, fn){
     self._add(item, function(err){
@@ -1598,8 +1598,14 @@ Collection.prototype.add = function(items, cb, nosync){
         }
       }
       fn(err);
-    }, nosync);
+    }, nosync, pos);
   }, cb);
+}
+Collection.prototype.insert = function(item, pos, cb){
+  if(pos >= this.items.length){
+    pos = undefined;
+  }
+  this.add(item, cb, false, pos);
 }
 Collection.prototype.remove = function(itemIds, cb, nosync){
   var self = this, transport = this.model.transport();
@@ -1720,7 +1726,7 @@ Collection.prototype._sortedAdd = function(item){
   this.items.splice(i, 0, item);
   (this.sortOrder == 'desc') && this.items.reverse();
 }
-Collection.prototype._add = function(item, cb, nosync){
+Collection.prototype._add = function(item, cb, nosync, pos){
   var self = this;
   
   this._formatters && item.format(this._formatters);
@@ -1731,13 +1737,15 @@ Collection.prototype._add = function(item, cb, nosync){
   }
   
   if(self.sortByFn){
-    self._sortedAdd(item);
+    pos = self._sortedAdd(item);
+  }else if(pos){
+    self.items.splice(pos, 0, item);
   }else{
     self.items.push(item)
   }
 
   self._initItems(item);
-  self.emit('added:', item);
+  self.emit('added:', item, pos);
     
   if(self._keepSynced){
     var transport = this.model.transport();
