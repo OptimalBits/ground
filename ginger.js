@@ -991,7 +991,11 @@ Base.prototype.format = function(property, fn){
       }
       _.extend(this._formatters, property);
     } else if((this._formatters)&&(property in this._formatters)){
-      return this._formatters[property].call(this, this.get(property));
+      var val = this.get(property);
+      if(_.isFunction(val)){
+        val = val.call(this);
+      }
+      return this._formatters[property].call(this, val);
     }else{
       return this.get(property);
     }
