@@ -1609,16 +1609,23 @@ Collection.prototype.insert = function(item, pos, cb){
 }
 Collection.prototype.remove = function(itemIds, cb, nosync){
   var self = this, transport = this.model.transport();
-  cb = cb?cb : ginger.noop;
+  
+  cb = cb || ginger.noop;
+      
   ginger.asyncForEach(itemIds, function(itemId, fn){
-    var item = self.find(function(item){return item.cid === itemId}),
-      cb = cb?cb:ginger.noop;
+    var item, index, items = self.items;
+    for(var i=0, len=items.length;i<len;i++){
+      if(items[i].cid == itemId){
+        item = items[i];
+        index = i;
+        break;
+      }
+    }
   
     if(item){
-      item.release();
       item.off('changed:', self._updateFn);
       item.off('deleted:', self._deleteFn);
-      self.items = self.without(item);
+      self.items.splice(index, 1);
       if(item._id){
         if(self._keepSynced){
           if(nosync !== true){
@@ -1627,18 +1634,19 @@ Collection.prototype.remove = function(itemIds, cb, nosync){
               self.parent._id,
               self.model.__bucket,
               item._id,
-              cb);
+              fn);
           }
         }else{
           self._removed.push(itemId);
-          cb(null);
+          fn(null);
         }
       }else{
-        cb(null);
+        fn(null);
       }
-      self.emit('removed:', item);
+      self.emit('removed:', item, index);
+      item.release();
     }else{
-      cb(null);
+      fn(null);
     }
   },cb);
 }
