@@ -1815,7 +1815,7 @@ Collection.prototype._add = function(item, cb, nosync, pos){
 
 // Underscore methods that we want to implement on the Collection.
 var methods = 
-  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect',
+  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
     'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
     'contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex', 'toArray', 'size',
     'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty', 'groupBy']
