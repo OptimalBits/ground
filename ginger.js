@@ -2296,9 +2296,9 @@ Table.prototype.destroy = function(){
  * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
  */
 Views.Modal = ginger.Declare(ginger.View, function(options){
-  this.super(Views.Modal)
+  this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
   var view = this;
-  view.$el.addClass('modalForm');
+
   // header
   var $header = $('<div class="modalTop">');
   var $title = $('<div class="modalTitle">').text(options.title);
