@@ -289,6 +289,13 @@ If there is a connection to the server using socket.io, we can also have synchro
 
 In the example above we achieved automatic synchronization between the client and the server, but also with other remote clients that had an instance of Animal with the same ._id as fox and that had enabled synchronization with keepSynced().
 
+###Serialization
+
+Models are serialized as JSON. The mechanism is quite simple, every model provides a toArgs (aliased to toJSON) which when called provides a lean object suitable for being converted to a JSON string using JSON.stringify. The toArgs function provided in the Model class is useful for most simple cases, it will produce an object following these rules:
+
+Deserialization is performed calling to the static method fromArgs (aliased to fromJSON). It performs the inverse operation as toArgs. Deserializing implies the instantiation of a new Model based on the given arguments. This deserialization can require asynchronouse operations, and therefore the signature of fromArgs includes a callback: (args, cb).
+
+
 ##Collections
 
 Besides Models we also have Collections, which provides a convenient way to represent an *ordered set* of models. A Collection is able to keep itself synchronized with a server. If elements are added or remove from a collection, all instances of that collection can be kept synchronized, including the server backend that persists all the objects.
@@ -331,9 +338,16 @@ Subcollections is a powerfull concept that allows us to define very complex hier
 
 ##Events
 
+Events in ginger try to mimick the EventEmitter object from early versions of nodejs. 
+One important consideration to keep in mind is that ginger events are propagated inmediately
+i.e., they do not wait for the next event loop. The reason for this is to provide high 
+performance and responsivity. The major implication of this is that you have always to place
+your listeners after you emit, otherwise the event will be missed. 
+
 ##Bindings
 
 #Undo / Redo Manager
 
 #Utilities
+
 
