@@ -1074,45 +1074,72 @@ Base.prototype.isDestroyed = function(){
 //------------------------------------------------------------------------------
 
 /**
-  Self-correcting Accurate Interval
-*/
-var Interval = ginger.Interval = ginger.Declare(ginger.Base, function(){
-  this.super(Interval);
-  this.timer = null;
-});
-Interval.prototype.run = function(freq, duration){
-  clearTimeout(this.timer);
-  this.baseline = Date.now();
-  this._iter(freq, duration);
-}
-Interval.prototype.isRunning = function(){
-  return (this.timer!==null);
-}
-Interval.prototype._iter = function(freq, duration){
-  var self = this;
-  var error = Date.now() - self.baseline;
+  Interval
   
-  if(self.time >= duration){
-    self.stop();
-    self.emit('ended', self.baseline);
-  }else{
-    var nextTick = freq - error;
-    self.timer = setTimeout(function(){
-      self.set('time', self.time+freq);
-      self.baseline += freq;
-      self._iter(freq, duration);
-    }, nextTick>=0?nextTick:0);
+  Self-correcting Accurate Interval (+/- 1ms accuracy).
+  
+  Listen to 'time' property for getting the current time at the given
+  resolution.
+  
+  The timer will emit a ended: event when the timer has reached its duration,
+  and 'stopped:' if the timer was stopped by the user.
+*/
+var Interval = ginger.Interval = ginger.Base.extend(function Interval(resolution){
+  this.super(Interval);
+  this.time = 0;
+  this._timer = null;
+  this._resolution = resolution;
+});
+
+_.extend(Interval.prototype, {
+  destroy : function(){
+    this.stop();
+    this.super(Interval, 'destroy');
+  },
+  
+  /**
+    start(resolution, duration)
+    
+    Starts a new timer with the given duration in milliseconds.
+  */
+  start : function(duration){
+    clearTimeout(this._timer);
+    if(duration){
+      this.duration = duration;
+      this._baseline = Date.now();
+      this._iter();
+    }
+  },
+  isRunning : function(){
+    return (this._timer!==null);
+  },
+  stop : function(){
+    clearTimeout(this._timer);
+    this._timer = null;
+    this.emit('stopped:', this._baseline);
+  },
+  _iter : function(){
+    var self = this, 
+      error = Date.now() - self._baseline;
+  
+    if(self.time >= self.duration){
+      self.stop();
+      self.emit('ended:', self._baseline);
+    }else{
+      var nextTick = self._resolution - error;
+      self._timer = setTimeout(function(){
+        self.set('time', self.time + self._resolution);
+        self._baseline += self._resolution;
+        self._iter();
+      }, nextTick>=0 ? nextTick:0);
+    }
   }
-}
-Interval.prototype.stop = function(){
-  clearTimeout(this.timer);
-  this.timer = null;
-  this.emit('stop', this.baseline);
-}
+});
+
 //------------------------------------------------------------------------------
 //
 // Models
-// TODO: Change .cid to _cid to avoid serialization.
+// TODO: Change .cid to .cid() to avoid serialization.
 //------------------------------------------------------------------------------
 var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
   this.super(ginger.Model)
