@@ -2179,6 +2179,10 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   
   self.super(Views.Table, 'constructor', options.classNames, options.css);
   
+  if(self.prebody){
+    self.$el.append(self.prebody);
+  }
+  
   if(self.widths){
     $colgroups = [];
     for(var i=0,len=self.widths.length;i<len;i++){
