@@ -2004,31 +2004,33 @@ ComboBox.prototype.remove = function(key) {
 //------------------------------------------------------------------------------
 Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   this.super(Views.Slider, 'constructor', classNames)
-  var view = this
+  var self = this
   
-  view.options = options || {}
-  view.value = view.options.value || 0
+  self.options = options || {}
+  self.value = self.options.value || 0
 
-  var options = _.clone(view.options)
-  var oldSlideFn = options.slide
+  var options = _.clone(self.options)
   
   options.start = function(event, ui){
-    view.emit('start');
+    self.emit('start');
   }
   options.slide = function(event, ui){
-    view.set('value', ui.value)
-    if(view.options.slide) view.options.slide(event, ui)
+    self.set('value', ui.value)
+    if(self.options.slide) self.options.slide(event, ui)
   }
   options.stop = function(event, ui){
-    view.set('value', ui.value)
-    if(view.options.slide) view.options.slide(event, ui)
-    view.emit('stop');
+    self.set('value', ui.value)
+    if(self.options.slide) self.options.slide(event, ui)
+    self.emit('stop');
   }
   
-  view.$el.slider(options)
+  self.$el.slider(options)
+  this.on('options', function(options){
+    self.$el.slider(options);
+  });
     
-  view.on('value', function(value){
-    view.$el.slider('value', parseFloat(value))
+  self.on('value', function(value){
+    self.$el.slider('value', parseFloat(value))
   })
 })
 Views.Slider.prototype.disable = function(disable){
