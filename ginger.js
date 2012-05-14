@@ -2012,7 +2012,7 @@ Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   var options = _.clone(self.options)
   
   options.start = function(event, ui){
-    self.emit('start');
+    self.emit('start').emit('started:');
   }
   options.slide = function(event, ui){
     self.set('value', ui.value)
@@ -2021,7 +2021,7 @@ Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
   options.stop = function(event, ui){
     self.set('value', ui.value)
     if(self.options.slide) self.options.slide(event, ui)
-    self.emit('stop');
+    self.emit('stop').emit('stopped:');
   }
   
   self.$el.slider(options)
