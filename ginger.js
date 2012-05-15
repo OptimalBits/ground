@@ -672,6 +672,11 @@ var ServerStorage = ginger.ServerStorage = {}
 
 ServerStorage.local = Storage;
 
+/**
+  Add should accept models. 
+  If the model has an _id then we send the complete object.
+
+*/
 ServerStorage.ajax = {
   create: function(bucket, args, cb){
     url = Model.url+'/'+bucket;
@@ -691,9 +696,9 @@ ServerStorage.ajax = {
   update:function(bucket, id, args, cb){
     ginger.ajax.put(Model.url+'/'+bucket+'/'+id, args, cb);
   },
-  add:function(bucket, id, collection, objIds, cb){
-    if(objIds.length>0){
-      ginger.ajax.put(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
+  add:function(bucket, id, collection, items, cb){
+    if(items){
+      ginger.ajax.put(Model.url+'/'+bucket+'/'+id+'/'+collection, items, cb);
     }else{
       cb();
     }
@@ -724,8 +729,8 @@ ServerStorage.socket = {
   update:function(bucket, id, args, cb){
     Model.socket.emit('update', bucket, id, args, cb);
   },
-  add:function(bucket, id, collection, objIds, cb){
-    Model.socket.emit('add', bucket, id, collection, objIds, cb);
+  add:function(bucket, id, collection, items, cb){
+    Model.socket.emit('add', bucket, id, collection, items, cb);
   },
   remove:function(bucket, id, collection, objIds, cb){
     Model.socket.emit('remove', bucket, id, collection, objIds, cb); 
@@ -1084,7 +1089,7 @@ Base.prototype.isDestroyed = function(){
   The timer will emit a ended: event when the timer has reached its duration,
   and 'stopped:' if the timer was stopped by the user.
 */
-var Interval = ginger.Interval = ginger.Base.extend(function Interval(resolution){
+var Interval = ginger.Interval = Base.extend(function Interval(resolution){
   this.super(Interval);
   this.time = 0;
   this._timer = null;
@@ -1141,7 +1146,7 @@ _.extend(Interval.prototype, {
 // Models
 // TODO: Change .cid to .cid() to avoid serialization.
 //------------------------------------------------------------------------------
-var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
+var Model = ginger.Model = Base.extend( function Model(args){
   this.super(ginger.Model)
   _.extend(this, args)
   _.defaults(this, {
@@ -1160,7 +1165,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
     }
     var self = this;
     if(args){
-      this.fromJSON(args, function(instance){
+      this.fromJSON(args, function(err, instance){
         if(instance){
           _.defaults(instance, {__bucket:self.__bucket});
           if(keepSynced == true){
@@ -1170,11 +1175,11 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
             cb(null, instance)
           })
         }else{
-          cb(null, null)
+          cb(err)
         }
       })
     }else{
-      cb(null, null)
+      cb()
     }
     return this;
   },
@@ -1183,10 +1188,8 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
       this.__transport = transport;
     }
     return this.__transport || 
-           Model.__transport || 
-           (this.socket?'socket':this.url?'ajax':undefined) ||
-           (Model.socket?'socket':Model.url?'ajax':undefined) ||
-           'local';
+           Model.__transport ||
+           (this.socket?'socket':Model.socket?'socket':this.url?'ajax':Model.url?'ajax':'local');
   },
   use : function(attr, value){
     switch(attr){
@@ -1228,19 +1231,27 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
         }else{
           args = undefined;
         }
-        break;  
+        break;
     }
-    var self = this, bucket = self.__bucket, transport = self.transport();
-    ServerStorage[transport].findById(bucket, id, function(err, doc){
-      if(err){
-        cb(err);
-      }else{
-        doc = doc || Storage.findById(bucket, id)
+    var self = this, bucket = self.__bucket, transport = self.transport(),
+      instantiate = function(doc, args, cb){
         args && _.extend(doc, args);
         self.create(doc, keepSynced, cb)
       }
+    ServerStorage[transport].findById(bucket, id, function(err, doc){
+      if(doc){
+        instantiate(doc, args, cb);
+      }else{
+        Storage.findById(bucket, id, function(err, doc){
+          if(doc){
+            instantiate(doc, args, cb);
+          }else{
+            cb(err);
+          }
+        })
+      }
     })
-    return this
+    return this;
   },
   /*
     fetch(cb)
@@ -1278,7 +1289,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
     }
     ServerStorage[this.transport()].find(bucket, id, collection, query, cb);
   },
-  all : function(cb, parent, args){
+  all : function(cb, parent, args, altBucket){
     var self = this, bucket, id;
     if(_.isFunction(parent)){
       var tmp = cb;
@@ -1289,7 +1300,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
       bucket = parent.__bucket;
       id = parent.cid;
     }
-    this.fetch(bucket, id, this.__bucket, function(err, docs){
+    this.fetch(bucket, id, altBucket || this.__bucket, function(err, docs){
       if(docs){
         args && _.each(docs, function(doc){_.extend(doc, args)});
         var collection = docs || Storage.all(bucket, parent);
@@ -1327,7 +1338,10 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
     }
   },
   fromJSON : function(args, cb){
-    cb(new this(args))
+    cb(null, new this(args));
+  },
+  fromArgs : function(args, cb){
+    cb(null, new this(args));
   }
 })
 Model.prototype.transport = function(transport){
@@ -1362,13 +1376,26 @@ Model.prototype.local = function(){
     return this._local
   }
 }
-Model.prototype.all = function(model, args, cb){
+/**
+  Model#all (model, [args{Object}, bucket{String}], cb);
+*/
+Model.prototype.all = function(model, args, bucket, cb){
+  if(_.isString(args)){
+    cb = bucket;
+    bucket = args;
+    args = undefined;
+  }
+  if(_.isFunction(bucket)){
+    cb = bucket;
+    bucket = undefined;
+  }
   if(_.isFunction(args)){
     cb = args;
     args = undefined;
+    bucket = undefined;
   }
   if(this._id){ 
-    model.all(cb, this, args)
+    model.all(cb, this, args, bucket)
   }else{
    cb(null)
   }
@@ -1585,6 +1612,7 @@ Collection.instantiate = function(model, parent, array, cb){
 Collection.prototype.findById = function(id){
   return this.find(function(item){return item.cid == id});
 }
+
 Collection.prototype.save = function(cb){
   var transport = this.model.transport(), self = this;
   
@@ -1601,10 +1629,18 @@ Collection.prototype.save = function(cb){
         item.save(cb);
       }, function(err){
         if((!err)&&(self._added.length>0)){
+          var items = _.filter(self._added, function(item){
+            if(_.isUndefined(item._id)){
+              return item;
+            }else{
+              return item._id;
+            }
+          });
+        
           ServerStorage[transport].add(self.parent.__bucket, 
                                        self.parent._id,
                                        self.model.__bucket, 
-                                       _.pluck(self._added, '_id'),
+                                       item._id || item,
                                        function(err){
             if(!err){
               self._added = [];
@@ -1618,7 +1654,7 @@ Collection.prototype.save = function(cb){
     }                           
   });
 }
-Collection.prototype.add = function(items, cb, nosync, pos){
+Collection.prototype.add = function(items, cb, opts, pos){
   var self = this;  
   cb = cb ? cb : ginger.noop;
   ginger.asyncForEach(items, function(item, fn){
@@ -1629,14 +1665,14 @@ Collection.prototype.add = function(items, cb, nosync, pos){
         }
       }
       fn(err);
-    }, nosync, pos);
+    }, opts, pos);
   }, cb);
 }
 Collection.prototype.insert = function(item, pos, cb){
-  if(pos >= this.items.length){
+  if(pos > this.items.length){
     pos = undefined;
   }
-  this.add(item, cb, false, pos);
+  this.add(item, cb, {nosync:false, embedded:true}, pos);
 }
 Collection.prototype.remove = function(itemIds, cb, nosync){
   var self = this, transport = this.model.transport();
@@ -1699,7 +1735,7 @@ Collection.prototype.keepSynced = function(enable){
     this.model.findById(itemId, function(err, item){
       if(item){
         item.init(function(){
-          self.add(item, ginger.noop, true);
+          self.add(item, ginger.noop, {nosync:true});
           item.release();
         })
       }
@@ -1742,7 +1778,7 @@ Collection.prototype.destroy = function(){
       var id = this.parent.cid;
       this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
       this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
-      this._keepSynced && socket.emit('unsync', id);
+      this._keepSynced && this.socket.emit('unsync', id);
     }
   }
   this.each(function(item){item.release()});
@@ -1765,7 +1801,7 @@ Collection.prototype._sortedAdd = function(item){
   this.items.splice(i, 0, item);
   (this.sortOrder == 'desc') && this.items.reverse();
 }
-Collection.prototype._add = function(item, cb, nosync, pos){
+Collection.prototype._add = function(item, cb, opts, pos){
   var self = this;
   
   this._formatters && item.format(this._formatters);
@@ -1777,10 +1813,9 @@ Collection.prototype._add = function(item, cb, nosync, pos){
   
   if(self.sortByFn){
     pos = self._sortedAdd(item);
-  }else if(pos){
+  }else {
+    pos = _.isUndefined(pos)?self.items.length:pos;
     self.items.splice(pos, 0, item);
-  }else{
-    self.items.push(item)
   }
 
   self._initItems(item);
@@ -1788,15 +1823,15 @@ Collection.prototype._add = function(item, cb, nosync, pos){
     
   if(self._keepSynced){
     var transport = this.model.transport();
-    if(nosync !== true){
+    if(!opts || (opts.nosync !== true)){
       function storageAdd(){
         ServerStorage[transport].add(self.parent.__bucket, 
                                      self.parent._id,
                                      item.__bucket,
-                                     item._id,
+                                     item._id || item,
                                      cb);    
-      }
-      if(item._id){
+      }  
+      if(item._id || (opts && opts.embedded)){
         storageAdd()
       }else{
         item.save(function(err){
