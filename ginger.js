@@ -1531,7 +1531,7 @@ Model.prototype.destroy = function(){
   A collection is a set of ordered models. 
   It provides delegation and proxing of events.
 **/
-var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items, model, parent, sortByFn){
+var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
   this.super(ginger.Collection);
   
   var self = this;
@@ -1886,8 +1886,6 @@ Array.prototype.humanSort = function() {
   });
 }
 */
-
-
 //------------------------------------------------------------------------------
 
 // FIX:
@@ -1897,7 +1895,7 @@ Array.prototype.humanSort = function() {
 // therefore $el must be created in render. But since $el could be something
 // different than a div, we will introcude the tag property, which will be used
 // in render to create the proper element.
-ginger.View = ginger.Declare(ginger.Base, function(classNames, css){
+var View = ginger.View = Base.extend(function View(classNames, css){
   var self = this
   self.super(ginger.View)
   if(_.isUndefined(self.$el)){
@@ -1913,71 +1911,75 @@ ginger.View = ginger.Declare(ginger.Base, function(classNames, css){
   self.tag = '<div>'
   self.css = css
 })
-ginger.View.prototype.render = function($parent){
-  if($parent){
-    this.$parent = $parent
+_.extend(View.prototype, {
+  render : function($parent){
+    if($parent){
+      this.$parent = $parent
+    }
+    return this.$el.detach().appendTo(this.$parent)
+  },
+  update : function(){
+    // Updates this view.
+    /*
+      Updating can imply that if this view is composed of subviews, or of
+      many DOM elements, that this DOM elements are destroyed and recreated,
+      (or subvies are removed and re-rendered), but the most important thing
+      is that the element that this view returned in render, is still the same after
+      the update.
+    */
+  },
+  clean : function(){
+    if(this.$el) this.$el.detach()
+  },
+  remove : function(){
+    if(this.$el) this.$el.remove()
+  },
+  disable : function(disable){
+    console.log(this+" does not implement disable")
+  },
+  hide : function(duration, easing, callback) {
+    this.$el.hide(arguments)
+  },
+  show : function(duration, easing, callback) {
+    this.$el.show(arguments)
+  },
+  destroy : function(){
+    this.remove();
+    this.super(ginger.View, 'destroy');
   }
-  return this.$el.detach().appendTo(this.$parent)
-}
-ginger.View.prototype.update = function(){
-  // Updates this view.
-  /*
-    Updating can imply that if this view is composed of subviews, or of
-    many DOM elements, that this DOM elements are destroyed and recreated,
-    (or subvies are removed and re-rendered), but the most important thing
-    is that the element that this view returned in render, is still the same after
-    the update.
-  */
-}
-ginger.View.prototype.clean = function(){
-  if(this.$el) this.$el.detach()
-}
-ginger.View.prototype.remove = function(){
-  if(this.$el) this.$el.remove()
-}
-ginger.View.prototype.disable = function(disable){
-  console.log(this+" does not implement disable")
-}
-ginger.View.prototype.hide = function(duration, easing, callback) {
-  this.$el.hide(arguments)
-}
-ginger.View.prototype.show = function(duration, easing, callback) {
-  this.$el.show(arguments)
-}
-ginger.View.prototype.destroy = function(){
-  this.remove();
-  this.super(ginger.View, 'destroy');
-}
+});
 //------------------------------------------------------------------------------
-ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
+var CanvasView = ginger.CanvasView = View.extend(function CanvasView(classNames){
   this.super(ginger.CanvasView, 'constructor', classNames)
   this.$canvas = null
   var cv = this
   this.on('changed:', function(){
     cv.draw()
   })
-})
-ginger.CanvasView.prototype.render = function($parent){
-  this.super(ginger.CanvasView, 'render', $parent)
-  if(this.$parent){
-    if(this.$canvas){
-      this.$canvas.remove()
-    }
-    this.$canvas = $('<canvas>', {
-      css:{width:'100%', height:'100%'}}).appendTo(this.$el)
+});
+_.extend(CanvasView.prototype,{
+  render : function($parent){
+    this.super(ginger.CanvasView, 'render', $parent)
+    if(this.$parent){
+      if(this.$canvas){
+        this.$canvas.remove()
+      }
+      this.$canvas = $('<canvas>', {
+        css:{width:'100%', height:'100%'}}).appendTo(this.$el)
 
-    this.$canvas[0].width = this.$parent.width()
-    this.$canvas[0].height = this.$parent.height()
+      this.$canvas[0].width = this.$parent.width()
+      this.$canvas[0].height = this.$parent.height()
+    }
+    this.draw()
+  },
+  draw : function(){
+    if(this.$canvas){
+      return this.$canvas[0].getContext('2d')
+    }else{
+      return null
+    }
   }
-  this.draw()
-}
-ginger.CanvasView.prototype.draw = function(){
-  if(this.$canvas){
-    return this.$canvas[0].getContext('2d')
-  }else{
-    return null
-  }
-}
+});
 //------------------------------------------------------------------------------
 //
 // Views
@@ -1986,7 +1988,7 @@ ginger.CanvasView.prototype.draw = function(){
 var Views = ginger.Views = {}
 
 //------------------------------------------------------------------------------
-Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
+Views.ComboBox = ComboBox = View.extend(function ComboBox(items, selected){
   this.super(Views.ComboBox)
   var view = this
   
@@ -2037,7 +2039,7 @@ ComboBox.prototype.remove = function(key) {
   $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
-Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
+Views.Slider = View.extend( function Slider(options, classNames){
   this.super(Views.Slider, 'constructor', classNames)
   var self = this
   
@@ -2076,7 +2078,7 @@ Views.Slider.prototype.disable = function(disable){
   }
 }
 //------------------------------------------------------------------------------
-Views.ColorPicker = ginger.Declare(ginger.View, function(options){
+Views.ColorPicker = View.extend( function ColorPicker(options){
   this.super(Views.ColorPicker)
   var view = this
   
@@ -2109,7 +2111,7 @@ Views.ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
-Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
+Views.TextField = View.extend( function TextField(classNames, options){
   var $el
   if((options)&&(options.area)){
     $el = this.$el = $('<textarea>')
@@ -2148,7 +2150,7 @@ Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
   })
 })
 //------------------------------------------------------------------------------
-Views.CheckBox = ginger.Declare(ginger.View, function(css){
+Views.CheckBox = View.extend( function CheckBox(css){
   this.super(Views.CheckBox)
   if(css) {
     this.$el.css(css);
@@ -2167,11 +2169,11 @@ Views.CheckBox = ginger.Declare(ginger.View, function(css){
   })
 })
 //------------------------------------------------------------------------------
-Views.RadioButton = ginger.Declare(ginger.View, function(){
+Views.RadioButton = View.extend( function(){
   this.super(Views.RadioButton)
 })
 //------------------------------------------------------------------------------
-Views.Label = ginger.Declare(ginger.View, function(classNames, css){
+Views.Label = View.extend( function(classNames, css){
   this.$el = $('<span>');
   this.super(Views.Label, 'constructor', classNames, css)
 
@@ -2181,7 +2183,7 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
   })
 })
 //------------------------------------------------------------------------------
-var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
+var TableRow = View.extend( function(doc, fields, widths){
   var $tr = $('<tr>').attr('data-id', doc.cid);
   fields = fields || _.keys(doc);
   
@@ -2202,7 +2204,7 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
     selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
-var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
+var Table = Views.Table = View.extend( function Table(collection, options){
   var self = this, 
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
@@ -2336,13 +2338,13 @@ Table.prototype.destroy = function(){
  * param: obj options
  * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
  */
-Views.Modal = ginger.Declare(ginger.View, function(options){
+Views.Modal = View.extend( function Modal(options){
   this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
   var view = this;
 
   // header
   var $header = $('<div class="modalTop">');
-  var $title = $('<div class="modalTitle">').text(options.title);
+  var $title = $('<h3 class="modalTitle">').text(options.title);
   $header.append($title);
   
   // close
@@ -2446,7 +2448,7 @@ Views.Modal.prototype.enable = function() {
   }
 }
 //------------------------------------------------------------------------------
-Views.Button = ginger.Declare(ginger.View, function(options){
+Views.Button = View.extend( function Button(options){
   this.super(Views.Button)
   var view = this
   _.extend(this, options)
@@ -2496,8 +2498,7 @@ Views.Button.prototype.enable = function(enable){
   }
 }
 //------------------------------------------------------------------------------
-var Toolbar = Views.Toolbar = 
-  ginger.Declare(ginger.View, function(classNames, itemsClassNames){
+var Toolbar = Views.Toolbar = View.extend( function ToolBar(classNames, itemsClassNames){
   this.super(Views.Toolbar, 'constructor', classNames)
   var self = this
   self.itemsClassNames = itemsClassNames
@@ -2531,9 +2532,7 @@ ginger.Views.Toolbar.prototype.render = function(){
 }
 */
 //------------------------------------------------------------------------------
-var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, 
-                                                               $parent,
-                                                               options){
+var PopUp = Views.PopUp = View.extend( function PopUp(classNames, $parent, options){
   this.super(PopUp, 'constructor', classNames)
   this.$el.css({position: 'absolute', display:'none'})
   
@@ -2619,7 +2618,7 @@ PopUp.prototype._setFadeOut = function(){
 */
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-Views.ToolTip = ginger.Declare(PopUp, function(classNames, 
+Views.ToolTip = PopUp.extend( function ToolTip(classNames, 
                                                $target, 
                                                pos, 
                                                $content,
