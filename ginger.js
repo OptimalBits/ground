@@ -2291,14 +2291,14 @@ var Table = Views.Table = View.extend( function Table(collection, options){
       self.populate();
     }).on('removed:', function(val){
       var $row;
-      if(self.$selected.data('id') == val._id){
-        var $row = self.$selected.prev();
+      if(self.$selected && self.$selected.data('id') == val._id){
+        $row = self.$selected.prev();
         if($row.length == 0){
           $row = self.$selected.next();
         }
       }
       self.populate();
-      if($row.length){
+      if($row && $row.length){
         self.select($row.data('id'));
       }else{
         self.set('$selected', null);
