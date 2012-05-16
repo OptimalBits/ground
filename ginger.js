@@ -716,6 +716,23 @@ ServerStorage.ajax = {
     cb();
   }
 }
+
+/*
+function send(socket, event, msg, cb){
+  var errorFn = function(){
+    cb(new Error('Disconnected'));
+  }
+  if(socket.connected){
+    socket.once('disconnected', errorFn);
+    socket.emit(event, msg, function(err, res){
+      socket.off('disconnected', errorFn);
+      cb(err,res);
+    });
+  }else{
+    errorFn();
+  }
+}
+*/
 ServerStorage.socket = {
   create: function(bucket, args, cb){
     Model.socket.emit('create', bucket, args, cb);
