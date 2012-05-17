@@ -4,7 +4,7 @@ var mongoose = require('mongoose'),
   ObjectId = Schema.ObjectId;
 
 var Animal = new Schema({
-  lengs             : {type: Number},
+  legs              : {type: Number},
   tail              : {type: Boolean},
   name              : {type: String}
 })

@@ -582,7 +582,8 @@ Storage.findById = function(bucket, id, cb){
       return;
     }
   }
-  cb();  
+  console.log(objectId)
+  cb(new Error('no localobject!'));  
 }
 /*
 find:function(bucket, id, collection, query, cb){
@@ -1067,6 +1068,56 @@ Base.prototype.release = function(){
 Base.prototype.isDestroyed = function(){
   return this._refCounter === 0;
 }
+
+//------------------------------------------------------------------------------
+// Local Model Queue
+// This Object is used...
+//------------------------------------------------------------------------------
+var Queue = ginger.Base.extend(function Queue(args){
+    this.super(Queue)
+
+    //TODO: get old que from localstorage
+    this._queue = [];
+});
+
+_.extend(Queue.prototype,{ 
+    queue:function(queue){
+      this._queue = queue;
+    },
+    add:function(func){
+      this._queue.push(func);
+      localStorage.localModelQueue = JSON.stringify(this._queue);
+      this.process();
+    },
+    process:function(self){
+      if (!self){
+        self = this;
+      }
+      if (!self._currentTransfer && self._queue.length){
+        self._currentTransfer = true;
+        var command = self._queue[0];
+        switch (command.cmd){
+          case 'update':
+            break;
+          case 'create':
+            break;
+        }
+        command(function (err){
+          if (err){
+            console.log("Error: ", err);
+          } else {
+            self._queue.shift() 
+            localStorage.localModelQueue = JSON.stringify(self._queue);
+            self._currentTransfer = undefined;
+            setTimeout(self.process, 0, self); //Might make IE cry
+          }
+        });
+      }
+    }
+});
+
+var localModelQueue = new Queue();
+
 //------------------------------------------------------------------------------
 //
 // Utility Classes
@@ -1114,7 +1165,7 @@ Interval.prototype.stop = function(){
 // Models
 // TODO: Change .cid to _cid to avoid serialization.
 //------------------------------------------------------------------------------
-var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
+var Model = ginger.Model = ginger.Base.extend(function Model(args){
   this.super(ginger.Model)
   _.extend(this, args)
   _.defaults(this, {
@@ -1204,6 +1255,19 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
         break;  
     }
     var self = this, bucket = self.__bucket, transport = self.transport();
+    
+    ServerStorage.local.findById(bucket, id, function(err, doc){
+      if(err){
+        console.log(err)
+        cb(err);
+      }else{
+        doc = doc;
+        args && _.extend(doc, args);
+        self.create(doc, keepSynced, cb)
+      }
+    })
+    
+    /*
     ServerStorage[transport].findById(bucket, id, function(err, doc){
       if(err){
         cb(err);
@@ -1212,7 +1276,7 @@ var Model = ginger.Model = ginger.Declare(ginger.Base, function Model(args){
         args && _.extend(doc, args);
         self.create(doc, keepSynced, cb)
       }
-    })
+    })*/
     return this
   },
   /*
@@ -1385,31 +1449,37 @@ Model.prototype.update = function(args, transport, cb){
     
   cb = cb || ginger.noop;
 
+  var func = ginger.noop;
   if(self._id){
-    ServerStorage[transport].update(bucket, self._id, args, function(err){
-      if(!err){
-        self.local().update(args)
-      }
-      cb(err)
-    })
+    func = function(callback){
+      //self.local().update(args);
+      ServerStorage[transport].update(bucket, self._id, args, function(err){
+        callback(err);
+      });
+    }
   }else{
-    ServerStorage[transport].create(bucket, args, function(err, id){
-      if(!err){
+    func = function(callback){
+      //TODO: Bug?
+      ServerStorage[transport].create(bucket, args, function(err, id){
         if(id){
-          self.local().remove()
-          self.cid = self._id = id
-          self.local().save()
-          cb(null, id)
-        }else{
-          self.local().update(args)
-          cb(null, self.cid)
+          self.local().remove();
+          self.cid = self._id = id;
+          self.local().save();
+          callback(null, id);
         }
-      } else {
-        cb(err);
-      }
-    })
+        callback(err);
+      }); 
+    }
   }
+  if (self._id){
+    self.local().update(args);
+  } else {
+    self.local().save();
+  }
+  localModelQueue.add(func);
+  cb(null, self.cid);
 }
+
 Model.prototype.delete = function(transport, cb){
   var self = this;
   if(_.isFunction(transport)){
@@ -1439,6 +1509,10 @@ Model.prototype.keepSynced = function(){
     self._keepSynced = true;
     
     socket.emit('sync', id);
+
+    socket.on('reconnect', function(){
+      socket.emit('resync', id, self.__rev);
+    })
     
     socket.on('update:'+id, function(doc){
       newDoc = doc;
@@ -1453,6 +1527,7 @@ Model.prototype.keepSynced = function(){
   }
   
   self.on('changed:', function(doc, args){
+    console.log('CHANGED!' + JSON.stringify(doc) + " " + JSON.stringify(self));
     if((doc !== newDoc) && (!args || (args.sync != false))){
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.

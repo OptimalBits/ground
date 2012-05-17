@@ -12,14 +12,15 @@ describe('Model', function(){
   before(function(done){  
     animal.save(function(){
       animal.keepSynced();
+      //console.log(JSON.stringify(animal));
       done()
     });
   });
   describe('findById', function(){
     it('finds the animal', function(done){
-      Animal.findById(animal._id, function(err, doc){
+      Animal.findById(animal.cid, function(err, doc){
         expect(err).to.be(null);
-        expect(doc._id).to.eql(animal._id);
+        expect(doc.cid).to.eql(animal.cid);
         doc.release();
         done();
       });
@@ -43,15 +44,7 @@ describe('Model', function(){
     });
     it('another instance propagates changes', function(done){
       var otherAnimal;
-      Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
-        expect(doc).to.have.property('_id');
-        expect(doc._id).to.eql(animal._id);
-        doc.keepSynced();
-        doc.set({legs:4, tail:true});
-        otherAnimal = doc;
-      });
-      
+
       animal.on('changed:', function(){
         expect(animal).to.have.property('legs');
         expect(animal).to.have.property('tail');
@@ -59,6 +52,15 @@ describe('Model', function(){
         expect(animal.tail).to.be(true);
         otherAnimal.release();
         done();
+      });
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:4, tail:true});
+        otherAnimal = doc;
       });
     });
   });
