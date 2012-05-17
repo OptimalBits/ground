@@ -544,7 +544,7 @@ var ajaxBase = function(method, url, obj, cb){
     }
   }
 }
-var ajax = ajax = {
+var ajax = ginger.ajax = {
   get:function(url, obj, cb){
     return $.ajax(ajaxBase('GET', url, obj, cb))
   },
