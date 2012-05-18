@@ -1,5 +1,5 @@
 /**
-  Ginger Server Component (c) 2012 Optimal Bits Sweden AB
+  Ground Server Component (c) 2012 Optimal Bits Sweden AB
 
   This componet provides a generic server for ginger models and collections.
   It uses socket.io for communication, Redis for pubSub and MongoDB for 
@@ -106,7 +106,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
     });
   
     socket.on('delete', function(id, cb){
-    
+      // TODO: Implement (deletes a model).
     });
   
     socket.on('find', function(bucket, id, collection, query, cb){
@@ -139,12 +139,11 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
     //
     // Add items to a collection.
     //
-    
     socket.on('add', function(bucket, id, collection, itemIds, cb){
       itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
-    
+     
       if(itemIds.length > 0){
-        var Collection = self._getModel(collection, cb);
+        var Collection = self.models[collection];
         if(Collection && Collection.parent){
           var doc = {};
           doc[Collection.parent()] = id;
@@ -158,11 +157,23 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
         }else{
           var Model = self._getModel(bucket, cb);
           if(Model){
-           // Model.update({_id:id}, { $addToSet: {collection:{$each:itemIds}}}, cb);
+            var setdef = {}, items = itemIds;
+            
+            setdef[collection] = {$each:items}
+            Model.update({_id:id}, { $addToSet: setdef}, function(err){
+              if(!err){
+                // We should only send the new added objects
+                sync.add(id, collection, items);
+              }
+              cb(err);
+            });
+            /*
             Model.findById(id, function(err, doc){
               if(err){
                  cb(err);
               } else{
+                console.log(itemIds);
+              
                 var current = _.map(doc[collection], function(item){ return String(item)}),
                   added = _.difference(itemIds, current);
                 if(added.length>0){
@@ -178,6 +189,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
                 }
               }
             });
+            */
           }else{
             cb();
           }
@@ -191,9 +203,10 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
         var Model = self._getModel(bucket, cb);
         if(Model){
           Model.findById(id, function(err, doc){
-            if(err) cb(err);
-            else{
-              var current = _.map(doc[collection], function(item){ return String(item)}),
+            if(err){
+              cb(err);
+            }else{
+              var current = _.map(doc[collection], function(item){return String(item)}),
                 removed = _.intersection(current, itemIds);
               if(removed.length>0){
                 doc[collection] = _.without(current, removed);
@@ -257,7 +270,9 @@ Server.prototype._getModel = function(bucket, cb){
   if(bucket in models){
     return models[bucket];
   } else {
-    cb(new Error('Invalid bucket %s', bucket));
+    var err = new Error('Invalid bucket '+ bucket);
+    console.log(err.stack);
+    cb('Invalid bucket '+ bucket);
     return null;
   }
 }

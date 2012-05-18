@@ -146,6 +146,7 @@ describe('Collections', function(){
           expect(animals).to.be.an(Object);
           
           var animal = animals.first();
+          expect(animal).to.be.an(Object);
           animals.remove(animal._id);
                     
           var found = animals.find(function(item){return item._id === animal._id});

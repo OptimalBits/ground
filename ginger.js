@@ -84,7 +84,7 @@ var ginger = {}
 //
 // Utils
 //
-ginger.noop = function(){}
+var noop = ginger.noop = function(){}
 
 ginger.uuid = uuid;
 
@@ -173,7 +173,7 @@ ginger.indexOf = function(array, val, iter, isSorted){
 }
 
 // Apply asynchronous functions to every element in the array
-ginger.asyncForEach = function(array, fn, cb) {
+var asyncForEach = ginger.asyncForEach = function(array, fn, cb) {
   var deferred = $.Deferred(), completed = 0;
   
   function iter(item, len){
@@ -181,7 +181,7 @@ ginger.asyncForEach = function(array, fn, cb) {
       if(err){
         deferred.reject()
         cb && cb(err);
-        cb = ginger.noop;
+        cb = noop;
       }else{
         completed++;
         if(completed === len) {
@@ -483,7 +483,7 @@ UndoManager.prototype.endGroup = function(){
         group[i].action.undo(group[i].action.fn)
       }
     },
-    ginger.noop,
+    noop,
     group.name)
   }(this._group))
   
@@ -518,8 +518,8 @@ UndoManager.prototype.redo = function(){
   }
 }
 
-ginger.undoMgr = new UndoManager()
-_.extend(ginger.undoMgr, new EventEmitter())
+var undoMgr = ginger.undoMgr = new UndoManager()
+_.extend(undoMgr, new EventEmitter())
 
 //------------------------------------------------------------------------------
 //
@@ -592,7 +592,7 @@ find:function(bucket, id, collection, query, cb){
   if(id) url += '/'+id;
   if(collection) url += '/'+collection;
   if(query) url += '?'+$.param(query);
-  ginger.ajax.get(url, cb);
+  ajax.get(url, cb);
 },
 */
 //find:function(bucket, id, collection, query, cb){
@@ -673,10 +673,15 @@ var ServerStorage = ginger.ServerStorage = {}
 
 ServerStorage.local = Storage;
 
+/**
+  Add should accept models. 
+  If the model has an _id then we send the complete object.
+
+*/
 ServerStorage.ajax = {
   create: function(bucket, args, cb){
     url = Model.url+'/'+bucket;
-    ginger.ajax.post(url, args, cb);
+    ajax.post(url, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
     var url = Model.url;
@@ -684,26 +689,26 @@ ServerStorage.ajax = {
     if(id) url += '/'+id;
     if(collection) url += '/'+collection;
     if(query) url += '?'+$.param(query);
-    ginger.ajax.get(url, cb);
+    ajax.get(url, cb);
   },
   findById:function(bucket, id, cb){
-    ginger.ajax.get(Model.url+'/'+bucket+'/'+id, cb);
+    ajax.get(Model.url+'/'+bucket+'/'+id, cb);
   },
   update:function(bucket, id, args, cb){
-    ginger.ajax.put(Model.url+'/'+bucket+'/'+id, args, cb);
+    ajax.put(Model.url+'/'+bucket+'/'+id, args, cb);
   },
-  add:function(bucket, id, collection, objIds, cb){
-    if(objIds.length>0){
-      ginger.ajax.put(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
+  add:function(bucket, id, collection, items, cb){
+    if(items){
+      ajax.put(Model.url+'/'+bucket+'/'+id+'/'+collection, items, cb);
     }else{
       cb();
     }
   },
   remove:function(bucket, id, collection, objIds, cb){
     if(_.isFunction(collection)){
-      ginger.ajax.del(Model.url+'/'+bucket+'/'+id, collection);    
+      ajax.del(Model.url+'/'+bucket+'/'+id, collection);    
     } else if(objIds.length>0){
-      ginger.ajax.del(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
+      ajax.del(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
     }else{
       cb();
     }
@@ -712,24 +717,47 @@ ServerStorage.ajax = {
     cb();
   }
 }
+
+function send(socket) {
+
+  var errorFn = function() {
+    cb(new Error('Disconnected'));
+  }
+  var cb = _.last(arguments)
+  var args = _.rest(arguments)
+  
+  var proxyCb = function(err, res) {
+    socket.removeListener('disconnected', errorFn);
+    cb(err, res);
+  }
+  args[args.length-1] = proxyCb;
+
+  if (socket.socket.connected) {
+    socket.once('disconnected', errorFn);
+    socket.emit.apply(socket, args);
+  } else {
+    errorFn();
+  }
+}
+
 ServerStorage.socket = {
   create: function(bucket, args, cb){
-    Model.socket.emit('create', bucket, args, cb);
+    send(Model.socket,'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    Model.socket.emit('find', bucket, id, collection, query, cb);
+    send(Model.socket,'find', bucket, id, collection, query, cb);
   },
   findById:function(bucket, id, cb){
-    Model.socket.emit('read', bucket, id, cb);
+    send(Model.socket,'read', bucket, id, cb);
   },
   update:function(bucket, id, args, cb){
-    Model.socket.emit('update', bucket, id, args, cb);
+    send(Model.socket,'update', bucket, id, args, cb);
   },
-  add:function(bucket, id, collection, objIds, cb){
-    Model.socket.emit('add', bucket, id, collection, objIds, cb);
+  add:function(bucket, id, collection, items, cb){
+    send(Model.socket,'add', bucket, id, collection, items, cb);
   },
   remove:function(bucket, id, collection, objIds, cb){
-    Model.socket.emit('remove', bucket, id, collection, objIds, cb); 
+    send(Model.socket,'remove', bucket, id, collection, objIds, cb); 
   },
   count:function(bucket, cb){
     cb(); 
@@ -795,7 +823,7 @@ function Inherit(Sub, Super){
 /**
   Declare(Super, [constructor{Function}|methods{Object}, statics{[Function]}, bucket{String}]);
 */
-ginger.Declare = function(Super, Sub, staticOrName, bucket){
+var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
   var methods;
   
   if(_.isObject(Sub)&&!_.isFunction(Sub)){
@@ -844,7 +872,7 @@ var Base = ginger.Base = function Base(){
 _.extend(Base.prototype, EventEmitter.prototype);
 
 Base.extend = function(Sub, staticOrName, bucket){
-  return ginger.Declare(this, Sub, staticOrName, bucket);
+  return Declare(this, Sub, staticOrName, bucket);
 }
 
 //
@@ -1013,7 +1041,7 @@ Base.prototype.format = function(property, fn){
 Base.prototype.beginUndoSet = function(key, name){
   var base = this
   ;(function(value){
-    ginger.undoMgr.beginUndo(function(){
+    undoMgr.beginUndo(function(){
       base.set(key, value)
   }, name)}(this[key]))
 }
@@ -1023,7 +1051,7 @@ Base.prototype.beginUndoSet = function(key, name){
 Base.prototype.endUndoSet = function(key, fn){
   var base = this
   ;(function(value){
-    ginger.undoMgr.endUndo(function(){
+    undoMgr.endUndo(function(){
       base.set(key, value)
   })}(this[key]))
 }
@@ -1075,9 +1103,10 @@ Base.prototype.isDestroyed = function(){
 //------------------------------------------------------------------------------
 var Queue = ginger.Base.extend(function Queue(args){
     this.super(Queue)
-
     //TODO: get old que from localstorage
     this._queue = [];
+    var self = this;
+    socket.on('reconnect', self.process(self));
 });
 
 _.extend(Queue.prototype,{ 
@@ -1085,9 +1114,18 @@ _.extend(Queue.prototype,{
       this._queue = queue;
     },
     add:function(func){
+      //TODO: MERGE DIFFERENT UPDATES?
       this._queue.push(func);
       localStorage.localModelQueue = JSON.stringify(this._queue);
-      this.process();
+      //this.process();
+    },
+    fixQueue:function(oldId, newId){
+      _.each(this._queue, function(obj){
+        if (obj.id == oldId){
+          obj.id == newId;
+        }
+      });
+      localStorage.localModelQueue = JSON.stringify(this._queue);
     },
     process:function(self){
       if (!self){
@@ -1095,23 +1133,32 @@ _.extend(Queue.prototype,{
       }
       if (!self._currentTransfer && self._queue.length){
         self._currentTransfer = true;
-        var command = self._queue[0];
-        switch (command.cmd){
+        var obj = self._queue[0];
+        switch (obj.cmd){
           case 'update':
+            ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
+              if (err) {
+                return err;
+              }
+              setTimeout(0, self.process, self);
+            });
             break;
           case 'create':
+            ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
+              if (err){
+                return err;
+              } else {
+                obj2 = Storage.local.findById(obj.bucket, obj.id, ginger.noop)
+                Storage.local.remove(obj.bucket, obj.id, ginger.noop)
+                self.fixQueue(obj.id, id);
+                obj2.set('cid', id);
+                obj2.set('_id', id);               
+                Storage.local.create(obj.bucket, obj2);
+              }
+              setTimeout(0, self.process, self);
+            });
             break;
         }
-        command(function (err){
-          if (err){
-            console.log("Error: ", err);
-          } else {
-            self._queue.shift() 
-            localStorage.localModelQueue = JSON.stringify(self._queue);
-            self._currentTransfer = undefined;
-            setTimeout(self.process, 0, self); //Might make IE cry
-          }
-        });
       }
     }
 });
@@ -1125,51 +1172,79 @@ var localModelQueue = new Queue();
 //------------------------------------------------------------------------------
 
 /**
-  Self-correcting Accurate Interval
-*/
-var Interval = ginger.Interval = ginger.Declare(ginger.Base, function(){
-  this.super(Interval);
-  this.timer = null;
-});
-Interval.prototype.run = function(freq, duration){
-  clearTimeout(this.timer);
-  this.baseline = Date.now();
-  this._iter(freq, duration);
-}
-Interval.prototype.isRunning = function(){
-  return (this.timer!==null);
-}
-Interval.prototype._iter = function(freq, duration){
-  var self = this;
-  var error = Date.now() - self.baseline;
+  Interval
   
-  if(self.time >= duration){
-    self.stop();
-    self.emit('ended', self.baseline);
-  }else{
-    var nextTick = freq - error;
-    self.timer = setTimeout(function(){
-      self.set('time', self.time+freq);
-      self.baseline += freq;
-      self._iter(freq, duration);
-    }, nextTick>=0?nextTick:0);
+  Self-correcting Accurate Interval (+/- 1ms accuracy).
+  
+  Listen to 'time' property for getting the current time at the given
+  resolution.
+  
+  The timer will emit a ended: event when the timer has reached its duration,
+  and 'stopped:' if the timer was stopped by the user.
+*/
+var Interval = ginger.Interval = Base.extend(function Interval(resolution){
+  this.super(Interval);
+  this.time = 0;
+  this._timer = null;
+  this._resolution = resolution;
+});
+
+_.extend(Interval.prototype, {
+  destroy : function(){
+    this.stop();
+    this.super(Interval, 'destroy');
+  },
+  
+  /**
+    start(resolution, duration)
+    
+    Starts a new timer with the given duration in milliseconds.
+  */
+  start : function(duration){
+    clearTimeout(this._timer);
+    if(duration){
+      this.duration = duration;
+      this._baseline = Date.now();
+      this._iter();
+    }
+  },
+  isRunning : function(){
+    return (this._timer!==null);
+  },
+  stop : function(){
+    clearTimeout(this._timer);
+    this._timer = null;
+    this.emit('stopped:', this._baseline);
+  },
+  _iter : function(){
+    var self = this, 
+      error = Date.now() - self._baseline;
+  
+    if(self.time >= self.duration){
+      self.stop();
+      self.emit('ended:', self._baseline);
+    }else{
+      var nextTick = self._resolution - error;
+      self._timer = setTimeout(function(){
+        self.set('time', self.time + self._resolution);
+        self._baseline += self._resolution;
+        self._iter();
+      }, nextTick>=0 ? nextTick:0);
+    }
   }
-}
-Interval.prototype.stop = function(){
-  clearTimeout(this.timer);
-  this.timer = null;
-  this.emit('stop', this.baseline);
-}
+});
+
 //------------------------------------------------------------------------------
 //
 // Models
-// TODO: Change .cid to _cid to avoid serialization.
+// TODO: Change .cid to .cid() to avoid serialization.
 //------------------------------------------------------------------------------
-var Model = ginger.Model = ginger.Base.extend(function Model(args){
-  this.super(ginger.Model)
+
+var Model = ginger.Model = Base.extend( function Model(args){
+  this.super(Model)
   _.extend(this, args)
   _.defaults(this, {
-    _socket:ginger.Model.socket,
+    _socket:Model.socket,
     __model:true,
     __dirty:false
   })
@@ -1184,7 +1259,7 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
     }
     var self = this;
     if(args){
-      this.fromJSON(args, function(instance){
+      this.fromJSON(args, function(err, instance){
         if(instance){
           _.defaults(instance, {__bucket:self.__bucket});
           if(keepSynced == true){
@@ -1194,11 +1269,11 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
             cb(null, instance)
           })
         }else{
-          cb(null, null)
+          cb(err)
         }
       })
     }else{
-      cb(null, null)
+      cb()
     }
     return this;
   },
@@ -1207,10 +1282,8 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
       this.__transport = transport;
     }
     return this.__transport || 
-           Model.__transport || 
-           (this.socket?'socket':this.url?'ajax':undefined) ||
-           (Model.socket?'socket':Model.url?'ajax':undefined) ||
-           'local';
+           Model.__transport ||
+           (this.socket?'socket':Model.socket?'socket':this.url?'ajax':Model.url?'ajax':'local');
   },
   use : function(attr, value){
     switch(attr){
@@ -1252,32 +1325,30 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
         }else{
           args = undefined;
         }
-        break;  
+        break;
     }
-    var self = this, bucket = self.__bucket, transport = self.transport();
-    
-    ServerStorage.local.findById(bucket, id, function(err, doc){
-      if(err){
-        console.log(err)
-        cb(err);
-      }else{
-        doc = doc;
+
+    var self = this, bucket = self.__bucket, transport = self.transport(),
+      instantiate = function(doc, args, cb){
         args && _.extend(doc, args);
         self.create(doc, keepSynced, cb)
+      }
+    ServerStorage[transport].findById(bucket, id, function(err, doc){
+      if(doc){
+        instantiate(doc, args, cb);
+      }else{
+        Storage.findById(bucket, id, function(err, doc){
+          
+
+          if(doc){
+            instantiate(doc, args, cb);
+          }else{
+            cb(err);
+          }
+        })
       }
     })
-    
-    /*
-    ServerStorage[transport].findById(bucket, id, function(err, doc){
-      if(err){
-        cb(err);
-      }else{
-        doc = doc || Storage.findById(bucket, id)
-        args && _.extend(doc, args);
-        self.create(doc, keepSynced, cb)
-      }
-    })*/
-    return this
+    return this;
   },
   /*
     fetch(cb)
@@ -1315,7 +1386,7 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
     }
     ServerStorage[this.transport()].find(bucket, id, collection, query, cb);
   },
-  all : function(cb, parent, args){
+  all : function(cb, parent, args, altBucket){
     var self = this, bucket, id;
     if(_.isFunction(parent)){
       var tmp = cb;
@@ -1326,7 +1397,7 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
       bucket = parent.__bucket;
       id = parent.cid;
     }
-    this.fetch(bucket, id, this.__bucket, function(err, docs){
+    this.fetch(bucket, id, altBucket || this.__bucket, function(err, docs){
       if(docs){
         args && _.each(docs, function(doc){_.extend(doc, args)});
         var collection = docs || Storage.all(bucket, parent);
@@ -1364,7 +1435,10 @@ var Model = ginger.Model = ginger.Base.extend(function Model(args){
     }
   },
   fromJSON : function(args, cb){
-    cb(new this(args))
+    cb(null, new this(args));
+  },
+  fromArgs : function(args, cb){
+    cb(null, new this(args));
   }
 })
 Model.prototype.transport = function(transport){
@@ -1393,19 +1467,32 @@ Model.prototype.local = function(){
         Storage.update(bucket, self.cid, args)
       },
       remove: function(){
-        Storage.remove(bucket, self.cid, ginger.noop)
+        Storage.remove(bucket, self.cid, noop)
       }
     }
     return this._local
   }
 }
-Model.prototype.all = function(model, args, cb){
+/**
+  Model#all (model, [args{Object}, bucket{String}], cb);
+*/
+Model.prototype.all = function(model, args, bucket, cb){
+  if(_.isString(args)){
+    cb = bucket;
+    bucket = args;
+    args = undefined;
+  }
+  if(_.isFunction(bucket)){
+    cb = bucket;
+    bucket = undefined;
+  }
   if(_.isFunction(args)){
     cb = args;
     args = undefined;
+    bucket = undefined;
   }
   if(this._id){ 
-    model.all(cb, this, args)
+    model.all(cb, this, args, bucket)
   }else{
    cb(null)
   }
@@ -1426,7 +1513,7 @@ Model.prototype.toArgs = function(){
   }
   return args
 }
-Model.prototype.toJSON = ginger.Model.prototype.toArgs
+Model.prototype.toJSON = Model.prototype.toArgs
 
 // TODO: Add a __dirty flag so we do not save unncessarily.
 // this flag a easily be maintained by listening to the changed: event.
@@ -1447,37 +1534,54 @@ Model.prototype.update = function(args, transport, cb){
   
   var self = this, bucket = self.__bucket;
     
-  cb = cb || ginger.noop;
+  cb = cb || noop;
 
-  var func = ginger.noop;
   if(self._id){
-    func = function(callback){
-      //self.local().update(args);
-      ServerStorage[transport].update(bucket, self._id, args, function(err){
-        callback(err);
-      });
-    }
+    ServerStorage[transport].update(bucket, self._id, args, function(err){
+      self.local().update(args)
+      if(err){
+        var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
+           'cmd':'update', 'transport':transport }
+        localModelQueue.add(obj);
+      }
+      cb(err)
+    })
   }else{
-    func = function(callback){
-      //TODO: Bug?
-      ServerStorage[transport].create(bucket, args, function(err, id){
+    ServerStorage[transport].create(bucket, args, function(err, id){
+      if(!err){
         if(id){
-          self.local().remove();
-          self.cid = self._id = id;
-          self.local().save();
-          callback(null, id);
+          self.local().remove()
+          self.cid = self._id = id
+          self.local().save()
+          cb(null, id)
+        }else{
+          self.local().update(args)
+          cb(null, self.cid)
         }
-        callback(err);
-      }); 
-    }
+      } else {
+        self.local().save()
+        var obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
+           'cmd':'create', 'transport':transport }
+        localModelQueue.add(obj);
+        cb(err);
+      }
+    })
   }
-  if (self._id){
+
+  /*
+  var obj;
+  if(self._id){
+     obj = {'bucket':bucket, 'id':self._id, 'args':args, 
+           'cmd':'update', 'transport':transport }
     self.local().update(args);
-  } else {
+  
+  }else{
+    obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
+           'cmd':'create', 'transport':transport }
     self.local().save();
   }
-  localModelQueue.add(func);
-  cb(null, self.cid);
+  localModelQueue.add(obj);
+  cb(null, self.cid);*/
 }
 
 Model.prototype.delete = function(transport, cb){
@@ -1503,7 +1607,7 @@ Model.prototype.keepSynced = function(){
   }
   
   if(self.transport() === 'socket'){
-    var socket = ginger.Model.socket;
+    var socket = Model.socket;
     
     var newDoc, id = self._id;
     self._keepSynced = true;
@@ -1527,7 +1631,6 @@ Model.prototype.keepSynced = function(){
   }
   
   self.on('changed:', function(doc, args){
-    console.log('CHANGED!' + JSON.stringify(doc) + " " + JSON.stringify(self));
     if((doc !== newDoc) && (!args || (args.sync != false))){
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
@@ -1539,7 +1642,7 @@ Model.prototype.keepSynced = function(){
 Model.prototype.destroy = function(){
   this.super(Model, 'destroy');
   
-  var socket = ginger.Model.socket;
+  var socket = Model.socket;
   if(socket && this._keepSynced){
     var id = this._id;
     socket.emit('unsync', id);
@@ -1552,8 +1655,8 @@ Model.prototype.destroy = function(){
   A collection is a set of ordered models. 
   It provides delegation and proxing of events.
 **/
-var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items, model, parent, sortByFn){
-  this.super(ginger.Collection);
+var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
+  this.super(Collection);
   
   var self = this;
   
@@ -1587,7 +1690,7 @@ var Collection = ginger.Collection = ginger.Declare(ginger.Base, function(items,
     sortByFn:sortByFn,
     model : model || Model,
     sortOrder : 'asc',
-    socket : ginger.Model.socket
+    socket : Model.socket
   });
   self.on('sortByFn sortOrder', function(fn){
     if(self.sortByFn){
@@ -1602,11 +1705,11 @@ Collection.instantiate = function(model, parent, array, cb){
     array = parent;
     parent = null;
   }
-  cb = cb || ginger.noop;
+  cb = cb || noop;
   
   if(array){
     var items = [];
-    ginger.asyncForEach(array, function(args, fn){
+    asyncForEach(array, function(args, fn){
       model.create(args, function(err, instance){
         if(instance){
           items.push(instance);
@@ -1617,7 +1720,7 @@ Collection.instantiate = function(model, parent, array, cb){
       if(err){
         cb(err, null)
       }else{
-        var collection = new ginger.Collection(items, model, parent)
+        var collection = new Collection(items, model, parent)
         _.each(items, function(item){item.release()});
         
         if(parent){
@@ -1633,6 +1736,7 @@ Collection.instantiate = function(model, parent, array, cb){
 Collection.prototype.findById = function(id){
   return this.find(function(item){return item.cid == id});
 }
+
 Collection.prototype.save = function(cb){
   var transport = this.model.transport(), self = this;
   
@@ -1645,14 +1749,22 @@ Collection.prototype.save = function(cb){
       cb(err);
     }else{
       self._removed = []
-      ginger.asyncForEach(self.items, function(item, cb){
+      asyncForEach(self.items, function(item, cb){
         item.save(cb);
       }, function(err){
         if((!err)&&(self._added.length>0)){
+          var items = _.filter(self._added, function(item){
+            if(_.isUndefined(item._id)){
+              return item;
+            }else{
+              return item._id;
+            }
+          });
+        
           ServerStorage[transport].add(self.parent.__bucket, 
                                        self.parent._id,
                                        self.model.__bucket, 
-                                       _.pluck(self._added, '_id'),
+                                       item._id || item,
                                        function(err){
             if(!err){
               self._added = [];
@@ -1666,10 +1778,10 @@ Collection.prototype.save = function(cb){
     }                           
   });
 }
-Collection.prototype.add = function(items, cb, nosync, pos){
+Collection.prototype.add = function(items, cb, opts, pos){
   var self = this;  
-  cb = cb ? cb : ginger.noop;
-  ginger.asyncForEach(items, function(item, fn){
+  cb = cb ? cb : noop;
+  asyncForEach(items, function(item, fn){
     self._add(item, function(err){
       if(!err){
         if(self._keepSynced){
@@ -1677,21 +1789,21 @@ Collection.prototype.add = function(items, cb, nosync, pos){
         }
       }
       fn(err);
-    }, nosync, pos);
+    }, opts, pos);
   }, cb);
 }
 Collection.prototype.insert = function(item, pos, cb){
-  if(pos >= this.items.length){
+  if(pos > this.items.length){
     pos = undefined;
   }
-  this.add(item, cb, false, pos);
+  this.add(item, cb, {nosync:false, embedded:true}, pos);
 }
 Collection.prototype.remove = function(itemIds, cb, nosync){
   var self = this, transport = this.model.transport();
   
-  cb = cb || ginger.noop;
+  cb = cb || noop;
       
-  ginger.asyncForEach(itemIds, function(itemId, fn){
+  asyncForEach(itemIds, function(itemId, fn){
     var item, index, items = self.items;
     for(var i=0, len=items.length;i<len;i++){
       if(items[i].cid == itemId){
@@ -1747,7 +1859,7 @@ Collection.prototype.keepSynced = function(enable){
     this.model.findById(itemId, function(err, item){
       if(item){
         item.init(function(){
-          self.add(item, ginger.noop, true);
+          self.add(item, noop, {nosync:true});
           item.release();
         })
       }
@@ -1755,7 +1867,7 @@ Collection.prototype.keepSynced = function(enable){
   }, self);
   
   self._removeListenerFn = _.bind(function(itemId){
-    this.remove(itemId, ginger.noop, true);
+    this.remove(itemId, noop, true);
   }, self);
   
   socket.on('add:'+id+':'+bucket, self._addListenerFn)
@@ -1790,7 +1902,7 @@ Collection.prototype.destroy = function(){
       var id = this.parent.cid;
       this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
       this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
-      this._keepSynced && socket.emit('unsync', id);
+      this._keepSynced && this.socket.emit('unsync', id);
     }
   }
   this.each(function(item){item.release()});
@@ -1813,7 +1925,7 @@ Collection.prototype._sortedAdd = function(item){
   this.items.splice(i, 0, item);
   (this.sortOrder == 'desc') && this.items.reverse();
 }
-Collection.prototype._add = function(item, cb, nosync, pos){
+Collection.prototype._add = function(item, cb, opts, pos){
   var self = this;
   
   this._formatters && item.format(this._formatters);
@@ -1825,10 +1937,9 @@ Collection.prototype._add = function(item, cb, nosync, pos){
   
   if(self.sortByFn){
     pos = self._sortedAdd(item);
-  }else if(pos){
+  }else {
+    pos = _.isUndefined(pos)?self.items.length:pos;
     self.items.splice(pos, 0, item);
-  }else{
-    self.items.push(item)
   }
 
   self._initItems(item);
@@ -1836,15 +1947,15 @@ Collection.prototype._add = function(item, cb, nosync, pos){
     
   if(self._keepSynced){
     var transport = this.model.transport();
-    if(nosync !== true){
+    if(!opts || (opts.nosync !== true)){
       function storageAdd(){
         ServerStorage[transport].add(self.parent.__bucket, 
                                      self.parent._id,
                                      item.__bucket,
-                                     item._id,
+                                     item._id || item,
                                      cb);    
-      }
-      if(item._id){
+      }  
+      if(item._id || (opts && opts.embedded)){
         storageAdd()
       }else{
         item.save(function(err){
@@ -1863,7 +1974,7 @@ Collection.prototype._add = function(item, cb, nosync, pos){
 
 // Underscore methods that we want to implement on the Collection.
 var methods = 
-  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect',
+  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
     'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
     'contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex', 'toArray', 'size',
     'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty', 'groupBy']
@@ -1899,8 +2010,6 @@ Array.prototype.humanSort = function() {
   });
 }
 */
-
-
 //------------------------------------------------------------------------------
 
 // FIX:
@@ -1910,9 +2019,9 @@ Array.prototype.humanSort = function() {
 // therefore $el must be created in render. But since $el could be something
 // different than a div, we will introcude the tag property, which will be used
 // in render to create the proper element.
-ginger.View = ginger.Declare(ginger.Base, function(classNames, css){
+var View = ginger.View = Base.extend(function View(classNames, css){
   var self = this
-  self.super(ginger.View)
+  self.super(View)
   if(_.isUndefined(self.$el)){
     self.$el = $('<div>')
   }
@@ -1926,71 +2035,75 @@ ginger.View = ginger.Declare(ginger.Base, function(classNames, css){
   self.tag = '<div>'
   self.css = css
 })
-ginger.View.prototype.render = function($parent){
-  if($parent){
-    this.$parent = $parent
+_.extend(View.prototype, {
+  render : function($parent){
+    if($parent){
+      this.$parent = $parent
+    }
+    return this.$el.detach().appendTo(this.$parent)
+  },
+  update : function(){
+    // Updates this view.
+    /*
+      Updating can imply that if this view is composed of subviews, or of
+      many DOM elements, that this DOM elements are destroyed and recreated,
+      (or subvies are removed and re-rendered), but the most important thing
+      is that the element that this view returned in render, is still the same after
+      the update.
+    */
+  },
+  clean : function(){
+    if(this.$el) this.$el.detach()
+  },
+  remove : function(){
+    if(this.$el) this.$el.remove()
+  },
+  disable : function(disable){
+    console.log(this+" does not implement disable")
+  },
+  hide : function(duration, easing, callback) {
+    this.$el.hide(arguments)
+  },
+  show : function(duration, easing, callback) {
+    this.$el.show(arguments)
+  },
+  destroy : function(){
+    this.remove();
+    this.super(View, 'destroy');
   }
-  return this.$el.detach().appendTo(this.$parent)
-}
-ginger.View.prototype.update = function(){
-  // Updates this view.
-  /*
-    Updating can imply that if this view is composed of subviews, or of
-    many DOM elements, that this DOM elements are destroyed and recreated,
-    (or subvies are removed and re-rendered), but the most important thing
-    is that the element that this view returned in render, is still the same after
-    the update.
-  */
-}
-ginger.View.prototype.clean = function(){
-  if(this.$el) this.$el.detach()
-}
-ginger.View.prototype.remove = function(){
-  if(this.$el) this.$el.remove()
-}
-ginger.View.prototype.disable = function(disable){
-  console.log(this+" does not implement disable")
-}
-ginger.View.prototype.hide = function(duration, easing, callback) {
-  this.$el.hide(arguments)
-}
-ginger.View.prototype.show = function(duration, easing, callback) {
-  this.$el.show(arguments)
-}
-ginger.View.prototype.destroy = function(){
-  this.remove();
-  this.super(ginger.View, 'destroy');
-}
+});
 //------------------------------------------------------------------------------
-ginger.CanvasView = ginger.Declare(ginger.View, function(classNames){
-  this.super(ginger.CanvasView, 'constructor', classNames)
+var CanvasView = ginger.CanvasView = View.extend(function CanvasView(classNames){
+  this.super(CanvasView, 'constructor', classNames)
   this.$canvas = null
   var cv = this
   this.on('changed:', function(){
     cv.draw()
   })
-})
-ginger.CanvasView.prototype.render = function($parent){
-  this.super(ginger.CanvasView, 'render', $parent)
-  if(this.$parent){
-    if(this.$canvas){
-      this.$canvas.remove()
-    }
-    this.$canvas = $('<canvas>', {
-      css:{width:'100%', height:'100%'}}).appendTo(this.$el)
+});
+_.extend(CanvasView.prototype,{
+  render : function($parent){
+    this.super(CanvasView, 'render', $parent)
+    if(this.$parent){
+      if(this.$canvas){
+        this.$canvas.remove()
+      }
+      this.$canvas = $('<canvas>', {
+        css:{width:'100%', height:'100%'}}).appendTo(this.$el)
 
-    this.$canvas[0].width = this.$parent.width()
-    this.$canvas[0].height = this.$parent.height()
+      this.$canvas[0].width = this.$parent.width()
+      this.$canvas[0].height = this.$parent.height()
+    }
+    this.draw()
+  },
+  draw : function(){
+    if(this.$canvas){
+      return this.$canvas[0].getContext('2d')
+    }else{
+      return null
+    }
   }
-  this.draw()
-}
-ginger.CanvasView.prototype.draw = function(){
-  if(this.$canvas){
-    return this.$canvas[0].getContext('2d')
-  }else{
-    return null
-  }
-}
+});
 //------------------------------------------------------------------------------
 //
 // Views
@@ -1999,7 +2112,7 @@ ginger.CanvasView.prototype.draw = function(){
 var Views = ginger.Views = {}
 
 //------------------------------------------------------------------------------
-Views.ComboBox = ComboBox = ginger.Declare(ginger.View, function(items, selected){
+Views.ComboBox = ComboBox = View.extend(function ComboBox(items, selected){
   this.super(Views.ComboBox)
   var view = this
   
@@ -2050,33 +2163,35 @@ ComboBox.prototype.remove = function(key) {
   $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
-Views.Slider = ginger.Declare(ginger.View, function(options, classNames){
+Views.Slider = View.extend( function Slider(options, classNames){
   this.super(Views.Slider, 'constructor', classNames)
-  var view = this
+  var self = this
   
-  view.options = options || {}
-  view.value = view.options.value || 0
+  self.options = options || {}
+  self.value = self.options.value || 0
 
-  var options = _.clone(view.options)
-  var oldSlideFn = options.slide
+  var options = _.clone(self.options)
   
   options.start = function(event, ui){
-    view.emit('start');
+    self.emit('start').emit('started:');
   }
   options.slide = function(event, ui){
-    view.set('value', ui.value)
-    if(view.options.slide) view.options.slide(event, ui)
+    self.set('value', ui.value)
+    if(self.options.slide) self.options.slide(event, ui)
   }
   options.stop = function(event, ui){
-    view.set('value', ui.value)
-    if(view.options.slide) view.options.slide(event, ui)
-    view.emit('stop');
+    self.set('value', ui.value)
+    if(self.options.slide) self.options.slide(event, ui)
+    self.emit('stop').emit('stopped:');
   }
   
-  view.$el.slider(options)
+  self.$el.slider(options)
+  this.on('options', function(options){
+    self.$el.slider(options);
+  });
     
-  view.on('value', function(value){
-    view.$el.slider('value', parseFloat(value))
+  self.on('value', function(value){
+    self.$el.slider('value', parseFloat(value))
   })
 })
 Views.Slider.prototype.disable = function(disable){
@@ -2087,7 +2202,7 @@ Views.Slider.prototype.disable = function(disable){
   }
 }
 //------------------------------------------------------------------------------
-Views.ColorPicker = ginger.Declare(ginger.View, function(options){
+Views.ColorPicker = View.extend( function ColorPicker(options){
   this.super(Views.ColorPicker)
   var view = this
   
@@ -2120,7 +2235,7 @@ Views.ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
-Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
+Views.TextField = View.extend( function TextField(classNames, options){
   var $el
   if((options)&&(options.area)){
     $el = this.$el = $('<textarea>')
@@ -2159,7 +2274,7 @@ Views.TextField = ginger.Declare(ginger.View, function(classNames, options){
   })
 })
 //------------------------------------------------------------------------------
-Views.CheckBox = ginger.Declare(ginger.View, function(css){
+Views.CheckBox = View.extend( function CheckBox(css){
   this.super(Views.CheckBox)
   if(css) {
     this.$el.css(css);
@@ -2178,11 +2293,11 @@ Views.CheckBox = ginger.Declare(ginger.View, function(css){
   })
 })
 //------------------------------------------------------------------------------
-Views.RadioButton = ginger.Declare(ginger.View, function(){
+Views.RadioButton = View.extend( function(){
   this.super(Views.RadioButton)
 })
 //------------------------------------------------------------------------------
-Views.Label = ginger.Declare(ginger.View, function(classNames, css){
+Views.Label = View.extend( function(classNames, css){
   this.$el = $('<span>');
   this.super(Views.Label, 'constructor', classNames, css)
 
@@ -2192,7 +2307,7 @@ Views.Label = ginger.Declare(ginger.View, function(classNames, css){
   })
 })
 //------------------------------------------------------------------------------
-var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
+var TableRow = View.extend( function(doc, fields, widths){
   var $tr = $('<tr>').attr('data-id', doc.cid);
   fields = fields || _.keys(doc);
   
@@ -2213,7 +2328,7 @@ var TableRow = ginger.Declare(ginger.View, function(doc, fields, widths){
     selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
-var Table = Views.Table = ginger.Declare(ginger.View, function(collection, options){
+var Table = Views.Table = View.extend( function Table(collection, options){
   var self = this, 
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
@@ -2226,6 +2341,10 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
   _.defaults(self, {widths:[]});
   
   self.super(Views.Table, 'constructor', options.classNames, options.css);
+  
+  if(self.prebody){
+    self.$el.append(self.prebody);
+  }
   
   if(self.widths){
     $colgroups = [];
@@ -2279,14 +2398,14 @@ var Table = Views.Table = ginger.Declare(ginger.View, function(collection, optio
       self.populate();
     }).on('removed:', function(val){
       var $row;
-      if(self.$selected.data('id') == val._id){
-        var $row = self.$selected.prev();
+      if(self.$selected && self.$selected.data('id') == val._id){
+        $row = self.$selected.prev();
         if($row.length == 0){
           $row = self.$selected.next();
         }
       }
       self.populate();
-      if($row.length){
+      if($row && $row.length){
         self.select($row.data('id'));
       }else{
         self.set('$selected', null);
@@ -2343,13 +2462,13 @@ Table.prototype.destroy = function(){
  * param: obj options
  * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
  */
-Views.Modal = ginger.Declare(ginger.View, function(options){
-  this.super(Views.Modal)
+Views.Modal = View.extend( function Modal(options){
+  this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
   var view = this;
-  view.$el.addClass('modalForm');
+
   // header
   var $header = $('<div class="modalTop">');
-  var $title = $('<div class="modalTitle">').text(options.title);
+  var $title = $('<h3 class="modalTitle">').text(options.title);
   $header.append($title);
   
   // close
@@ -2453,7 +2572,7 @@ Views.Modal.prototype.enable = function() {
   }
 }
 //------------------------------------------------------------------------------
-Views.Button = ginger.Declare(ginger.View, function(options){
+Views.Button = View.extend( function Button(options){
   this.super(Views.Button)
   var view = this
   _.extend(this, options)
@@ -2503,8 +2622,7 @@ Views.Button.prototype.enable = function(enable){
   }
 }
 //------------------------------------------------------------------------------
-var Toolbar = Views.Toolbar = 
-  ginger.Declare(ginger.View, function(classNames, itemsClassNames){
+var Toolbar = Views.Toolbar = View.extend( function ToolBar(classNames, itemsClassNames){
   this.super(Views.Toolbar, 'constructor', classNames)
   var self = this
   self.itemsClassNames = itemsClassNames
@@ -2538,9 +2656,7 @@ ginger.Views.Toolbar.prototype.render = function(){
 }
 */
 //------------------------------------------------------------------------------
-var PopUp = Views.PopUp = ginger.Declare(ginger.View, function(classNames, 
-                                                               $parent,
-                                                               options){
+var PopUp = Views.PopUp = View.extend( function PopUp(classNames, $parent, options){
   this.super(PopUp, 'constructor', classNames)
   this.$el.css({position: 'absolute', display:'none'})
   
@@ -2626,7 +2742,7 @@ PopUp.prototype._setFadeOut = function(){
 */
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-Views.ToolTip = ginger.Declare(PopUp, function(classNames, 
+Views.ToolTip = PopUp.extend( function ToolTip(classNames, 
                                                $target, 
                                                pos, 
                                                $content,
