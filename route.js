@@ -208,7 +208,7 @@ function parseGetArguments(args){
         result.handler = args[i];
       }
       i++;
-      (i<len) && (result.args = _.rest(args,i));
+      (i<len) && (result.args = args[i]);
     }
   }
   return result;
