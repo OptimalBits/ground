@@ -1600,6 +1600,7 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     _removed : [],
     parent:parent,
     sortByFn:sortByFn,
+    filterFn:ginger.searchFilter,
     model : model || Model,
     sortOrder : 'asc',
     socket : Model.socket
@@ -1803,6 +1804,27 @@ Collection.prototype.setFormatters = function(formatters){
   this.each(function(item){
     item.format(formatters);
   });
+}
+Collection.prototype.filtered = function(optionalItem){
+  var items = this.items;
+  if(this.filterFn && this.filterData){
+    var data = this.filterData || '';
+          
+    if(optionalItem){
+      return this.filterFn(optionalItem, data, fields);
+    }else{
+      var filtered = [], item;
+      for(var i=0, len=items.length;i<len;i++){
+        item = items[i];
+        if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
+          filtered.push(items[i]);
+        }
+      }
+      return filtered;
+    }
+  }else{
+    return optionalItem || items;
+  }
 }
 Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
