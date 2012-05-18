@@ -157,30 +157,55 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
         }else{
           var Model = self._getModel(bucket, cb);
           if(Model){
-            var setdef = {}, items = itemIds;
+            if(Model.gnd && Model.gnd.add){
+              Model.gnd.add(id, collection, itemIds, function(err, ids){
+                if(!err){
+                  sync.add(id, collection, itemIds);
+                }
+                cb(err, ids);
+              });
+            }else{
+              var setdef = {}, items = itemIds;
             
-            setdef[collection] = {$each:items}
-            Model.update({_id:id}, { $addToSet: setdef}, function(err){
+              setdef[collection] = {$each:items}
+              Model.update({_id:id}, { $addToSet: setdef}, function(err){
+                if(!err){
+                  // We should only notify for new added objects and not existing ones.
+                  sync.add(id, collection, items);
+                }
+                cb(err);
+              });
+            }
+          }
+        }
+      }
+    });
+    
+    socket.on('remove', function(bucket, id, collection, itemIds, cb){
+      itemIds = Array.isArray(itemIds) ? itemIds:[itemIds];
+      if(itemIds.length > 0){
+        var Model = self._getModel(bucket, cb);
+        if(Model){
+          if(Model.gnd && Model.gnd.remove){
+            Model.gnd.remove(id, collection, itemIds, function(err){
               if(!err){
-                // We should only send the new added objects
-                sync.add(id, collection, items);
+                // We should only notify for really removed objects.
+                sync.remove(id, collection, itemIds);
               }
               cb(err);
             });
-            /*
+          }else{
             Model.findById(id, function(err, doc){
               if(err){
-                 cb(err);
-              } else{
-                console.log(itemIds);
-              
-                var current = _.map(doc[collection], function(item){ return String(item)}),
-                  added = _.difference(itemIds, current);
-                if(added.length>0){
-                  doc[collection] = _.union(added, current);
+                cb(err);
+              }else{
+                var current = _.map(doc[collection], function(item){return String(item)}),
+                  removed = _.intersection(current, itemIds);
+                if(removed.length>0){
+                  doc[collection] = _.without(current, removed);
                   doc.save(function(err){
                     if(!err){
-                      sync.add(id, collection, added);
+                      sync.remove(id, collection, removed);
                     }
                     cb(err);
                   });
@@ -188,39 +213,8 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
                   cb(null);
                 }
               }
-            });
-            */
-          }else{
-            cb();
+            })
           }
-        }
-      }
-    });
-    
-    socket.on('remove', function(bucket, id, collection, itemIds, cb){
-      itemIds = Array.isArray(itemIds)? itemIds:[itemIds];
-      if(itemIds.length > 0){
-        var Model = self._getModel(bucket, cb);
-        if(Model){
-          Model.findById(id, function(err, doc){
-            if(err){
-              cb(err);
-            }else{
-              var current = _.map(doc[collection], function(item){return String(item)}),
-                removed = _.intersection(current, itemIds);
-              if(removed.length>0){
-                doc[collection] = _.without(current, removed);
-                doc.save(function(err){
-                  if(!err){
-                    sync.remove(id, collection, removed);
-                  }
-                  cb(err);
-                });
-              }else{
-                cb(null);
-              }
-            }
-          })
         }
       }else{
         cb();

@@ -1953,7 +1953,12 @@ Collection.prototype._add = function(item, cb, opts, pos){
                                      self.parent._id,
                                      item.__bucket,
                                      item._id || item,
-                                     cb);    
+                                     function(err, ids){
+         if(!err && _.isArray(ids)){
+           item.set('_id', ids[0]);
+         }
+         cb(err);         
+       });    
       }  
       if(item._id || (opts && opts.embedded)){
         storageAdd()
@@ -1967,7 +1972,7 @@ Collection.prototype._add = function(item, cb, opts, pos){
       cb && cb(null);
     }
   }else{
-    self._added.push(item);
+    self._added.push(item); // We need to keep pos as well here...
     cb && cb(null);
   }
 }
