@@ -2377,7 +2377,11 @@ Views.Modal = View.extend( function Modal(options){
     
     for(var i = 0;i<options.form.inputs.length;i++) {
       var item = options.form.inputs[i];
-      var $input = $('<input/>',item);
+      if (item instanceof jQuery) {
+        var $input = item;
+      } else {
+        var $input = $('<input/>',item);
+      }
       var $tr = $('<tr>');
       var $td = $('<td>');
       $td.append($input);
