@@ -147,6 +147,21 @@ ginger.waitTrigger = function(func, start, end, delay){
   }
 };
 
+// Search Filter. returns true if any of the fields of the 
+// obj includes the search string.
+ginger.searchFilter = function(obj, search, fields){
+  if(search){
+    result = false;
+    search = search.toLowerCase();
+    for(var i=0,len=fields.length;i<len;i++){
+      result |= String(obj[fields[i]]).toLowerCase().indexOf(search) != -1;
+    }
+    return result;
+  }else {
+    return true;
+  }
+}
+
 // Filters the keys of an object.
 ginger.filter = function(object, fn){
   var filtered = {}
@@ -2316,17 +2331,6 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     this.collection.emit('updated:')
   });
 });
-Table.searchFilter = function(doc, filterData, fields){
-  if(filterData){
-    result = false;
-    for(var i=0,len=fields.length;i<len;i++){
-      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
-    }
-    return result;
-  }else {
-    return true;
-  }
-}
 Table.prototype.populate = function(){
   var self=this;
   self.$tbody.empty();
