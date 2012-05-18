@@ -162,31 +162,6 @@ ginger.searchFilter = function(obj, search, fields){
   }
 }
 
-// Filters the keys of an object.
-ginger.filter = function(object, fn){
-  var filtered = {}
-  for(var key in object){
-    var value = object[key]
-    var result = fn(key, value)
-    filtered[key] = result || value
-  }
-  return filtered
-}
-
-ginger.indexOf = function(array, val, iter, isSorted){
-  if(iter){
-    //if(isSorted){
-      for(var i=0, len=array.length;i<len; i++){
-        if(val===iter(array[i])){
-          return i
-        }
-      }
-    //}
-  }else{
-    return _.indexOf(collection, key)
-  }
-}
-
 // Apply asynchronous functions to every element in the array
 var asyncForEach = ginger.asyncForEach = function(array, fn, cb) {
   var deferred = $.Deferred(), completed = 0;
