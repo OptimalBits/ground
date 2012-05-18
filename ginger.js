@@ -732,25 +732,29 @@ ServerStorage.ajax = {
   }
 }
 
-/*
-function send(socket, event, msg, cb){
-  var errorFn = function(){
-    cb(new Error('Disconnected'));
-  }
-  if(socket.connected){
-    socket.once('disconnected', errorFn);
-    socket.emit(event, msg, function(err, res){
-      socket.off('disconnected', errorFn);
-      cb(err,res);
-    });
-  }else{
-    errorFn();
-  }
+function safeEmit(socket){
+  var errorFn = function(){
+    cb(new Error('Disconnected'));
+  },
+    cb = _.last(arguments),
+    args = _.rest(arguments),
+    proxyCb = function(err, res){
+      socket.removeListener('disconnected', errorFn);
+      cb(err,res);
+    };
+  args[args.length-1] = proxyCb;
+    
+  if(socket.socket.connected){
+    socket.once('disconnected', errorFn);    
+    socket.emit.apply(socket, args);
+  }else{
+    errorFn();
+  }
 }
-*/
+
 ServerStorage.socket = {
   create: function(bucket, args, cb){
-    Model.socket.emit('create', bucket, args, cb);
+    safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
     Model.socket.emit('find', bucket, id, collection, query, cb);
