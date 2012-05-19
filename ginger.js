@@ -865,7 +865,6 @@ Base.extend = function(Sub, staticOrName, bucket){
 //
 // Listening to changed Properties are just expressed as the property name
 // All other events should end with : (changed:), (clicked:), etc.
-// TODO: Handle namespaces.
 
 // This is experimental stuff for now. (As far as we now, it works)
 /*
@@ -910,7 +909,7 @@ Base.prototype._set = function(keypath, val, options){
     }
   }
   
-  if( _.isEqual(obj[key], val) == false){
+  if((_.isEqual(obj[key], val) == false) || (options && options.force)){
     var oldval = obj[key],
       val = this.willChange ? this.willChange(key, val):val;
     obj[key] = val
