@@ -2412,7 +2412,7 @@ Views.Modal = View.extend( function Modal(options){
       var $td = $('<td>');
       $td.append($input);
       $tr.append($td);
-      view.inputs['$' + item.id] = $input;
+      view.inputs['$' + $input.attr('id')] = $input;
       $table.append($tr);
     }
     // Form submit button
