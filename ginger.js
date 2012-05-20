@@ -1741,16 +1741,23 @@ Collection.prototype.keepSynced = function(enable){
   
   socket.emit('sync', id);
   
+  function addItem(item){
+    if(item){
+      self.add(item, noop, {nosync:true});
+      item.release();
+    }
+  }
+  
   self._addListenerFn = _.bind(function(itemId){
-    var self = this;
-    this.model.findById(itemId, function(err, item){
-      if(item){
-        item.init(function(){
-          self.add(item, noop, {nosync:true});
-          item.release();
-        })
-      }
-    })
+    if(_.isObject(itemId)){
+      self.model.create(itemId, this._keepSynced, function(err, item){
+        addItem(item);
+      });
+    }else{
+      self.model.findById(itemId, function(err, item){
+        addItem(item);
+      })
+    }
   }, self);
   
   self._removeListenerFn = _.bind(function(itemId){
