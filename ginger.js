@@ -2032,7 +2032,7 @@ _.extend(CanvasView.prototype,{
 var Views = ginger.Views = {}
 
 //------------------------------------------------------------------------------
-Views.ComboBox = ComboBox = View.extend(function ComboBox(items, selected){
+var ComboBox = Views.ComboBox = View.extend(function ComboBox(items, selected){
   this.super(Views.ComboBox)
   var view = this
   
@@ -2083,8 +2083,8 @@ ComboBox.prototype.remove = function(key) {
   $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
-Views.Slider = View.extend( function Slider(options, classNames){
-  this.super(Views.Slider, 'constructor', classNames)
+var Slider = Views.Slider = View.extend( function Slider(options, classNames){
+  this.super(Slider, 'constructor', classNames)
   var self = this
   
   self.options = options || {}
@@ -2114,7 +2114,7 @@ Views.Slider = View.extend( function Slider(options, classNames){
     self.$el.slider('value', parseFloat(value))
   })
 })
-Views.Slider.prototype.disable = function(disable){
+Slider.prototype.disable = function(disable){
   if(disable){
     this.$el.slider('disable');
   }else{
@@ -2122,8 +2122,8 @@ Views.Slider.prototype.disable = function(disable){
   }
 }
 //------------------------------------------------------------------------------
-Views.ColorPicker = View.extend( function ColorPicker(options){
-  this.super(Views.ColorPicker)
+var ColorPicker = Views.ColorPicker = View.extend( function ColorPicker(options){
+  this.super(ColorPicker)
   var view = this
   
   view.$colorPicker = $('<input>').attr({name:"color",
@@ -2146,12 +2146,12 @@ Views.ColorPicker = View.extend( function ColorPicker(options){
     }
   })
 })
-Views.ColorPicker.prototype.render = function($parent){
+ColorPicker.prototype.render = function($parent){
   this.super(Views.ColorPicker, 'render')
   $parent.append(this.$colorPicker)
   return this.$el
 }
-Views.ColorPicker.prototype.disable = function(disable){
+ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
