@@ -147,28 +147,18 @@ ginger.waitTrigger = function(func, start, end, delay){
   }
 };
 
-// Filters the keys of an object.
-ginger.filter = function(object, fn){
-  var filtered = {}
-  for(var key in object){
-    var value = object[key]
-    var result = fn(key, value)
-    filtered[key] = result || value
-  }
-  return filtered
-}
-
-ginger.indexOf = function(array, val, iter, isSorted){
-  if(iter){
-    //if(isSorted){
-      for(var i=0, len=array.length;i<len; i++){
-        if(val===iter(array[i])){
-          return i
-        }
-      }
-    //}
-  }else{
-    return _.indexOf(collection, key)
+// Search Filter. returns true if any of the fields of the 
+// obj includes the search string.
+ginger.searchFilter = function(obj, search, fields){
+  if(search){
+    result = false;
+    search = search.toLowerCase();
+    for(var i=0,len=fields.length;i<len;i++){
+      result |= String(obj[fields[i]]).toLowerCase().indexOf(search) != -1;
+    }
+    return result;
+  }else {
+    return true;
   }
 }
 
@@ -718,46 +708,44 @@ ServerStorage.ajax = {
   }
 }
 
-function send(socket) {
-
-  var errorFn = function() {
-    cb(new Error('Disconnected'));
-  }
-  var cb = _.last(arguments)
-  var args = _.rest(arguments)
-  
-  var proxyCb = function(err, res) {
-    socket.removeListener('disconnected', errorFn);
-    cb(err, res);
-  }
-  args[args.length-1] = proxyCb;
-
-  if (socket.socket.connected) {
-    socket.once('disconnected', errorFn);
-    socket.emit.apply(socket, args);
-  } else {
-    errorFn();
-  }
+function safeEmit(socket){
+  var errorFn = function(){
+    cb(new Error('Disconnected'));
+  },
+    cb = _.last(arguments),
+    args = _.rest(arguments),
+    proxyCb = function(err, res){
+      socket.removeListener('disconnected', errorFn);
+      cb(err,res);
+    };
+  args[args.length-1] = proxyCb;
+    
+  if(socket.socket.connected){
+    socket.once('disconnected', errorFn);    
+    socket.emit.apply(socket, args);
+  }else{
+    errorFn();
+  }
 }
 
 ServerStorage.socket = {
   create: function(bucket, args, cb){
-    send(Model.socket,'create', bucket, args, cb);
+    safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    send(Model.socket,'find', bucket, id, collection, query, cb);
+    safeEmit(Model.socket,'find', bucket, id, collection, query, cb);
   },
   findById:function(bucket, id, cb){
-    send(Model.socket,'read', bucket, id, cb);
+    safeEmit(Model.socket,'read', bucket, id, cb);
   },
   update:function(bucket, id, args, cb){
-    send(Model.socket,'update', bucket, id, args, cb);
+    safeEmit(Model.socket,'update', bucket, id, args, cb);
   },
   add:function(bucket, id, collection, items, cb){
-    send(Model.socket,'add', bucket, id, collection, items, cb);
+    safeEmit(Model.socket,'add', bucket, id, collection, items, cb);
   },
   remove:function(bucket, id, collection, objIds, cb){
-    send(Model.socket,'remove', bucket, id, collection, objIds, cb); 
+    safeEmit(Model.socket,'remove', bucket, id, collection, objIds, cb); 
   },
   count:function(bucket, cb){
     cb(); 
@@ -878,7 +866,6 @@ Base.extend = function(Sub, staticOrName, bucket){
 //
 // Listening to changed Properties are just expressed as the property name
 // All other events should end with : (changed:), (clicked:), etc.
-// TODO: Handle namespaces.
 
 // This is experimental stuff for now. (As far as we now, it works)
 /*
@@ -923,7 +910,7 @@ Base.prototype._set = function(keypath, val, options){
     }
   }
   
-  if( _.isEqual(obj[key], val) == false){
+  if((_.isEqual(obj[key], val) == false) || (options && options.force)){
     var oldval = obj[key],
       val = this.willChange ? this.willChange(key, val):val;
     obj[key] = val
@@ -1688,6 +1675,7 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     _removed : [],
     parent:parent,
     sortByFn:sortByFn,
+    filterFn:ginger.searchFilter,
     model : model || Model,
     sortOrder : 'asc',
     socket : Model.socket
@@ -1854,16 +1842,23 @@ Collection.prototype.keepSynced = function(enable){
   
   socket.emit('sync', id);
   
+  function addItem(item){
+    if(item){
+      self.add(item, noop, {nosync:true});
+      item.release();
+    }
+  }
+  
   self._addListenerFn = _.bind(function(itemId){
-    var self = this;
-    this.model.findById(itemId, function(err, item){
-      if(item){
-        item.init(function(){
-          self.add(item, noop, {nosync:true});
-          item.release();
-        })
-      }
-    })
+    if(_.isObject(itemId)){
+      self.model.create(itemId, this._keepSynced, function(err, item){
+        addItem(item);
+      });
+    }else{
+      self.model.findById(itemId, function(err, item){
+        addItem(item);
+      })
+    }
   }, self);
   
   self._removeListenerFn = _.bind(function(itemId){
@@ -1891,6 +1886,27 @@ Collection.prototype.setFormatters = function(formatters){
   this.each(function(item){
     item.format(formatters);
   });
+}
+Collection.prototype.filtered = function(optionalItem){
+  var items = this.items;
+  if(this.filterFn && this.filterData){
+    var data = this.filterData || '';
+          
+    if(optionalItem){
+      return this.filterFn(optionalItem, data, fields);
+    }else{
+      var filtered = [], item;
+      for(var i=0, len=items.length;i<len;i++){
+        item = items[i];
+        if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
+          filtered.push(items[i]);
+        }
+      }
+      return filtered;
+    }
+  }else{
+    return optionalItem || items;
+  }
 }
 Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
@@ -2117,7 +2133,7 @@ _.extend(CanvasView.prototype,{
 var Views = ginger.Views = {}
 
 //------------------------------------------------------------------------------
-Views.ComboBox = ComboBox = View.extend(function ComboBox(items, selected){
+var ComboBox = Views.ComboBox = View.extend(function ComboBox(items, selected){
   this.super(Views.ComboBox)
   var view = this
   
@@ -2168,8 +2184,8 @@ ComboBox.prototype.remove = function(key) {
   $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
-Views.Slider = View.extend( function Slider(options, classNames){
-  this.super(Views.Slider, 'constructor', classNames)
+var Slider = Views.Slider = View.extend( function Slider(options, classNames){
+  this.super(Slider, 'constructor', classNames)
   var self = this
   
   self.options = options || {}
@@ -2199,7 +2215,7 @@ Views.Slider = View.extend( function Slider(options, classNames){
     self.$el.slider('value', parseFloat(value))
   })
 })
-Views.Slider.prototype.disable = function(disable){
+Slider.prototype.disable = function(disable){
   if(disable){
     this.$el.slider('disable');
   }else{
@@ -2207,8 +2223,8 @@ Views.Slider.prototype.disable = function(disable){
   }
 }
 //------------------------------------------------------------------------------
-Views.ColorPicker = View.extend( function ColorPicker(options){
-  this.super(Views.ColorPicker)
+var ColorPicker = Views.ColorPicker = View.extend( function ColorPicker(options){
+  this.super(ColorPicker)
   var view = this
   
   view.$colorPicker = $('<input>').attr({name:"color",
@@ -2231,12 +2247,12 @@ Views.ColorPicker = View.extend( function ColorPicker(options){
     }
   })
 })
-Views.ColorPicker.prototype.render = function($parent){
+ColorPicker.prototype.render = function($parent){
   this.super(Views.ColorPicker, 'render')
   $parent.append(this.$colorPicker)
   return this.$el
 }
-Views.ColorPicker.prototype.disable = function(disable){
+ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
@@ -2423,17 +2439,6 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     this.collection.emit('updated:')
   });
 });
-Table.searchFilter = function(doc, filterData, fields){
-  if(filterData){
-    result = false;
-    for(var i=0,len=fields.length;i<len;i++){
-      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
-    }
-    return result;
-  }else {
-    return true;
-  }
-}
 Table.prototype.populate = function(){
   var self=this;
   self.$tbody.empty();
@@ -2506,12 +2511,16 @@ Views.Modal = View.extend( function Modal(options){
     
     for(var i = 0;i<options.form.inputs.length;i++) {
       var item = options.form.inputs[i];
-      var $input = $('<input/>',item);
+      if (item instanceof jQuery) {
+        var $input = item;
+      } else {
+        var $input = $('<input/>',item);
+      }
       var $tr = $('<tr>');
       var $td = $('<td>');
       $td.append($input);
       $tr.append($td);
-      view.inputs['$' + item.id] = $input;
+      view.inputs['$' + $input.attr('id')] = $input;
       $table.append($tr);
     }
     // Form submit button
