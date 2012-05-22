@@ -1849,16 +1849,24 @@ Collection.prototype.keepSynced = function(enable){
     }
   }
   
-  self._addListenerFn = _.bind(function(itemId){
-    if(_.isObject(itemId)){
-      self.model.create(itemId, this._keepSynced, function(err, item){
-        addItem(item);
-      });
-    }else{
-      self.model.findById(itemId, function(err, item){
-        addItem(item);
-      })
-    }
+  self._addListenerFn = _.bind(function(items){
+    asyncForEach(items, function(item, done){
+      if(_.isObject(item)){
+        if(!self.findById(item.cid)){
+          self.model.create(item, this._keepSynced, function(err, item){
+            addItem(item);
+            done()
+          });
+        }
+      }else{
+        if(!self.findById(item.cid)){
+          self.model.findById(item, function(err, item){
+            addItem(item);
+            done();
+          })
+        }
+      }
+    }, noop);
   }, self);
   
   self._removeListenerFn = _.bind(function(itemId){
