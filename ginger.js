@@ -815,8 +815,7 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
   
   if(_.isObject(Sub)&&!_.isFunction(Sub)){
     methods = Sub;
-    console.log(methods);
-    if(methods.constructor){
+    if(methods.constructor != Object){
       Sub = methods.constructor;
     }else{
       Sub = null;
@@ -832,11 +831,10 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
       Super.prototype.constructor.apply(this, arguments);
     };
   }
+  _.extend(Sub, Super);
+  Inherit(Sub, Super);
   
   _.extend(Sub.prototype, methods);
-  _.extend(Sub, Super);
-  
-  Inherit(Sub, Super)
   if(staticOrName){
     if(_.isObject(staticOrName)){
       _.extend(Sub, staticOrName);
