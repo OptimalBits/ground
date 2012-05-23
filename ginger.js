@@ -2240,10 +2240,6 @@ var Table = Views.Table = View.extend( function Table(collection, options){
   
   self.super(Views.Table, 'constructor', options.classNames, options.css);
   
-  if(self.prebody){
-    self.$el.append(self.prebody);
-  }
-  
   if(self.widths){
     $colgroups = [];
     for(var i=0,len=self.widths.length;i<len;i++){
@@ -2260,6 +2256,11 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     }
     self.$el.append($headerTable);
   }
+  
+  if(self.prebody){
+    self.$el.append(self.prebody);
+  }
+  
   self.$el.append($tableWrapper);
   $table.append(self.$tbody);
   self.$tbody.on('click', 'tr', function(event) {
