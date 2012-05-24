@@ -75,7 +75,8 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
 
   sio.on('connection', function(socket){
     console.log('Connection to:'+socket);
-  
+    console.log('////////////////////////////////////////////////');
+
     socket.on('create', function(bucket, args, cb){
       var Model = self._getModel(bucket, cb);
       if(Model){
@@ -91,7 +92,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
     });
   
     socket.on('update', function(bucket, id, args, cb){
-      console.log("Update bucket:%s with id:%s and args "+util.inspect(args), 
+      console.log("/////Update bucket:%s with id:%s and args "+util.inspect(args), 
       bucket, id);
       
       self.update(bucket, id, args, cb);

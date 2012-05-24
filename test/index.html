@@ -35,7 +35,7 @@
     mocha.setup('bdd')
   
     var socket = io.connect('http://localhost:8080');
-    socket.on('connect', function(){
+    socket.once('connect', function(){
       $(function () {
         curl(['test/test_routes',
               'test/test_events',

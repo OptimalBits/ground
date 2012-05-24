@@ -31,6 +31,7 @@ describe('Model', function(){
       animal.set('name', 'foobar');
       animal.save(function(err){
         expect(err).to.be(null);
+        expect(animal).to.have.property('_id');
         Animal.findById(animal._id, function(err, doc){
           expect(err).to.be(null);
           expect(doc).to.have.property('_id');
@@ -103,6 +104,66 @@ describe('Model', function(){
         done();
       });
       */
+    });
+  });
+
+  
+    describe('linus', function(){
+    /*
+    it('test set -> find', function(done){
+      var otherAnimal;
+      animal.off();
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:2, tail:false});
+        otherAnimal = doc;
+        
+        Animal.findById(animal._id, function(err, doc){
+          expect(doc).to.have.property('legs');
+          expect(doc).to.have.property('tail');
+          expect(doc.legs).to.be(2);
+          expect(doc.tail).to.be(false);
+          done();
+        });
+      });
+    });
+    */
+    it('test disconnect', function(done){
+      var otherAnimal;
+      animal.off();
+
+      var orgEmit = socket.emit
+
+      socket.emit = function(){
+        socket.socket.disconnect();
+       // arguments;
+        //orgEmit(arguments);
+      }
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:3});
+        otherAnimal = doc;
+        
+        Animal.findById(animal._id, function(err, doc){
+          expect(doc).to.have.property('legs');
+          expect(doc).to.have.property('tail');
+          expect(doc.legs).to.be(3);
+          socket.emit = orgEmit;
+          socket.socket.connect(function(){
+            console.log(socket.socket.connected);
+            done();  
+          });
+        });
+      });
+
     });
   });
 });

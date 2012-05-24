@@ -7,14 +7,19 @@ Animal.bucket('animals');
 Animal.use('socket');
 
 
-describe('Collections', function(){
-  var Zoo = ginger.Declare(ginger.Model);
-  Zoo.bucket('zoo');
-  
-  var zoo = new Zoo();
-  zoo.keepSynced();
+describe('Collections1', function(){
+  var Zoo, zoo;
+
+  before(function(){
+    Zoo = ginger.Declare(ginger.Model);
+    Zoo.bucket('zoo');
     
+    zoo = new Zoo();
+    zoo.keepSynced();
+  });
+
   it('save to server', function(done){
+    console.log('start1');
     zoo.save(function(err){
       expect(err).to.be(null);
       zoo.all(Animal, function(err, animals){
@@ -22,18 +27,21 @@ describe('Collections', function(){
         expect(animals).to.be.an(Object);
         animals.release();
         done();
+        console.log('end1');
+
       });
-    })
+    });
   });
-  
+
   it('add item to collection', function(done){
+    console.log('start2');
+
     zoo.all(Animal, function(err, animals){
       expect(err).to.be(null);
       expect(animals).to.be.an(Object);
             
       animals.add(new Animal({name:"tiger"}), function(err){
         expect(err).to.be(null);
-        
         Zoo.findById(zoo._id, function(err, doc){
           expect(err).to.be(null);
           expect(doc).to.be.an(Object);
@@ -137,7 +145,6 @@ describe('Collections', function(){
       });
     });
   });
-  
   describe('Remove', function(){
     it('remove item from collection', function(done){
       Zoo.findById(zoo._id, function(err, zoo){

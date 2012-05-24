@@ -710,18 +710,26 @@ ServerStorage.ajax = {
 
 function safeEmit(socket){
   var errorFn = function(){
+    console.log('errorFn');
+    args;
     cb(new Error('Disconnected'));
   },
     cb = _.last(arguments),
     args = _.rest(arguments),
     proxyCb = function(err, res){
-      socket.removeListener('disconnected', errorFn);
+      socket.removeListener('disconnect', disconnect);
+      console.log('proxy');
       cb(err,res);
     };
+  function disconnect(){
+    console.log('disconnected!');
+    errorFn();
+  };
   args[args.length-1] = proxyCb;
     
   if(socket.socket.connected){
-    socket.once('disconnected', errorFn);    
+    socket.once('disconnect', disconnect);
+    socket.socket.once('disconnected', errorFn);    
     socket.emit.apply(socket, args);
   }else{
     errorFn();
@@ -1093,7 +1101,9 @@ var Queue = ginger.Base.extend(function Queue(args){
     //TODO: get old que from localstorage
     this._queue = [];
     var self = this;
-    socket.on('reconnect', self.process(self));
+    console.log('trolol');
+    //socket.socket.onConnect = function(){self.process(self)};
+    socket.socket.on('connect', function(){self.process(self)});
 });
 
 _.extend(Queue.prototype,{ 
@@ -1114,37 +1124,54 @@ _.extend(Queue.prototype,{
       });
       localStorage.localModelQueue = JSON.stringify(this._queue);
     },
+    success:function() {
+      delete this._currentTransfer;
+      this._queue.shift();
+      localStorage.localModelQueue = JSON.stringify(this._queue);
+      setTimeout(this.process, 0, this);
+    },  
     process:function(self){
+      console.log('process!');
+
       if (!self){
         self = this;
       }
-      if (!self._currentTransfer && self._queue.length){
-        self._currentTransfer = true;
-        var obj = self._queue[0];
-        switch (obj.cmd){
-          case 'update':
-            ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
-              if (err) {
-                return err;
-              }
-              setTimeout(0, self.process, self);
-            });
-            break;
-          case 'create':
-            ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
-              if (err){
-                return err;
-              } else {
-                obj2 = Storage.local.findById(obj.bucket, obj.id, ginger.noop)
-                Storage.local.remove(obj.bucket, obj.id, ginger.noop)
-                self.fixQueue(obj.id, id);
-                obj2.set('cid', id);
-                obj2.set('_id', id);               
-                Storage.local.create(obj.bucket, obj2);
-              }
-              setTimeout(0, self.process, self);
-            });
-            break;
+      if (!self._currentTransfer){
+        if(self._queue.length){
+          self._currentTransfer = true;
+          var obj = self._queue[0];
+          console.log('processing:');
+          console.log(obj);
+          switch (obj.cmd){
+            case 'update':
+              console.log('update');
+              ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
+                console.log('updated!');
+                if (err) {
+                  return err;
+                }
+                self.success();
+              });
+              break;
+            case 'create':
+              ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
+                if (err){
+                  return err;
+                } else {
+                  obj2 = Storage.local.findById(obj.bucket, obj.id, ginger.noop)
+                  Storage.local.remove(obj.bucket, obj.id, ginger.noop)
+                  self.fixQueue(obj.id, id);
+                  obj2.set('cid', id);
+                  obj2.set('_id', id);               
+                  Storage.local.create(obj.bucket, obj2);
+                  self.success();
+                }
+              });
+              break;
+          }
+        } else {
+          self.emit('clear:', self);
+          console.log('queue clear!');
         }
       }
     }
