@@ -2297,6 +2297,11 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     self.emit('clicked:', collection.findById(cid), $this);
   });
   
+  if(self.footer) {
+    var $footer = $('<div class="table-footer">').html('<span> Showing <span class="table-footer-showing">0</span> to <span class="table-footer-to">0</span> of <span class="table-footer-of">'+collection.items.length+'</span> entries</span>');
+    self.$el.append($footer);
+    console.log(collection)
+  }
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
@@ -2323,7 +2328,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     old && old.release();
     val.retain();
     val.on('updated: added: sortByFn', function(){
-      self.populate();
+      self.populate(self.index,self.limit);
     }).on('removed:', function(val){
       var $row;
       if(self.$selected && self.$selected.data('id') == val._id){
@@ -2332,7 +2337,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
           $row = self.$selected.next();
         }
       }
-      self.populate();
+      self.populate(self.index,self.limit);
       if($row && $row.length){
         self.select($row.data('id'));
       }else{
@@ -2346,10 +2351,18 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     this.collection.emit('updated:')
   });
 });
-Table.prototype.populate = function(){
+
+Table.prototype.populate = function(index,limit){
   var self=this;
   self.$tbody.empty();
-  self.collection.each(function(item){
+  var indexStart = index || 0;
+  var indexLast = limit ? limit+indexStart : self.collection.items.length;
+  if (self.footer) {
+    $('.table-footer-showing',self.$el).text(indexStart);
+    $('.table-footer-to',self.$el).text(indexLast);
+  }
+  var items = self.collection.items.slice(indexStart,indexLast);
+  $.each(items,function(i, item){
     if(!self.filter || self.filter(item, self.filterData, self.fields)){
       self.formatters && item.format(self.formatters);
       var row = new TableRow(item, self.fields, self.widths);
