@@ -763,6 +763,7 @@ _.extend(ginger, new EventEmitter())
 function keyToString(key){
   switch (key) {
     case 8:  return 'backspace';
+    case 13: return 'enter';
     case 20: return 'caps';
     case 27: return 'esc';
     case 32: return 'space';
