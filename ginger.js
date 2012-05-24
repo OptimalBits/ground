@@ -2397,7 +2397,7 @@ Views.Modal = View.extend( function Modal(options){
   }
   
   // content
-  var $content = $('<div class="modalContent">');
+  this.$content = $content = $('<div class="modalContent">');
   $content.append(options.content);
   
   // form
@@ -2458,7 +2458,6 @@ Views.Modal = View.extend( function Modal(options){
   view.$el.prepend($header);
   view.$el.append($content);
 })
-
 Views.Modal.prototype.disable = function() {
   var view = this;
   for (var key in view.inputs) {
@@ -2475,7 +2474,6 @@ Views.Modal.prototype.disable = function() {
     view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
   }
 }
-
 Views.Modal.prototype.enable = function() {
   var view = this;
   for(var i = 0;i<view.inputs.length;i++) {
@@ -2491,6 +2489,9 @@ Views.Modal.prototype.enable = function() {
   if(view.$cancelButton) {
     view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
   }
+}
+Views.Modal.prototype.content = function(content){
+  this.$content.html(content);
 }
 //------------------------------------------------------------------------------
 Views.Button = View.extend( function Button(options){
