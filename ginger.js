@@ -737,8 +737,13 @@ ServerStorage.socket = {
   findById:function(bucket, id, cb){
     Model.socket.emit('read', bucket, id, cb);
   },
-  update:function(bucket, id, args, cb){
-    Model.socket.emit('update', bucket, id, args, cb);
+  update:function(parent, parentId, bucket, id, args, cb){
+    if(arguments.length===4){
+      Model.socket.emit('update', bucket, id, args, cb);
+    }else if (arguments.length === 6){
+      Model.socket.emit('embedded:update', parent, parentId, 
+                        bucket, id, args, cb);
+    }
   },
   add:function(bucket, id, collection, items, cb){
     Model.socket.emit('add', bucket, id, collection, items, cb);
@@ -1160,6 +1165,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
   _.extend(this, args)
   _.defaults(this, {
     _socket:Model.socket,
+    _embedded:false,
     __model:true,
     __dirty:false
   })
@@ -1449,12 +1455,27 @@ Model.prototype.update = function(args, transport, cb){
   cb = cb || noop;
 
   if(self._id){
-    ServerStorage[transport].update(bucket, self._id, args, function(err){
-      if(!err){
-        self.local().update(args)
-      }
-      cb(err)
-    })
+    if(self._embedded){
+      var parentBucket = self.parent.__bucket;
+      ServerStorage[transport].update(
+        parentBucket, 
+        self.parent._id, 
+        bucket, 
+        self._id, 
+        args, function(err){
+          if(!err){
+            self.local().update(args)
+          }
+          cb(err)
+      })
+    }else{
+      ServerStorage[transport].update(bucket, self._id, args, function(err){
+        if(!err){
+          self.local().update(args)
+        }
+        cb(err)
+      })
+    }
   }else{
     ServerStorage[transport].create(bucket, args, function(err, id){
       if(!err){
