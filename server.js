@@ -261,8 +261,8 @@ Server.prototype.update = function(bucket, id, args, cb){
     var keys = _.keys(args);
     Model.findById(id, keys, function(err, doc){          
       if(shouldUpdate(keys, args, doc)){
+        var query = {_id:id};
         /*
-          var query = {_id:id};
           if(doc.__rev){
             query.__rev = args.__rev;
           }
@@ -307,7 +307,7 @@ Server.prototype._getModel = function(bucket, cb){
   if(bucket in models){
     return models[bucket];
   } else {
-    var err = new Error('Invalid bucket '+ bucket);
+    var err = new Error('Invalid bucket '+ util.inspect(bucket));
     console.log(err.stack);
     cb && cb('Invalid bucket '+ bucket);
     return null;

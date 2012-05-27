@@ -739,6 +739,7 @@ ServerStorage.socket = {
   },
   update:function(parent, parentId, bucket, id, args, cb){
     if(arguments.length===4){
+      cb = id; args = bucket; id = parentId; bucket = parent;
       Model.socket.emit('update', bucket, id, args, cb);
     }else if (arguments.length === 6){
       Model.socket.emit('embedded:update', parent, parentId, 
