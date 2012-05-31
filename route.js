@@ -447,9 +447,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
   }else if(_.isFunction(css)){
     cb = css;
     css = undefined;
-  }
-  if(_.isFunction(locals)){
+    locals = undefined;
+  }else if(_.isFunction(locals)){
     cb = locals;
+    locals = undefined;
   }
       
   var items = ['text!'+templateUrl];
@@ -461,9 +462,11 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
   curl(items, function(templ){
     var args = {}
     if(locals){
-      args[locals] = self.data;
+      args = locals;
+    }else{
+      args = self.data;
     }
-    var html = self.template ? self.template(templ, {locals:args}) : templ
+    var html = self.template ? self.template(templ, args) : templ
     self.$el.html(html);
     waitForImages(self.$el, function(){
       cb && cb();
