@@ -158,12 +158,55 @@ describe('Model', function(){
           expect(doc.legs).to.be(3);
           socket.emit = orgEmit;
           socket.socket.connect(function(){
-            console.log(socket.socket.connected);
             done();  
+          });
+
+
+
+        });
+      });
+    });
+
+    it('test offline', function(done){
+      var otherAnimal;
+      animal.off();
+      socket.disconnect();
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:5});
+        otherAnimal = doc;
+
+        Animal.findById(animal._id, function(err, doc){
+          expect(doc).to.have.property('legs');
+          expect(doc.legs).to.be(5);
+          var tempAnimal = new Animal();
+
+          ginger.once('inSync:', function(){
+            Animal.findById(animal._id, function(err, doc){
+              expect(doc).to.have.property('legs');
+              expect(doc.legs).to.be(5);
+
+              // TODO: Problem with cid changeing once it is properly saved on the server
+              // tempAnimal does not get updated
+              Animal.findById(tempAnimal._id, function(err, doc){
+                expect(err).to.be(null);
+                expect(doc.legs).to.be(8);
+                done();
+              });
+            });
+          });
+
+          tempAnimal.set({legs : 8, name:'spider'});
+          tempAnimal.save(function(){
+            tempAnimal.keepSynced();
+            socket.socket.connect();
           });
         });
       });
-
     });
   });
 });

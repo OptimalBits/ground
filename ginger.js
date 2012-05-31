@@ -746,8 +746,14 @@ ServerStorage.socket = {
   findById:function(bucket, id, cb){
     safeEmit(Model.socket,'read', bucket, id, cb);
   },
-  update:function(bucket, id, args, cb){
-    safeEmit(Model.socket,'update', bucket, id, args, cb);
+  update:function(parent, parentId, bucket, id, args, cb){
+    if(arguments.length===4){
+      cb = id; args = bucket; id = parentId; bucket = parent;
+      safeEmit(Model.socket, 'update', bucket, id, args, cb);
+    }else if (arguments.length === 6){
+      safeEmit(Model.socket, 'embedded:update', parent, parentId, 
+                        bucket, id, args, cb);
+    }
   },
   add:function(bucket, id, collection, items, cb){
     safeEmit(Model.socket,'add', bucket, id, collection, items, cb);
@@ -772,6 +778,7 @@ _.extend(ginger, new EventEmitter())
 function keyToString(key){
   switch (key) {
     case 8:  return 'backspace';
+    case 13: return 'enter';
     case 20: return 'caps';
     case 27: return 'esc';
     case 32: return 'space';
@@ -1146,6 +1153,7 @@ _.extend(Queue.prototype,{
               ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
                 console.log('updated!');
                 if (err) {
+                  self._currentTransfer = false;
                   return err;
                 }
                 self.success();
@@ -1154,22 +1162,30 @@ _.extend(Queue.prototype,{
             case 'create':
               ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
                 if (err){
+                  self._currentTransfer = false;
                   return err;
                 } else {
-                  obj2 = Storage.local.findById(obj.bucket, obj.id, ginger.noop)
-                  Storage.local.remove(obj.bucket, obj.id, ginger.noop)
-                  self.fixQueue(obj.id, id);
-                  obj2.set('cid', id);
-                  obj2.set('_id', id);               
-                  Storage.local.create(obj.bucket, obj2);
-                  self.success();
+                  Storage.findById(obj.bucket, obj.id, function(err, obj2){
+                    Storage.remove(obj.bucket, obj.id, ginger.noop)
+                    self.fixQueue(obj.id, id);
+                    Storage.create(obj.bucket, obj2);
+                    self.success();
+                  });
                 }
+              });
+              break;
+            case 'delete':
+              ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
+                if (err){
+                  self._currentTransfer = false;
+                  return err;
+                }
+                self.success();
               });
               break;
           }
         } else {
-          self.emit('clear:', self);
-          console.log('queue clear!');
+          ginger.emit('inSync:', self);
         }
       }
     }
@@ -1257,6 +1273,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
   _.extend(this, args)
   _.defaults(this, {
     _socket:Model.socket,
+    _embedded:false,
     __model:true,
     __dirty:false
   })
@@ -1549,15 +1566,33 @@ Model.prototype.update = function(args, transport, cb){
   cb = cb || noop;
 
   if(self._id){
-    ServerStorage[transport].update(bucket, self._id, args, function(err){
-      self.local().update(args)
-      if(err){
-        var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
-           'cmd':'update', 'transport':transport }
-        localModelQueue.add(obj);
-      }
-      cb(err)
-    })
+    if(self._embedded){
+      var parentBucket = self.parent.__bucket;
+      ServerStorage[transport].update(parentBucket, 
+        self.parent._id, 
+        bucket, 
+        self._id, 
+        args, function(err){
+          self.local().update(args)
+          if(err){
+            //TODO: THIS DOES PROBABLY NOT PRODCE THE EXPECTED RESULT!
+            var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
+               'cmd':'update', 'transport':transport }
+            localModelQueue.add(obj);
+          }
+          cb(err);
+      });
+    }else{
+      ServerStorage[transport].update(bucket, self._id, args, function(err){
+        self.local().update(args)
+        if(err){
+          var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
+             'cmd':'update', 'transport':transport }
+          localModelQueue.add(obj);
+        }
+        cb(err)
+      });
+    }
   }else{
     ServerStorage[transport].create(bucket, args, function(err, id){
       if(!err){
@@ -1604,7 +1639,13 @@ Model.prototype.delete = function(transport, cb){
   }
   if(transport){
     ServerStorage[transport].remove(self.__bucket, self._id, function(err){
-      !err && self.emit('deleted:', self._id);
+      if (err){
+        var obj = {'bucket':bucket, 'id':self._id, 
+           'cmd':'delete', 'transport':transport }
+        localModelQueue.add(obj);
+      } else {
+        self.emit('deleted:', self._id);
+      }
       cb && cb(err);
     });
   }else{
@@ -2424,6 +2465,11 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     self.emit('clicked:', collection.findById(cid), $this);
   });
   
+  if(self.footer) {
+    var $footer = $('<div class="table-footer">').html('<span> Showing <span class="table-footer-showing">0</span> to <span class="table-footer-to">0</span> of <span class="table-footer-of">'+collection.items.length+'</span> entries</span>');
+    self.$el.append($footer);
+    console.log(collection)
+  }
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
@@ -2450,7 +2496,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     old && old.release();
     val.retain();
     val.on('updated: added: sortByFn', function(){
-      self.populate();
+      self.populate(self.index,self.limit);
     }).on('removed:', function(val){
       var $row;
       if(self.$selected && self.$selected.data('id') == val._id){
@@ -2459,7 +2505,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
           $row = self.$selected.next();
         }
       }
-      self.populate();
+      self.populate(self.index,self.limit);
       if($row && $row.length){
         self.select($row.data('id'));
       }else{
@@ -2473,10 +2519,18 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     this.collection.emit('updated:')
   });
 });
-Table.prototype.populate = function(){
+
+Table.prototype.populate = function(index,limit){
   var self=this;
   self.$tbody.empty();
-  self.collection.each(function(item){
+  var indexStart = index || 0;
+  var indexLast = limit ? limit+indexStart : self.collection.items.length;
+  if (self.footer) {
+    $('.table-footer-showing',self.$el).text(indexStart);
+    $('.table-footer-to',self.$el).text(indexLast);
+  }
+  var items = self.collection.items.slice(indexStart,indexLast);
+  $.each(items,function(i, item){
     if(!self.filter || self.filter(item, self.filterData, self.fields)){
       self.formatters && item.format(self.formatters);
       var row = new TableRow(item, self.fields, self.widths);
@@ -2524,7 +2578,7 @@ Views.Modal = View.extend( function Modal(options){
   }
   
   // content
-  var $content = $('<div class="modalContent">');
+  this.$content = $content = $('<div class="modalContent">');
   $content.append(options.content);
   
   // form
@@ -2585,7 +2639,6 @@ Views.Modal = View.extend( function Modal(options){
   view.$el.prepend($header);
   view.$el.append($content);
 })
-
 Views.Modal.prototype.disable = function() {
   var view = this;
   for (var key in view.inputs) {
@@ -2602,7 +2655,6 @@ Views.Modal.prototype.disable = function() {
     view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
   }
 }
-
 Views.Modal.prototype.enable = function() {
   var view = this;
   for(var i = 0;i<view.inputs.length;i++) {
@@ -2618,6 +2670,9 @@ Views.Modal.prototype.enable = function() {
   if(view.$cancelButton) {
     view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
   }
+}
+Views.Modal.prototype.content = function(content){
+  this.$content.html(content);
 }
 //------------------------------------------------------------------------------
 Views.Button = View.extend( function Button(options){

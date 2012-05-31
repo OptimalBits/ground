@@ -92,10 +92,20 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
     });
   
     socket.on('update', function(bucket, id, args, cb){
-      console.log("/////Update bucket:%s with id:%s and args "+util.inspect(args), 
-      bucket, id);
-      
+      console.log("Update bucket:%s with id:%s and args %s",
+        bucket, 
+        id,
+        util.inspect(args));
       self.update(bucket, id, args, cb);
+    });
+    
+    socket.on('embedded:update', function(parent, parentId, bucket, id, args, cb){
+      console.log("Update embedded doc in parent:%s, id:%s bucket:%s with id:%s and args %s",
+        parent,
+        parentId,
+        bucket,
+        id);
+      self.embeddedUpdate(parent, parentId, bucket, id, args, cb);
     });
 
     socket.on('read', function(bucket, id, cb){
@@ -235,14 +245,23 @@ function shouldUpdate(keys, args, doc){
   return false;
 }
 
-// TODO: Use revisions TO AVOID infinite loops
+// 
+/*
+  TODO: Use revisions TO AVOID infinite loops
+  When updating, a revision is sent together with the updated args.
+  If the revision is different than the one in storage and the field 
+  to change is really necessary to change, then a conflict
+  is generated, the client will get a "conflict" message back with the
+  full object as it is in the database.
+  Oherwise the client will get the new effective revision number.
+*/
 Server.prototype.update = function(bucket, id, args, cb){
   var self = this;
   var Model = self._getModel(bucket, cb);
   if(Model){  
     var keys = _.keys(args);
     Model.findById(id, keys, function(err, doc){          
-      if(shouldUpdate(keys, args, doc)){ 
+      if(shouldUpdate(keys, args, doc)){
         var query = {_id:id};
         /*
           if(doc.__rev){
@@ -260,14 +279,38 @@ Server.prototype.update = function(bucket, id, args, cb){
   }
 }
 
+Server.prototype.embeddedUpdate = function(parent, parentId, bucket, id, args, cb){
+  var self = this;
+  var Model = self._getModel(parent, cb);
+  if(Model){  
+    Model.findById(parentId, function(err, doc){
+      var edocs = doc[bucket];
+      if(edocs){
+        var edoc = edocs.id(id);
+        if(shouldUpdate(_.keys(args), args, edoc)){
+          _.extend(edoc, args);
+          doc.save(function(err){
+            if(!err){
+              self.sync.update(id, args);
+            }
+            cb(err);
+          });
+        }          
+      }else{
+        cb(new Error('Invalid bucket '+bucket))
+      }
+    });
+  }
+}
+
 Server.prototype._getModel = function(bucket, cb){
   var models = this.models;
   if(bucket in models){
     return models[bucket];
   } else {
-    var err = new Error('Invalid bucket '+ bucket);
+    var err = new Error('Invalid bucket '+ util.inspect(bucket));
     console.log(err.stack);
-    cb('Invalid bucket '+ bucket);
+    cb && cb('Invalid bucket '+ bucket);
     return null;
   }
 }
