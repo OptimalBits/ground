@@ -1,0 +1,21 @@
+{
+  "title": "Animals",
+  "families": [
+    {
+      "name": "Mammals",
+      "link": "#/mammals"
+    },  
+    {
+      "name": "Fish",
+      "link": "#/fish"
+    },  
+    {
+      "name": "Birds",
+      "link": "#/birds"
+    },  
+    {
+      "name": "Reptiles",
+      "link": "#/reptiles"
+    }
+  ]
+}
