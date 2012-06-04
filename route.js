@@ -461,10 +461,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
       
   curl(items, function(templ){
     var args = {}
-    if(locals){
+    if(_.isString(locals)){
+      args[locals] = self.data;
+    }else if(locals){
       args = locals;
-    }else{
-      args = self.data;
     }
     var html = self.template ? self.template(templ, args) : templ
     self.$el.html(html);
