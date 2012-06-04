@@ -2428,7 +2428,13 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
     
-  self.$el = $('<div>');
+  self.$el = $('<div>').attr('tabindex',0);
+  self.$el.mouseenter(function(){
+    $(this).focus();
+  }).mouseleave(function(){
+    $(this).blur();
+  });
+  
   self.$selected = null;
   self.$tbody = $('<tbody>');
   
@@ -2473,9 +2479,8 @@ var Table = Views.Table = View.extend( function Table(collection, options){
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
-  self._keydownEventName = 'keydown.'+uuid();
   if(!self.ignoreKeyboard){
-    $(document).on(self._keydownEventName, function(event){
+    self.$el.keydown(function(event){
       if(self.$selected){
         switch (keyToString(event.which)){
           case 'down':
@@ -2552,7 +2557,6 @@ Table.prototype.select = function(itemId){
 }
 Table.prototype.destroy = function(){
   this.collection && this.collection.release();
-  $(document).off(this._keydownEventName);
   this.super(Table, 'destroy');
 }
 //------------------------------------------------------------------------------
