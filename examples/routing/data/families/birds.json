@@ -1,0 +1,14 @@
+{
+  "family": "Birds",
+  "animals": [
+    {
+      "name": "Parrot",
+      "link": "#/birds/parrot"
+    },  
+    {
+      "name": "Eagle",
+      "link": "#/birds/eagle"
+    } 
+  ]
+}
+

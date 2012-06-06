@@ -2326,10 +2326,9 @@ var Table = Views.Table = View.extend( function Table(collection, options){
   });
   
   if(self.footer) {
-    var $footer = $('<div class="table-footer">').html('<span> Showing <span class="table-footer-showing">0</span> to <span class="table-footer-to">0</span> of <span class="table-footer-of">'+collection.items.length+'</span> entries</span>');
-    self.$el.append($footer);
-    console.log(collection)
+    self.$el.append(self.footerCon.$el);
   }
+  
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
@@ -2385,8 +2384,8 @@ Table.prototype.populate = function(index,limit){
   var indexStart = index || 0;
   var indexLast = limit ? limit+indexStart : self.collection.items.length;
   if (self.footer) {
-    $('.table-footer-showing',self.$el).text(indexStart);
-    $('.table-footer-to',self.$el).text(indexLast);
+    self.footerCon.$showing.text(indexStart);
+    self.footerCon.$to.text(indexLast);
   }
   var items = self.collection.items.slice(indexStart,indexLast);
   $.each(items,function(i, item){

@@ -1,0 +1,18 @@
+{
+  "family": "Fish",
+  "animals": [
+    {
+      "name": "Shark",
+      "link": "#/fish/shark"
+    },  
+    {
+      "name": "Pike",
+      "link": "#/fish/pike"
+    },  
+    {
+      "name": "Salmon",
+      "link": "#/fish/salmon"
+    } 
+  ]
+}
+
