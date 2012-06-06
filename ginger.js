@@ -147,28 +147,18 @@ ginger.waitTrigger = function(func, start, end, delay){
   }
 };
 
-// Filters the keys of an object.
-ginger.filter = function(object, fn){
-  var filtered = {}
-  for(var key in object){
-    var value = object[key]
-    var result = fn(key, value)
-    filtered[key] = result || value
-  }
-  return filtered
-}
-
-ginger.indexOf = function(array, val, iter, isSorted){
-  if(iter){
-    //if(isSorted){
-      for(var i=0, len=array.length;i<len; i++){
-        if(val===iter(array[i])){
-          return i
-        }
-      }
-    //}
-  }else{
-    return _.indexOf(collection, key)
+// Search Filter. returns true if any of the fields of the 
+// obj includes the search string.
+ginger.searchFilter = function(obj, search, fields){
+  if(search){
+    result = false;
+    search = search.toLowerCase();
+    for(var i=0,len=fields.length;i<len;i++){
+      result |= String(obj[fields[i]]).toLowerCase().indexOf(search) != -1;
+    }
+    return result;
+  }else {
+    return true;
   }
 }
 
@@ -717,25 +707,29 @@ ServerStorage.ajax = {
   }
 }
 
-/*
-function send(socket, event, msg, cb){
-  var errorFn = function(){
-    cb(new Error('Disconnected'));
-  }
-  if(socket.connected){
-    socket.once('disconnected', errorFn);
-    socket.emit(event, msg, function(err, res){
-      socket.off('disconnected', errorFn);
-      cb(err,res);
-    });
-  }else{
-    errorFn();
-  }
+function safeEmit(socket){
+  var errorFn = function(){
+    cb(new Error('Disconnected'));
+  },
+    cb = _.last(arguments),
+    args = _.rest(arguments),
+    proxyCb = function(err, res){
+      socket.removeListener('disconnected', errorFn);
+      cb(err,res);
+    };
+  args[args.length-1] = proxyCb;
+    
+  if(socket.socket.connected){
+    socket.once('disconnected', errorFn);    
+    socket.emit.apply(socket, args);
+  }else{
+    errorFn();
+  }
 }
-*/
+
 ServerStorage.socket = {
   create: function(bucket, args, cb){
-    Model.socket.emit('create', bucket, args, cb);
+    safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
     Model.socket.emit('find', bucket, id, collection, query, cb);
@@ -743,8 +737,14 @@ ServerStorage.socket = {
   findById:function(bucket, id, cb){
     Model.socket.emit('read', bucket, id, cb);
   },
-  update:function(bucket, id, args, cb){
-    Model.socket.emit('update', bucket, id, args, cb);
+  update:function(parent, parentId, bucket, id, args, cb){
+    if(arguments.length===4){
+      cb = id; args = bucket; id = parentId; bucket = parent;
+      Model.socket.emit('update', bucket, id, args, cb);
+    }else if (arguments.length === 6){
+      Model.socket.emit('embedded:update', parent, parentId, 
+                        bucket, id, args, cb);
+    }
   },
   add:function(bucket, id, collection, items, cb){
     Model.socket.emit('add', bucket, id, collection, items, cb);
@@ -769,6 +769,7 @@ _.extend(ginger, new EventEmitter())
 function keyToString(key){
   switch (key) {
     case 8:  return 'backspace';
+    case 13: return 'enter';
     case 20: return 'caps';
     case 27: return 'esc';
     case 32: return 'space';
@@ -821,8 +822,7 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
   
   if(_.isObject(Sub)&&!_.isFunction(Sub)){
     methods = Sub;
-    console.log(methods);
-    if(methods.constructor){
+    if(methods.constructor != Object){
       Sub = methods.constructor;
     }else{
       Sub = null;
@@ -838,11 +838,10 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
       Super.prototype.constructor.apply(this, arguments);
     };
   }
+  _.extend(Sub, Super);
+  Inherit(Sub, Super);
   
   _.extend(Sub.prototype, methods);
-  _.extend(Sub, Super);
-  
-  Inherit(Sub, Super)
   if(staticOrName){
     if(_.isObject(staticOrName)){
       _.extend(Sub, staticOrName);
@@ -871,7 +870,6 @@ Base.extend = function(Sub, staticOrName, bucket){
 //
 // Listening to changed Properties are just expressed as the property name
 // All other events should end with : (changed:), (clicked:), etc.
-// TODO: Handle namespaces.
 
 // This is experimental stuff for now. (As far as we now, it works)
 /*
@@ -916,7 +914,7 @@ Base.prototype._set = function(keypath, val, options){
     }
   }
   
-  if( _.isEqual(obj[key], val) == false){
+  if((_.isEqual(obj[key], val) == false) || (options && options.force)){
     var oldval = obj[key],
       val = this.willChange ? this.willChange(key, val):val;
     obj[key] = val
@@ -1168,6 +1166,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
   _.extend(this, args)
   _.defaults(this, {
     _socket:Model.socket,
+    _embedded:false,
     __model:true,
     __dirty:false
   })
@@ -1457,12 +1456,27 @@ Model.prototype.update = function(args, transport, cb){
   cb = cb || noop;
 
   if(self._id){
-    ServerStorage[transport].update(bucket, self._id, args, function(err){
-      if(!err){
-        self.local().update(args)
-      }
-      cb(err)
-    })
+    if(self._embedded){
+      var parentBucket = self.parent.__bucket;
+      ServerStorage[transport].update(
+        parentBucket, 
+        self.parent._id, 
+        bucket, 
+        self._id, 
+        args, function(err){
+          if(!err){
+            self.local().update(args)
+          }
+          cb(err)
+      })
+    }else{
+      ServerStorage[transport].update(bucket, self._id, args, function(err){
+        if(!err){
+          self.local().update(args)
+        }
+        cb(err)
+      })
+    }
   }else{
     ServerStorage[transport].create(bucket, args, function(err, id){
       if(!err){
@@ -1581,6 +1595,7 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     _removed : [],
     parent:parent,
     sortByFn:sortByFn,
+    filterFn:ginger.searchFilter,
     model : model || Model,
     sortOrder : 'asc',
     socket : Model.socket
@@ -1747,16 +1762,31 @@ Collection.prototype.keepSynced = function(enable){
   
   socket.emit('sync', id);
   
-  self._addListenerFn = _.bind(function(itemId){
-    var self = this;
-    this.model.findById(itemId, function(err, item){
-      if(item){
-        item.init(function(){
-          self.add(item, noop, {nosync:true});
-          item.release();
-        })
+  function addItem(item){
+    if(item){
+      self.add(item, noop, {nosync:true});
+      item.release();
+    }
+  }
+  
+  self._addListenerFn = _.bind(function(items){
+    asyncForEach(items, function(item, done){
+      if(_.isObject(item)){
+        if(!self.findById(item.cid)){
+          self.model.create(item, this._keepSynced, function(err, item){
+            addItem(item);
+            done()
+          });
+        }
+      }else{
+        if(!self.findById(item.cid)){
+          self.model.findById(item, function(err, item){
+            addItem(item);
+            done();
+          })
+        }
       }
-    })
+    }, noop);
   }, self);
   
   self._removeListenerFn = _.bind(function(itemId){
@@ -1784,6 +1814,27 @@ Collection.prototype.setFormatters = function(formatters){
   this.each(function(item){
     item.format(formatters);
   });
+}
+Collection.prototype.filtered = function(optionalItem){
+  var items = this.items;
+  if(this.filterFn && this.filterData){
+    var data = this.filterData || '';
+          
+    if(optionalItem){
+      return this.filterFn(optionalItem, data, fields);
+    }else{
+      var filtered = [], item;
+      for(var i=0, len=items.length;i<len;i++){
+        item = items[i];
+        if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
+          filtered.push(items[i]);
+        }
+      }
+      return filtered;
+    }
+  }else{
+    return optionalItem || items;
+  }
 }
 Collection.prototype.destroy = function(){
   this.super(Collection, 'destroy');
@@ -2010,7 +2061,7 @@ _.extend(CanvasView.prototype,{
 var Views = ginger.Views = {}
 
 //------------------------------------------------------------------------------
-Views.ComboBox = ComboBox = View.extend(function ComboBox(items, selected){
+var ComboBox = Views.ComboBox = View.extend(function ComboBox(items, selected){
   this.super(Views.ComboBox)
   var view = this
   
@@ -2061,8 +2112,8 @@ ComboBox.prototype.remove = function(key) {
   $('select option[value="'+key+'"]', this.$el).remove();
 }
 //------------------------------------------------------------------------------
-Views.Slider = View.extend( function Slider(options, classNames){
-  this.super(Views.Slider, 'constructor', classNames)
+var Slider = Views.Slider = View.extend( function Slider(options, classNames){
+  this.super(Slider, 'constructor', classNames)
   var self = this
   
   self.options = options || {}
@@ -2092,7 +2143,7 @@ Views.Slider = View.extend( function Slider(options, classNames){
     self.$el.slider('value', parseFloat(value))
   })
 })
-Views.Slider.prototype.disable = function(disable){
+Slider.prototype.disable = function(disable){
   if(disable){
     this.$el.slider('disable');
   }else{
@@ -2100,8 +2151,8 @@ Views.Slider.prototype.disable = function(disable){
   }
 }
 //------------------------------------------------------------------------------
-Views.ColorPicker = View.extend( function ColorPicker(options){
-  this.super(Views.ColorPicker)
+var ColorPicker = Views.ColorPicker = View.extend( function ColorPicker(options){
+  this.super(ColorPicker)
   var view = this
   
   view.$colorPicker = $('<input>').attr({name:"color",
@@ -2124,12 +2175,12 @@ Views.ColorPicker = View.extend( function ColorPicker(options){
     }
   })
 })
-Views.ColorPicker.prototype.render = function($parent){
+ColorPicker.prototype.render = function($parent){
   this.super(Views.ColorPicker, 'render')
   $parent.append(this.$colorPicker)
   return this.$el
 }
-Views.ColorPicker.prototype.disable = function(disable){
+ColorPicker.prototype.disable = function(disable){
   this.$colorPicker.miniColors('disabled', disable);
 }
 //------------------------------------------------------------------------------
@@ -2231,7 +2282,13 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
     
-  self.$el = $('<div>');
+  self.$el = $('<div>').attr('tabindex',0);
+  self.$el.mouseenter(function(){
+    $(this).focus();
+  }).mouseleave(function(){
+    $(this).blur();
+  });
+  
   self.$selected = null;
   self.$tbody = $('<tbody>');
   
@@ -2275,9 +2332,8 @@ var Table = Views.Table = View.extend( function Table(collection, options){
   self.on('clicked:', function(item, $row){
     self._selectRow($row);
   });
-  self._keydownEventName = 'keydown.'+uuid();
   if(!self.ignoreKeyboard){
-    $(document).on(self._keydownEventName, function(event){
+    self.$el.keydown(function(event){
       if(self.$selected){
         switch (keyToString(event.which)){
           case 'down':
@@ -2321,17 +2377,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     this.collection.emit('updated:')
   });
 });
-Table.searchFilter = function(doc, filterData, fields){
-  if(filterData){
-    result = false;
-    for(var i=0,len=fields.length;i<len;i++){
-      result |= String(doc[fields[i]]).indexOf(filterData) != -1;
-    }
-    return result;
-  }else {
-    return true;
-  }
-}
+
 Table.prototype.populate = function(index,limit){
   var self=this;
   self.$tbody.empty();
@@ -2364,7 +2410,6 @@ Table.prototype.select = function(itemId){
 }
 Table.prototype.destroy = function(){
   this.collection && this.collection.release();
-  $(document).off(this._keydownEventName);
   this.super(Table, 'destroy');
 }
 //------------------------------------------------------------------------------
@@ -2390,7 +2435,7 @@ Views.Modal = View.extend( function Modal(options){
   }
   
   // content
-  var $content = $('<div class="modalContent">');
+  this.$content = $content = $('<div class="modalContent">');
   $content.append(options.content);
   
   // form
@@ -2451,7 +2496,6 @@ Views.Modal = View.extend( function Modal(options){
   view.$el.prepend($header);
   view.$el.append($content);
 })
-
 Views.Modal.prototype.disable = function() {
   var view = this;
   for (var key in view.inputs) {
@@ -2468,7 +2512,6 @@ Views.Modal.prototype.disable = function() {
     view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
   }
 }
-
 Views.Modal.prototype.enable = function() {
   var view = this;
   for(var i = 0;i<view.inputs.length;i++) {
@@ -2484,6 +2527,9 @@ Views.Modal.prototype.enable = function() {
   if(view.$cancelButton) {
     view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
   }
+}
+Views.Modal.prototype.content = function(content){
+  this.$content.html(content);
 }
 //------------------------------------------------------------------------------
 Views.Button = View.extend( function Button(options){

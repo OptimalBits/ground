@@ -11,9 +11,18 @@ var express = require('express'),
 app.use(express.static(staticDir));
 app.use(express.static(__dirname));
 
-mongoose.connect('mongodb://localhost/testGingerSync');
+mongoose.connect('mongodb://localhost/testGingerSync', function(){
+  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
+    console.log(err); 
 
-var server = new Server(models, 6379, 'localhost', sio.sockets);
+    console.log(result); 
+  });
+  mongoose.connect('mongodb://localhost/testGingerSync');
+  var server = new Server(models, 6379, 'localhost', sio.sockets);
+  
+  app.listen(8080);
+  console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
+    
+});
 
-app.listen(8080);
-console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
+
