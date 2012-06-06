@@ -85,14 +85,19 @@ var wrap = function(fn, args, cb){
     var promise = new Promise();
     cb = _.isFunction(cb)?cb:undefined;
     (function(done, args, node){
-      ctx.promise.then(function(){
-        args = args?args:[];
-        args.push(function(){
-          cb || done();
-          cb && cb(done);
-          cb && cb.length === 0 && done();
-        });
-        fn.apply(ctx, args);
+      ctx.promise.then(function(err){
+        // TODO HANDLE ERROR AND PROPAGATE!
+        /*if(err){
+          done(err);
+        }else{*/
+          args = args?args:[];
+          args.push(function(){
+            cb || done();
+            cb && cb(done);
+            cb && cb.length === 0 && done();
+          });
+          fn.apply(ctx, args);
+        //}
       });
     })(_.bind(promise.resolve,promise), _.clone(args), this);
     ctx.promise = promise;
