@@ -19,7 +19,6 @@ describe('Collections1', function(){
   });
 
   it('save to server', function(done){
-    console.log('start1');
     zoo.save(function(err){
       expect(err).to.be(null);
       zoo.all(Animal, function(err, animals){
@@ -27,15 +26,11 @@ describe('Collections1', function(){
         expect(animals).to.be.an(Object);
         animals.release();
         done();
-        console.log('end1');
-
       });
     });
   });
 
   it('add item to collection', function(done){
-    console.log('start2');
-
     zoo.all(Animal, function(err, animals){
       expect(err).to.be(null);
       expect(animals).to.be.an(Object);

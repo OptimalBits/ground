@@ -710,7 +710,7 @@ ServerStorage.ajax = {
 
 function safeEmit(socket){
   var errorFn = function(){
-    console.log('errorFn');
+    //console.log('errorFn');
     args;
     cb(new Error('Disconnected'));
   },
@@ -718,7 +718,7 @@ function safeEmit(socket){
     args = _.rest(arguments),
     proxyCb = function(err, res){
       socket.removeListener('disconnect', disconnect);
-      console.log('proxy');
+      //console.log('proxy');
       cb(err,res);
     };
   function disconnect(){
@@ -1106,7 +1106,7 @@ var Queue = ginger.Base.extend(function Queue(args){
     //TODO: get old que from localstorage
     this._queue = [];
     var self = this;
-    console.log('trolol');
+    this._createList = {};
     //socket.socket.onConnect = function(){self.process(self)};
     socket.socket.on('connect', function(){self.process(self)});
 });
@@ -1114,6 +1114,9 @@ var Queue = ginger.Base.extend(function Queue(args){
 _.extend(Queue.prototype,{ 
     queue:function(queue){
       this._queue = queue;
+    },
+    create:function(obj){
+      createList[obj.cid] = obj;
     },
     add:function(func){
       //TODO: MERGE DIFFERENT UPDATES?
@@ -1168,6 +1171,7 @@ _.extend(Queue.prototype,{
                   Storage.findById(obj.bucket, obj.id, function(err, obj2){
                     Storage.remove(obj.bucket, obj.id, ginger.noop)
                     self.fixQueue(obj.id, id);
+                    ginger.emit('created:'+obj.id, id);
                     Storage.create(obj.bucket, obj2);
                     self.success();
                   });
@@ -1609,6 +1613,10 @@ Model.prototype.update = function(args, transport, cb){
         self.local().save()
         var obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
            'cmd':'create', 'transport':transport }
+        ginger.once('created:'+self.cid, function(_id){
+          self._id = _id;
+          self.cid = _id;
+        })
         localModelQueue.add(obj);
         cb(err);
       }
