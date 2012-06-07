@@ -85,14 +85,19 @@ var wrap = function(fn, args, cb){
     var promise = new Promise();
     cb = _.isFunction(cb)?cb:undefined;
     (function(done, args, node){
-      ctx.promise.then(function(){
-        args = args?args:[];
-        args.push(function(){
-          cb || done();
-          cb && cb(done);
-          cb && cb.length === 0 && done();
-        });
-        fn.apply(ctx, args);
+      ctx.promise.then(function(err){
+        // TODO HANDLE ERROR AND PROPAGATE!
+        /*if(err){
+          done(err);
+        }else{*/
+          args = args?args:[];
+          args.push(function(){
+            cb || done();
+            cb && cb(done);
+            cb && cb.length === 0 && done();
+          });
+          fn.apply(ctx, args);
+        //}
       });
     })(_.bind(promise.resolve,promise), _.clone(args), this);
     ctx.promise = promise;
@@ -447,9 +452,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
   }else if(_.isFunction(css)){
     cb = css;
     css = undefined;
-  }
-  if(_.isFunction(locals)){
+    locals = undefined;
+  }else if(_.isFunction(locals)){
     cb = locals;
+    locals = undefined;
   }
       
   var items = ['text!'+templateUrl];
@@ -460,10 +466,12 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
       
   curl(items, function(templ){
     var args = {}
-    if(locals){
+    if(_.isString(locals)){
       args[locals] = self.data;
+    }else if(locals){
+      args = locals;
     }
-    var html = self.template ? self.template(templ, {locals:args}) : templ
+    var html = self.template ? self.template(templ, args) : templ
     self.$el.html(html);
     waitForImages(self.$el, function(){
       cb && cb();

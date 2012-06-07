@@ -1,0 +1,29 @@
+* {
+  font-family: sans-serif;
+}
+
+a {
+  display: block;
+  padding: 5px;
+  margin: 5px;
+  width: 130px;
+  height: 15px;
+  color: black;
+  background: #bada55;
+  border: 1px solid #9aba35;
+  border-radius: 5px;
+  text-decoration: none;
+  text-align: center;
+}
+
+a:hover {
+  background: #dafa75;
+}
+
+body div {
+  float: left;
+}
+
+body p {
+  clear: left;
+}

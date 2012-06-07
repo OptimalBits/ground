@@ -1,0 +1,17 @@
+{
+  "family": "Mammals",
+  "animals": [
+    {
+      "name": "Dog",
+      "link": "#/mammals/dog"
+    },  
+    {
+      "name": "Cat",
+      "link": "#/mammals/cat"
+    },  
+    {
+      "name": "Cow",
+      "link": "#/mammals/cow"
+    } 
+  ]
+}

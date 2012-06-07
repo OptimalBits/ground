@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Routing Example</title>
+  <link rel="stylesheet" type="text/css" href="styles.css"> 
+  <script type="text/javascript">
+    curl = {
+      baseUrl: 'http://localhost:8080/routing/',
+      packages: {
+        'ginger': {
+          path: 'http://localhost:8080/',
+          main: 'ginger',
+          lib: ''
+        },
+        'jquery': {
+          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
+          main: 'jquery.min'
+        },
+        'jqueryui': {
+          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
+          main: 'jquery-ui.min'
+        },
+        'underscore':{
+          path:'https://raw.github.com/amdjs/underscore/master/',
+          main:'underscore-min'
+        },
+      }
+    };
+  </script>
+  
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <script>
+    curl(['ginger', 'ginger/route', 'underscore'], function(ginger, route, _){
+
+      // The root route :)
+      route.root = '/';
+
+      route.listen(function(req) {
+        // Use Underscores micro-templates
+        req.use('template', _.template);
+
+
+        // Define the route hierachy
+        req.get(function() {
+          req
+            .load('data/fauna.json')
+            .render('templates/fauna.tmpl')
+            .enter('fadeIn', 'fast');
+
+          // Family
+          req.get(':family', '#family', function() { // ':family' is a parameter
+            req
+              .load('data/families/' + req.params['family'] + '.json')
+              .render('templates/family.tmpl')
+              .enter('slideDown', 'slow')
+              .exit('slideUp', 'slow');
+       
+            // Animal
+            req.get(':animal', '#animal', function() { // ':animal' is a parameter
+              req
+                .load('data/families/' + req.params['family'] + '/' +
+                  req.params['animal'] + '.json')
+                .render('templates/animal.tmpl')
+                .enter('fadeIn', 'slow')
+                .exit('fadeOut', 'slow');
+            });
+          });
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+</body>
+</html>
