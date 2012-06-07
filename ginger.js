@@ -722,7 +722,6 @@ function safeEmit(socket){
       cb(err,res);
     };
   function disconnect(){
-    console.log('disconnected!');
     errorFn();
   };
   args[args.length-1] = proxyCb;
@@ -1139,8 +1138,6 @@ _.extend(Queue.prototype,{
       setTimeout(this.process, 0, this);
     },  
     process:function(self){
-      console.log('process!');
-
       if (!self){
         self = this;
       }
@@ -1148,13 +1145,9 @@ _.extend(Queue.prototype,{
         if(self._queue.length){
           self._currentTransfer = true;
           var obj = self._queue[0];
-          console.log('processing:');
-          console.log(obj);
           switch (obj.cmd){
             case 'update':
-              console.log('update');
               ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
-                console.log('updated!');
                 if (err) {
                   self._currentTransfer = false;
                   return err;
