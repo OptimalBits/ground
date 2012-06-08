@@ -468,8 +468,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     var args = {}
     if(_.isString(locals)){
       args[locals] = self.data;
-    }else if(locals){
+    }else if(_.isObject(locals)){
       args = locals;
+    }else if(_.isObject(self.data)){
+      args = self.data;
     }
     var html = self.template ? self.template(templ, args) : templ
     self.$el.html(html);
