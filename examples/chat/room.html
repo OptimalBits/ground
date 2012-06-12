@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chat Example</title>
+  <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
+  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script type="text/javascript">
+    curl = {
+      baseUrl: 'http://localhost:8080/routing/',
+      packages: {
+        'ginger': {
+          path: 'http://localhost:8080/',
+          main: 'ginger',
+          lib: ''
+        },
+        'jquery': {
+          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
+          main: 'jquery.min'
+        },
+        'jqueryui': {
+          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
+          main: 'jquery-ui.min'
+        },
+        'underscore':{
+          path:'https://raw.github.com/amdjs/underscore/master/',
+          main:'underscore-min'
+        },
+      }
+    };
+  </script>
+  
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <script>
+
+    curl(['ginger', 'ginger/route'], function(ginger, route) {
+
+      route.root = '/';
+      route.listen(function(req) {
+          // Route to room
+          req.get(':roomid', function() {
+            console.log(req.params['roomid']);
+            
+            enterRoom(req.params['roomid']);
+          });
+      });
+
+      function enterRoom(roomId) {
+
+        // Connect to backend
+        var socket = io.connect('http://localhost:8080');
+        socket.on('connect', function() {
+          // Declare models
+          var Message = ginger.Declare(ginger.Model),
+              Chat = ginger.Declare(ginger.Model);
+
+          console.log('connected')
+
+          // Setup models
+          ginger.Model.set('socket', socket);
+          Message.bucket('messages');
+          Message.use('socket');
+          Chat.bucket('Chat');
+
+          // Find the Chat room
+          Chat.findById(roomId, function(err, chat) {
+            chat.keepSynced();
+
+            // Get the messages
+            chat.all(Message, function(err, messages){
+              messages.keepSynced();
+             
+              // Create a table for the chat messages an bind it to the model
+              var history = new ginger.Views.Table(messages, {
+                fields:['text'],
+                css:{width:'600px'},
+              });
+              history.render($('#history'));
+              
+              $('#submit').click(function() {
+                var msg = new Message({text : $('#msgbox').val()}); 
+                messages.add(
+                  msg,
+                  function(err){
+                    console.log(err); 
+                  }
+                );
+              }); 
+
+              $('#msgbox').keypress(function(e) {
+                if(e.which == 13) {
+                  jQuery('#submit').focus().click();
+                }
+              });
+            });
+          }); 
+        });
+      };
+    });
+  </script>
+</head>
+<body>
+  <div id="chatroom">
+    <div id="history"></div>
+    <input id="msgbox" type="text"></input>
+    <input id="submit" type="submit"></input>
+  </div>
+</body>
+</html>
