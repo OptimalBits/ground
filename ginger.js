@@ -832,10 +832,14 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
     Sub = null;
   }
   
-  // Sub = makeClass(Sub) // so that new is not necessary...
   if(!Sub){
     Sub = function Ground(){
-      Super.prototype.constructor.apply(this, arguments);
+      var self = this;
+      if(!(self instanceof Ground)){
+        return new Ground(arguments);
+      }else{
+        return Super.prototype.constructor.apply(self, arguments);
+      }
     };
   }
   _.extend(Sub, Super);
@@ -857,8 +861,11 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
 //  Base Class - All Ginger classes derive from this one.
 //
 var Base = ginger.Base = function Base(){
+  if(!(this instanceof Base)){
+    return new Base();
+  }
   this._refCounter = 1;
-  this._bindings = {}
+  this._bindings = {};
 }
 
 _.extend(Base.prototype, EventEmitter.prototype);
@@ -2417,7 +2424,7 @@ Table.prototype.destroy = function(){
  * param: obj options
  * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
  */
-Views.Modal = View.extend( function Modal(options){
+Views.Modal = View.extend(function Modal(options){
   this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
   var view = this;
 
