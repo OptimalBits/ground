@@ -226,7 +226,6 @@ EventEmitter.prototype._getNamespaces = function(){
   */
 EventEmitter.prototype.on = function(eventNames, listener) {
   var events = eventNames.split(' '), listeners = this._getListeners();
-  
   for(var i=0, len=events.length;i<len;i++){
     var eventAndNamespace = events[i].split('/'), event, namespace;
     
@@ -237,13 +236,13 @@ EventEmitter.prototype.on = function(eventNames, listener) {
       namespace = null;
       event = eventAndNamespace[0];
     }
-    
+
     if(listeners[event]) {
       listeners[event].push(listener);
     }else{
       listeners[event] = [listener];
     }
-    
+
     if(namespace){
       var namespaces = this._getNamespaces();
       
@@ -278,11 +277,21 @@ EventEmitter.prototype.emit = function(eventName) {
   }		
   return this
 }
+
+EventEmitter.prototype._fire = function(eventListeners, args){
+  for(var i=0, len=eventListeners.length; i < len; i ++) {
+    if(eventListeners[i]){
+      eventListeners[i].apply(this, args);
+    }
+  }
+}
+
+/*
 EventEmitter.prototype._fire = function(eventListeners, args){
   for(var i=0, len=eventListeners.length; i < len; i ++) {
     eventListeners[i].apply(this, args);
   }
-}
+}*/
 	
 /**
   * Returns an array of listeners for the specified event name
@@ -305,12 +314,12 @@ EventEmitter.prototype.listeners = function(eventName) {
 EventEmitter.prototype.once = function(eventName, listener) {
   var ee = this
   
-  function wrapper() {
+  var w = function wrapper() {
 			listener.apply(null, arguments);
       ee.removeListener(eventName, wrapper);
 		}
 		
-		return ee.addListener(eventName, wrapper);
+		return ee.addListener(eventName, w);
 };
 	
 /**
@@ -567,7 +576,9 @@ Storage.findById = function(bucket, id, cb){
     var key = localStorage.key(i)
     if(key === objectId){
       var doc = JSON.parse(localStorage[key])
-      doc._id = doc.cid;
+      if (doc.__persisted){
+        doc._id = doc.cid;  
+      }
       cb(null, doc);
       return;
     }
@@ -758,6 +769,9 @@ ServerStorage.socket = {
     safeEmit(Model.socket,'add', bucket, id, collection, items, cb);
   },
   remove:function(bucket, id, collection, objIds, cb){
+    if(arguments.length===3){
+      cb = collection;
+    } 
     safeEmit(Model.socket,'remove', bucket, id, collection, objIds, cb); 
   },
   count:function(bucket, cb){
@@ -1114,9 +1128,6 @@ _.extend(Queue.prototype,{
     queue:function(queue){
       this._queue = queue;
     },
-    create:function(obj){
-      createList[obj.cid] = obj;
-    },
     add:function(func){
       //TODO: MERGE DIFFERENT UPDATES?
       this._queue.push(func);
@@ -1161,18 +1172,16 @@ _.extend(Queue.prototype,{
                   self._currentTransfer = false;
                   return err;
                 } else {
-                  Storage.findById(obj.bucket, obj.id, function(err, obj2){
-                    Storage.remove(obj.bucket, obj.id, ginger.noop)
-                    self.fixQueue(obj.id, id);
-                    ginger.emit('created:'+obj.id, id);
-                    Storage.create(obj.bucket, obj2);
-                    self.success();
-                  });
+                  Storage.remove(obj.bucket, obj.id, ginger.noop)
+                  self.fixQueue(obj.id, id);
+                  ginger.emit('created:'+obj.id, id);
+                  self.success();
                 }
               });
               break;
             case 'delete':
               ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
+                console.log('deleted!');
                 if (err){
                   self._currentTransfer = false;
                   return err;
@@ -1271,6 +1280,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
   _.defaults(this, {
     _socket:Model.socket,
     _embedded:false,
+    __persisted:false,
     __model:true,
     __dirty:false
   })
@@ -1524,7 +1534,7 @@ Model.prototype.all = function(model, args, bucket, cb){
   }
 }
 Model.prototype.toArgs = function(){
-  var args = {};
+  var args = {__persisted:this.__persisted};
   for(var key in this){
     if( !_.isUndefined(this[key]) && 
         (this[key] != null) && 
@@ -1596,6 +1606,7 @@ Model.prototype.update = function(args, transport, cb){
         if(id){
           self.local().remove()
           self.cid = self._id = id
+          self.__persisted = true;
           self.local().save()
           cb(null, id)
         }else{
@@ -1606,10 +1617,6 @@ Model.prototype.update = function(args, transport, cb){
         self.local().save()
         var obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
            'cmd':'create', 'transport':transport }
-        ginger.once('created:'+self.cid, function(_id){
-          self._id = _id;
-          self.cid = _id;
-        })
         localModelQueue.add(obj);
         cb(err);
       }
@@ -1641,7 +1648,7 @@ Model.prototype.delete = function(transport, cb){
   if(transport){
     ServerStorage[transport].remove(self.__bucket, self._id, function(err){
       if (err){
-        var obj = {'bucket':bucket, 'id':self._id, 
+        var obj = {'bucket':self.__bucket, 'id':self._id, 
            'cmd':'delete', 'transport':transport }
         localModelQueue.add(obj);
       } else {
@@ -1666,22 +1673,32 @@ Model.prototype.keepSynced = function(){
     var newDoc, id = self._id;
     self._keepSynced = true;
     
-    socket.emit('sync', id);
+    if (self._id){
+      socket.emit('sync', id);
 
-    socket.on('reconnect', function(){
-      socket.emit('resync', id, self.__rev);
-    })
-    
-    socket.on('update:'+id, function(doc){
-      newDoc = doc;
-      self.set(doc, {sync:'false'});
-      self.local().update(doc);
-    });
-    
-    socket.on('delete:'+id, function(){
-      self.local().remove();
-      self.emit('delete', self._id)
-    });
+      socket.on('reconnect', function(){
+        socket.emit('resync', id, self.__rev);
+      })
+      
+      socket.on('update:'+id, function(doc){
+        newDoc = doc;
+        self.set(doc, {sync:'false'});
+        self.local().update(doc);
+      });
+      
+      socket.on('delete:'+id, function(){
+        self.local().remove();
+        self.emit('delete', self._id)
+      });
+    } else {
+      ginger.on('created:'+self.cid, function(_id){
+        self._id = _id;
+        self.cid = _id;
+        self.__persisted = true;
+        self._keepSynced = false;
+        self.keepSynced(); //Haxx?
+      });
+    }
   }
   
   self.on('changed:', function(doc, args){

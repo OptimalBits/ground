@@ -92,46 +92,8 @@ describe('Model', function(){
     
   });
   
-  
-  describe('delete', function(){
-    it('deletes and propagates delete event', function(done){
-      done();/*
-      animal.delete(function(err){
-        expect(err).to.be(null);
-      });
-        
-      animal.on('delete', function(){
-        done();
-      });
-      */
-    });
-  });
-
-  
     describe('linus', function(){
-    /*
-    it('test set -> find', function(done){
-      var otherAnimal;
-      animal.off();
 
-      Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
-        expect(doc).to.have.property('_id');
-        expect(doc._id).to.eql(animal._id);
-        doc.keepSynced();
-        doc.set({legs:2, tail:false});
-        otherAnimal = doc;
-        
-        Animal.findById(animal._id, function(err, doc){
-          expect(doc).to.have.property('legs');
-          expect(doc).to.have.property('tail');
-          expect(doc.legs).to.be(2);
-          expect(doc.tail).to.be(false);
-          done();
-        });
-      });
-    });
-    */
     it('test disconnect', function(done){
       var otherAnimal;
       animal.off();
@@ -166,46 +128,67 @@ describe('Model', function(){
         });
       });
     });
-
-    it('test offline', function(done){
-      var otherAnimal;
-      animal.off();
+    
+    it('test create offline', function(done){
       socket.disconnect();
 
-      Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
-        expect(doc).to.have.property('_id');
-        expect(doc._id).to.eql(animal._id);
-        doc.keepSynced();
-        doc.set({legs:5});
-        otherAnimal = doc;
-
-        Animal.findById(animal._id, function(err, doc){
-          expect(doc).to.have.property('legs');
-          expect(doc.legs).to.be(5);
-          var tempAnimal = new Animal();
-
-          ginger.once('inSync:', function(){
-            Animal.findById(animal._id, function(err, doc){
-              expect(doc).to.have.property('legs');
-              expect(doc.legs).to.be(5);
-
-              // TODO: Problem with cid changeing once it is properly saved on the server
-              // tempAnimal does not get updated
-              Animal.findById(tempAnimal._id, function(err, doc){
-                expect(err).to.be(null);
-                expect(doc.legs).to.be(8);
-                done();
-              });
-            });
-          });
-
-          tempAnimal.set({legs : 8, name:'spider'});
-          tempAnimal.save(function(){
-            tempAnimal.keepSynced();
-            socket.socket.connect();
-          });
+      var tempAnimal = new Animal();
+      var tempAnimal2;
+      
+      ginger.once('inSync:', function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(tempAnimal._id).to.be(doc._id);
+            expect(tempAnimal2._id).to.be(doc._id);
+            expect(err).to.be(null);
+            expect(doc.legs).to.be(8);
+            done();
         });
+      });
+
+      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        Animal.findById(tempAnimal.cid, function(err, doc){
+          tempAnimal2 = doc;
+          tempAnimal2.keepSynced();
+          socket.socket.connect();              
+        });
+      });
+    });
+
+    it('test delete offline', function(done){
+      var tempAnimal = new Animal();
+      tempAnimal.set({legs : 8, name:'spider'});
+
+      ginger.once('inSync:', function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(err).to.be.an(Error);
+            done();
+        });
+      });
+
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        expect(tempAnimal).to.have.property('_id');
+        socket.disconnect();
+        tempAnimal.delete(function(){
+          socket.socket.connect();              
+        });
+      });
+    });
+  });
+
+  describe('delete', function(){
+    it('deletes and propagates delete event', function(done){
+      animal.on('deleted:', function(){
+        Animal.findById(animal._id, function(err, doc){
+          expect(err).to.be.an(Error);
+          done();
+        });
+      });
+        
+      animal.delete(function(err){
+        expect(err).to.be(null);
       });
     });
   });
