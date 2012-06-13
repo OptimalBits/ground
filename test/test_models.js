@@ -2,7 +2,7 @@ define(['ginger'], function(ginger){
 
 ginger.Model.set('socket', socket);
 
-var Animal = ginger.Declare(ginger.Model);
+var Animal = ginger.Model.extend();
 Animal.bucket('animals');
 Animal.use('transport', 'socket');
 
@@ -15,6 +15,19 @@ describe('Model', function(){
       done()
     });
   });
+  
+  describe('instantiation', function(){
+    it('with new operator', function(){
+      var instance = new Animal();
+      expect(instance).to.be.a(Animal);
+    });
+    
+    it('as a factory method', function(){
+      var instance = Animal();
+      expect(instance).to.be.a(Animal);
+    });
+  });
+  
   describe('findById', function(){
     it('finds the animal', function(done){
       Animal.findById(animal._id, function(err, doc){

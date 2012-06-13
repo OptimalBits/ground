@@ -85,14 +85,19 @@ var wrap = function(fn, args, cb){
     var promise = new Promise();
     cb = _.isFunction(cb)?cb:undefined;
     (function(done, args, node){
-      ctx.promise.then(function(){
-        args = args?args:[];
-        args.push(function(){
-          cb || done();
-          cb && cb(done);
-          cb && cb.length === 0 && done();
-        });
-        fn.apply(ctx, args);
+      ctx.promise.then(function(err){
+        // TODO HANDLE ERROR AND PROPAGATE!
+        /*if(err){
+          done(err);
+        }else{*/
+          args = args?args:[];
+          args.push(function(){
+            cb || done();
+            cb && cb(done);
+            cb && cb.length === 0 && done();
+          });
+          fn.apply(ctx, args);
+        //}
       });
     })(_.bind(promise.resolve,promise), _.clone(args), this);
     ctx.promise = promise;
@@ -111,7 +116,8 @@ var Request = function(url, prevNodes){
   }else{
     this.index = 0;
   }
-  
+  this.level = 0;
+
   if(components[last=components.length-1] === ''){
     components.splice(last, 1);
   }
@@ -225,9 +231,14 @@ Request.prototype.get = function(){
     handler = a.handler, 
     selector = a.selector,
     cb = a.cb,
-    args = a.args;
+    args = a.args,
+    level = self.level;
 
   if(component){
+    if(level != self.index){
+      return self;
+    }
+    
     if(self.index < self.components.length){
       if(component.charAt(0) === ':'){
         self.params[component.replace(':','')] = self.components[self.index];
@@ -240,37 +251,40 @@ Request.prototype.get = function(){
     }
   }
   
-  self.nodePromise.then(function(){
-    self.nodePromise = new Promise();
-    
+  var promise = new Promise, prevPromise = self.nodePromise;
+  
+  self.nodePromise = promise;
+  
+  prevPromise.then(function(){  
     processMiddlewares(self, a.middlewares, function(err){
       if(!err){
-        ;(function(promise){
-          var autoreleasePool = self.node().autoreleasePool;
+        var autoreleasePool = self.node().autoreleasePool;
       
-          self._initNode(selector);
+        self._initNode(selector);
   
-          if(cb){
-            cb && cb.call(self, autoreleasePool);
+        if(cb){
+          self.level = level + 1;
+          cb.call(self, autoreleasePool);
+          promise.resolve();
+          if(promise.callbacks.length===0){
+            self.endPromise.resolve();
+          }
+        } else {
+          curl([handler], function(f){
+            args = args || autoreleasePool;
+            self.level = level + 1;
+            f && f.call(self, self, args, autoreleasePool);
             promise.resolve();
             if(promise.callbacks.length===0){
               self.endPromise.resolve();
             }
-          } else {
-            curl([handler], function(f){
-              args = args?args:autoreleasePool;
-              f && f.call(self, self, args, autoreleasePool);
-              promise.resolve();
-              if(promise.callbacks.length===0){
-                self.endPromise.resolve();
-              }
-            });
-          }
-        })(self.nodePromise);
+          });
+        }
       }
     });
   });
-  
+
+  self.level = level;
   return self;
 }
 
