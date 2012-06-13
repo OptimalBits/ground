@@ -2282,6 +2282,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
     
+  self.$tableWrapper = $tableWrapper;
   self.$el = $('<div>').attr('tabindex',0);
   self.$el.mouseenter(function(){
     $(this).focus();
@@ -2318,7 +2319,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     self.$el.append(self.prebody);
   }
   
-  self.$el.append($tableWrapper);
+  self.$el.append(self.$tableWrapper);
   $table.append(self.$tbody);
   self.$tbody.on('click', 'tr', function(event) {
     var $this = $(this), cid = $this.data('id');
@@ -2406,6 +2407,14 @@ Table.prototype._selectRow = function($row){
 }
 Table.prototype.select = function(itemId){
   var $row = $("tr[data-id='" + itemId +"']");
+  
+  if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
+    var index = $('tr', this.$body).index($row);
+    var selectedRowHeight = $row.height()*index;
+    this.$tableWrapper.animate({
+      scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
+    }, 400);
+  }
   $row && this._selectRow($row);
 }
 Table.prototype.destroy = function(){
