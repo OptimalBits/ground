@@ -19,5 +19,5 @@ var Zoo = new Schema({
 
 mongoose.model('Zoo', Zoo)
 module.exports.Zoo = mongoose.model('Zoo')
-module.exports.Zoo.exclude = 'animals'
+//module.exports.Zoo.exclude = 'animals'
 module.exports.zoo = module.exports.Zoo;

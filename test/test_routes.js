@@ -13,6 +13,9 @@ var goToUrl = function(url){
 describe('Routes', function(){
 
 describe('simple routes', function(){
+
+  route.stop();
+  goToUrl('');
   it('root route', function(done){
     route.listen(function(req){
       req.get(function(){
@@ -21,8 +24,29 @@ describe('simple routes', function(){
       });
     });
   });
+  it('consume routes in correct order', function(done){
+    route.stop();
+    goToUrl('');
+    route.listen(function(req){
+      req.get(function(){
+        req.get('foo','#test', function(){
+          req.get('bar', '#foo', function(){
+            route.stop();
+            done();  
+          });
+        });
+        req.get('bar','#test', function(){
+          expect(0).to.be.ok();
+          done();
+        });
+      });
+    });
+    goToUrl('/foo/bar');
+  });
   
   it('hierarchical route', function(done){
+    route.stop();
+    goToUrl('');
     route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
@@ -176,7 +200,6 @@ describe('simple routes', function(){
   it('stop listening route', function(){
     route.stop();
   });
-
 
   
 });
