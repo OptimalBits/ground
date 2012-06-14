@@ -189,6 +189,24 @@ describe('Model', function(){
         });
       });
     });
+  
+
+
+    it('serverside update while offline', function(done){
+      var tempAnimal = new Animal();
+      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        socket.socket.disconnect();
+
+        ginger.ajax.put('http://localhost:8080/animals/'+tempAnimal._id, {legs:7}, function(err, res) { 
+          console.log(err, 'hej');
+          socket.socket.connect();
+          done();
+
+        });
+      });
+    });
   });
 
   describe('delete', function(){
@@ -205,6 +223,9 @@ describe('Model', function(){
       });
     });
   });
+
+
+
 });
 
 

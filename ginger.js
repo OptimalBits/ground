@@ -1778,6 +1778,7 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     (self.sortOrder == 'desc') && self.items.reverse();
   });
 })
+
 Collection.instantiate = function(model, parent, array, cb){
   if(_.isArray(parent)){
     cb = array;

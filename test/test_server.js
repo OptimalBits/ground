@@ -11,6 +11,16 @@ var express = require('express'),
 app.use(express.static(staticDir));
 app.use(express.static(__dirname));
 
+app.put('/animals/:id', function(req, res){
+  console.log(Server.__proto__);
+  //res.send(Server);
+  return;
+  Server.update('Animals', {_id:req.params.id}, req.body, function(err){
+    if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
+    res.send(204)
+  })
+})
+
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
     console.log(err); 
