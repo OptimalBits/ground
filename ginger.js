@@ -2418,7 +2418,7 @@ Table.prototype.select = function(itemId){
   if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
     var index = $('tr', this.$body).index($row);
     var selectedRowHeight = $row.height()*index;
-    this.$tableWrapper.animate({
+    this.$tableWrapper.stop().animate({
       scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
     }, 400);
   }
