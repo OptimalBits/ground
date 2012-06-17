@@ -21,7 +21,7 @@
    
    Roadmap:
    - namespaces for events and bindings.
-   - instantiate classes without new operator.
+   - instantiate classes without new operator. (Partially implemented).
    - use getter/setters to simplify the events and bindings.
    - validation (willChange is already a validator).
    
@@ -750,7 +750,11 @@ ServerStorage.socket = {
     Model.socket.emit('add', bucket, id, collection, items, cb);
   },
   remove:function(bucket, id, collection, objIds, cb){
-    Model.socket.emit('remove', bucket, id, collection, objIds, cb); 
+    if(arguments.length==3){
+      Model.socket.emit('remove', bucket, id, collection);
+    }else{
+      Model.socket.emit('remove', bucket, id, collection, objIds, cb);
+    }
   },
   count:function(bucket, cb){
     cb(); 
@@ -1504,17 +1508,17 @@ Model.prototype.update = function(args, transport, cb){
 }
 Model.prototype.delete = function(transport, cb){
   var self = this;
-  if(_.isFunction(transport)){
+  if(_.isFunction(transport)||arguments.length==0){
     cb = transport;
     transport = this.transport();
   }
   if(transport){
-    ServerStorage[transport].remove(self.__bucket, self._id, function(err){
-      !err && self.emit('deleted:', self._id);
+    ServerStorage[transport].remove(self.__bucket, self.cid, function(err){
+      !err && self.emit('deleted:', self.cid);
       cb && cb(err);
     });
   }else{
-    self.emit('deleted:', self._id);
+    self.emit('deleted:', self.cid);
     cb && cb();
   }
 };
@@ -1540,7 +1544,7 @@ Model.prototype.keepSynced = function(){
     
     socket.on('delete:'+id, function(){
       self.local().remove();
-      self.emit('delete', self._id)
+      self.emit('deleted:', self.cid);
     });
   }
   
