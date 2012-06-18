@@ -210,8 +210,21 @@ describe('Collections1', function(){
   
   describe('Delete', function(){
     it('delete item that is part of a collection', function(done){
-      done();
-    })
+      Zoo.findById(zoo._id, function(err, zoo){
+        zoo.keepSynced();
+        zoo.all(Animal, function(err, animals){
+          var tiger = new Animal({name:"tiger"});
+          animals.on('removed:', function(item){
+            expect(item).to.be.eql(tiger);
+            done();
+          });
+          
+          animals.add(tiger, function(err){
+            tiger.delete();
+          });
+        });
+      });
+    });
   });
   
   describe('Sorted collection', function(){

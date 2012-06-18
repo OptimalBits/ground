@@ -21,7 +21,7 @@
    
    Roadmap:
    - namespaces for events and bindings.
-   - instantiate classes without new operator.
+   - instantiate classes without new operator. (Partially implemented).
    - use getter/setters to simplify the events and bindings.
    - validation (willChange is already a validator).
    
@@ -1648,7 +1648,7 @@ Model.prototype.update = function(args, transport, cb){
 
 Model.prototype.delete = function(transport, cb){
   var self = this;
-  if(_.isFunction(transport)){
+  if(_.isFunction(transport)||arguments.length==0){
     cb = transport;
     transport = this.transport();
   }
@@ -1664,7 +1664,7 @@ Model.prototype.delete = function(transport, cb){
       cb && cb(err);
     });
   }else{
-    self.emit('deleted:', self._id);
+    self.emit('deleted:', self.cid);
     cb && cb();
   }
 };
@@ -2454,6 +2454,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
     $table = $('<table>').appendTo($tableWrapper);
     
+  self.$tableWrapper = $tableWrapper;
   self.$el = $('<div>').attr('tabindex',0);
   self.$el.mouseenter(function(){
     $(this).focus();
@@ -2490,7 +2491,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     self.$el.append(self.prebody);
   }
   
-  self.$el.append($tableWrapper);
+  self.$el.append(self.$tableWrapper);
   $table.append(self.$tbody);
   self.$tbody.on('click', 'tr', function(event) {
     var $this = $(this), cid = $this.data('id');
@@ -2578,6 +2579,14 @@ Table.prototype._selectRow = function($row){
 }
 Table.prototype.select = function(itemId){
   var $row = $("tr[data-id='" + itemId +"']");
+  
+  if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
+    var index = $('tr', this.$body).index($row);
+    var selectedRowHeight = $row.height()*index;
+    this.$tableWrapper.stop().animate({
+      scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
+    }, 400);
+  }
   $row && this._selectRow($row);
 }
 Table.prototype.destroy = function(){

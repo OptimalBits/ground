@@ -211,15 +211,12 @@ describe('Model', function(){
 
   describe('delete', function(){
     it('deletes and propagates delete event', function(done){
-      animal.on('deleted:', function(){
-        Animal.findById(animal._id, function(err, doc){
-          expect(err).to.be.an(Error);
-          done();
-        });
-      });
-        
       animal.delete(function(err){
         expect(err).to.be(null);
+      });
+        
+      animal.on('deleted:', function(){
+        done();
       });
     });
   });

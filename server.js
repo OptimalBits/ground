@@ -38,10 +38,13 @@
   Remove existing documents from a collection
   'remove' : (bucket, id, collection, itemIds) : (err) -> 'remove:id:collection', (itemIds)
   
+  Deletes an existing document from the database:
+  'remove' : (bucket, id) : (err) -> 'delete:id's
+  
   Integration Notes:
   
   Collections are represented as an array of Ids. This array of Ids can be part of some other 
-  model in a field 1), or it can be a ids of standalone documents 2). In this case, memebership of
+  model in a field 1), or it can be a ids of standalone documents 2). In this case, membership of
   the collection is represented by having a field of the kind "parentId", where the item belongs
   to.
   
@@ -52,6 +55,8 @@
   for the model part of the collection is necessary:
   
   Animal.static('parent', function(){ return 'zooId' });
+  
+  TODO: We need a more robust parameter check to avoid unexpected crashes.
   
 */
 
@@ -114,10 +119,6 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
         console.log(Model);
         Model.findById(id).exclude(Model.exclude).run(cb);
       }
-    });
-  
-    socket.on('delete', function(id, cb){
-      // TODO: Implement (deletes a model).
     });
   
     socket.on('find', function(bucket, id, collection, query, cb){
@@ -192,44 +193,62 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       }
     });
     
-    socket.on('remove', function(bucket, id, collection, itemIds, cb){
-      itemIds = Array.isArray(itemIds) ? itemIds:[itemIds];
-      if(itemIds.length > 0){
-        var Model = self._getModel(bucket, cb);
-        if(Model){
-          if(Model.gnd && Model.gnd.remove){
-            Model.gnd.remove(id, collection, itemIds, function(err){
+    socket.on('remove', function(bucket, id, collection, itemIds, cb){ 
+      var Model;
+      switch(arguments.length){
+        case 3:
+          cb = collection;
+          console.log(cb);
+          Model = self._getModel(bucket, cb);
+          if(Model){
+            // TODO: Use findAndModify to avoid sending delete msg for already deleted documents.
+            Model.remove({_id:id}, function(err){
               if(!err){
-                // We should only notify for really removed objects.
-                sync.remove(id, collection, itemIds);
+                sync.delete(id);
               }
-              cb(err);
+              cb && cb(err);
             });
-          }else{
-            Model.findById(id, function(err, doc){
-              if(err){
-                cb(err);
-              }else{
-                var current = _.map(doc[collection], function(item){return String(item)}),
-                  removed = _.intersection(current, itemIds);
-                if(removed.length>0){
-                  doc[collection] = _.without(current, removed);
-                  doc.save(function(err){
-                    if(!err){
-                      sync.remove(id, collection, removed);
-                    }
-                    cb(err);
-                  });
-                }else{
-                  cb(null);
-                }
-              }
-            })
           }
-        }
-      }else{
-        cb();
-      }  
+          break;    
+        case 5:
+          itemIds = Array.isArray(itemIds) ? itemIds:[itemIds];
+          if(itemIds.length > 0){
+            Model = self._getModel(bucket, cb);
+            if(Model){
+              if(Model.gnd && Model.gnd.remove){
+                Model.gnd.remove(id, collection, itemIds, function(err){
+                  if(!err){
+                    // We should only notify for really removed objects.
+                    sync.remove(id, collection, itemIds);
+                  }
+                  cb(err);
+                });
+              }else{
+                Model.findById(id, function(err, doc){
+                  if(err){
+                    cb(err);
+                  }else{
+                    var current = _.map(doc[collection], function(item){return String(item)}),
+                      removed = _.intersection(current, itemIds);
+                    if(removed.length>0){
+                      doc[collection] = _.without(current, removed);
+                      doc.save(function(err){
+                        if(!err){
+                          sync.remove(id, collection, removed);
+                        }
+                        cb(err);
+                      });
+                    }else{
+                      cb(null);
+                    }
+                  }
+                })
+              }
+            }
+          }else{
+            cb();
+          }
+        }   
     });
   });
 }
@@ -260,8 +279,8 @@ Server.prototype.update = function(bucket, id, args, cb){
   var Model = self._getModel(bucket, cb);
   if(Model){  
     var keys = _.keys(args);
-    Model.findById(id, keys, function(err, doc){          
-      if(shouldUpdate(keys, args, doc)){
+    Model.findById(id, keys, function(err, doc){
+      if(!err && doc && shouldUpdate(keys, args, doc)){
         var query = {_id:id};
         /*
           if(doc.__rev){
@@ -274,6 +293,8 @@ Server.prototype.update = function(bucket, id, args, cb){
           }
           cb(err);
         }); 
+      }else{
+        cb(err);
       }
     });
   }
