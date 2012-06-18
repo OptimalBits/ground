@@ -44,7 +44,7 @@ var sync = function(pubClient, subClient, sockets, sio){
       console.log("Socket %s connected in the Sync Module", socket.id);
       socket.on('sync', function(id){
         if(self.check){
-          if (check(socket.id, id)){
+          if (self.check(socket.id, id)){
             socket.join(id);
           }
         }else{
@@ -60,9 +60,8 @@ var sync = function(pubClient, subClient, sockets, sio){
     });
 
     subClient.subscribe('delete:');
-
-    subClient.on('message', function(channel, msg){
-      sockets.in(msg._id).emit(channel+msg._id, msg);
+    subClient.on('message', function(channel, id){
+      sockets.in(id).emit(channel+id, id);
     });
   
     subClient.psubscribe('add:*')

@@ -105,15 +105,13 @@ describe('Model', function(){
   
   describe('delete', function(){
     it('deletes and propagates delete event', function(done){
-      done();/*
       animal.delete(function(err){
         expect(err).to.be(null);
       });
         
-      animal.on('delete', function(){
+      animal.on('deleted:', function(){
         done();
       });
-      */
     });
   });
 });
