@@ -571,23 +571,25 @@ route.listen = function (cb) {
           
       cb && cb(req);
       
-      req.endPromise.then(function(){
-        if(req.index !== req.nodes.length){
-          if(req.notFound && _.isFunction(req.notFound)){
-            req.index = 1;
-            req._initNode('body')
-            req.notFound.call(req, req);
-          }else{
-            console.log('Undefined route:'+location.hash);
-            return;
+      if(prevUrl == location.hash){
+        req.endPromise.then(function(){
+          if(req.index !== req.nodes.length){
+            if(req.notFound && _.isFunction(req.notFound)){
+              req.index = 1;
+              req._initNode('body')
+              req.notFound.call(req, req);
+            }else{
+              console.log('Undefined route:'+location.hash);
+              return;
+            }
           }
-        }
   
-        req.exec(prevNodes);
-        prevNodes = req.nodes;
+          req.exec(prevNodes);
+          prevNodes = req.nodes;
         
-        route.prevUrl = prevUrl;
-      });
+          route.prevUrl = prevUrl;
+        });
+      }
     }
   }
 
