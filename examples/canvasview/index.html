@@ -1,0 +1,73 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Tables Examples</title>  
+  <link rel="stylesheet" type="text/css" href="styles.css"> 
+  <script type="text/javascript">
+    curl = {
+      baseUrl: 'http://localhost:8080/',
+        packages: {
+          'ginger': {
+          path: 'http://localhost:8080/',
+          main: 'ginger',
+          lib: ''
+        },
+        'jquery': {
+          path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
+          main:'jquery.min'
+        },
+        'underscore':{
+          path:'https://raw.github.com/amdjs/underscore/master/',
+          main:'underscore-min'
+        },
+     }
+   };
+  </script>
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  
+  <script>
+    curl(['ginger', 'examples/canvasview/bubblechart'], function(ginger, BubbleChart){
+
+      // Create Model
+      var Bubble = ginger.Declare(ginger.Model);
+   
+      // Create collection
+      ginger.Collection.instantiate(Bubble, [
+        {x:-60, y:60, r:5}, 
+        {x:-40, y:40, r:10}, 
+        {x:-20, y:20, r:15}, 
+        {x:0, y:0, r:20}, 
+        {x:20, y:-20, r:25}, 
+        {x:40, y:-40, r:30}, 
+        {x:60, y:-60, r:35} 
+      ], function(err, data){
+        var series = data;
+
+        var canvasView = new BubbleChart(series);
+        canvasView.render($('#chart'));
+
+        var table = new ginger.Views.Table(series, {
+          headers:['X', 'Y', 'Radius'],
+          fields:['x', 'y', 'r'],
+          widths:['30%', '30%', '30%'],
+        });
+        table.render($('#table'));
+
+        $('#randomize').click(function() {
+          series.each(function(bubble) {
+            bubble.set('x', Math.floor((Math.random() - 0.5) * 250));
+            bubble.set('y', Math.floor((Math.random() - 0.5) * 150));
+            bubble.set('r', Math.floor((Math.random()) * 25 + 5));
+          });
+        });
+      });
+    });
+    
+  </script>
+</head>
+<body>
+  <div id="chart" class="view"></div>
+  <div id="table" class="view"></div>
+  <button id="randomize">Random Change</button>
+</body>
+</html>
