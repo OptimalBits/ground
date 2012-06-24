@@ -353,9 +353,10 @@ Request.prototype.exec = function(prevs){
   }
   
   //
-  // "Exit" from all the old nodes
+  // "Exit" from all the old nodes. We do this in reversed order so that 
+  // deeper nodes are exited before the shallower
   //
-  for(var i=start, len=prevs.length;i<len;i++){
+  for(var i=prevs.length-1;i>=start;i--){
     var node = prevs[i];
     
     node.$el || (node.select && node.select(self));
@@ -477,8 +478,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     var args = {}
     if(_.isString(locals)){
       args[locals] = self.data;
-    }else if(locals){
+    }else if(_.isObject(locals)){
       args = locals;
+    }else if(_.isObject(self.data)){
+      args = self.data;
     }
     var html = self.template ? self.template(templ, args) : templ
     self.$el.html(html);
@@ -571,23 +574,25 @@ route.listen = function (cb) {
           
       cb && cb(req);
       
-      req.endPromise.then(function(){
-        if(req.index !== req.nodes.length){
-          if(req.notFound && _.isFunction(req.notFound)){
-            req.index = 1;
-            req._initNode('body')
-            req.notFound.call(req, req);
-          }else{
-            console.log('Undefined route:'+location.hash);
-            return;
+      if(prevUrl == location.hash){
+        req.endPromise.then(function(){
+          if(req.index !== req.nodes.length){
+            if(req.notFound && _.isFunction(req.notFound)){
+              req.index = 1;
+              req._initNode('body')
+              req.notFound.call(req, req);
+            }else{
+              console.log('Undefined route:'+location.hash);
+              return;
+            }
           }
-        }
   
-        req.exec(prevNodes);
-        prevNodes = req.nodes;
+          req.exec(prevNodes);
+          prevNodes = req.nodes;
         
-        route.prevUrl = prevUrl;
-      });
+          route.prevUrl = prevUrl;
+        });
+      }
     }
   }
 
