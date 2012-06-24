@@ -1123,13 +1123,15 @@ Base.prototype.isDestroyed = function(){
 /**
   Interval
   
-  Self-correcting Accurate Interval (+/- 1ms accuracy).
+  Self-correcting Accurate Timer (+/- 1ms accuracy).
   
   Listen to 'time' property for getting the current time at the given
   resolution.
   
   The timer will emit a ended: event when the timer has reached its duration,
   and 'stopped:' if the timer was stopped by the user.
+  
+  TODO: Rename to Timer.
 */
 var Interval = ginger.Interval = Base.extend(function Interval(resolution){
   this.super(Interval);
@@ -2022,10 +2024,13 @@ var View = ginger.View = Base.extend(function View(classNames, css){
 })
 _.extend(View.prototype, {
   render : function($parent){
-    if($parent){
-      this.$parent = $parent
-    }
+    this.$parent = $parent || this.$parent;
     return this.$el.detach().appendTo(this.$parent)
+  },
+  refresh : function(){
+    if(this.$parent){
+      this.render(this.$parent);
+    }
   },
   update : function(){
     // Updates this view.
