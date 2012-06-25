@@ -96,6 +96,11 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       }
     });
   
+    socket.on('resync', function(bucket, id, cb){
+      console.log('helo');
+      self.read(bucket, id, cb);
+    });
+
     socket.on('update', function(bucket, id, args, cb){
       console.log("Update bucket:%s with id:%s and args %s",
         bucket, 
@@ -113,41 +118,13 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       self.embeddedUpdate(parent, parentId, bucket, id, args, cb);
     });
 
-    socket.on('read', function(bucket, id, cb){
-      var Model = self._getModel(bucket, cb);
-      if(Model){
-        console.log(Model);
-        Model.findById(id).exclude(Model.exclude).run(cb);
-      }
+    socket.on('read', function(){self.read.apply(self, Array.prototype.slice.call(arguments))});
+  
+    socket.on('delete', function(id, cb){
+      // TODO: Implement (deletes a model).
     });
   
-    socket.on('find', function(bucket, id, collection, query, cb){
-      var Model = self._getModel(bucket, cb);
-      if(Model){
-        if(collection){
-          if(Model.get){
-            Model.get(id, collection, query, cb);
-          }else{
-            query = query?query:{};
-            Model
-              .findById(id)
-              .populate(collection, query.fields, query.cond, query.options)
-              .run(function(err, doc){
-                if(err){
-                  cb(err);
-                }else{
-                  cb(null, doc[collection]);
-                }
-              });
-          }
-        }else{
-          Model.find(function(err, docs){
-            cb(err, docs);
-          });
-        }
-      }
-    });
-  
+    socket.on('find', function(){self.find.apply(self, Array.prototype.slice.call(arguments))});
     //
     // Add items to a collection.
     //
@@ -278,6 +255,7 @@ Server.prototype.update = function(bucket, id, args, cb){
   var self = this;
   var Model = self._getModel(bucket, cb);
   if(Model){  
+    //console.log(args);
     var keys = _.keys(args);
     Model.findById(id, keys, function(err, doc){
       if(!err && doc && shouldUpdate(keys, args, doc)){
@@ -323,6 +301,43 @@ Server.prototype.embeddedUpdate = function(parent, parentId, bucket, id, args, c
     });
   }
 }
+
+Server.prototype.find = function(bucket, id, collection, query, cb){
+  var self = this;
+  var Model = self._getModel(bucket, cb);
+  if(Model){
+    if(collection){
+      if(Model.get){
+        Model.get(id, collection, query, cb);
+      }else{
+        query = query?query:{};
+        Model
+          .findById(id)
+          .populate(collection, query.fields, query.cond, query.options)
+          .run(function(err, doc){
+            if(err){
+              cb(err);
+            }else{
+              cb(null, doc[collection]);
+            }
+          });
+      }
+    }else{
+      Model.find(function(err, docs){
+        cb(err, docs);
+      });
+    }
+  }
+}
+
+Server.prototype.read = function(bucket, id, cb){
+  self = this;
+  var Model = self._getModel(bucket, cb);
+  if(Model){
+    console.log('trololol', bucket, id);
+    Model.findById(id).exclude(Model.exclude).run(cb);
+  }
+};
 
 Server.prototype._getModel = function(bucket, cb){
   var models = this.models;

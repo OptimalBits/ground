@@ -135,9 +135,6 @@ describe('Model', function(){
           socket.socket.connect(function(){
             done();  
           });
-
-
-
         });
       });
     });
@@ -149,9 +146,10 @@ describe('Model', function(){
       var tempAnimal2;
       
       ginger.once('inSync:', function(){
+
           Animal.findById(tempAnimal._id, function(err, doc){
             expect(tempAnimal._id).to.be(doc._id);
-            expect(tempAnimal2._id).to.be(doc._id);
+            //expect(tempAnimal2._id).to.be(doc._id);
             expect(err).to.be(null);
             expect(doc.legs).to.be(8);
             done();
@@ -161,17 +159,17 @@ describe('Model', function(){
       tempAnimal.set({legs : 8, name:'spider'});
       tempAnimal.save(function(){
         tempAnimal.keepSynced();
-        Animal.findById(tempAnimal.cid, function(err, doc){
-          tempAnimal2 = doc;
-          tempAnimal2.keepSynced();
+        //Animal.findById(tempAnimal.cid, function(err, doc){
+        //  tempAnimal2 = doc;
+        //  tempAnimal2.keepSynced();
           socket.socket.connect();              
-        });
+        //});
       });
     });
 
     it('test delete offline', function(done){
       var tempAnimal = new Animal();
-      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.set({legs : 8, name:'spider-pig'});
 
       ginger.once('inSync:', function(){
           Animal.findById(tempAnimal._id, function(err, doc){
@@ -197,13 +195,19 @@ describe('Model', function(){
       tempAnimal.set({legs : 8, name:'spider'});
       tempAnimal.save(function(){
         tempAnimal.keepSynced();
-        socket.socket.disconnect();
+        
 
-        ginger.ajax.put('http://localhost:8080/animals/'+tempAnimal._id, {legs:7}, function(err, res) { 
-          console.log(err, 'hej');
+        ginger.once('sync:'+tempAnimal._id, function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(tempAnimal.legs).to.be(7);
+            done();    
+          });
+        });
+
+        var obj = {legs:7}
+        ginger.ajax.put('http://localhost:8080/animals/'+tempAnimal._id,obj, function(err, res) { 
+          socket.socket.disconnect();
           socket.socket.connect();
-          done();
-
         });
       });
     });

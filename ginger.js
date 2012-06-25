@@ -535,6 +535,7 @@ _.extend(undoMgr, new EventEmitter())
 var ajaxBase = function(method, url, obj, cb){
   cb = _.isFunction(obj) ? obj : cb;
   obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
+  console.log('data:' + JSON.stringify(obj), obj)
   return {
     type:method,
     url:url,
@@ -554,6 +555,7 @@ var ajax = ginger.ajax = {
     return $.ajax(ajaxBase('GET', url, obj, cb))
   },
   put:function(url, obj, cb){
+    //console.log(JSON.stringify(obj) + 'args')
     return $.ajax(ajaxBase('PUT', url, obj, cb));
   },
   post:function(url, obj, cb){
@@ -571,27 +573,41 @@ var ajax = ginger.ajax = {
 //------------------------------------------------------------------------------
 var Storage = ginger.Storage = {}
 
+Storage.moved = function(bucket, oldId, newId){
+  localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
+}
+
 Storage.create = function(bucket, args, cb){
   var objectId = bucket+'@'+args.cid;
   localStorage[objectId] = JSON.stringify(args)
   cb && cb(null, args.cid);
 }
 Storage.findById = function(bucket, id, cb){
-  var objectId = bucket+'@'+id
-  for (var i=0, len=localStorage.length;i<len;i++){
-    var key = localStorage.key(i)
-    if(key === objectId){
-      var doc = JSON.parse(localStorage[key])
-      if (doc.__persisted){
-        doc._id = doc.cid;  
-      }
-      cb(null, doc);
-      return;
-    }
-  }
-  console.log(objectId)
-  cb(new Error('no localobject!'));  
+  var objectId = bucket+'@'+id;
+  Storage._findById(objectId, cb);
 }
+
+Storage._findById= function(key, cb){
+  var objectId = key;
+  for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i)
+      if(key === objectId){
+        var doc = JSON.parse(localStorage[key]);
+        if (_.isString(doc)){
+          Storage._findById(doc, cb);
+          return;
+        }
+        if (doc.__persisted){
+          doc._id = doc.cid;  
+        }
+        cb(null, doc);
+        return;
+      }
+    }
+    console.log(objectId)
+    cb(new Error('no localobject!'));  
+}
+
 /*
 find:function(bucket, id, collection, query, cb){
   var url = Model.url;
@@ -625,6 +641,23 @@ Storage.all = function(bucket, parent){
   }
   return collection
 }
+
+Storage.find = function(bucket, id, collection, cb){
+  Storage.findById(bucket, id + '@collection', function(err, doc){
+    var result=[];
+    if (err){
+      cb(err);
+    } else {
+      for (var i=0, len=doc.length;i<len;i++){
+        Storage._findById(doc[i], function(err, d){
+          result.push(d)
+        });
+      }
+      cb(null, result);
+    }
+  });
+}
+
 Storage.first = function(bucket, parent){
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
@@ -654,8 +687,16 @@ Storage.update = function(bucket, id, args, cb){
   })
 }
 Storage.add = function(bucket, id, collection, objIds, cb){
-  // TODO: Implement
+  Storage.findById(bucket, id + '@collection', function(err, doc){
+    if (err){
+      doc = [];
+    } 
+    doc.push(collection + '@' + objIds);
+    localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+    cb();
+  });
 },
+
 Storage.remove = function(bucket, id, collection, objIds, cb){
   if(_.isFunction(collection)){
     cb = collection;
@@ -663,7 +704,18 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
     localStorage.removeItem(objectId)
     cb();    
   } else if(objIds.length>0){
-    // TODO: Implement
+    Storage.findById(bucket, id + '@collection', function(err, doc){
+      if (!err){
+        var key = collection + '@' + objIds;
+        for (var i=0, len=doc.length;i<len;i++){
+          if (doc[i] == key){
+            doc.splice(i, 1);
+          }
+        }
+        localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+      }
+      cb(err);
+    });
   }else{
     cb();
   }
@@ -745,10 +797,11 @@ function safeEmit(socket){
     
   if(socket.socket.connected){
     socket.once('disconnect', disconnect);
-    socket.socket.once('disconnected', errorFn);    
+    //socket.socket.once('disconnected', errorFn);    
     socket.emit.apply(socket, args);
   }else{
-    errorFn();
+    console.log('not connected!');
+    errorFn();
   }
 }
 
@@ -757,7 +810,17 @@ ServerStorage.socket = {
     safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    safeEmit(Model.socket,'find', bucket, id, collection, query, cb);
+    console.log(bucket, id, collection, 'items', query);
+    var wrapCb = function(err, ids) {
+      console.log("ids: ",ids);
+      if (err){
+        console.log('err wtf', err);
+        Storage.find(bucket, id, collection, cb);
+      } else {
+        cb(null, ids);  
+      }
+    }
+    safeEmit(Model.socket,'find', bucket, id, collection, query, wrapCb);
   },
   findById:function(bucket, id, cb){
     safeEmit(Model.socket,'read', bucket, id, cb);
@@ -772,14 +835,55 @@ ServerStorage.socket = {
     }
   },
   add:function(bucket, id, collection, items, cb){
+    console.log(bucket, id, collection, 'items', items);
+    var wrapCb = function(err, ids) {
+      console.log(ids, 'wrap');
+
+      Storage.add(bucket, id, collection, items, function(err2){
+        console.log('np save to localStorage!');
+        if (err){
+          console.log('err wtf', err);
+          var obj = {'bucket':bucket, 'id':id, 
+           'cmd':'add', 'transport':'socket', 'collection':collection, 
+           'items':items}
+          localModelQueue.add(obj);
+          cb(null);
+        } else {
+          cb(null, ids);  
+        }
+
+      });
+    }
+    ServerStorage.socket._add(bucket, id, collection, items, wrapCb);
+  },
+  _add:function(bucket, id, collection, items, cb){
     safeEmit(Model.socket,'add', bucket, id, collection, items, cb);
   },
-  remove:function(bucket, id, collection, objIds, cb){
-    if(arguments.length===3){
-      cb = collection;
-    } 
-    safeEmit(Model.socket,'remove', bucket, id, collection, objIds, cb); 
+  remove:function(bucket, id, collection, items, cb){
+    if(arguments.length==3){
+      safeEmit(Model.socket,'remove', bucket, id, collection);
+    }else{
+      var wrapCb = function(err, ids) {
+        Storage.remove(bucket, id, collection, items, function(err2){
+          console.log('np remove from localStorage!');
+          if (err){
+            console.log('err remove wtf', err);
+            var obj = {'bucket':bucket, 'id':id, 
+             'cmd':'remove', 'transport':'socket', 'collection':collection, 
+             'items':items}
+            localModelQueue.add(obj);
+            cb(null);
+          } else {
+            cb(null, ids);  
+          }
+        });
+      }
+      ServerStorage.socket._remove(bucket, id, collection, items, wrapCb);
+    }
+  },_remove:function(bucket, id, collection, items, cb){
+    safeEmit(Model.socket,'remove', bucket, id, collection, items, cb);
   },
+
   count:function(bucket, cb){
     cb(); 
   }
@@ -1133,7 +1237,6 @@ var Queue = ginger.Base.extend(function Queue(args){
     this._queue = [];
     var self = this;
     this._createList = {};
-    //socket.socket.onConnect = function(){self.process(self)};
     socket.socket.on('connect', function(){self.process(self)});
 });
 
@@ -1141,9 +1244,9 @@ _.extend(Queue.prototype,{
     queue:function(queue){
       this._queue = queue;
     },
-    add:function(func){
+    add:function(obj){
       //TODO: MERGE DIFFERENT UPDATES?
-      this._queue.push(func);
+      this._queue.push(obj);
       localStorage.localModelQueue = JSON.stringify(this._queue);
       //this.process();
     },
@@ -1151,6 +1254,9 @@ _.extend(Queue.prototype,{
       _.each(this._queue, function(obj){
         if (obj.id == oldId){
           obj.id == newId;
+        } 
+        if (obj.items && obj.items == oldId){
+          obj.items = newId;
         }
       });
       localStorage.localModelQueue = JSON.stringify(this._queue);
@@ -1162,17 +1268,38 @@ _.extend(Queue.prototype,{
       setTimeout(this.process, 0, this);
     },  
     process:function(self){
+      console.log('process')
       if (!self){
         self = this;
       }
       if (!self._currentTransfer){
         if(self._queue.length){
-          self._currentTransfer = true;
           var obj = self._queue[0];
+          console.log('obj', obj);
+          self._currentTransfer = obj;
+          // Persitent errors sill  block the queue forever!
           switch (obj.cmd){
+            case 'add':
+              ServerStorage[obj.transport]._add(obj.bucket, obj.id, obj.collection, obj.items, function(err){
+                if (err) { 
+                  self._currentTransfer = false;
+                  return err;
+                }
+                self.success();
+              });
+              break;
+            case 'remove':
+              ServerStorage[obj.transport]._remove(obj.bucket, obj.id, obj.collection, obj.items, function(err){
+                if (err) { 
+                  self._currentTransfer = false;
+                  return err;
+                }
+                self.success();
+              });
+              break;
             case 'update':
               ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
-                if (err) {
+                if (err) { 
                   self._currentTransfer = false;
                   return err;
                 }
@@ -1185,16 +1312,19 @@ _.extend(Queue.prototype,{
                   self._currentTransfer = false;
                   return err;
                 } else {
-                  Storage.remove(obj.bucket, obj.id, ginger.noop)
-                  self.fixQueue(obj.id, id);
-                  ginger.emit('created:'+obj.id, id);
-                  self.success();
+                  var oldId = obj.id;
+                  obj.args.cid = id;
+                  Storage.create(obj.bucket, obj.args, function(){
+                    self.fixQueue(obj.id, id);
+                    ginger.emit('created:'+obj.id, id);
+                    self.success();
+                    Storage.moved(obj.bucket, oldId, id);
+                  });
                 }
               });
               break;
             case 'delete':
               ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
-                console.log('deleted!');
                 if (err){
                   self._currentTransfer = false;
                   return err;
@@ -1206,6 +1336,8 @@ _.extend(Queue.prototype,{
         } else {
           ginger.emit('inSync:', self);
         }
+      } else{
+        console.log('busy with ', self._currentTransfer);
       }
     }
 });
@@ -1515,7 +1647,8 @@ Model.prototype.local = function(){
         Storage.create(bucket, self.toJSON())
       },
       update: function(args){
-        Storage.update(bucket, self.cid, args)
+        console.log(args)
+        Storage.update(bucket, self.cid, args, noop)
       },
       remove: function(){
         Storage.remove(bucket, self.cid, noop)
@@ -1602,7 +1735,7 @@ Model.prototype.update = function(args, transport, cb){
                'cmd':'update', 'transport':transport }
             localModelQueue.add(obj);
           }
-          cb(err);
+          cb(null);
       });
     }else{
       ServerStorage[transport].update(bucket, self._id, args, function(err){
@@ -1612,7 +1745,7 @@ Model.prototype.update = function(args, transport, cb){
              'cmd':'update', 'transport':transport }
           localModelQueue.add(obj);
         }
-        cb(err)
+        cb(null)
       });
     }
   }else{
@@ -1620,9 +1753,11 @@ Model.prototype.update = function(args, transport, cb){
       if(!err){
         if(id){
           self.local().remove()
-          self.cid = self._id = id
+          self._id = id
+          self.cid = id
           self.__persisted = true;
           self.local().save()
+          console.log('created', self)
           cb(null, id)
         }else{
           self.local().update(args)
@@ -1633,7 +1768,7 @@ Model.prototype.update = function(args, transport, cb){
         var obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
            'cmd':'create', 'transport':transport }
         localModelQueue.add(obj);
-        cb(err);
+        cb(null);
       }
     })
   }
@@ -1669,6 +1804,7 @@ Model.prototype.delete = function(transport, cb){
       } else {
         self.emit('deleted:', self._id);
       }
+      self.local().remove()
       cb && cb(err);
     });
   }else{
@@ -1686,19 +1822,27 @@ Model.prototype.keepSynced = function(){
     var socket = Model.socket;
     
     var newDoc, id = self._id;
-    assert(self._id, 'model requires server id');
+    //assert(self._id, 'model requires server id');
     self._keepSynced = true;
 
     if (self._id){
       socket.emit('sync', id);
 
-      socket.on('reconnect', function(){
-        socket.emit('resync', id, self.__rev);
-      })
+      socket.on('connect', function(){
+        safeEmit(Model.socket, 'resync', self.__bucket, id, function(err, doc){
+          if (!err){
+            self.set(doc, {sync:'false'});
+            //self.local().update(doc);
+            ginger.emit('sync:'+id);
+          } else {
+            console.log('Error with resync of ', self.__bucket, id)
+          }
+        });
+      });
       
       socket.on('update:'+id, function(doc){
         newDoc = doc;
-        self.set(doc, {sync:'false'});
+        self.set(doc, {sync:false});
         self.local().update(doc);
       });
       
@@ -1718,7 +1862,9 @@ Model.prototype.keepSynced = function(){
   }
   
   self.on('changed:', function(doc, args){
-    if((doc !== newDoc) && (!args || (args.sync != false))){
+    console.log('received changed with args', args);
+    if((doc !== newDoc) && (!args || (args.sync != 'false'))){
+      console.log('omfg IM IN THE IF');
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
       });
@@ -2078,7 +2224,7 @@ Collection.prototype._add = function(item, cb, opts, pos){
           ServerStorage[transport].add(self.parent.__bucket, 
                                        self.parent._id,
                                        item.__bucket,
-                                       item._id || item,
+                                       item.cid,
                                        function(err, ids){
             if(!err && _.isArray(ids)){
               item.set('_id', ids[0]);
@@ -2090,7 +2236,7 @@ Collection.prototype._add = function(item, cb, opts, pos){
         }
       }  
       
-      if(item._id || (opts && opts.embedded)){
+      if(item.__persisted || (opts && opts.embedded)){
         storageAdd()
       }else{
         item.save(function(err){

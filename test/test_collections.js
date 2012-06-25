@@ -20,6 +20,7 @@ describe('Collections1', function(){
 
   it('save to server', function(done){
     zoo.save(function(err){
+      console.log(err);
       expect(err).to.be(null);
       zoo.all(Animal, function(err, animals){
         expect(err).to.be(null);
@@ -214,13 +215,92 @@ describe('Collections1', function(){
         zoo.keepSynced();
         zoo.all(Animal, function(err, animals){
           var tiger = new Animal({name:"tiger"});
-          animals.on('removed:', function(item){
+          animals.once('removed:', function(item){
             expect(item).to.be.eql(tiger);
             done();
           });
           
           animals.add(tiger, function(err){
             tiger.delete();
+          });
+        });
+      });
+    });
+  });
+
+
+  describe('Offline', function(){
+    it('add item to collection', function(done){
+      zoo = new Zoo();
+      zoo.keepSynced();
+      zoo.save(function(err){
+        zoo.all(Animal, function(err, animals){
+          expect(err).to.be(null);
+          expect(animals).to.be.an(Object);
+          
+          socket.disconnect();
+          animals.add(new Animal({name:"tiger"}), function(err){
+            expect(err).to.be(null);
+            Zoo.findById(zoo._id, function(err, doc){
+              expect(err).to.be(null);
+              expect(doc).to.be.an(Object);
+              ginger.once('inSync:', function(){
+                doc.all(Animal, function(err, collection){
+                  expect(err).to.be(null);
+                  expect(collection).to.be.an(Object);
+                  expect(collection.items).to.be.an(Array);
+                  expect(collection.items.length).to.be(1);
+                  expect(animals.items.length).to.be(1);
+                  doc.release();
+                  collection.release();
+                  done();
+                });
+              });
+
+              doc.all(Animal, function(err, collection){
+                expect(err).to.be(null);
+                expect(collection).to.be.an(Object);
+                expect(collection.items).to.be.an(Array);
+                expect(collection.items.length).to.be(1);
+                expect(animals.items.length).to.be(1);
+                socket.socket.connect();
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('remove item while offline', function(done){
+      zoo.all(Animal, function(err, animals){
+        expect(err).to.be(null);
+        expect(animals).to.be.an(Object);
+        socket.disconnect();
+        animals.remove(animals.first().cid, function(err){
+          console.log('omfg', err);
+          expect(err).to.be(null);
+
+          Zoo.findById(zoo._id, function(err, doc){
+            expect(err).to.be(null);
+            expect(doc).to.be.an(Object);
+            ginger.once('inSync:', function(){
+              //socket.disconnect();
+              doc.all(Animal, function(err, collection){
+                expect(err).to.be(null);
+                expect(collection).to.be.an(Object);
+                expect(collection.items).to.be.an(Array);
+                expect(collection.items.length).to.be(0);
+                expect(animals.items.length).to.be(0);
+                doc.release();
+                collection.release();
+                animals.release();
+                done();
+              });
+            });
+            doc.all(Animal, function(err, collection){
+              expect(animals.items.length).to.be(0);
+              socket.socket.connect();
+            });
           });
         });
       });
