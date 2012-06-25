@@ -84,7 +84,16 @@ var ginger = {}
 //
 // Utils
 //
-var noop = ginger.noop = function(){}
+var noop = ginger.noop = function(){}, 
+  assert = function(cond, msg){
+    if(!cond){
+      console.log('Assert failed:%s',msg);
+    }
+  };
+  
+ginger.refresh = function(){
+  window.location.replace('');
+}
 
 ginger.uuid = uuid;
 
@@ -205,226 +214,221 @@ var asyncForEach = ginger.asyncForEach = function(array, fn, cb) {
 // https://github.com/Wolfy87/EventEmitter
 //
 
-var EventEmitter = function() {}
+var EventEmitter = function() {};
+_.extend(EventEmitter.prototype,{
 
-EventEmitter.prototype._getListeners = function(){
-  this._listeners = this._listeners || {}
-  return this._listeners
-}
+  _getListeners : function(){
+    this._listeners = this._listeners || {}
+    return this._listeners
+  },
 
-EventEmitter.prototype._getNamespaces = function(){
-  this._namespaces = this._namespaces || {}
-  return this._namespaces
-}
+  _getNamespaces : function(){
+    this._namespaces = this._namespaces || {}
+    return this._namespaces
+  },
 
-/**
-  * Assigns a listener to the specified event
-  * 
-  * @param {String} eventName Name of the event to assign the listener to
-  * @param {Function} listener Function to be executed when the specified event is emitted
-  * @returns {Object} The current instance of EventEmitter to allow chaining
-  */
-EventEmitter.prototype.on = function(eventNames, listener) {
-  var events = eventNames.split(' '), listeners = this._getListeners();
-  for(var i=0, len=events.length;i<len;i++){
-    var eventAndNamespace = events[i].split('/'), event, namespace;
-    
-    if(eventAndNamespace.length > 1){
-      namespace = eventAndNamespace[0];
-      event = eventAndNamespace[1];
-    }else{
-      namespace = null;
-      event = eventAndNamespace[0];
-    }
-
-    if(listeners[event]) {
-      listeners[event].push(listener);
-    }else{
-      listeners[event] = [listener];
-    }
-
-    if(namespace){
-      var namespaces = this._getNamespaces();
-      
-      namespaces[namespace] = namespaces[namespace] || {}
-      if(namespaces[namespace][event]){
-        namespaces[namespace][event].push(listener);
-      }else{
-        namespaces[namespace][event] = [listener];
-      }
-    }
-    
-    this.emit('newListener', event, listener);
-  }
-  return this;
-}
-
-/**
-  * Emits the specified event running all listeners associated with it
-  * 
-  * @param {String} eventName Name of the event to execute the listeners of
-  * @param {Mixed} arguments You can pass as many arguments as you want after the event name. These will be passed to the listeners
-  * @returns {Object} The current instance of EventEmitter to allow chaining
-  */
-EventEmitter.prototype.emit = function(eventName) {
-  var listeners = this._getListeners()
-  if(listeners['*']){
-    this._fire(listeners['*'], arguments)
-  }
-  if(listeners[eventName]){
-    var args = _.rest(arguments)
-    this._fire(listeners[eventName], args)
-  }		
-  return this
-}
-
-EventEmitter.prototype._fire = function(eventListeners, args){
-  for(var i=0, len=eventListeners.length; i < len; i ++) {
-    if(eventListeners[i]){
-      eventListeners[i].apply(this, args);
-    }
-  }
-}
-
-/*
-EventEmitter.prototype._fire = function(eventListeners, args){
-  for(var i=0, len=eventListeners.length; i < len; i ++) {
-    eventListeners[i].apply(this, args);
-  }
-}*/
-	
-/**
-  * Returns an array of listeners for the specified event name
-  * 
-  * @param {String} eventName Name of the event to get the listeners for
-  * @returns {Array} An array of listeners for the specified event
-  */
-EventEmitter.prototype.listeners = function(eventName) {
-  var listeners = this._getListeners()
-  return listeners[eventName] = listeners[eventName] || [];
-}
-
-/**
-  * Assigns a listener to the specified event removes its self after the first run
-  * 
-  * @param {String} eventName Name of the event to assign the listener to
-  * @param {Function} listener Function to be executed when the specified event is emitted
-  * @returns {Object} The current instance of EventEmitter to allow chaining
-  */
-EventEmitter.prototype.once = function(eventName, listener) {
-  var ee = this
+  /**
+    * Assigns a listener to the specified event
+    * 
+    * @param {String} eventName Name of the event to assign the listener to
+    * @param {Function} listener Function to be executed when the specified event is emitted
+    * @returns {Object} The current instance of EventEmitter to allow chaining
+    */
+  on : function(eventNames, listener) {
+    var events = eventNames.split(' '), listeners = this._getListeners();
   
-  var w = function wrapper() {
-			listener.apply(null, arguments);
-      ee.removeListener(eventName, wrapper);
-		}
-		
-		return ee.addListener(eventName, w);
-};
-	
-/**
-  * Removes the specified listener
-  * 
-  * @param [{String}] eventName Name of the event to remove the listener from
-  * @param [{Function}] listener Listener function to be removed
-  * @returns {Object} The current instance of EventEmitter to allow chaining
-  */
-EventEmitter.prototype.off = function(eventNames, listener) {
-  if(listener){
-    var events = eventNames.split(' ')
-      
     for(var i=0, len=events.length;i<len;i++){
-      this._removeListener(events[i], listener);
+      var eventAndNamespace = events[i].split('/'), event, namespace;
+    
+      if(eventAndNamespace.length > 1){
+        namespace = eventAndNamespace[0];
+        event = eventAndNamespace[1];
+      }else{
+        namespace = null;
+        event = eventAndNamespace[0];
+      }
+    
+      if(listeners[event]) {
+        listeners[event].push(listener);
+      }else{
+        listeners[event] = [listener];
+      }
+    
+      if(namespace){
+        var namespaces = this._getNamespaces();
+        namespaces[namespace] = namespaces[namespace] || {}
+        if(namespaces[namespace][event]){
+          namespaces[namespace][event].push(listener);
+        }else{
+          namespaces[namespace][event] = [listener];
+        }
+      }
+    
+      this.emit('newListener', event, listener);
     }
-  }else{
-    this.removeAllListeners(eventNames);
-  }
-  
-  return this;
-};
+    return this;
+  },
 
-/**
-  * Removes all listeners from the specified (namespaced) events
-  * 
-  * @param {String} eventName Name of the event to remove the listeners from
-  * @returns {Object} The current instance of EventEmitter to allow chaining
-  */
-EventEmitter.prototype.removeAllListeners = function(eventNames) {
-  var listeners = this._listeners;
+  /**
+    * Emits the specified event running all listeners associated with it
+    * 
+    * @param {String} eventName Name of the event to execute the listeners of
+    * @param {Mixed} arguments You can pass as many arguments as you want after the event name. These will be passed to the listeners
+    * @returns {Object} The current instance of EventEmitter to allow chaining
+    */
+  emit : function(eventName) {
+    var listeners = this._getListeners()
+    if(listeners['*']){
+      this._fire(listeners['*'], arguments)
+    }
+    if(listeners[eventName]){
+      var args = _.rest(arguments)
+      this._fire(listeners[eventName], args)
+    }		
+    return this
+  },
+  	
+  /**
+    * Returns an array of listeners for the specified event name
+    * 
+    * @param {String} eventName Name of the event to get the listeners for
+    * @returns {Array} An array of listeners for the specified event
+    */
+  listeners : function(eventName) {
+    var listeners = this._getListeners()
+    return listeners[eventName] = listeners[eventName] || [];
+  },
+
+  /**
+    * Assigns a listener to the specified event removes its self after the first run
+    * 
+    * @param {String} eventName Name of the event to assign the listener to
+    * @param {Function} listener Function to be executed when the specified event is emitted
+    * @returns {Object} The current instance of EventEmitter to allow chaining
+    */
+  once : function(eventName, listener) {
+    var ee = this
   
-  if(listeners){
-    if(eventNames){
+
+    function wrapper() {
+		  listener.apply(null, arguments);
+      ee.removeListener(eventName, wrapper);
+    }
+		return ee.addListener(eventName, wrapper);
+  },
+	
+  /**
+    * Removes the specified listener
+    * 
+    * @param [{String}] eventName Name of the event to remove the listener from
+    * @param [{Function}] listener Listener function to be removed
+    * @returns {Object} The current instance of EventEmitter to allow chaining
+    */
+  off : function(eventNames, listener) {
+    if(listener){
       var events = eventNames.split(' ')
+      
       for(var i=0, len=events.length;i<len;i++){
-        this._removeNamespacedEvent(events[i], listeners)
+        this._removeListener(events[i], listener);
       }
     }else{
-      delete this['_listeners'];
+      this.removeAllListeners(eventNames);
     }
-  }
-  return this;
-}
-EventEmitter.prototype.namespace = function(namespace){
-  var self = this;
-  var namespaced = {
-    self:self, 
-    namespace:namespace, 
-    on:function(event, listener){
-      this.self.on(this.namespace+'/'+event, listener);
-      return namespaced;
-    },
-    off:function(event){
-      var eventName = this.namespace+'/';
-      event && (eventName += event);
-      this.self.off(eventName);
-      return namespaced;
-    }
-  }
-  return namespaced;
-}
-EventEmitter.prototype._removeListener = function(event, listener){
- var listeners = this._listeners, index;
-     
-  if(listeners && listeners[event]) { 
-    index = _.indexOf(listeners[event], listener);
-    if(index !== -1) {
-      listeners[event].splice(index, 1);
-    }
-  }
-}
+    return this;
+  },
 
-EventEmitter.prototype._removeNamespacedEvent = function(event, listeners){
-  var namespaces = this._namespaces, eventAndNamespace = event.split('/'), event;
-      
-  if(eventAndNamespace.length === 1){
-    event = eventAndNamespace[0];
-    listeners && delete listeners[event]
-    namespaces && delete namespaces[event];
-  }else if(namespaces){
-    var namespace = eventAndNamespace[0];
-    event = eventAndNamespace[1];
-        
-    if(namespaces[namespace]){
-      var _listeners;
-      if(event == ''){
-        var events = namespaces[namespace];
-        for(event in events){
-          var listeners = events[event];
-          for(var i=0, len=listeners.length;i<len;i++){
-            this._removeListener(event, listeners[i]);
-          }   
+  /**
+    * Removes all listeners from the specified (namespaced) events
+    * 
+    * @param {String} eventName Name of the event to remove the listeners from
+    * @returns {Object} The current instance of EventEmitter to allow chaining
+  */
+  removeAllListeners : function(eventNames) {
+    var listeners = this._listeners;
+  
+    if(listeners){
+      if(eventNames){
+        var events = eventNames.split(' ')
+        for(var i=0, len=events.length;i<len;i++){
+          this._removeNamespacedEvent(events[i], listeners)
         }
       }else{
-        _listeners = _.union(_listeners, namespaces[namespace][event]);
-        if(_listeners){
-          for(var i=0, len=listeners.length;i<len;i++){
-            this._removeListener(event, _listeners[i]);
+        delete this['_listeners'];
+      }
+    }
+    return this;
+  },
+  
+  namespace : function(namespace){
+    var self = this;
+    var namespaced = {
+      self:self, 
+      namespace:namespace, 
+      on:function(event, listener){
+        this.self.on(this.namespace+'/'+event, listener);
+        return namespaced;
+      },
+      off:function(event){
+        var eventName = this.namespace+'/';
+        event && (eventName += event);
+        this.self.off(eventName);
+        return namespaced;
+      }
+    }
+    return namespaced;
+  },
+  
+  _fire : function(eventListeners, args){
+    for(var i=0, len=eventListeners.length; i < len; i ++) {
+      eventListeners[i].apply(this, args);
+    }
+  },
+  
+  _removeListener : function(event, listener){
+   var listeners = this._listeners, index;
+     
+    if(listeners && listeners[event]) { 
+      index = _.indexOf(listeners[event], listener);
+      if(index !== -1) {
+        listeners[event].splice(index, 1);
+      }
+    }
+  },
+
+  _removeNamespacedEvent : function(event, listeners){
+    var namespaces = this._namespaces, eventAndNamespace = event.split('/'), event;
+      
+    if(eventAndNamespace.length === 1){
+      event = eventAndNamespace[0];
+      listeners && delete listeners[event]
+      namespaces && delete namespaces[event];
+    }else if(namespaces){
+      var namespace = eventAndNamespace[0];
+      event = eventAndNamespace[1];
+        
+      if(namespaces[namespace]){
+        var _listeners;
+        if(event == ''){
+          var events = namespaces[namespace];
+          for(event in events){
+            var listeners = events[event];
+            for(var i=0, len=listeners.length;i<len;i++){
+              this._removeListener(event, listeners[i]);
+            }
+          }
+        }else{
+          _listeners = _.union(_listeners, namespaces[namespace][event]);
+          if(_listeners){
+            for(var i=0, len=listeners.length;i<len;i++){
+              this._removeListener(event, _listeners[i]);
+            }
           }
         }
       }
     }
-  }
-}
+  },
+  
+});
 
 /**
   Aliases
@@ -444,78 +448,80 @@ var UndoManager = function(){
   this._group = null
 }
 
-UndoManager.prototype.beginUndo = function(undoFn, name){
-  this._undoFn = undoFn
-  this._name = name
-}
-
-UndoManager.prototype.endUndo = function(doFn, fn){
-  this.action(doFn, this._undoFn, fn, this._name)
-  this._undoFn = null
-}
-
-UndoManager.prototype.action = function(doFn, undoFn, fn, name){
-  this.undones.length = 0
-  name = _.isString(fn)?fn:name
-  var action = {do:doFn, undo:undoFn, fn:fn, name:name}
-  if(_.isNull(this._group)){
-    this.actions.push(action)
-  }else{
-    this._group.push(action)
-  }
-  doFn(fn);
-}
-
-UndoManager.prototype.beginGroup = function(name){
-  this._group = {name: name, actions:[]}
-}
-
-UndoManager.prototype.endGroup = function(){
-  ;(function(group){
-    this.action( function(){
-      for(var i=0, len = group.length; i<len; i++){
-        group[i].action.do(group[i].action.fn)
-      }
-    },
-    function(){
-      for(var i=0, len=group.length; i<len;i++){
-        group[i].action.undo(group[i].action.fn)
-      }
-    },
-    noop,
-    group.name)
-  }(this._group))
+_.extend(UndoManager.prototype,{
+  beginUndo : function(undoFn, name){
+    this._undoFn = undoFn
+    this._name = name
+  },
   
-  this._group = null
-}
+  endUndo : function(doFn, fn){
+    this.action(doFn, this._undoFn, fn, this._name)
+    this._undoFn = null
+  },
 
-UndoManager.prototype.canUndo = function(){
-  return this.actions.length > 0;
-}
- 
-UndoManager.prototype.canRedo = function(){
-  return this.undones.length > 0;
-}
- 
-UndoManager.prototype.undo = function(){
-  var action = this.actions.pop();
-  if(action){
-    action.undo(action.fn)
-    var name = action.name || ''
-    this.emit('undo', name)
-    this.undones.push(action);
-  }
-}
+  action : function(doFn, undoFn, fn, name){
+    this.undones.length = 0
+    name = _.isString(fn)?fn:name
+    var action = {do:doFn, undo:undoFn, fn:fn, name:name}
+    if(this._group){
+      this.actions.push(action)
+    }else{
+      this._group.push(action)
+    }
+    doFn(fn);
+  },
 
-UndoManager.prototype.redo = function(){
-  var action = this.undones.pop();
-  if(action){
-    action.do(action.fn)
-    var name = action.name || ''
-    this.emit('redo', name)
-    this.actions.push(action);
+  beginGroup : function(name){
+    this._group = {name: name, actions:[]}
+  },
+
+  endGroup : function(){
+    ;(function(group){
+      this.action( function(){
+        for(var i=0, len = group.length; i<len; i++){
+          group[i].action.do(group[i].action.fn)
+        }
+      },
+      function(){
+        for(var i=0, len=group.length; i<len;i++){
+          group[i].action.undo(group[i].action.fn)
+        }
+      },
+      noop,
+      group.name)
+    }(this._group))
+  
+    this._group = null
+  },
+
+  canUndo : function(){
+    return this.actions.length > 0;
+  },
+ 
+  canRedo : function(){
+    return this.undones.length > 0;
+  },
+
+  undo : function(){
+    var action = this.actions.pop();
+    if(action){
+      action.undo(action.fn)
+      var name = action.name || ''
+      this.emit('undo', name)
+      this.undones.push(action);
+    }
+  },
+
+  redo : function(){
+    var action = this.undones.pop();
+    if(action){
+      action.do(action.fn)
+      var name = action.name || ''
+      this.emit('redo', name)
+      this.actions.push(action);
+    }
   }
-}
+});
 
 var undoMgr = ginger.undoMgr = new UndoManager()
 _.extend(undoMgr, new EventEmitter())
@@ -1215,13 +1221,15 @@ var localModelQueue = new Queue();
 /**
   Interval
   
-  Self-correcting Accurate Interval (+/- 1ms accuracy).
+  Self-correcting Accurate Timer (+/- 1ms accuracy).
   
   Listen to 'time' property for getting the current time at the given
   resolution.
   
   The timer will emit a ended: event when the timer has reached its duration,
   and 'stopped:' if the timer was stopped by the user.
+  
+  TODO: Rename to Timer.
 */
 var Interval = ginger.Interval = Base.extend(function Interval(resolution){
   this.super(Interval);
@@ -1678,8 +1686,9 @@ Model.prototype.keepSynced = function(){
     var socket = Model.socket;
     
     var newDoc, id = self._id;
+    assert(self._id, 'model requires server id');
     self._keepSynced = true;
-    
+
     if (self._id){
       socket.emit('sync', id);
 
@@ -1695,7 +1704,7 @@ Model.prototype.keepSynced = function(){
       
       socket.on('delete:'+id, function(){
         self.local().remove();
-        self.emit('delete', self._id)
+        self.emit('delete', self.cid);
       });
     } else {
       ginger.on('created:'+self.cid, function(_id){
@@ -1703,7 +1712,7 @@ Model.prototype.keepSynced = function(){
         self.cid = _id;
         self.__persisted = true;
         self._keepSynced = false;
-        self.keepSynced(); //Haxx?
+        self.keepSynced();
       });
     }
   }
@@ -1898,15 +1907,13 @@ Collection.prototype.remove = function(itemIds, cb, nosync){
       item.off('deleted:', self._deleteFn);
       self.items.splice(index, 1);
       if(item._id){
-        if(self._keepSynced){
-          if(nosync !== true){
-            ServerStorage[transport].remove(
-              self.parent.__bucket, 
-              self.parent._id,
-              self.model.__bucket,
-              item._id,
-              fn);
-          }
+        if(self._keepSynced && (nosync !== true) && self.parent){
+          ServerStorage[transport].remove(
+            self.parent.__bucket, 
+            self.parent._id,
+            self.model.__bucket,
+            item._id,
+            fn);
         }else{
           self._removed.push(itemId);
           fn(null);
@@ -2021,7 +2028,9 @@ Collection.prototype.destroy = function(){
       this._keepSynced && this.socket.emit('unsync', id);
     }
   }
-  this.each(function(item){item.release()});
+  this.each(function(item){
+    item.release()
+  });
   this.items = null;
 }
 Collection.prototype._initItems = function(items){
@@ -2044,11 +2053,11 @@ Collection.prototype._sortedAdd = function(item){
 Collection.prototype._add = function(item, cb, opts, pos){
   var self = this;
   
+  cb = cb || noop;
   this._formatters && item.format(this._formatters);
   
   if(self.findById(item.cid)){
-    cb && cb(null);
-    return;
+    return cb(null);
   }
   
   if(self.sortByFn){
@@ -2065,31 +2074,39 @@ Collection.prototype._add = function(item, cb, opts, pos){
     var transport = this.model.transport();
     if(!opts || (opts.nosync !== true)){
       function storageAdd(){
-        ServerStorage[transport].add(self.parent.__bucket, 
-                                     self.parent._id,
-                                     item.__bucket,
-                                     item._id || item,
-                                     function(err, ids){
-         if(!err && _.isArray(ids)){
-           item.set('_id', ids[0]);
-         }
-         cb(err);         
-       });    
+        if(self.parent){
+          ServerStorage[transport].add(self.parent.__bucket, 
+                                       self.parent._id,
+                                       item.__bucket,
+                                       item._id || item,
+                                       function(err, ids){
+            if(!err && _.isArray(ids)){
+              item.set('_id', ids[0]);
+            }
+            cb(err);         
+          });
+        }else{
+         cb();
+        }
       }  
+      
       if(item._id || (opts && opts.embedded)){
         storageAdd()
       }else{
         item.save(function(err){
-          err && cb(err);
-          !err && storageAdd();
+          if(!err){
+            storageAdd();
+          }else{
+            cb();
+          }
         });
       }
     }else{
-      cb && cb(null);
+      cb(null);
     }
   }else{
     self._added.push(item); // We need to keep pos as well here...
-    cb && cb(null);
+    cb(null);
   }
 }
 
@@ -2158,10 +2175,13 @@ var View = ginger.View = Base.extend(function View(classNames, css){
 })
 _.extend(View.prototype, {
   render : function($parent){
-    if($parent){
-      this.$parent = $parent
-    }
+    this.$parent = $parent || this.$parent;
     return this.$el.detach().appendTo(this.$parent)
+  },
+  refresh : function(){
+    if(this.$parent){
+      this.render(this.$parent);
+    }
   },
   update : function(){
     // Updates this view.
@@ -2711,6 +2731,23 @@ Views.Modal.prototype.enable = function() {
 }
 Views.Modal.prototype.content = function(content){
   this.$content.html(content);
+}
+/* Empty all modal forms*/
+Views.Modal.prototype.empty = function() {
+  this.$el.find(':input').each(function() {
+    switch(this.type) {
+      case 'password':
+      case 'select-multiple':
+      case 'select-one':
+      case 'text':
+      case 'textarea':
+        $(this).val('');
+        break;
+      case 'checkbox':
+      case 'radio':
+        this.checked = false;
+    }
+  });
 }
 //------------------------------------------------------------------------------
 Views.Button = View.extend( function Button(options){

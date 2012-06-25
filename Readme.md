@@ -344,9 +344,35 @@ i.e., they do not wait for the next event loop. The reason for this is to provid
 performance and responsivity. The major implication of this is that you have always to place
 your listeners after you emit, otherwise the event will be missed. 
 
-##Bindings
+##Property bindings
+
+
+##Reference Counting
+
+In Ground we provide a reference counting mechanism. Reference counting is a simple yet quite effective method 
+to avoid memory and event leaks. The Base class in Ground provides two methods: retain and release. The former 
+is used to increase the reference counter, its called retain because it expresses that the object that called 
+it "retains" a reference to it. It is like sharing the ownership of the retained object. It also means that
+the object that called *retain* is now responsible of calling *release* when it is not needed anymore.
+ 
+Everytime *release* is called, the reference counter is decremented, and when it reaches zero, the object is
+destroyed (by calling the method *destroy*, which is also part of the Base class, although it is quite often
+overrided to perform customized clean ups for your classes).
+
+It may seem strange that a we need a reference counting mechanism when using a language that includes garbage
+collection. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
+the garbage collector is only able to free objects that are not referenced by any other object. In complex 
+applications, it is necessary some structure mechanism in order to un-refernce the objects so that the 
+garbage collector can do its job. Also, besides memory, we also want to avoid *event leaks*, which occour when
+some event is still listening even if we do not care of it anymore. In Ground, when an object is destroyed,
+all the events associated to it are also removed.
 
 #Undo / Redo Manager
+
+
+#Offline
+
+
 
 #Utilities
 

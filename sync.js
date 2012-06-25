@@ -1,5 +1,5 @@
 /**
-  Server Synchronization module for GingerJS Models.
+  Server Synchronization module for Ground Models and Collections.
 
   Requires NodeJS >= 0.6.10
   
@@ -7,7 +7,6 @@
   servers can be deployed, as long as they have access to a common redis server,
   the synchronization will work transparently between them.
   
-
   TODO:
     - Circular updates fix.
     - Lock Mechanism.
@@ -61,7 +60,7 @@ var sync = function(pubClient, subClient, sockets, sio){
 
     subClient.subscribe('delete:');
     subClient.on('message', function(channel, id){
-      sockets.in(id).emit(channel+id, id);
+      sio.in(id).emit(channel+id, id);
     });
   
     subClient.psubscribe('add:*')
