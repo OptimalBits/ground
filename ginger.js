@@ -2025,28 +2025,27 @@ var View = ginger.View = Base.extend(function View(classNames, css){
 _.extend(View.prototype, {
   render : function($parent){
     this.$parent = $parent || this.$parent;
-    return this.$el.detach().appendTo(this.$parent)
+    this.$parent && this.$el.detach().appendTo(this.$parent);
+    return this.$el;
   },
   refresh : function(){
-    if(this.$parent){
-      this.render(this.$parent);
-    }
+    this.$parent && this.render(this.$parent);
   },
   update : function(){
     // Updates this view.
     /*
       Updating can imply that if this view is composed of subviews, or of
       many DOM elements, that this DOM elements are destroyed and recreated,
-      (or subvies are removed and re-rendered), but the most important thing
+      (or subviews are removed and re-rendered), but the most important thing
       is that the element that this view returned in render, is still the same after
       the update.
     */
   },
   clean : function(){
-    if(this.$el) this.$el.detach()
+    this.$el.detach();
   },
   remove : function(){
-    if(this.$el) this.$el.remove()
+    this.$el.remove()
   },
   disable : function(disable){
     console.log(this+" does not implement disable")
