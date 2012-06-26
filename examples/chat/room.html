@@ -35,14 +35,16 @@
 
     curl(['ginger', 'ginger/route'], function(ginger, route) {
 
-      route.root = '/';
+      route.root = '/room.html';
       route.listen(function(req) {
+        req.get(function() {
           // Route to room
           req.get(':roomid', function() {
             console.log(req.params['roomid']);
             
             enterRoom(req.params['roomid']);
           });
+        });
       });
 
       function enterRoom(roomId) {
