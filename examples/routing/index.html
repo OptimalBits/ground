@@ -37,8 +37,11 @@
       route.root = '/';
 
       route.listen(function(req) {
-        // Use Underscores micro-templates
-        req.use('template', _.template);
+
+        // In this example we use Underscores micro-templates which is the default
+        // template engine. In order to uae a different engine the following code
+        // can be used:
+        // req.use('template', myTemplateEngine);
 
 
         // Define the route hierachy

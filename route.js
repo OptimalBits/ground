@@ -152,6 +152,9 @@ var Request = function(url, prevNodes){
   this.nodePromise.resolve();
   
   this.endPromise = new Promise();
+
+  // Use underscore micro-templates by default
+  this.template = _.template;
 }
 
 /**
