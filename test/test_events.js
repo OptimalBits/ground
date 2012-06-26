@@ -146,6 +146,21 @@ describe('Events', function(){
     
     expect(counter).to.be(0);
   });
+
+  it('multiple \'once\' registered', function(done){
+    var counter = 0;
+    obj.once('test', function(){
+      counter+=1;
+    });
+    obj.once('test', function(){
+      counter+=1;
+    });
+
+    obj.emit('test');
+
+    expect(counter).to.be(2);
+    done();
+  });
 });
 
 });

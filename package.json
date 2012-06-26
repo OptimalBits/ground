@@ -8,8 +8,10 @@
     , "socket.io": "0.9.6"
   },
   "devDependencies": {
-     "mocha": "~1.0.3"
-    ,"should": "~0.5.1"
+      "mocha": "~1.0.3"
+    , "should": "~0.5.1"
+    , "express": "2.5.9"
+    , "mongoose": "2.5.10"
   },
   "scripts":{
     "test"     : "mocha tests/*"

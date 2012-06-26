@@ -12,6 +12,7 @@ describe('Model', function(){
   before(function(done){  
     animal.save(function(){
       animal.keepSynced();
+      //console.log(JSON.stringify(animal));
       done()
     });
   });
@@ -30,9 +31,9 @@ describe('Model', function(){
   
   describe('findById', function(){
     it('finds the animal', function(done){
-      Animal.findById(animal._id, function(err, doc){
+      Animal.findById(animal.cid, function(err, doc){
         expect(err).to.be(null);
-        expect(doc._id).to.eql(animal._id);
+        expect(doc.cid).to.eql(animal.cid);
         doc.release();
         done();
       });
@@ -43,6 +44,7 @@ describe('Model', function(){
       animal.set('name', 'foobar');
       animal.save(function(err){
         expect(err).to.be(null);
+        expect(animal).to.have.property('_id');
         Animal.findById(animal._id, function(err, doc){
           expect(err).to.be(null);
           expect(doc).to.have.property('_id');
@@ -56,15 +58,7 @@ describe('Model', function(){
     });
     it('another instance propagates changes', function(done){
       var otherAnimal;
-      Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
-        expect(doc).to.have.property('_id');
-        expect(doc._id).to.eql(animal._id);
-        doc.keepSynced();
-        doc.set({legs:4, tail:true});
-        otherAnimal = doc;
-      });
-      
+
       animal.on('changed:', function(){
         expect(animal).to.have.property('legs');
         expect(animal).to.have.property('tail');
@@ -72,6 +66,15 @@ describe('Model', function(){
         expect(animal.tail).to.be(true);
         otherAnimal.release();
         done();
+      });
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:4, tail:true});
+        otherAnimal = doc;
       });
     });
   });
@@ -102,7 +105,114 @@ describe('Model', function(){
     
   });
   
+    describe('linus', function(){
+
+    it('test disconnect', function(done){
+      var otherAnimal;
+      animal.off();
+
+      var orgEmit = socket.emit
+
+      socket.emit = function(){
+        socket.socket.disconnect();
+       // arguments;
+        //orgEmit(arguments);
+      }
+
+      Animal.findById(animal._id, function(err, doc){
+        expect(err).to.be(null);
+        expect(doc).to.have.property('_id');
+        expect(doc._id).to.eql(animal._id);
+        doc.keepSynced();
+        doc.set({legs:3});
+        otherAnimal = doc;
+        
+        Animal.findById(animal._id, function(err, doc){
+          expect(doc).to.have.property('legs');
+          expect(doc).to.have.property('tail');
+          expect(doc.legs).to.be(3);
+          socket.emit = orgEmit;
+          socket.socket.connect(function(){
+            done();  
+          });
+        });
+      });
+    });
+    
+    it('test create offline', function(done){
+      socket.disconnect();
+
+      var tempAnimal = new Animal();
+      var tempAnimal2;
+      
+      ginger.once('inSync:', function(){
+
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(tempAnimal._id).to.be(doc._id);
+            //expect(tempAnimal2._id).to.be(doc._id);
+            expect(err).to.be(null);
+            expect(doc.legs).to.be(8);
+            done();
+        });
+      });
+
+      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        //Animal.findById(tempAnimal.cid, function(err, doc){
+        //  tempAnimal2 = doc;
+        //  tempAnimal2.keepSynced();
+          socket.socket.connect();              
+        //});
+      });
+    });
+
+    it('test delete offline', function(done){
+      var tempAnimal = new Animal();
+      tempAnimal.set({legs : 8, name:'spider-pig'});
+
+      ginger.once('inSync:', function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(err).to.be.an(Error);
+            done();
+        });
+      });
+
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        expect(tempAnimal).to.have.property('_id');
+        socket.disconnect();
+        tempAnimal.delete(function(){
+          socket.socket.connect();              
+        });
+      });
+    });
   
+
+
+    it('serverside update while offline', function(done){
+      var tempAnimal = new Animal();
+      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.save(function(){
+        tempAnimal.keepSynced();
+        
+
+        ginger.once('sync:'+tempAnimal._id, function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(tempAnimal.legs).to.be(7);
+            done();    
+          });
+        });
+
+        var obj = {legs:7}
+        ginger.ajax.put('http://localhost:8080/animals/'+tempAnimal._id,obj, function(err, res) { 
+          socket.socket.disconnect();
+          socket.socket.connect();
+        });
+      });
+    });
+  });
+
   describe('delete', function(){
     it('deletes and propagates delete event', function(done){
       animal.delete(function(err){
@@ -114,6 +224,9 @@ describe('Model', function(){
       });
     });
   });
+
+
+
 });
 
 
