@@ -574,12 +574,14 @@ var ajax = ginger.ajax = {
 var Storage = ginger.Storage = {}
 
 Storage.moved = function(bucket, oldId, newId){
-  localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
+  localCache.write(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
+  //localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
 }
 
 Storage.create = function(bucket, args, cb){
   var objectId = bucket+'@'+args.cid;
-  localStorage[objectId] = JSON.stringify(args)
+  localCache.write(objectId, JSON.stringify(args));
+  //localStorage[objectId] = JSON.stringify(args)
   cb && cb(null, args.cid);
 }
 Storage.findById = function(bucket, id, cb){
@@ -589,23 +591,20 @@ Storage.findById = function(bucket, id, cb){
 
 Storage._findById= function(key, cb){
   var objectId = key;
-  for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key === objectId){
-        var doc = JSON.parse(localStorage[key]);
-        if (_.isString(doc)){
-          Storage._findById(doc, cb);
-          return;
-        }
-        if (doc.__persisted){
-          doc._id = doc.cid;  
-        }
-        cb(null, doc);
-        return;
+  var doc = localCache.read(key);
+  if (doc){
+    doc=JSON.parse(doc);
+    if (_.isString(doc)){
+      Storage._findById(doc, cb);
+    } else {
+      if (doc.__persisted){
+         doc._id = doc.cid;  
       }
+      cb(null, doc);
     }
-    console.log(objectId)
+  } else {
     cb(new Error('no localobject!'));  
+  }
 }
 
 /*
@@ -646,7 +645,8 @@ Storage.find = function(bucket, id, collection, cb){
   Storage.findById(bucket, id + '@collection', function(err, doc){
     var result=[];
     if (err){
-      cb(err);
+      cb(null, result);
+      //cb(err);
     } else {
       for (var i=0, len=doc.length;i<len;i++){
         Storage._findById(doc[i], function(err, d){
@@ -692,7 +692,8 @@ Storage.add = function(bucket, id, collection, objIds, cb){
       doc = [];
     } 
     doc.push(collection + '@' + objIds);
-    localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+    localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
+    //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
     cb();
   });
 },
@@ -701,7 +702,8 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
   if(_.isFunction(collection)){
     cb = collection;
     var objectId = bucket+'@'+id
-    localStorage.removeItem(objectId)
+    //localStorage.removeItem(objectId)
+    localCache.remove(objectId);
     cb();    
   } else if(objIds.length>0){
     Storage.findById(bucket, id + '@collection', function(err, doc){
@@ -712,7 +714,8 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
             doc.splice(i, 1);
           }
         }
-        localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+        localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
+        //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
       }
       cb(err);
     });
@@ -1227,6 +1230,45 @@ Base.prototype.isDestroyed = function(){
   return this._refCounter === 0;
 }
 
+
+var Cache = ginger.Base.extend(function Cache(args){
+    this.super(Cache);
+    //TODO: instantiate map
+    this.map = {}
+});
+
+var localCache = new Cache();
+
+_.extend(Cache.prototype,{ 
+  test:function(){console.log('Cache test!')},
+  write:function(key, value){
+    var t = new Date().getTime();
+    var newKey = key + '|' + t;
+    localStorage[newKey] = value;
+    var oldTime = this.map[key];
+    this.map[key] = t;
+    if (oldTime){
+      localStorage.removeItem(key + '|' + oldTime);
+    }
+  },
+  read:function(key){
+    var oldKey = key + '|' + this.map[key];
+    var value = localStorage[oldKey];
+    if (value){
+      this.write(key, value);
+      localStorage.removeItem(oldKey);
+    }
+    return value;
+  }, 
+  remove:function(key){
+    var realKey = key + '|' + this.map[key];
+    localStorage.removeItem(realKey);
+  },
+  keep:function(count){
+
+  }
+});
+
 //------------------------------------------------------------------------------
 // Local Model Queue
 // This Object is used...
@@ -1236,7 +1278,6 @@ var Queue = ginger.Base.extend(function Queue(args){
     //TODO: get old que from localstorage
     this._queue = [];
     var self = this;
-    this._createList = {};
     socket.socket.on('connect', function(){self.process(self)});
 });
 

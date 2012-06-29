@@ -120,6 +120,7 @@ describe('Model', function(){
       }
 
       Animal.findById(animal._id, function(err, doc){
+        console.log(err, animal._id);
         expect(err).to.be(null);
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
