@@ -535,7 +535,6 @@ _.extend(undoMgr, new EventEmitter())
 var ajaxBase = function(method, url, obj, cb){
   cb = _.isFunction(obj) ? obj : cb;
   obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
-  console.log('data:' + JSON.stringify(obj), obj)
   return {
     type:method,
     url:url,
@@ -592,6 +591,8 @@ Storage.findById = function(bucket, id, cb){
 Storage._findById= function(key, cb){
   var objectId = key;
   var doc = localCache.read(key);
+
+  //console.log(key, doc);
   if (doc){
     doc=JSON.parse(doc);
     if (_.isString(doc)){
@@ -618,7 +619,9 @@ find:function(bucket, id, collection, query, cb){
 },
 */
 //find:function(bucket, id, collection, query, cb){
-Storage.all = function(bucket, parent){
+
+  
+Storage.all = function(bucket, parent){ //OBSOLETE?
   var collection = []
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
@@ -658,7 +661,7 @@ Storage.find = function(bucket, id, collection, cb){
   });
 }
 
-Storage.first = function(bucket, parent){
+Storage.first = function(bucket, parent){  //OBSOLETE?
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
     return localStorage[keys[0]]
@@ -803,7 +806,6 @@ function safeEmit(socket){
     //socket.socket.once('disconnected', errorFn);    
     socket.emit.apply(socket, args);
   }else{
-    console.log('not connected!');
     errorFn();
   }
 }
@@ -813,11 +815,8 @@ ServerStorage.socket = {
     safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    console.log(bucket, id, collection, 'items', query);
     var wrapCb = function(err, ids) {
-      console.log("ids: ",ids);
       if (err){
-        console.log('err wtf', err);
         Storage.find(bucket, id, collection, cb);
       } else {
         cb(null, ids);  
@@ -838,14 +837,10 @@ ServerStorage.socket = {
     }
   },
   add:function(bucket, id, collection, items, cb){
-    console.log(bucket, id, collection, 'items', items);
     var wrapCb = function(err, ids) {
-      console.log(ids, 'wrap');
 
       Storage.add(bucket, id, collection, items, function(err2){
-        console.log('np save to localStorage!');
         if (err){
-          console.log('err wtf', err);
           var obj = {'bucket':bucket, 'id':id, 
            'cmd':'add', 'transport':'socket', 'collection':collection, 
            'items':items}
@@ -868,9 +863,7 @@ ServerStorage.socket = {
     }else{
       var wrapCb = function(err, ids) {
         Storage.remove(bucket, id, collection, items, function(err2){
-          console.log('np remove from localStorage!');
           if (err){
-            console.log('err remove wtf', err);
             var obj = {'bucket':bucket, 'id':id, 
              'cmd':'remove', 'transport':'socket', 'collection':collection, 
              'items':items}
@@ -1231,32 +1224,42 @@ Base.prototype.isDestroyed = function(){
 }
 
 
-var Cache = ginger.Base.extend(function Cache(args){
+//TODO: Add size support in write and remove
+var Cache = ginger.Base.extend(function Cache(args){ 
     this.super(Cache);
-    //TODO: instantiate map
     this.map = {}
+    this.size = 0;
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i);
+      if (key.indexOf('|') != -1){
+        var s = key.split('|')  
+        this.map[s[0]] = s[1];
+        this.size += localStorage[key].length;
+      }
+    }
 });
 
-var localCache = new Cache();
+var localCache = ginger.localCache = new Cache();
 
 _.extend(Cache.prototype,{ 
-  test:function(){console.log('Cache test!')},
   write:function(key, value){
-    var t = new Date().getTime();
+    var t = Date.now();
     var newKey = key + '|' + t;
     localStorage[newKey] = value;
     var oldTime = this.map[key];
     this.map[key] = t;
-    if (oldTime){
+    if (oldTime && oldTime != t) { //Don't want to remove the value we just wrote!
       localStorage.removeItem(key + '|' + oldTime);
-    }
+    } 
+  },
+  touch:function(key, value){
+    //TODO: Figure out what to put here, and put it here :)
   },
   read:function(key){
     var oldKey = key + '|' + this.map[key];
     var value = localStorage[oldKey];
     if (value){
       this.write(key, value);
-      localStorage.removeItem(oldKey);
     }
     return value;
   }, 
@@ -1264,8 +1267,13 @@ _.extend(Cache.prototype,{
     var realKey = key + '|' + this.map[key];
     localStorage.removeItem(realKey);
   },
-  keep:function(count){
+  trim:function(size){ //TODO: UNFINISHED!
+    var list = _.map(map, function(num, key){ return {time:num, key:key});
+    var sorted = _.sortBy(list, function(obj){ return obj.num; });
 
+    while (this.size > size){
+        
+    }
   }
 });
 
@@ -1309,14 +1317,12 @@ _.extend(Queue.prototype,{
       setTimeout(this.process, 0, this);
     },  
     process:function(self){
-      console.log('process')
       if (!self){
         self = this;
       }
       if (!self._currentTransfer){
         if(self._queue.length){
           var obj = self._queue[0];
-          console.log('obj', obj);
           self._currentTransfer = obj;
           // Persitent errors sill  block the queue forever!
           switch (obj.cmd){
@@ -1562,8 +1568,6 @@ var Model = ginger.Model = Base.extend( function Model(args){
         instantiate(doc, args, cb);
       }else{
         Storage.findById(bucket, id, function(err, doc){
-          
-
           if(doc){
             instantiate(doc, args, cb);
           }else{
@@ -1688,7 +1692,6 @@ Model.prototype.local = function(){
         Storage.create(bucket, self.toJSON())
       },
       update: function(args){
-        console.log(args)
         Storage.update(bucket, self.cid, args, noop)
       },
       remove: function(){
@@ -1798,7 +1801,6 @@ Model.prototype.update = function(args, transport, cb){
           self.cid = id
           self.__persisted = true;
           self.local().save()
-          console.log('created', self)
           cb(null, id)
         }else{
           self.local().update(args)
@@ -1905,7 +1907,6 @@ Model.prototype.keepSynced = function(){
   self.on('changed:', function(doc, args){
     console.log('received changed with args', args);
     if((doc !== newDoc) && (!args || (args.sync != 'false'))){
-      console.log('omfg IM IN THE IF');
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
       });
