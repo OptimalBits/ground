@@ -1970,8 +1970,8 @@ Collection.instantiate = function(model, parent, array, cb){
       if(err){
         cb(err, null)
       }else{
-        var collection = new Collection(items, model, parent)
-        _.each(items, function(item){item.release()});
+        var collection = new Collection(items, model, parent);
+        ginger.release(items);
         
         if(parent){
           collection.keepSynced(parent._keepSynced);
