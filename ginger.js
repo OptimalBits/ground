@@ -1207,10 +1207,13 @@ Base.prototype.undoSet = function(key, value, fn){
   this.endUndoSet(key, fn)
 }
 Base.prototype.destroy = function(){
-  // TODO: set to null all non function properties?
   this.off();
+  // We should nullify this object.
 }
 Base.prototype.retain = function(){
+  if(this._destroyed){
+    throw new Error("Cannot retain destroyed object");
+  }
   this._refCounter++;
   return this;
 }
