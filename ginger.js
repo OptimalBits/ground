@@ -954,8 +954,10 @@ function Inherit(Sub, Super){
   Sub.prototype = newSub
   Sub.superproto = Super.prototype
 
+  // TODO: deprecate klass
   Sub.prototype.super = function(klass, fn){
-    return klass.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2))
+    //return arguments.callee.caller.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2));
+    return klass.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2));
   }
 }
 
