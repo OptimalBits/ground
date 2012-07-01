@@ -63,12 +63,14 @@ AutoreleasePool.prototype.autorelease = function(){
       pool.push(obj);
     }
   });
+  this._drained && this.drain();
 }
 AutoreleasePool.prototype.drain = function(){
   for(var i=0, len=this.pool.length;i<len;i++){
     this.pool[i].release();
   }
   this.pool = [];
+  this._drained = true;
 }
 
 
@@ -332,9 +334,7 @@ Request.prototype.load = function(urls, cb){
   this.node().load = wrap(this._load,[urls], cb);
   return this;
 }
-// FIX: Only call hide on the nodes that will been "overwritten" by the new request
-// and that not have an exit function, and that no node in prev request that has overwritten the
-// node and that have own exit function...
+
 Request.prototype.exec = function(prevs){
   var self = this;
   var start, nodes = self.nodes;
