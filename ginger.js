@@ -2314,30 +2314,29 @@ Array.prototype.humanSort = function() {
 */
 //------------------------------------------------------------------------------
 
-// FIX:
-// $el.remove will indeed destroy all the DOM nodes in $el including $el
-// this means that if we want to be able to re-render a removed node, we need
-// to be able to re create the whole sub DOM tree from this view.
-// therefore $el must be created in render. But since $el could be something
-// different than a div, we will introcude the tag property, which will be used
-// in render to create the proper element.
-var View = ginger.View = Base.extend(function View(classNames, css){
-  var self = this
-  self.super(View)
-  if(_.isUndefined(self.$el)){
-    self.$el = $('<div>')
-  }
-  if(classNames){
-    self.$el.addClass(classNames)
-  }
-  if(css){
-    self.$el.css(css)
-  }
-  self.classNames = classNames
-  self.tag = '<div>'
-  self.css = css
-})
-_.extend(View.prototype, {
+/**
+  FUTURE:
+  Perhaps we could add a "childs" parameter in the constructor.
+  A child should also know who is his father, but doing this we could
+  have a better rendering model, where we first traverse the view tree upwards,
+  and find the first parent that we need to render. calling render on this parent
+  will trigger rendering of all its childs recursively.
+  
+  As it is now, we have an explicit rendering model which is not particularly
+  convenient nor flexible.
+*/
+var View = ginger.View = Base.extend({
+  constructor : function View(classNames, css, tag){
+    this.super(View)
+    this.classNames = classNames;
+    this.tag = tag || '<div>';
+    this.css = css;
+    
+    this._createElement();
+    
+    this.classNames && this.$el.addClass(this.classNames)
+    this.css && this.$el.css(this.css);
+  },
   render : function($parent){
     this.$parent = $parent || this.$parent;
     this.$parent && this.$el.detach().appendTo(this.$parent);
@@ -2346,21 +2345,12 @@ _.extend(View.prototype, {
   refresh : function(){
     this.$parent && this.render(this.$parent);
   },
-  update : function(){
-    // Updates this view.
-    /*
-      Updating can imply that if this view is composed of subviews, or of
-      many DOM elements, that this DOM elements are destroyed and recreated,
-      (or subviews are removed and re-rendered), but the most important thing
-      is that the element that this view returned in render, is still the same after
-      the update.
-    */
-  },
   clean : function(){
     this.$el.detach();
   },
   remove : function(){
     this.$el.remove()
+    this.$el = null;
   },
   disable : function(disable){
     console.log(this+" does not implement disable")
@@ -2374,6 +2364,11 @@ _.extend(View.prototype, {
   destroy : function(){
     this.remove();
     this.super(View, 'destroy');
+  },
+  _createElement: function(){
+    if(!this.$el){
+      this.$el = $(this.tag);
+    }
   }
 });
 //------------------------------------------------------------------------------
