@@ -2045,10 +2045,14 @@ Collection.prototype.add = function(items, cb, opts, pos){
   }, cb);
 }
 Collection.prototype.insert = function(item, pos, cb){
-  if(pos > this.items.length){
-    pos = undefined;
+  if(this.items){
+    if(pos > this.items.length){
+      pos = undefined;
+    }
+    this.add(item, cb, {nosync:false, embedded:true}, pos);
+  }else{
+    cb();
   }
-  this.add(item, cb, {nosync:false, embedded:true}, pos);
 }
 Collection.prototype.remove = function(itemIds, cb, nosync){
   var self = this, transport = this.model.transport();
