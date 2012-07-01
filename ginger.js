@@ -1360,8 +1360,6 @@ _.extend(Queue.prototype,{
     }
 });
 
-var localModelQueue = new Queue();
-
 //------------------------------------------------------------------------------
 //
 // Utility Classes
@@ -3142,6 +3140,12 @@ Views.ToolTip.prototype._updatePosition = function(pos){
   $el.css(css)
 }
 //------------------------------------------------------------------------------
+//
+// Singletones
+//
+//------------------------------------------------------------------------------
+
+var localModelQueue = new Queue();
 
 return ginger
 })
