@@ -1889,8 +1889,6 @@ Model.prototype.keepSynced = function(){
 }
 
 Model.prototype.destroy = function(){
-  this.super(Model, 'destroy');
-  
   var socket = Model.socket;
   if(socket && this._keepSynced){
     var id = this._id;
@@ -1898,6 +1896,7 @@ Model.prototype.destroy = function(){
     socket.removeListener('update:'+id);
     socket.removeListener('delete:'+id);
   }
+  this.super(Model, 'destroy');
 }
 
 /**
