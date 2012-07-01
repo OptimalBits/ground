@@ -2182,9 +2182,7 @@ Collection.prototype.filtered = function(optionalItem){
     return optionalItem || items;
   }
 }
-Collection.prototype.destroy = function(){
-  this.super(Collection, 'destroy');
-   
+Collection.prototype.destroy = function(){ 
   if(this.socket){
     var bucket = this.model.__bucket;
     
@@ -2195,10 +2193,9 @@ Collection.prototype.destroy = function(){
       this._keepSynced && this.socket.emit('unsync', id);
     }
   }
-  this.each(function(item){
-    item.release()
-  });
+  ginger.release(this.items);
   this.items = null;
+  this.super(Collection, 'destroy');
 }
 Collection.prototype._initItems = function(items){
   var self = this;
