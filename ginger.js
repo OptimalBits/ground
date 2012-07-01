@@ -1253,7 +1253,9 @@ var Queue = ginger.Base.extend(function Queue(args){
     this._queue = [];
     var self = this;
     this._createList = {};
-    socket.socket.on('connect', function(){self.process(self)});
+    Model.socket && Model.socket.on('connect', function(){
+      self.process(self)
+    });
 });
 
 _.extend(Queue.prototype,{ 
