@@ -97,6 +97,19 @@ ginger.refresh = function(){
 
 ginger.uuid = uuid;
 
+ginger.release = function(objs){
+  var items = _.isArray(objs) ? objs :arguments;
+  _.each(items, function(obj){
+    obj && obj.release(); 
+  });
+}
+ginger.retain = function(objs){
+  var items = _.isArray(objs) ? objs :arguments;
+  _.each(items, function(obj){
+    obj && obj.retain();
+  });
+}
+
 // TODO: Add an optional timeout parameter.
 ginger.asyncDebounce = function (fn) {
   var delayedFunc = null, executing = null;
