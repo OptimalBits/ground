@@ -2702,7 +2702,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
     });
   }
   self.on('collection', function(val, old){
-    old && old.release();
+    ginger.release(old);
     val.retain();
     val.on('updated: added: sortByFn', function(){
       self.populate(self.index,self.limit);
@@ -2768,7 +2768,7 @@ Table.prototype.select = function(itemId){
   $row && this._selectRow($row);
 }
 Table.prototype.destroy = function(){
-  this.collection && this.collection.release();
+  ginger.release(this.collection);
   this.super(Table, 'destroy');
 }
 //------------------------------------------------------------------------------
