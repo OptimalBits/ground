@@ -791,26 +791,20 @@ ServerStorage.ajax = {
 }
 
 function safeEmit(socket){
-  var errorFn = function(){
-    //console.log('errorFn');
-    args;
-    cb(new Error('Disconnected'));
-  },
-    cb = _.last(arguments),
-    args = _.rest(arguments),
-    proxyCb = function(err, res){
-      socket.removeListener('disconnect', disconnect);
-      //console.log('proxy');
-      cb(err,res);
-    };
-  function disconnect(){
-    errorFn();
-  };
-  args[args.length-1] = proxyCb;
+  var cb = _.last(arguments), args = _.rest(arguments);
+   
+  function errorFn(){
+    cb(new Error('Disconnected'));
+  };
+  function proxyCb(err, res){
+    socket.removeListener('disconnect', errorFn);
+    cb(err,res);
+  };
+  
+  args[args.length-1] = proxyCb;
     
   if(socket.socket.connected){
-    socket.once('disconnect', disconnect);
-    //socket.socket.once('disconnected', errorFn);    
+    socket.once('disconnect', errorFn);
     socket.emit.apply(socket, args);
   }else{
     console.log('not connected!');
