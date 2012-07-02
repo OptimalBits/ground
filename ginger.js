@@ -548,7 +548,6 @@ _.extend(undoMgr, new EventEmitter())
 var ajaxBase = function(method, url, obj, cb){
   cb = _.isFunction(obj) ? obj : cb;
   obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
-  console.log('data:' + JSON.stringify(obj), obj)
   return {
     type:method,
     url:url,
@@ -587,12 +586,14 @@ var ajax = ginger.ajax = {
 var Storage = ginger.Storage = {}
 
 Storage.moved = function(bucket, oldId, newId){
-  localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
+  localCache.write(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
+  //localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
 }
 
 Storage.create = function(bucket, args, cb){
   var objectId = bucket+'@'+args.cid;
-  localStorage[objectId] = JSON.stringify(args)
+  localCache.write(objectId, JSON.stringify(args));
+  //localStorage[objectId] = JSON.stringify(args)
   cb && cb(null, args.cid);
 }
 Storage.findById = function(bucket, id, cb){
@@ -602,23 +603,22 @@ Storage.findById = function(bucket, id, cb){
 
 Storage._findById= function(key, cb){
   var objectId = key;
-  for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key === objectId){
-        var doc = JSON.parse(localStorage[key]);
-        if (_.isString(doc)){
-          Storage._findById(doc, cb);
-          return;
-        }
-        if (doc.__persisted){
-          doc._id = doc.cid;  
-        }
-        cb(null, doc);
-        return;
+  var doc = localCache.read(key);
+
+  //console.log(key, doc);
+  if (doc){
+    doc=JSON.parse(doc);
+    if (_.isString(doc)){
+      Storage._findById(doc, cb);
+    } else {
+      if (doc.__persisted){
+         doc._id = doc.cid;  
       }
+      cb(null, doc);
     }
-    console.log(objectId)
+  } else {
     cb(new Error('no localobject!'));  
+  }
 }
 
 /*
@@ -632,7 +632,9 @@ find:function(bucket, id, collection, query, cb){
 },
 */
 //find:function(bucket, id, collection, query, cb){
-Storage.all = function(bucket, parent){
+
+  
+Storage.all = function(bucket, parent){ //OBSOLETE?
   var collection = []
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
@@ -659,7 +661,8 @@ Storage.find = function(bucket, id, collection, cb){
   Storage.findById(bucket, id + '@collection', function(err, doc){
     var result=[];
     if (err){
-      cb(err);
+      cb(null, result);
+      //cb(err);
     } else {
       for (var i=0, len=doc.length;i<len;i++){
         Storage._findById(doc[i], function(err, d){
@@ -671,7 +674,7 @@ Storage.find = function(bucket, id, collection, cb){
   });
 }
 
-Storage.first = function(bucket, parent){
+Storage.first = function(bucket, parent){  //OBSOLETE?
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
     return localStorage[keys[0]]
@@ -705,7 +708,8 @@ Storage.add = function(bucket, id, collection, objIds, cb){
       doc = [];
     } 
     doc.push(collection + '@' + objIds);
-    localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+    localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
+    //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
     cb();
   });
 },
@@ -714,7 +718,8 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
   if(_.isFunction(collection)){
     cb = collection;
     var objectId = bucket+'@'+id
-    localStorage.removeItem(objectId)
+    //localStorage.removeItem(objectId)
+    localCache.remove(objectId);
     cb();    
   } else if(objIds.length>0){
     Storage.findById(bucket, id + '@collection', function(err, doc){
@@ -725,7 +730,8 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
             doc.splice(i, 1);
           }
         }
-        localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+        localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
+        //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
       }
       cb(err);
     });
@@ -807,7 +813,6 @@ function safeEmit(socket){
     socket.once('disconnect', errorFn);
     socket.emit.apply(socket, args);
   }else{
-    console.log('not connected!');
     errorFn();
   }
 }
@@ -817,11 +822,8 @@ ServerStorage.socket = {
     safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    console.log(bucket, id, collection, 'items', query);
     var wrapCb = function(err, ids) {
-      console.log("ids: ",ids);
       if (err){
-        console.log('err wtf', err);
         Storage.find(bucket, id, collection, cb);
       } else {
         cb(null, ids);  
@@ -842,14 +844,10 @@ ServerStorage.socket = {
     }
   },
   add:function(bucket, id, collection, items, cb){
-    console.log(bucket, id, collection, 'items', items);
     var wrapCb = function(err, ids) {
-      console.log(ids, 'wrap');
 
       Storage.add(bucket, id, collection, items, function(err2){
-        console.log('np save to localStorage!');
         if (err){
-          console.log('err wtf', err);
           var obj = {'bucket':bucket, 'id':id, 
            'cmd':'add', 'transport':'socket', 'collection':collection, 
            'items':items}
@@ -872,9 +870,7 @@ ServerStorage.socket = {
     }else{
       var wrapCb = function(err, ids) {
         Storage.remove(bucket, id, collection, items, function(err2){
-          console.log('np remove from localStorage!');
           if (err){
-            console.log('err remove wtf', err);
             var obj = {'bucket':bucket, 'id':id, 
              'cmd':'remove', 'transport':'socket', 'collection':collection, 
              'items':items}
@@ -1239,6 +1235,60 @@ Base.prototype.isDestroyed = function(){
   return this._refCounter === 0;
 }
 
+
+//TODO: Add size support in write and remove
+var Cache = ginger.Base.extend(function Cache(args){ 
+    this.super(Cache);
+    this.map = {}
+    this.size = 0;
+    for (var i=0, len=localStorage.length;i<len;i++){
+      var key = localStorage.key(i);
+      if (key.indexOf('|') != -1){
+        var s = key.split('|')  
+        this.map[s[0]] = s[1];
+        this.size += localStorage[key].length;
+      }
+    }
+});
+
+var localCache = ginger.localCache = new Cache();
+
+_.extend(Cache.prototype,{ 
+  write:function(key, value){
+    var t = Date.now();
+    var newKey = key + '|' + t;
+    localStorage[newKey] = value;
+    var oldTime = this.map[key];
+    this.map[key] = t;
+    if (oldTime && oldTime != t) { //Don't want to remove the value we just wrote!
+      localStorage.removeItem(key + '|' + oldTime);
+    } 
+  },
+  touch:function(key, value){
+    //TODO: Figure out what to put here, and put it here :)
+  },
+  read:function(key){
+    var oldKey = key + '|' + this.map[key];
+    var value = localStorage[oldKey];
+    if (value){
+      this.write(key, value);
+    }
+    return value;
+  }, 
+  remove:function(key){
+    var realKey = key + '|' + this.map[key];
+    localStorage.removeItem(realKey);
+  },
+  trim:function(size){ //TODO: UNFINISHED!
+    var list = _.map(map, function(num, key){ return {time:num, key:key});
+    var sorted = _.sortBy(list, function(obj){ return obj.num; });
+
+    while (this.size > size){
+        
+    }
+  }
+});
+
 //------------------------------------------------------------------------------
 // Local Model Queue
 // This Object is used...
@@ -1248,7 +1298,7 @@ var Queue = ginger.Base.extend(function Queue(args){
     //TODO: get old que from localstorage
     this._queue = [];
     var self = this;
-    this._createList = {};
+    self._createList = {};
     Model.socket && Model.socket.on('connect', function(){
       self.process(self)
     });
@@ -1282,14 +1332,12 @@ _.extend(Queue.prototype,{
       setTimeout(this.process, 0, this);
     },  
     process:function(self){
-      console.log('process')
       if (!self){
         self = this;
       }
       if (!self._currentTransfer){
         if(self._queue.length){
           var obj = self._queue[0];
-          console.log('obj', obj);
           self._currentTransfer = obj;
           // Persitent errors sill  block the queue forever!
           switch (obj.cmd){
@@ -1533,8 +1581,6 @@ var Model = ginger.Model = Base.extend( function Model(args){
         instantiate(doc, args, cb);
       }else{
         Storage.findById(bucket, id, function(err, doc){
-          
-
           if(doc){
             instantiate(doc, args, cb);
           }else{
@@ -1659,7 +1705,6 @@ Model.prototype.local = function(){
         Storage.create(bucket, self.toJSON())
       },
       update: function(args){
-        console.log(args)
         Storage.update(bucket, self.cid, args, noop)
       },
       remove: function(){
@@ -1769,7 +1814,6 @@ Model.prototype.update = function(args, transport, cb){
           self.cid = id
           self.__persisted = true;
           self.local().save()
-          console.log('created', self)
           cb(null, id)
         }else{
           self.local().update(args)
@@ -1876,7 +1920,6 @@ Model.prototype.keepSynced = function(){
   self.on('changed:', function(doc, args){
     console.log('received changed with args', args);
     if((doc !== newDoc) && (!args || (args.sync != 'false'))){
-      console.log('omfg IM IN THE IF');
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
       });

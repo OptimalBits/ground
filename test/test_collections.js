@@ -271,6 +271,47 @@ describe('Collections1', function(){
       });
     });
 
+    it('add item to collection 2', function(done){
+      zoo = new Zoo({asdf:'test'});
+      zoo.keepSynced();
+      zoo.save(function(err){
+        socket.disconnect();
+        zoo.all(Animal, function(err, animals){
+          expect(err).to.be(null);
+          expect(animals).to.be.an(Object);
+          
+          animals.add(new Animal({name:"tiger"}), function(err){
+            expect(err).to.be(null);
+            Zoo.findById(zoo._id, function(err, doc){
+              expect(err).to.be(null);
+              expect(doc).to.be.an(Object);
+              ginger.once('inSync:', function(){
+                doc.all(Animal, function(err, collection){
+                  expect(err).to.be(null);
+                  expect(collection).to.be.an(Object);
+                  expect(collection.items).to.be.an(Array);
+                  expect(collection.items.length).to.be(1);
+                  expect(animals.items.length).to.be(1);
+                  doc.release();
+                  collection.release();
+                  done();
+                });
+              });
+
+              doc.all(Animal, function(err, collection){
+                expect(err).to.be(null);
+                expect(collection).to.be.an(Object);
+                expect(collection.items).to.be.an(Array);
+                expect(collection.items.length).to.be(1);
+                expect(animals.items.length).to.be(1);
+                socket.socket.connect();
+              });
+            });
+          });
+        });
+      });
+    });
+
     it('remove item while offline', function(done){
       zoo.all(Animal, function(err, animals){
         expect(err).to.be(null);
