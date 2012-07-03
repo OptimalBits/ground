@@ -17,7 +17,7 @@ describe('Model', function(){
     });
   });
   
-  describe('instantiation', function(){
+  describe('Instantiation', function(){
     it('with new operator', function(){
       var instance = new Animal();
       expect(instance).to.be.a(Animal);
@@ -39,7 +39,7 @@ describe('Model', function(){
       });
     });
   });
-  describe('update', function(){
+  describe('Update', function(){
     it('updates the server model', function(done){
       animal.set('name', 'foobar');
       animal.save(function(err){
@@ -79,7 +79,7 @@ describe('Model', function(){
     });
   });
   
-  describe('fetch', function(){
+  describe('Fetch', function(){
     var dolphin, whale, shark;
     
     before(function(done){
@@ -105,22 +105,21 @@ describe('Model', function(){
     
   });
   
-    describe('linus', function(){
-
-    it('test disconnect', function(done){
+  describe('Offline', function(){
+  
+    //
+    // Simulate a disconnect in the middle of an emit.
+    //
+    it('disconnect', function(done){
       var otherAnimal;
       animal.off();
-
+      
       var orgEmit = socket.emit
-
       socket.emit = function(){
         socket.socket.disconnect();
-       // arguments;
-        //orgEmit(arguments);
       }
 
       Animal.findById(animal._id, function(err, doc){
-        console.log(err, animal._id);
         expect(err).to.be(null);
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
@@ -140,20 +139,19 @@ describe('Model', function(){
       });
     });
     
-    it('test create offline', function(done){
+    it('create', function(done){
       socket.disconnect();
 
       var tempAnimal = new Animal();
       var tempAnimal2;
       
       ginger.once('inSync:', function(){
-
-          Animal.findById(tempAnimal._id, function(err, doc){
-            expect(tempAnimal._id).to.be(doc._id);
-            //expect(tempAnimal2._id).to.be(doc._id);
-            expect(err).to.be(null);
-            expect(doc.legs).to.be(8);
-            done();
+        Animal.findById(tempAnimal._id, function(err, doc){
+          expect(tempAnimal._id).to.be(doc._id);
+          //expect(tempAnimal2._id).to.be(doc._id);
+          expect(err).to.be(null);
+          expect(doc.legs).to.be(8);
+          done();
         });
       });
 
@@ -168,7 +166,7 @@ describe('Model', function(){
       });
     });
 
-    it('test delete offline', function(done){
+    it('delete', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider-pig'});
 
@@ -189,8 +187,6 @@ describe('Model', function(){
       });
     });
   
-
-
     it('serverside update while offline', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider'});
@@ -214,7 +210,7 @@ describe('Model', function(){
     });
   });
 
-  describe('delete', function(){
+  describe('Delete', function(){
     it('deletes and propagates delete event', function(done){
       animal.delete(function(err){
         expect(err).to.be(null);

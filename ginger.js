@@ -320,14 +320,13 @@ _.extend(EventEmitter.prototype,{
     * @returns {Object} The current instance of EventEmitter to allow chaining
     */
   once : function(eventName, listener) {
-    var ee = this
+    var self = this
   
-
     function wrapper() {
-		  listener.apply(null, arguments);
-      ee.removeListener(eventName, wrapper);
+		  self.off(eventName, wrapper);
+		  listener.apply(this, arguments);
     }
-		return ee.addListener(eventName, wrapper);
+		return self.on(eventName, wrapper);
   },
 	
   /**
@@ -342,7 +341,9 @@ _.extend(EventEmitter.prototype,{
       var events = eventNames.split(' ')
       
       for(var i=0, len=events.length;i<len;i++){
-        this._removeListener(events[i], listener);
+        if(this._removeListener(events[i], listener)){
+          break;
+        };
       }
     }else{
       this.removeAllListeners(eventNames);
@@ -392,8 +393,12 @@ _.extend(EventEmitter.prototype,{
   },
   
   _fire : function(eventListeners, args){
-    for(var i=0, len=eventListeners.length; i < len; i ++) {
-      eventListeners[i].apply(this, args);
+    var listeners = [], i, len=eventListeners.length;
+    for(i=0;i<len;i++){
+      listeners[i] = eventListeners[i];
+    }
+    for(i=0; i < len; i ++) {
+      listeners[i].apply(this, args);
     }
   },
   
@@ -404,8 +409,10 @@ _.extend(EventEmitter.prototype,{
       index = _.indexOf(listeners[event], listener);
       if(index !== -1) {
         listeners[event].splice(index, 1);
+        return true;
       }
     }
+    return false;
   },
 
   _removeNamespacedEvent : function(event, listeners){
@@ -800,10 +807,10 @@ function safeEmit(socket){
   var cb = _.last(arguments), args = _.rest(arguments);
    
   function errorFn(){
-    cb(new Error('Disconnected'));
+    cb(new Error('Socket disconnected'));
   };
   function proxyCb(err, res){
-    socket.removeListener('disconnect', errorFn);
+    Model.socket.removeListener('disconnect', errorFn);
     cb(err,res);
   };
   
@@ -944,9 +951,9 @@ function Inherit(Sub, Super){
   Sub.prototype = newSub
   Sub.superproto = Super.prototype
 
-  // TODO: deprecate klass
+  // TODO: try to deprecate klass
   Sub.prototype.super = function(klass, fn){
-    //return arguments.callee.caller.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2));
+    //console.log(arguments.callee.caller === klass);
     return klass.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2));
   }
 }
@@ -1280,7 +1287,7 @@ _.extend(Cache.prototype,{
     localStorage.removeItem(realKey);
   },
   trim:function(size){ //TODO: UNFINISHED!
-    var list = _.map(map, function(num, key){ return {time:num, key:key});
+    var list = _.map(map, function(num, key){ return {time:num, key:key}});
     var sorted = _.sortBy(list, function(obj){ return obj.num; });
 
     while (this.size > size){
@@ -1293,82 +1300,87 @@ _.extend(Cache.prototype,{
 // Local Model Queue
 // This Object is used...
 //------------------------------------------------------------------------------
-var Queue = ginger.Base.extend(function Queue(args){
-    this.super(Queue)
-    //TODO: get old que from localstorage
-    this._queue = [];
+var Queue = ginger.Base.extend({
+  'constructor' : function Queue(args){
     var self = this;
+    self.super(Queue);
+  
+    //TODO: get old queue from localstorage
+    
+    self._queue = [];
     self._createList = {};
-    Model.socket && Model.socket.on('connect', function(){
-      self.process(self)
-    });
-});
-
-_.extend(Queue.prototype,{ 
-    queue:function(queue){
-      this._queue = queue;
-    },
-    add:function(obj){
-      //TODO: MERGE DIFFERENT UPDATES?
-      this._queue.push(obj);
-      localStorage.localModelQueue = JSON.stringify(this._queue);
-      //this.process();
-    },
-    fixQueue:function(oldId, newId){
-      _.each(this._queue, function(obj){
-        if (obj.id == oldId){
-          obj.id == newId;
-        } 
-        if (obj.items && obj.items == oldId){
-          obj.items = newId;
-        }
-      });
-      localStorage.localModelQueue = JSON.stringify(this._queue);
-    },
-    success:function() {
-      delete this._currentTransfer;
-      this._queue.shift();
-      localStorage.localModelQueue = JSON.stringify(this._queue);
-      setTimeout(this.process, 0, this);
-    },  
-    process:function(self){
-      if (!self){
-        self = this;
+    this._syncFn = function(){
+      self.synchronize();
+    }
+  },
+  init : function(socket){
+    socket.removeListener('connect', this._syncFn);
+    socket.on('connect', this._syncFn);
+  },
+  queue:function(queue){
+    this._queue = queue;
+  },
+  add:function(obj){
+    //TODO: MERGE DIFFERENT UPDATES?
+    this._queue.push(obj);
+    localStorage.localModelQueue = JSON.stringify(this._queue);
+    //this.synchronize();
+  },
+  fixQueue:function(oldId, newId){
+    _.each(this._queue, function(obj){
+      if (obj.id == oldId){
+        obj.id == newId;
+      } 
+      if (obj.items && obj.items == oldId){
+        obj.items = newId;
       }
-      if (!self._currentTransfer){
-        if(self._queue.length){
-          var obj = self._queue[0];
-          self._currentTransfer = obj;
-          // Persitent errors sill  block the queue forever!
-          switch (obj.cmd){
-            case 'add':
-              ServerStorage[obj.transport]._add(obj.bucket, obj.id, obj.collection, obj.items, function(err){
-                if (err) { 
-                  self._currentTransfer = false;
-                  return err;
-                }
-                self.success();
-              });
-              break;
-            case 'remove':
-              ServerStorage[obj.transport]._remove(obj.bucket, obj.id, obj.collection, obj.items, function(err){
-                if (err) { 
-                  self._currentTransfer = false;
-                  return err;
-                }
-                self.success();
-              });
-              break;
-            case 'update':
-              ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
-                if (err) { 
-                  self._currentTransfer = false;
-                  return err;
-                }
-                self.success();
-              });
-              break;
-            case 'create':
+    });
+    localStorage.localModelQueue = JSON.stringify(this._queue);
+  },
+  success:function() {
+    delete this._currentTransfer;
+    this._queue.shift();
+    localStorage.localModelQueue = JSON.stringify(this._queue);
+    setTimeout(this.synchronize, 0, this);
+  },  
+  synchronize:function(self){
+    if (!self){
+      self = this;
+    }
+    if (!self._currentTransfer){
+      if (self._queue.length){
+        var obj = self._queue[0];
+        self._currentTransfer = obj;
+        // Persitent errors sill  block the queue forever!
+        switch (obj.cmd){
+          case 'add':
+            ServerStorage[obj.transport]._add(obj.bucket, obj.id, obj.collection, obj.items, function(err){
+              if (err) { 
+                self._currentTransfer = false;
+                return err;
+              }
+              self.success();
+            });
+            break;
+          case 'remove':
+            ServerStorage[obj.transport]._remove(obj.bucket, obj.id, obj.collection, obj.items, function(err){
+              if (err) { 
+                self._currentTransfer = false;
+                return err;
+              }
+              self.success();
+            });
+            break;
+          case 'update':
+            ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
+              if (err) { 
+                self._currentTransfer = false;
+                return err;
+              }
+              self.success();
+            });
+            break;
+          case 'create':
               ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
                 if (err){
                   self._currentTransfer = false;
@@ -1385,23 +1397,23 @@ _.extend(Queue.prototype,{
                 }
               });
               break;
-            case 'delete':
-              ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
-                if (err){
-                  self._currentTransfer = false;
-                  return err;
-                }
-                self.success();
-              });
-              break;
+          case 'delete':
+            ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
+              if (err){
+                self._currentTransfer = false;
+                return err;
+              }
+              self.success();
+            });
+            break;
           }
-        } else {
-          ginger.emit('inSync:', self);
-        }
-      } else{
-        console.log('busy with ', self._currentTransfer);
+      } else {
+        ginger.emit('inSync:', self);
       }
+    } else{
+      console.log('busy with ', self._currentTransfer);
     }
+  }
 });
 
 //------------------------------------------------------------------------------
@@ -1537,9 +1549,12 @@ var Model = ginger.Model = Base.extend( function Model(args){
     }
     return this;
   },
-  set : function(attribute, value){
-    switch(attribute){
-      case 'socket': this.socket = value;break;
+  set : function(attr, value){
+    switch(attr){
+      case 'socket': 
+        this.socket = value;
+        localModelQueue.init(socket);
+        break;
       case 'url': this.url = value;break;
     }
     return this;
@@ -1868,6 +1883,7 @@ Model.prototype.delete = function(transport, cb){
     cb && cb();
   }
 };
+// Model.prototype.keepSynced = function(enable)
 Model.prototype.keepSynced = function(){
   var self = this;
   if(self._keepSynced===true){
@@ -1908,6 +1924,7 @@ Model.prototype.keepSynced = function(){
       });
     } else {
       ginger.on('created:'+self.cid, function(_id){
+        // ginger.off('created:'+self.cid) ?
         self._id = _id;
         self.cid = _id;
         self.__persisted = true;
@@ -1932,6 +1949,7 @@ Model.prototype.destroy = function(){
   if(socket && this._keepSynced){
     var id = this._id;
     socket.emit('unsync', id);
+//    socket.removeListener('connect', this._connectFn);
     socket.removeListener('update:'+id);
     socket.removeListener('delete:'+id);
   }
