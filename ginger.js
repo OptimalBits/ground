@@ -574,7 +574,6 @@ var ajax = ginger.ajax = {
     return $.ajax(ajaxBase('GET', url, obj, cb))
   },
   put:function(url, obj, cb){
-    //console.log(JSON.stringify(obj) + 'args')
     return $.ajax(ajaxBase('PUT', url, obj, cb));
   },
   post:function(url, obj, cb){
@@ -590,6 +589,16 @@ var ajax = ginger.ajax = {
 // Storage
 // (requires localStorage)
 //------------------------------------------------------------------------------
+
+/**
+  Rename Storage to LocalStorage.
+  
+  Storage should be a generic storage that will always try to save on server
+  if possible, if not enqueue the operation and try to save it in a later time.
+  It always caches the reads and writes of data so that it can work in offline
+  mode.
+*/
+
 var Storage = ginger.Storage = {}
 
 Storage.moved = function(bucket, oldId, newId){
@@ -852,18 +861,16 @@ ServerStorage.socket = {
   },
   add:function(bucket, id, collection, items, cb){
     var wrapCb = function(err, ids) {
-
       Storage.add(bucket, id, collection, items, function(err2){
         if (err){
           var obj = {'bucket':bucket, 'id':id, 
            'cmd':'add', 'transport':'socket', 'collection':collection, 
            'items':items}
           localModelQueue.add(obj);
-          cb(null);
+          cb(err2);
         } else {
-          cb(null, ids);  
+          cb(err2, ids);  
         }
-
       });
     }
     ServerStorage.socket._add(bucket, id, collection, items, wrapCb);
@@ -1553,9 +1560,11 @@ var Model = ginger.Model = Base.extend( function Model(args){
     switch(attr){
       case 'socket': 
         this.socket = value;
-        localModelQueue.init(socket);
+        value && localModelQueue.init(value);
         break;
-      case 'url': this.url = value;break;
+      case 'url': 
+        this.url = value;
+        break;
     }
     return this;
   },
@@ -2292,12 +2301,12 @@ Collection.prototype._add = function(item, cb, opts, pos){
   if(self._keepSynced){
     var transport = this.model.transport();
     if(!opts || (opts.nosync !== true)){
-      function storageAdd(){
+      function storageAdd(doc){
         if(self.parent){
           ServerStorage[transport].add(self.parent.__bucket, 
                                        self.parent._id,
                                        item.__bucket,
-                                       item.cid,
+                                       doc,
                                        function(err, ids){
             if(!err && _.isArray(ids)){
               item.set('_id', ids[0]);
@@ -2310,11 +2319,11 @@ Collection.prototype._add = function(item, cb, opts, pos){
       }  
       
       if(item.__persisted || (opts && opts.embedded)){
-        storageAdd()
+        storageAdd(item)
       }else{
         item.save(function(err){
           if(!err){
-            storageAdd();
+            storageAdd(item.cid);
           }else{
             cb();
           }
