@@ -221,6 +221,42 @@ var asyncForEach = ginger.asyncForEach = function(array, fn, cb) {
 }
 
 //
+// Promise (Minimal promise implementation).
+//
+ginger.Promise = function(){
+  this.results = [];  
+  this.callbacks = [];
+  this.resolved = null;
+};
+_.extend(ginger.Promise.prototype,{
+  then : function(cb){
+    if(this.resolved){
+      cb(this.resolved);    
+    }else{
+      this.callbacks.push(cb);
+    }
+  },
+  resolve : function(){
+    this.resolved = arguments;
+    this._fireCallbacks(); 
+  },
+  abort : function(){
+    // TODO Implement
+  },
+  _fireCallbacks : function(){
+    var args = this.resolved;
+    if(args!=null){
+      var len = this.callbacks.length;
+      if(len>0){
+        for(var i=0;i<len;i++){
+          this.callbacks[i](args);
+        }
+      }
+    }
+  }
+});
+
+//
 // Event Emitter
 // (based on original work by Oliver Caldwell, olivercaldwell.co.uk)
 // Dual licensed under the MIT or GPL Version 2 licenses.
@@ -1218,7 +1254,7 @@ Base.prototype.destroy = function(){
 }
 Base.prototype.retain = function(){
   if(this._destroyed){
-    throw new Error("Cannot retain destroyed object");
+    console.log(new Error("Cannot retain destroyed object"));
   }
   this._refCounter++;
   return this;

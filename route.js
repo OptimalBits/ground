@@ -21,36 +21,8 @@ var parseQuery = function(queryString){
   }
 }
 
-//
-// Promise (Minimal promise implementation).
-//
-var Promise = function(){
-  this.results = [];  
-  this.callbacks = [];
-  this.resolved = null;
-};
-Promise.prototype.then = function(cb){
-  if(this.resolved === null){
-    this.callbacks.push(cb);
-  }else{
-    cb(this.resolved);
-  }
-}
-Promise.prototype.resolve = function(){
-  this.resolved = arguments;
-  this._fireCallbacks(); 
-}
-Promise.prototype._fireCallbacks = function(){
-  var args = this.resolved;
-  if(args!=null){
-    var len = this.callbacks.length;
-    if(len>0){
-      for(var i=0;i<len;i++){
-        this.callbacks[i](args);
-      }
-    }
-  }
-}
+var Promise = ginger.Promise;
+
 var AutoreleasePool = function(){
   this.pool = [];
 }
