@@ -2825,7 +2825,7 @@ var Table = Views.Table = View.extend( function Table(collection, options){
   self.set('collection', collection);
   collection.emit('updated:');
   self.on('filterData', function(){
-    this.collection.emit('updated:')
+    self.collection.emit('updated:')
   });
 });
 
@@ -2838,9 +2838,10 @@ Table.prototype.populate = function(index,limit){
     self.footerCon.$showing.text(indexStart);
     self.footerCon.$to.text(indexLast);
   }
-  var items = self.collection.items.slice(indexStart,indexLast);
+  var items = self.collection.items.slice(indexStart, indexLast);
   $.each(items,function(i, item){
-    if(!self.filter || self.filter(item, self.filterData, self.fields)){
+    if(!self.filter || 
+       self.filter(item, self.filterData, self.searchFields || self.fields)) {
       self.formatters && item.format(self.formatters);
       var row = new TableRow(item, self.fields, self.widths);
       row.render(self.$tbody);
