@@ -626,26 +626,21 @@ var ajax = ginger.ajax = {
 // (requires localStorage)
 //------------------------------------------------------------------------------
 
-/**
-  Rename Storage to LocalStorage.
-  
+/**  
   Storage should be a generic storage that will always try to save on server
   if possible, if not enqueue the operation and try to save it in a later time.
   It always caches the reads and writes of data so that it can work in offline
   mode.
 */
 
-var Storage = ginger.Storage = {}
+var Storage = ginger.Storage = {};
 
 Storage.moved = function(bucket, oldId, newId){
-  localCache.write(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
-  //localStorage[bucket+'@'+oldId] = JSON.stringify(bucket+'@'+newId);
+  localCache.setItem(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
 }
-
 Storage.create = function(bucket, args, cb){
   var objectId = bucket+'@'+args.cid;
-  localCache.write(objectId, JSON.stringify(args));
-  //localStorage[objectId] = JSON.stringify(args)
+  localCache.setItem(objectId, JSON.stringify(args));
   cb && cb(null, args.cid);
 }
 Storage.findById = function(bucket, id, cb){
@@ -655,7 +650,7 @@ Storage.findById = function(bucket, id, cb){
 
 Storage._findById= function(key, cb){
   var objectId = key;
-  var doc = localCache.read(key);
+  var doc = localCache.getItem(key);
 
   //console.log(key, doc);
   if (doc){
@@ -685,7 +680,6 @@ find:function(bucket, id, collection, query, cb){
 */
 //find:function(bucket, id, collection, query, cb){
 
-  
 Storage.all = function(bucket, parent){ //OBSOLETE?
   var collection = []
   var keys = Storage._subCollectionKeys(bucket, parent)
@@ -760,18 +754,15 @@ Storage.add = function(bucket, id, collection, objIds, cb){
       doc = [];
     } 
     doc.push(collection + '@' + objIds);
-    localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
-    //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+    localCache.setItem(bucket + '@' + id + '@collection', JSON.stringify(doc));
     cb();
   });
 },
-
 Storage.remove = function(bucket, id, collection, objIds, cb){
   if(_.isFunction(collection)){
     cb = collection;
     var objectId = bucket+'@'+id
-    //localStorage.removeItem(objectId)
-    localCache.remove(objectId);
+    localCache.removeItem(objectId);
     cb();    
   } else if(objIds.length>0){
     Storage.findById(bucket, id + '@collection', function(err, doc){
@@ -782,8 +773,7 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
             doc.splice(i, 1);
           }
         }
-        localCache.write(bucket + '@' + id + '@collection', JSON.stringify(doc));
-        //localStorage[bucket + '@' + id + '@collection'] = JSON.stringify(doc);
+        localCache.setItem(bucket + '@' + id + '@collection', JSON.stringify(doc));
       }
       cb(err);
     });
@@ -1285,59 +1275,130 @@ Base.prototype.isDestroyed = function(){
   return this._refCounter === 0;
 }
 
+/**
+  Local Storage Cache.
+  
+  This Object spawns a cache mechanism on top of the Local Storage.
+  
+  It acts as a middle layer between the local storage and the user.
+  Every key written includes a timestamp that is later used for 
+  the LRU replacement policy.
+  
+  The API mimics local storage API so that it is interchangeble.
+  
+  Impl. Notes:
+  The Cache keeps a map object for quick translation of given
+  key to special key+timestamp in the local storage.
+  This cache is converted to an array and sorted when room
+  is needed. This conversion is a candidate for optimization.
+*/
+var ls = localStorage;
 
-//TODO: Add size support in write and remove
-var Cache = ginger.Base.extend(function Cache(args){ 
+var Cache = ginger.Base.extend({
+  constructor : function Cache(maxSize){ 
     this.super(Cache);
-    this.map = {}
-    this.size = 0;
-    for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i);
-      if (key.indexOf('|') != -1){
-        var s = key.split('|')  
-        this.map[s[0]] = s[1];
-        this.size += localStorage[key].length;
-      }
-    }
-});
-
-var localCache = ginger.localCache = new Cache();
-
-_.extend(Cache.prototype,{ 
-  write:function(key, value){
-    var t = Date.now();
-    var newKey = key + '|' + t;
-    localStorage[newKey] = value;
-    var oldTime = this.map[key];
-    this.map[key] = t;
-    if (oldTime && oldTime != t) { //Don't want to remove the value we just wrote!
-      localStorage.removeItem(key + '|' + oldTime);
-    } 
+    this._populate();
+    this._maxSize = maxSize || 5*1024*1024;
   },
-  touch:function(key, value){
-    //TODO: Figure out what to put here, and put it here :)
-  },
-  read:function(key){
-    var oldKey = key + '|' + this.map[key];
-    var value = localStorage[oldKey];
-    if (value){
-      this.write(key, value);
+  getItem:function(key){
+    var old = this.map[key], value;
+    if(old){
+      value = ls[this._key(key, old.time)];
+      this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
-  }, 
-  remove:function(key){
-    var realKey = key + '|' + this.map[key];
-    localStorage.removeItem(realKey);
   },
-  trim:function(size){ //TODO: UNFINISHED!
-    var list = _.map(map, function(num, key){ return {time:num, key:key}});
-    var sorted = _.sortBy(list, function(obj){ return obj.num; });
-
-    while (this.size > size){
-        
+  setItem:function(key, value){
+    var time = Date.now(), old = this.map[key], requested = value.length;
+    
+    if(old){
+      requested -= old.size;
     }
+    if(this._makeRoom(requested)){
+      this.size += requested;
+    
+      ls[this._key(key, time)] = value;
+
+      if(old){
+        // Avoid remove the set item
+        if(old.time != time){ 
+          this._remove(key, old.time);
+        }
+      }else{
+        this.length++;
+      }
+      this.map[key] = {time:time, size:value.length};
+    }
+  },
+  removeItem:function(key){
+    var item = this.map[key];
+    if(item){
+      this._remove(key, item.time);
+      this.size -= item.size;
+      delete this.map[key];
+      this.length--;
+    }
+  },
+  clear:function(){
+    for(var key in this.map){
+      this.removeItem(key);
+    }
+    this.length = 0;
+    this.size = 0;
+  },
+  setMaxSize:function(size){
+    this._maxSize = size;
+  },
+  _key:function(key, timestamp){
+    return key+'|'+timestamp;
+  },
+  _remove:function(key, timestamp){
+    var key = this._key(key,timestamp);
+    delete ls[key];
+  },
+  _populate:function(){
+    var i, len, key, s, k, size;
+    this.size = 0;
+    this.map = {};
+    for (i=0, len=ls.length;i<len;i++){
+      key = ls.key(i);
+      if (key.indexOf('|') != -1){
+        size = ls[key].length;
+        s = key.split('|');
+        // avoid possible duplicated keys due to previous error
+        k = s[0];
+        if(!this.map[k] || this.map[k].time > s[1]){
+          this.map[k] = {time : s[1], size : size}
+        }
+        this.size += size;
+      }
+    }
+    this.length = _.size(this.map);
+  },
+  // Remove items until required size available
+  _makeRoom:function(size){
+    var target = this._maxSize - size;
+    if(this.size > target){
+      if(target<0){
+        return false;
+      }else{
+        // TODO: We need to optimize this.(move to populate and keep sorted in order).
+        var list = _.map(this.map, function(item, key){return {time:item.time, key:key}});
+        var sorted = _.sortBy(list, function(item){return item.time;});
+        var index = sorted.length-1;
+    
+        while ((this.size > target) && (index >= 0)){
+          this.removeItem(sorted[index--].key);
+        }
+      }
+    }
+    return true;
   }
 });
+
+// We can only have one local cache.
+var localCache = ginger.localCache = new Cache();
+
 
 //------------------------------------------------------------------------------
 // Local Model Queue
