@@ -161,9 +161,14 @@ describe('Model', function(){
         //Animal.findById(tempAnimal.cid, function(err, doc){
         //  tempAnimal2 = doc;
         //  tempAnimal2.keepSynced();
-          socket.socket.connect();              
+          socket.socket.connect();           
         //});
       });
+    });
+    
+    it('findById caches object', function(){
+      // IMPLEMENT: This case tests that after doing a findById, the
+      // object has been cached and is available in offline mode.
     });
 
     it('delete', function(done){

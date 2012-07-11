@@ -118,13 +118,17 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       self.embeddedUpdate(parent, parentId, bucket, id, args, cb);
     });
 
-    socket.on('read', function(){self.read.apply(self, Array.prototype.slice.call(arguments))});
-  
+    socket.on('read', function(){
+      self.read.apply(self, arguments);
+    });
+    
     socket.on('delete', function(id, cb){
       // TODO: Implement (deletes a model).
     });
   
-    socket.on('find', function(){self.find.apply(self, Array.prototype.slice.call(arguments))});
+    socket.on('find', function(){
+      self.find.apply(self, arguments);
+    });
     //
     // Add items to a collection.
     //
@@ -334,8 +338,13 @@ Server.prototype.read = function(bucket, id, cb){
   self = this;
   var Model = self._getModel(bucket, cb);
   if(Model){
-    console.log('trololol', bucket, id);
-    Model.findById(id).exclude(Model.exclude).run(cb);
+    Model.findById(id).exclude(Model.exclude).run(function(err, doc){
+      if(err){
+        cb('Error finding object: '+err);
+      }else{
+        cb(err, doc);
+      }
+    });
   }
 };
 

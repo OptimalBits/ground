@@ -230,6 +230,12 @@ describe('Collections1', function(){
 
 
   describe('Offline', function(){
+    if('find items are cached', function(done){
+      // IMPLEMENT: Items that are "finded" from the server should be
+      // cached for offline usage.
+      done();    
+    });
+  
     it('add item to collection', function(done){
       zoo = new Zoo();
       zoo.keepSynced();

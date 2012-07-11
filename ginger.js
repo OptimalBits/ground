@@ -628,33 +628,27 @@ var ajax = ginger.ajax = {
 
 /**  
   Storage should be a generic storage that will always try to save on server
-  if possible, if not enqueue the operation and try to save it in a later time.
+  if possible, if not enqueue the operation and try to save it at a later time.
   It always caches the reads and writes of data so that it can work in offline
   mode.
 */
-
 var Storage = ginger.Storage = {};
 
 Storage.moved = function(bucket, oldId, newId){
   localCache.setItem(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
 }
 Storage.create = function(bucket, args, cb){
-  var objectId = bucket+'@'+args.cid;
-  localCache.setItem(objectId, JSON.stringify(args));
+  localCache.setItem(bucket+'@'+args.cid, JSON.stringify(args));
   cb && cb(null, args.cid);
 }
 Storage.findById = function(bucket, id, cb){
-  var objectId = bucket+'@'+id;
-  Storage._findById(objectId, cb);
+  Storage._findById(bucket+'@'+id, cb);
 }
-
 Storage._findById= function(key, cb){
-  var objectId = key;
   var doc = localCache.getItem(key);
 
-  //console.log(key, doc);
   if (doc){
-    doc=JSON.parse(doc);
+    doc = JSON.parse(doc);
     if (_.isString(doc)){
       Storage._findById(doc, cb);
     } else {
@@ -664,32 +658,19 @@ Storage._findById= function(key, cb){
       cb(null, doc);
     }
   } else {
-    cb(new Error('no localobject!'));  
+    cb(new Error('No local object available'));  
   }
 }
-
-/*
-find:function(bucket, id, collection, query, cb){
-  var url = Model.url;
-  if(bucket) url += '/' + bucket;
-  if(id) url += '/'+id;
-  if(collection) url += '/'+collection;
-  if(query) url += '?'+$.param(query);
-  ajax.get(url, cb);
-},
-*/
-//find:function(bucket, id, collection, query, cb){
-
 Storage.all = function(bucket, parent){ //OBSOLETE?
   var collection = []
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
     for (var i=0, len=keys.length;i<len;i++){
-      var obj = localStorage[keys[i]]
+      var obj = localCache.getItem(keys[i]);
       if(obj){
         collection.push(JSON.parse(obj))
       }else{
-        localStorage.removeItem(keys[i])
+        localCache.removeItem(keys[i])
       }
     }
   }else{
@@ -703,77 +684,74 @@ Storage.all = function(bucket, parent){ //OBSOLETE?
   return collection
 }
 
+// Note: This works because Storage is not asynchronous.
+// Missing error reporting.
 Storage.find = function(bucket, id, collection, cb){
-  Storage.findById(bucket, id + '@collection', function(err, doc){
-    var result=[];
-    if (err){
-      cb(null, result);
-      //cb(err);
-    } else {
-      for (var i=0, len=doc.length;i<len;i++){
-        Storage._findById(doc[i], function(err, d){
-          result.push(d)
-        });
-      }
-      cb(null, result);
+  Storage.findById(bucket, id+'@'+collection, function(err, doc){
+    var result = [];
+    doc = doc || [];
+    for (var i=0, len=doc.length;i<len;i++){
+      Storage._findById(doc[i], function(err, d){
+        d && result.push(d)
+      });
     }
+    cb(err, result);
   });
 }
-
-Storage.first = function(bucket, parent){  //OBSOLETE?
+Storage.first = function(bucket, parent){
   var keys = Storage._subCollectionKeys(bucket, parent)
   if(keys){
-    return localStorage[keys[0]]
+    return localCache.getItem(keys[0]);
   }else{
-    for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key.split('@')[0] === bucket){
-        var doc = JSON.parse(localStorage[key])
+    return localCache.each(function(key){
+      var s = key.split('@'); 
+      if((s[0] === bucket) && (s.length == 2)){
+        var doc = JSON.parse(localCache.getItem(key))
         doc._id = doc.cid;
         return doc;
       }
-    }
+    });
   }
 }
 Storage.update = function(bucket, id, args, cb){
   Storage.findById(bucket, id, function(err, obj){
-    if(!err){
-      if(!obj){
-        obj = {};
-      }
-      _.extend(obj, args)
-      Storage.create(bucket, obj, cb);
-    }else{
-      cb(err);
-    }
+    // we safely ignore errors here
+    obj = obj || {cid:id};
+    _.extend(obj, args)
+    Storage.create(bucket, obj, cb);
   })
 }
-Storage.add = function(bucket, id, collection, objIds, cb){
-  Storage.findById(bucket, id + '@collection', function(err, doc){
-    if (err){
-      doc = [];
-    } 
-    doc.push(collection + '@' + objIds);
-    localCache.setItem(bucket + '@' + id + '@collection', JSON.stringify(doc));
-    cb();
+// FIXME: the collection in the key and the collection in the array could be different...
+// FIXME: remove duplicates.
+Storage.add = function(bucket, id, collection, ids, cb){
+  Storage.findById(bucket, id+'@'+collection, function(err, doc){
+    doc = doc || [];
+    if(_.isArray(ids)){
+      for(var i=0,len=ids.length;i<len;i++){
+        doc.push(collection+'@'+ids[i]);
+      }
+    }else{
+      doc.push(collection+'@'+ids);
+    }
+    localCache.setItem(bucket+'@'+id+'@'+collection, JSON.stringify(doc));
+    cb && cb();
   });
-},
+}
+// TODO: Fix this implementation.
 Storage.remove = function(bucket, id, collection, objIds, cb){
   if(_.isFunction(collection)){
-    cb = collection;
-    var objectId = bucket+'@'+id
-    localCache.removeItem(objectId);
-    cb();    
+    localCache.removeItem(bucket+'@'+id);
+    collection();
   } else if(objIds.length>0){
-    Storage.findById(bucket, id + '@collection', function(err, doc){
+    Storage.findById(bucket, id+'@'+collection, function(err, doc){
       if (!err){
-        var key = collection + '@' + objIds;
+        var key = collection+'@'+objIds;
         for (var i=0, len=doc.length;i<len;i++){
           if (doc[i] == key){
             doc.splice(i, 1);
           }
         }
-        localCache.setItem(bucket + '@' + id + '@collection', JSON.stringify(doc));
+        localCache.setItem(bucket+'@'+id+'@'+collection, JSON.stringify(doc));
       }
       cb(err);
     });
@@ -783,8 +761,8 @@ Storage.remove = function(bucket, id, collection, objIds, cb){
 }
 Storage._subCollectionKeys = function(bucket, parent){
   if(parent){
-  var value = localStorage[parent.__bucket+':'+parent.cid+':'+bucket]
-  return value?JSON.parse(value):null
+    var value = localCache.getItem(parent.__bucket+':'+parent.cid+':'+bucket);
+    return value ? JSON.parse(value):null
   }
   return null
 }
@@ -864,17 +842,36 @@ ServerStorage.socket = {
     safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
-    var wrapCb = function(err, ids) {
+    var wrapCb = function(err, items) {
       if (err){
         Storage.find(bucket, id, collection, cb);
       } else {
-        cb(null, ids);  
+        if(items.length){
+          var ids = [], item;
+          for(var i=0, len=items.length;i<len;i++){
+            item = items[i];
+            item.cid = item.cid || item._id;
+            ids.push(item.cid);
+            Storage.update(bucket, id, item);// we safely ignore errors.
+          }
+          Storage.add(bucket, id, collection, _.pluck(items, 'cid'));
+        }
+        cb(null, items);
       }
     }
     safeEmit(Model.socket,'find', bucket, id, collection, query, wrapCb);
   },
   findById:function(bucket, id, cb){
-    safeEmit(Model.socket,'read', bucket, id, cb);
+    var wrapCb = function(err, item) {
+      if (err||!item){
+        Storage.findById(bucket, id, cb);
+      } else {
+        Storage.update(bucket, id, item, function(err){
+          cb(err, item);
+        });
+      }
+    }
+    safeEmit(Model.socket,'read', bucket, id, wrapCb);
   },
   update:function(parent, parentId, bucket, id, args, cb){
     if(arguments.length===4){
@@ -923,7 +920,8 @@ ServerStorage.socket = {
       }
       ServerStorage.socket._remove(bucket, id, collection, items, wrapCb);
     }
-  },_remove:function(bucket, id, collection, items, cb){
+  },
+  _remove:function(bucket, id, collection, items, cb){
     safeEmit(Model.socket,'remove', bucket, id, collection, items, cb);
   },
 
@@ -1284,7 +1282,10 @@ Base.prototype.isDestroyed = function(){
   Every key written includes a timestamp that is later used for 
   the LRU replacement policy.
   
-  The API mimics local storage API so that it is interchangeble.
+  The API mimics local storage API so that it is as interchangeble
+  as possible, the main differences is that instead of key() it 
+  provides each() for faster iteration, and there are no getters
+  and setters using [] syntax, it just provides getItem and setItem.
   
   Impl. Notes:
   The Cache keeps a map object for quick translation of given
@@ -1299,6 +1300,13 @@ var Cache = ginger.Base.extend({
     this.super(Cache);
     this._populate();
     this._maxSize = maxSize || 5*1024*1024;
+  },
+  each:function(cb){
+    var result;
+    for(var key in this.map){
+      result = cb(key);
+      if(result) return result;
+    }
   },
   getItem:function(key){
     var old = this.map[key], value;
@@ -1701,13 +1709,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
       if(doc){
         instantiate(doc, args, cb);
       }else{
-        Storage.findById(bucket, id, function(err, doc){
-          if(doc){
-            instantiate(doc, args, cb);
-          }else{
-            cb(err);
-          }
-        })
+        cb(err);
       }
     })
     return this;
@@ -1789,8 +1791,8 @@ var Model = ginger.Model = Base.extend( function Model(args){
           Collection.instantiate(self, parent, collection, cb)
         },
         first: function(cb, parent){
-          var args = Storage.first(bucket, parent)
-          self.create(args, cb)
+          var args = Storage.first(bucket, parent);
+          self.create(args, cb);
         }
       }
       return this._local
@@ -1839,33 +1841,35 @@ Model.prototype.local = function(){
   Model#all (model, [args{Object}, bucket{String}], cb);
 */
 Model.prototype.all = function(model, args, bucket, cb){
-  if(_.isString(args)){
-    cb = bucket;
-    bucket = args;
-    args = undefined;
-  }
-  if(_.isFunction(bucket)){
-    cb = bucket;
-    bucket = undefined;
-  }
-  if(_.isFunction(args)){
-    cb = args;
-    args = undefined;
-    bucket = undefined;
-  }
-  if(this._id){ 
-    model.all(cb, this, args, bucket)
+  if(!this._id){ // needed?
+    cb(null)
+  }else if(_.isString(args)){
+    this._all2(model, args, bucket);
+  }else if(_.isFunction(bucket)){
+    this._all3(model, args, bucket);
+  }else if(_.isFunction(args)){
+    model.all(args, this);
   }else{
-   cb(null)
+    model.all(cb, this, args, bucket)
   }
 }
+Model.prototype._all = function(model, args, bucket, cb){
+  model.all(cb, this, args, bucket)
+}
+Model.prototype._all2 = function(model, bucket, cb){
+  model.all(cb, this, undefined, bucket)
+}
+Model.prototype._all3 = function(model, args, cb){
+  model.all(cb, this, args)
+}
+
 Model.prototype.toArgs = function(){
   var args = {__persisted:this.__persisted};
   for(var key in this){
-    if( !_.isUndefined(this[key]) && 
-        (this[key] != null) && 
-        (key[0] !== '_') && 
-        !_.isFunction(this[key]) ){
+    if(!_.isUndefined(this[key]) &&  
+       !_.isNull(this[key]) &&
+       (key[0] !== '_') && 
+       !_.isFunction(this[key])){
       if(_.isFunction(this[key].toArgs)){
         args[key] = this[key].toArgs();
       }else if(!_.isObject(this[key])){
@@ -1950,7 +1954,7 @@ Model.prototype.update = function(args, transport, cb){
     })
   }
 
-  /*
+/*
   var obj;
   if(self._id){
      obj = {'bucket':bucket, 'id':self._id, 'args':args, 
@@ -2006,14 +2010,15 @@ Model.prototype.keepSynced = function(){
     if (self._id){
       socket.emit('sync', id);
 
+      // 
       socket.on('connect', function(){
         safeEmit(Model.socket, 'resync', self.__bucket, id, function(err, doc){
           if (!err){
             self.set(doc, {sync:'false'});
-            //self.local().update(doc);
+            //self.local().update(doc); // outcommented why?
             ginger.emit('sync:'+id);
           } else {
-            console.log('Error with resync of ', self.__bucket, id)
+            console.log('Error with resync of', self.__bucket, id, err)
           }
         });
       });
@@ -2029,8 +2034,7 @@ Model.prototype.keepSynced = function(){
         self.emit('delete', self.cid);
       });
     } else {
-      ginger.on('created:'+self.cid, function(_id){
-        // ginger.off('created:'+self.cid) ?
+      ginger.once('created:'+self.cid, function(_id){
         self._id = _id;
         self.cid = _id;
         self.__persisted = true;
@@ -2041,7 +2045,7 @@ Model.prototype.keepSynced = function(){
   }
   
   self.on('changed:', function(doc, args){
-    console.log('received changed with args', args);
+    // Shouldn't we want to use a deep equality here?
     if((doc !== newDoc) && (!args || (args.sync != 'false'))){
       self.update(doc, function(res){
         // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
@@ -2415,8 +2419,10 @@ Collection.prototype._add = function(item, cb, opts, pos){
         }
       }  
       
-      if(item.__persisted || (opts && opts.embedded)){
-        storageAdd(item)
+      if(opts && opts.embedded){
+        storageAdd(item);
+      }else if(item.__persisted){
+        storageAdd(item.cid);
       }else{
         item.save(function(err){
           if(!err){

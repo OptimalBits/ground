@@ -43,11 +43,13 @@
               'test/test_base', 
               'test/test_models',
               'test/test_collections',
-              'test/test_cache',
               ], function(){
-          mocha
-              .run()
-              .globals(['socket']) // acceptable globals
+          // We need to run this last.
+          curl(['test/test_cache'], function(){
+            mocha
+                .run()
+                .globals(['socket']) // acceptable globals
+          });
         });
       })
     });
