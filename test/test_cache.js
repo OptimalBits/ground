@@ -10,6 +10,11 @@ describe('Local Cache', function(){
     'qux' : 'payload4',        
   };
   
+  after(function(){
+    cache.setMaxSize(5*1024*1024);
+    // but still, why is it not removing in the right order?
+  });
+  
   describe('Clean up', function(){
     it('Clear all items', function(){
       var numItems = cache.length,
@@ -131,6 +136,9 @@ describe('Local Cache', function(){
       cache.setItem('large', large);
       expect(cache.length).to.be((10-Math.floor(large.length/(small.length+1)))+1)
       expect(cache.size).to.be((cache.length-1)*(small.length+1)+large.length);
+    });
+    it('removes old objects in right order', function(){
+      // TO IMPLEMENT...
     });
   });
 });

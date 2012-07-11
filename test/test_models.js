@@ -32,7 +32,7 @@ describe('Model', function(){
   describe('findById', function(){
     it('finds the animal', function(done){
       Animal.findById(animal.cid, function(err, doc){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         expect(doc.cid).to.eql(animal.cid);
         doc.release();
         done();
@@ -43,10 +43,10 @@ describe('Model', function(){
     it('updates the server model', function(done){
       animal.set('name', 'foobar');
       animal.save(function(err){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         expect(animal).to.have.property('_id');
         Animal.findById(animal._id, function(err, doc){
-          expect(err).to.be(null);
+          expect(err).to.not.be.ok();
           expect(doc).to.have.property('_id');
           expect(doc._id).to.eql(animal._id);
           expect(doc).to.have.property('name');
@@ -69,7 +69,7 @@ describe('Model', function(){
       });
 
       Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
         doc.keepSynced();
@@ -97,7 +97,7 @@ describe('Model', function(){
     
     it('all instances of a model', function(done){
       Animal.fetch(function(err, animals){
-        expect(err).to.be(null);
+        expect(err).not.to.be.ok();
         expect(animals).to.be.an(Array);
         done();
       })
@@ -120,7 +120,7 @@ describe('Model', function(){
       }
 
       Animal.findById(animal._id, function(err, doc){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
         doc.keepSynced();
@@ -148,8 +148,8 @@ describe('Model', function(){
       ginger.once('inSync:', function(){
         Animal.findById(tempAnimal._id, function(err, doc){
           expect(tempAnimal._id).to.be(doc._id);
-          //expect(tempAnimal2._id).to.be(doc._id);
-          expect(err).to.be(null);
+          expect(tempAnimal2._id).to.be(doc._id);
+          expect(err).to.not.be.ok();
           expect(doc.legs).to.be(8);
           done();
         });
@@ -158,11 +158,11 @@ describe('Model', function(){
       tempAnimal.set({legs : 8, name:'spider'});
       tempAnimal.save(function(){
         tempAnimal.keepSynced();
-        //Animal.findById(tempAnimal.cid, function(err, doc){
-        //  tempAnimal2 = doc;
-        //  tempAnimal2.keepSynced();
+        Animal.findById(tempAnimal.cid, function(err, doc){
+          tempAnimal2 = doc;
+          tempAnimal2.keepSynced();
           socket.socket.connect();           
-        //});
+        });
       });
     });
     
@@ -176,9 +176,9 @@ describe('Model', function(){
       tempAnimal.set({legs : 8, name:'spider-pig'});
 
       ginger.once('inSync:', function(){
-          Animal.findById(tempAnimal._id, function(err, doc){
-            expect(err).to.be.an(Error);
-            done();
+        Animal.findById(tempAnimal._id, function(err, doc){
+          expect(err).to.be.an(Error);
+          done();
         });
       });
 
@@ -218,7 +218,7 @@ describe('Model', function(){
   describe('Delete', function(){
     it('deletes and propagates delete event', function(done){
       animal.delete(function(err){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
       });
         
       animal.on('deleted:', function(){

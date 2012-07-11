@@ -37,15 +37,15 @@
     var socket = io.connect('http://localhost:8080');
     socket.once('connect', function(){
       $(function () {
-        curl(['test/test_routes',
-              'test/test_events',
-              'test/test_declare',
-              'test/test_base', 
-              'test/test_models',
-              'test/test_collections',
-              ], function(){
-          // We need to run this last.
-          curl(['test/test_cache'], function(){
+        curl(['test/test_cache'], function(){
+          curl(['test/test_routes',
+                'test/test_events',
+                'test/test_declare',
+                'test/test_base',
+                'test/test_models',
+                'test/test_collections',
+                ], function(){
+            // We need to run this first.
             mocha
                 .run()
                 .globals(['socket']) // acceptable globals

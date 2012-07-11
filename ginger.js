@@ -639,7 +639,7 @@ Storage.moved = function(bucket, oldId, newId){
 }
 Storage.create = function(bucket, args, cb){
   localCache.setItem(bucket+'@'+args.cid, JSON.stringify(args));
-  cb && cb(null, args.cid);
+  cb && cb();
 }
 Storage.findById = function(bucket, id, cb){
   Storage._findById(bucket+'@'+id, cb);
@@ -649,11 +649,12 @@ Storage._findById= function(key, cb){
 
   if (doc){
     doc = JSON.parse(doc);
+    // Translate?
     if (_.isString(doc)){
       Storage._findById(doc, cb);
     } else {
       if (doc.__persisted){
-         doc._id = doc.cid;  
+        doc._id = doc.cid;  // unsure why this is still needed...
       }
       cb(null, doc);
     }
@@ -839,6 +840,31 @@ function safeEmit(socket){
 
 ServerStorage.socket = {
   create: function(bucket, args, cb){
+    var wrapCb = function(err, id){
+      if(err){
+        Storage.create(bucket, args, function(err){
+          if(!err){
+            localModelQueue.add({
+              'bucket':bucket,
+              'id':args.cid,
+              'args':args, 
+              'cmd':'create',
+              'transport':'socket'
+            });
+          }
+          cb(err, id);
+        });
+      }else{
+        assert(id, 'Missing object ID after successful creation');
+        args.cid = args._id = id;
+        args.__persisted = true;
+        Storage.update(bucket, id, args);
+        cb(err, id);
+      }
+    }
+    this._create(bucket, args, wrapCb);
+  },
+  _create: function(bucket, args, cb){
     safeEmit(Model.socket, 'create', bucket, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
@@ -850,11 +876,11 @@ ServerStorage.socket = {
           var ids = [], item;
           for(var i=0, len=items.length;i<len;i++){
             item = items[i];
-            item.cid = item.cid || item._id;
+            item.cid = item._id || item.cid;
             ids.push(item.cid);
-            Storage.update(bucket, id, item);// we safely ignore errors.
+            Storage.update(collection, item.cid, item);// we safely ignore errors.
           }
-          Storage.add(bucket, id, collection, _.pluck(items, 'cid'));
+          Storage.add(bucket, id, collection, ids);
         }
         cb(null, items);
       }
@@ -866,6 +892,8 @@ ServerStorage.socket = {
       if (err||!item){
         Storage.findById(bucket, id, cb);
       } else {
+        item.cid = id;
+        item.__persisted = true;
         Storage.update(bucket, id, item, function(err){
           cb(err, item);
         });
@@ -1418,12 +1446,9 @@ var Queue = ginger.Base.extend({
     self.super(Queue);
   
     //TODO: get old queue from localstorage
-    
     self._queue = [];
     self._createList = {};
-    this._syncFn = function(){
-      self.synchronize();
-    }
+    self._syncFn = _.bind(self.synchronize, self);
   },
   init : function(socket){
     socket.removeListener('connect', this._syncFn);
@@ -1435,88 +1460,69 @@ var Queue = ginger.Base.extend({
   add:function(obj){
     //TODO: MERGE DIFFERENT UPDATES?
     this._queue.push(obj);
-    localStorage.localModelQueue = JSON.stringify(this._queue);
-    //this.synchronize();
+    ls.localModelQueue = JSON.stringify(this._queue);
   },
   fixQueue:function(oldId, newId){
     _.each(this._queue, function(obj){
       if (obj.id == oldId){
-        obj.id == newId;
+        obj.id = newId;
       } 
       if (obj.items && obj.items == oldId){
         obj.items = newId;
       }
     });
-    localStorage.localModelQueue = JSON.stringify(this._queue);
+    ls.localModelQueue = JSON.stringify(this._queue);
   },
-  success:function() {
-    delete this._currentTransfer;
-    this._queue.shift();
-    localStorage.localModelQueue = JSON.stringify(this._queue);
-    setTimeout(this.synchronize, 0, this);
-  },  
-  synchronize:function(self){
-    if (!self){
-      self = this;
+  success:function(err) {
+    this._currentTransfer = null;
+    if(!err){
+      this._queue.shift();
+      ls.localModelQueue = JSON.stringify(this._queue);
+      setTimeout(_.bind(this.synchronize, this), 0);
     }
+  },  
+  synchronize:function(){
+    var self = this,
+      done = _.bind(self.success, this);
+    
     if (!self._currentTransfer){
       if (self._queue.length){
-        var obj = self._queue[0];
-        self._currentTransfer = obj;
-        // Persitent errors sill  block the queue forever!
+        var obj = self._currentTransfer = self._queue[0],
+          store = ServerStorage[obj.transport],
+          bucket = obj.bucket,
+          _id = obj.id,
+          items = obj.items,
+          collection = obj.collection,
+          args = obj.args;
+        
+        // FIXME: Persitent errors will  block the queue forever.
         switch (obj.cmd){
           case 'add':
-            ServerStorage[obj.transport]._add(obj.bucket, obj.id, obj.collection, obj.items, function(err){
-              if (err) { 
-                self._currentTransfer = false;
-                return err;
-              }
-              self.success();
-            });
+            store._add(bucket, _id, collection, items, done);
             break;
           case 'remove':
-            ServerStorage[obj.transport]._remove(obj.bucket, obj.id, obj.collection, obj.items, function(err){
-              if (err) { 
-                self._currentTransfer = false;
-                return err;
-              }
-              self.success();
-            });
+            store._remove(bucket, _id, collection, items, done);
             break;
           case 'update':
-            ServerStorage[obj.transport].update(obj.bucket, obj.id, obj.args, function(err){
-              if (err) { 
-                self._currentTransfer = false;
-                return err;
-              }
-              self.success();
-            });
+            store.update(bucket, _id, args, done);
             break;
           case 'create':
-              ServerStorage[obj.transport].create(obj.bucket, obj.args, function(err, id){
-                if (err){
-                  self._currentTransfer = false;
-                  return err;
-                } else {
-                  var oldId = obj.id;
-                  obj.args.cid = id;
-                  Storage.create(obj.bucket, obj.args, function(){
-                    self.fixQueue(obj.id, id);
-                    ginger.emit('created:'+obj.id, id);
-                    self.success();
-                    Storage.moved(obj.bucket, oldId, id);
-                  });
-                }
-              });
-              break;
-          case 'delete':
-            ServerStorage[obj.transport].remove(obj.bucket, obj.id, function(err){
+            store._create(bucket, args, function(err, id){
               if (err){
-                self._currentTransfer = false;
-                return err;
+                done(err);
+              } else {
+                args.cid = id;
+                Storage.create(bucket, args, function(){
+                  Storage.moved(obj.bucket, _id, id);
+                  self.fixQueue(obj.id, id);
+                  ginger.emit('created:'+_id, id);
+                  done();
+                });
               }
-              self.success();
             });
+            break;
+          case 'delete':
+            store.remove(bucket, _id, done);
             break;
           }
       } else {
@@ -1604,6 +1610,16 @@ _.extend(Interval.prototype, {
 // Models
 // TODO: Change .cid to .cid() to avoid serialization.
 //------------------------------------------------------------------------------
+
+/**
+  TODO: Define states for models 
+  (not stored, stored in local, stored server, etc).
+
+*/
+var ModelStates = {
+  CREATED:'created', // CREATED but its not yet persistent.
+  PERSISTENT:'persistent' // PERSISTENT, there is a copy in the server.
+}
 
 var Model = ginger.Model = Base.extend( function Model(args){
   this.super(Model)
@@ -1841,9 +1857,7 @@ Model.prototype.local = function(){
   Model#all (model, [args{Object}, bucket{String}], cb);
 */
 Model.prototype.all = function(model, args, bucket, cb){
-  if(!this._id){ // needed?
-    cb(null)
-  }else if(_.isString(args)){
+  if(_.isString(args)){
     this._all2(model, args, bucket);
   }else if(_.isFunction(bucket)){
     this._all3(model, args, bucket);
@@ -1891,87 +1905,64 @@ Model.prototype.save = function(transport, cb){
   update(args, [transpor, cb])
 */
 Model.prototype.update = function(args, transport, cb){
-  transport= transport ? transport : this.transport();
+  transport = transport ? transport : this.transport();
   
   if(_.isFunction(transport)){
     cb = transport;
     transport = this.transport();
   }
   
-  var self = this, bucket = self.__bucket;
+  var self = this, bucket = self.__bucket, store = ServerStorage[transport];
     
   cb = cb || noop;
 
   if(self._id){
     if(self._embedded){
       var parentBucket = self.parent.__bucket;
-      ServerStorage[transport].update(parentBucket, 
-        self.parent._id, 
-        bucket, 
-        self._id, 
-        args, function(err){
-          self.local().update(args)
-          if(err){
-            //TODO: THIS DOES PROBABLY NOT PRODCE THE EXPECTED RESULT!
-            var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
-               'cmd':'update', 'transport':transport }
-            localModelQueue.add(obj);
-          }
-          cb(null);
-      });
-    }else{
-      ServerStorage[transport].update(bucket, self._id, args, function(err){
+      store.update(parentBucket, self.parent._id, bucket, self._id, args, function(err){
         self.local().update(args)
         if(err){
-          var obj = {'bucket':bucket, 'id':self._id, 'args':args, 
-             'cmd':'update', 'transport':transport }
-          localModelQueue.add(obj);
+          //TODO: THIS DOES PROBABLY NOT PRODUCE THE EXPECTED RESULT!
+          localModelQueue.add({
+             'bucket':bucket, 
+             'id':self._id, 
+             'args':args, 
+             'cmd':'update', 
+             'transport':transport});
         }
-        cb(null)
+        cb();
+      });
+    }else{
+      store.update(bucket, self._id, args, function(err){
+        self.local().update(args)
+        if(err){
+          localModelQueue.add({
+            'bucket':bucket, 
+            'id':self._id, 
+            'args':args, 
+            'cmd':'update', 
+            'transport':transport
+          });
+        }
+        cb()
       });
     }
   }else{
-    ServerStorage[transport].create(bucket, args, function(err, id){
-      if(!err){
-        if(id){
-          self.local().remove()
-          self._id = id
-          self.cid = id
-          self.__persisted = true;
-          self.local().save()
-          cb(null, id)
-        }else{
-          self.local().update(args)
-          cb(null, self.cid)
-        }
-      } else {
-        self.local().save()
-        var obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
-           'cmd':'create', 'transport':transport }
-        localModelQueue.add(obj);
-        cb(null);
+    // FIXME: this can lead to several creations of the same object, we need states!
+    store.create(bucket, args, function(err, id){
+      if(!err&&id){
+        self._id = self.cid = id;
+        self.__persisted = true;
       }
+      cb(err);
     })
   }
-
-/*
-  var obj;
-  if(self._id){
-     obj = {'bucket':bucket, 'id':self._id, 'args':args, 
-           'cmd':'update', 'transport':transport }
-    self.local().update(args);
-  
-  }else{
-    obj = {'bucket':bucket, 'id':self.cid, 'args':args, 
-           'cmd':'create', 'transport':transport }
-    self.local().save();
-  }
-  localModelQueue.add(obj);
-  cb(null, self.cid);*/
 }
-
 Model.prototype.delete = function(transport, cb){
   var self = this;
+  
+  self._endSync();
+  
   if(_.isFunction(transport)||arguments.length==0){
     cb = transport;
     transport = this.transport();
@@ -1979,9 +1970,11 @@ Model.prototype.delete = function(transport, cb){
   if(transport){
     ServerStorage[transport].remove(self.__bucket, self._id, function(err){
       if (err){
-        var obj = {'bucket':self.__bucket, 'id':self._id, 
-           'cmd':'delete', 'transport':transport }
-        localModelQueue.add(obj);
+        localModelQueue.add({
+          'bucket':self.__bucket, 
+          'id':self._id, 
+          'cmd':'delete', 
+          'transport':transport});
       } else {
         self.emit('deleted:', self._id);
       }
@@ -1992,82 +1985,80 @@ Model.prototype.delete = function(transport, cb){
     self.emit('deleted:', self.cid);
     cb && cb();
   }
-};
-// Model.prototype.keepSynced = function(enable)
+}
 Model.prototype.keepSynced = function(){
   var self = this;
-  if(self._keepSynced===true){
-    return;
+  
+  if(self._keepSynced) return;
+  
+  self._keepSynced = true;
+  
+  if (self.__persisted){
+    self._startSync();
+  } else {
+    ginger.once('created:'+self.cid, function(_id){
+      self.cid = self._id = _id;
+      self.__persisted = true;
+      self._startSync();
+    });
   }
   
-  if(self.transport() === 'socket'){
-    var socket = Model.socket;
-    
-    var newDoc, id = self._id;
-    //assert(self._id, 'model requires server id');
-    self._keepSynced = true;
-
-    if (self._id){
-      socket.emit('sync', id);
-
-      // 
-      socket.on('connect', function(){
-        safeEmit(Model.socket, 'resync', self.__bucket, id, function(err, doc){
-          if (!err){
-            self.set(doc, {sync:'false'});
-            //self.local().update(doc); // outcommented why?
-            ginger.emit('sync:'+id);
-          } else {
-            console.log('Error with resync of', self.__bucket, id, err)
-          }
-        });
-      });
-      
-      socket.on('update:'+id, function(doc){
-        newDoc = doc;
-        self.set(doc, {sync:false});
-        self.local().update(doc);
-      });
-      
-      socket.on('delete:'+id, function(){
-        self.local().remove();
-        self.emit('delete', self.cid);
-      });
-    } else {
-      ginger.once('created:'+self.cid, function(_id){
-        self._id = _id;
-        self.cid = _id;
-        self.__persisted = true;
-        self._keepSynced = false;
-        self.keepSynced();
-      });
-    }
-  }
-  
-  self.on('changed:', function(doc, args){
-    // Shouldn't we want to use a deep equality here?
-    if((doc !== newDoc) && (!args || (args.sync != 'false'))){
-      self.update(doc, function(res){
-        // TODO: Use asyncdebounce to avoid faster updates than we manage to process.
-      });
+  self.on('changed:', function(doc, options){
+    if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
+      // TODO: Use async debounce to avoid faster updates than we manage to process.
+      // (we will need to merge all incoming data).
+      self.update(doc)
     }
   });
 }
-
 Model.prototype.destroy = function(){
+  this._endSync();
+  this.super(Model, 'destroy');
+}
+Model.prototype._startSync = function(){
+  if(this.transport() !== 'socket') return;
+  
+  (function(socket, self, bucket, id){
+    socket.emit('sync', id);
+    
+    self._connectFn = function(){
+      safeEmit(socket, 'resync', bucket, id, function(err, doc){
+        if (!err){
+          self.set(doc, {sync:'false'});
+          self.local().update(doc);
+          ginger.emit('sync:'+id);
+        } else {
+          console.log('Error with resync of', bucket, id, err)
+        }
+      });
+    }
+    socket.on('connect', self._connectFn);
+    socket.on('reconnect', self._connectFn);
+     
+    socket.on('update:'+id, function(doc){
+      self.set(doc, {sync:false, doc:doc});
+      self.local().update(doc);
+    });
+        
+    socket.on('delete:'+id, function(){
+      self.local().remove();
+      self.emit('deleted:', id);
+    });
+  })(Model.socket, this, this.__bucket, this._id);
+}
+Model.prototype._endSync = function(){
   var socket = Model.socket;
   if(socket && this._keepSynced){
     var id = this._id;
     socket.emit('unsync', id);
-//    socket.removeListener('connect', this._connectFn);
+    socket.removeListener('connect', this._connectFn);
+    socket.removeListener('reconnect', this._connectFn);
     socket.removeListener('update:'+id);
     socket.removeListener('delete:'+id);
   }
-  this.super(Model, 'destroy');
 }
-
 /**
-  A collection is a set of ordered models. 
+  A collection is a set of un-ordered models. 
   It provides delegation and proxing of events.
 **/
 var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
