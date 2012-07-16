@@ -2897,7 +2897,7 @@ Table.prototype.populate = function(index,limit){
     self.footerCon.$to.text(indexLast);
   }
   var items = self.collection.items.slice(indexStart, indexLast);
-  $.each(items,function(i, item){
+  $.each(items, function(i, item){
     if(!self.filter || 
        self.filter(item, self.filterData, self.searchFields || self.fields)) {
       self.formatters && item.format(self.formatters);
@@ -2905,6 +2905,7 @@ Table.prototype.populate = function(index,limit){
       row.render(self.$tbody);
     }
   });
+  self.select();
 }
 Table.prototype._selectRow = function($row){
   var selected = this.selectedRowClass;
@@ -2915,16 +2916,22 @@ Table.prototype._selectRow = function($row){
   $row.addClass(selected);
 }
 Table.prototype.select = function(itemId){
-  var $row = $("tr[data-id='" + itemId +"']");
-  
-  if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
-    var index = $('tr', this.$body).index($row);
-    var selectedRowHeight = $row.height()*index;
-    this.$tableWrapper.stop().animate({
-      scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
-    }, 400);
+  itemId = itemId || this.selectedItemId;
+  if(itemId){
+    var $row = $("tr[data-id='" + itemId +"']"), index, selectedRowHeight;
+    if($row.length){
+      // animate if needed.
+      if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
+        index = $('tr', this.$body).index($row);
+        selectedRowHeight = $row.height()*index;
+        this.$tableWrapper.stop().animate({
+          scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
+        }, 400);
+      }
+      this.selectedItemId = itemId;
+      $row && this._selectRow($row);
+    }
   }
-  $row && this._selectRow($row);
 }
 Table.prototype.destroy = function(){
   ginger.release(this.collection);
