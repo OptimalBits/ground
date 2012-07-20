@@ -866,12 +866,13 @@ ServerStorage.socket = {
         Storage.find(bucket, id, collection, cb);
       } else {
         if(items.length){
-          var ids = [], item;
+          var ids = [], args;
           for(var i=0, len=items.length;i<len;i++){
-            item = items[i];
-            item.cid = item._id || item.cid;
-            ids.push(item.cid);
-            Storage.update(collection, item.cid, item);// we safely ignore errors.
+            args = items[i];
+            args.cid = args._id || args.cid;
+            args.__persisted = true;
+            ids.push(args.cid);
+            Storage.update(collection, args.cid, args);// we safely ignore errors.
           }
           Storage.add(bucket, id, collection, ids);
         }
