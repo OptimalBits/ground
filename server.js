@@ -97,7 +97,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
     });
   
     socket.on('resync', function(bucket, id, cb){
-      console.log('helo');
+      console.log('Resynching %s@%s', bucket, id);
       self.read(bucket, id, cb);
     });
 
@@ -179,7 +179,6 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
       switch(arguments.length){
         case 3:
           cb = collection;
-          console.log(cb);
           Model = self._getModel(bucket, cb);
           if(Model){
             // TODO: Use findAndModify to avoid sending delete msg for already deleted documents.
@@ -259,7 +258,6 @@ Server.prototype.update = function(bucket, id, args, cb){
   var self = this;
   var Model = self._getModel(bucket, cb);
   if(Model){  
-    //console.log(args);
     var keys = _.keys(args);
     Model.findById(id, keys, function(err, doc){
       if(!err && doc && shouldUpdate(keys, args, doc)){
