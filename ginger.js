@@ -1030,10 +1030,10 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
   }
   
   if(!Sub){
-    Sub = function Ground(){
+    Sub = function Gnd(){
       var self = this;
-      if(!(self instanceof Ground)){
-        return new Ground(arguments);
+      if(!(self instanceof Gnd)){
+        return new Gnd(arguments);
       }else{
         return Super.prototype.constructor.apply(self, arguments);
       }
