@@ -1,5 +1,5 @@
 /**
-   Ground MVC framework v0.1
+   Ground MVC framework v0.1.0
 
    Features:
    - Modular design.
@@ -7,24 +7,17 @@
    - Hierarchical routing system.
    - Clean class hierarchies, based on javascript prototypal inheritance.
    - Property bindings.
-   - Models with persistence and synchronization.
+   - Models with persistence and clients/servers synchronization.
    - Global and Local Events.
    - Undo/Redo Manager.
    - Keyboard handling.
    - Set of views for common web "widgets".
    - Canvas View.
-   - Middleware for express.
   
    Dependencies:
    - jQuery
-   - Underscore
-   
-   Roadmap:
-   - namespaces for events and bindings.
-   - instantiate classes without new operator. (Partially implemented).
-   - use getter/setters to simplify the events and bindings.
-   - validation (willChange is already a validator).
-   
+   - Underscore / LoDash
+      
    (c) 2011-2012 OptimalBits with selected parts from the internet
    dual licensed as public domain or MIT.
    
