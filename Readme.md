@@ -1,6 +1,9 @@
-#Ginger MVC Framework
+#Introduction
 
-Ginger is a minimalistic javascript framework designed to create modern, interactive web applications. It has been inspired by other great frameworks such as Backbone, Spine, Batman and Sammy, but with some ideas of its own and some unique features.
+Ground is a minimalistic javascript framework designed to create modern, interactive web applications. 
+
+It has been inspired by other great 
+an dpopular frameworks such as Backbone, Spine, Batman and Sammy, but with some ideas of its own and some unique features.
 
 Note that this framework is still under heavy development and subject to API changes. All feedback is therefore very much appreciated.
 
@@ -14,33 +17,35 @@ Note that this framework is still under heavy development and subject to API cha
 - Events.
 - Undo/Redo Manager.
 
-#AMD Modules
+#Modules
 
-Ginger is built as a set of AMD modules, and will not work without a module loader. While it should work with any AMD compatible loader, we can only guarantee a consistent behavior with Curl (@unscriptable). For convenience we will provide a custom build of curl with every new release of the framework.
+Ground is built as a set of AMD modules, and will not work without a module loader. While it should work with any AMD compatible loader, 
+we can only guarantee a consistent behavior with Curl (@unscriptable). For convenience we will provide a custom build of curl with every 
+new release of the framework.
 
 #Routing
 
-When creating a modern web application, it is desired to avoid page refreshes in order to provide a better user experience as well as to help keeping the application state. While it is possible to keep an internal state between the application different components, it is often convenient to offer urls that links to different "global" states of the application. This is achieved using a client side url routing system.
+In modern web applications, it is desired to avoid page refreshes in order to provide a better user experience as well as to help keeping the application state. While it is possible to keep an internal state between the application different components, it is often convenient to offer urls that links to different "global" states of the application. This is achieved using a client side url routing system.
 
-Ginger takes a less traditional approach to url routing. Instead of defining a list of independent routes, the routes are assumed to be **hierarchical**, matching  the hierarchical nature of a web page and the underlying DOM. The framework is smart enough to not re-render unnecessary DOM nodes, as well as deleting the ones that are not part of the current route.
+ground takes a less traditional approach to url routing. Instead of defining a list of independent routes, the routes are assumed to be **hierarchical**, matching  the hierarchical nature of a web page and the underlying DOM. The framework is smart enough to not re-render unnecessary DOM nodes, as well as deleting the ones that are not part of the current route.
 
 With this approach it is possible to reduce redundancy dramatically and also create transition effects between views very easily.
 
 The routing module is used by firstly specifying the root route:
 
-	ginger.route.root = '/'
+	gnd.route.root = '/'
 
 And after that, just listen to any requests. Lets see the simplest possible example:
 
-	ginger.route.listen(function(req){
+	gnd.route.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 	  });
 	});
 
-Since the system is hierarchical, if we want to add some more sub routes we can do it it like so:
+Since the system is hierarchical, if we want to add some more sub routes we can do it like so:
 
-	ginger.route.listen(function(req){
+	gnd.route.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');
 
@@ -90,7 +95,7 @@ Just don't forget to call done() when you are ready, so that the system can cont
 
 Templates usually need data that may be fetched from the server as well. For that purpose, the function *load* can be used. Let's see an example:
 
-	ginger.route.listen(function(req){
+	gnd.route.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 
@@ -106,7 +111,7 @@ Templates usually need data that may be fetched from the server as well. For tha
 
 The framework also provides an easy function to make transitions between routes. They are enabled by using the pair of functions *enter* and *exit*. The first one will define what animation to run when entering the route, and the second one will define what animation to run when exiting the route.
 
-	ginger.route.listen(function(req){
+	gnd.route.listen(function(req){
 	  req.get(function(){
 	    req
 	      .enter('fadeOut');
@@ -121,11 +126,11 @@ We have also a pair of function to be used when custom code must be executed, th
 
 In order to avoid large files with many route handlers that would keep the code large and clunky, we can use external route handlers. Simply provide a path to a handler in the get method instead of the function callback. Lets see a more complete example:
 
-    ginger.route.listen(function(req){
+    gnd.route.listen(function(req){
       req.use('template', template);
 
       req.get(function(){
-        ginger.ajax.get('api/sessions', function(err, res){
+        gnd.ajax.get('api/sessions', function(err, res){
           req.user = res;
           if(req.isLast()){
             req.before(function(done){
@@ -151,32 +156,34 @@ In order to avoid large files with many route handlers that would keep the code 
       }  
     });
  
-#Classes and Objects
+#Classes
 
-Ginger is object oriented, using standard javascript prototypal inheritance. This provides a simple and powerful enough mechanism for our purposes.
+Ground is object oriented using standard javascript prototypal inheritance. This provides a simple and powerful enough mechanism for our 
+purposes.
 
-Classes are declared using ginger.Declare:
+Classes are declared using gnd.Declare:
 
-    ginger.Declare(Super, [constructor, statics])
+    gnd.Derive(Super, [constructor, statics])
   
   
-The only mandatory parameter is Super, which is the super class that your class derives from. The top of the class hierarchy in ginger is the class ginger.Base, which provides some ground functionality that the rest of the system expects from all the classes. So at a minimum you should derive from ginger.Base, although usually you will be deriving from more specialized classes such as ginger.Model or ginger.View.
+The only mandatory parameter is Super, which is the super class that your class derives from. The top of the class hierarchy in ground is the class gnd.Base, which provides some ground functionality that the rest of the system expects from all the classes. So at a minimum you should derive from gnd.Base, although usually you will be deriving from more specialized classes such as gnd.Model or gnd.View.
 
 The other parameters are optional, but usually quite relevant. The *constructor* allows you to define a customized constructor
 for your class. This constructor can have any number of input parameters, although if you are creating model classes it is recommended that the first parameter is *args*, which would represent all the serialized properties of your model. This will make more sense when we explain about the models later on.
 
-The *statics* parameter is an object with all the static functions for this class, i.e. the functions that you can call without needing to instantiate the class.
+The *statics* parameter is an object with all the static functions for this class, i.e. the functions that you can call without needing 
+to instantiate the class.
 
 Lets give some examples:
 
     // Create a simple class without constructor.
-    var Animal = ginger.Declare(ginger.Base);
+    var Animal = gnd.Derive(gnd.Base);
   
     // It is possible to add static functions and properties also after declaration
     Animal.find = function(name){ ... }
   
     // Create a class with a custom constructor.
-    var House = ginger.Declare(ginger.Base, function(floors, colour){
+    var House = gnd.Declare(gnd.Base, function(floors, colour){
       // Don't forget to  call super class constructor!
       this.super(House);
       this.floors = floors;
@@ -186,7 +193,7 @@ Lets give some examples:
     // Instantiate
     var myHouse = new House(3, 'white');
   
-Classes like these are not so much different from a normal javascript object, but we get some useful features such as:
+Classes derived from gnd.Base are not so much different from a normal javascript object, but we get some useful features such as:
 
   - Events
   - Bindings
@@ -236,19 +243,19 @@ Finally, the Base class provides reference counting. When a class is instantiate
 
 ## Models
 
-Models in ginger are classes that derive from ginger.Base and that provide functionality for persisting as well as synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
+Models in ground are classes that derive from gnd.Base and that provide functionality for persisting as well as synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
 
-Ginger can take advantage of socket.io, and it provides a nodejs component to simplify persistence and synchronization. The server component is designed to scale easily thanks to Redis which is used as a pub sub system between different nodes running the ginger server component.
+ground can take advantage of socket.io, and it provides a nodejs component to simplify persistence and synchronization. The server component is designed to scale easily thanks to Redis which is used as a pub sub system between different nodes running the ground server component.
 
-Besides models there are also ***collections***. A collection is a special class also derived from ginger.Base that keeps a collection of models. By using this class, a collection of models can be kept synchronized against other instances in other remote clients using a central server with ginger server component.
+Besides models there are also ***collections***. A collection is a special class also derived from gnd.Base that keeps a collection of models. By using this class, a collection of models can be kept synchronized against other instances in other remote clients using a central server with ground server component.
 
 So lets start with some examples:
       
     // Define the root url for storing models
-    ginger.Model.set('url', '/models');
+    gnd.Model.set('url', '/models');
 
     // Declare a Animal Model
-    var Animal = ginger.Declare(ginger.Model);
+    var Animal = gnd.Declare(gnd.Model);
     Animal.use('transport', 'ajax');      
 
     var fox = new Animal({legs:4, colour:'brown'});
@@ -267,7 +274,7 @@ So lets start with some examples:
 If there is a connection to the server using socket.io, we can also have synchronization support:
 
     // Set a socket for realtime communication with a server.
-    ginger.Model.set('socket', socket);
+    gnd.Model.set('socket', socket);
 
     // Select socket as transport
     Animal.transport('transport', 'ajax');
@@ -291,14 +298,20 @@ In the example above we achieved automatic synchronization between the client an
 
 ###Serialization
 
-Models are serialized as JSON. The mechanism is quite simple, every model provides a toArgs (aliased to toJSON) which when called provides a lean object suitable for being converted to a JSON string using JSON.stringify. The toArgs function provided in the Model class is useful for most simple cases, it will produce an object following these rules:
+Models are serialized as JSON. The mechanism is quite simple, every model provides a toArgs (aliased to toJSON) which when called 
+provides a lean object suitable for being converted to a JSON string using JSON.stringify. The toArgs function provided in the 
+Model class is useful for most simple cases, it will produce an object following these rules:
 
-Deserialization is performed calling to the static method fromArgs (aliased to fromJSON). It performs the inverse operation as toArgs. Deserializing implies the instantiation of a new Model based on the given arguments. This deserialization can require asynchronouse operations, and therefore the signature of fromArgs includes a callback: (args, cb).
+Deserialization is performed calling to the static method fromArgs (aliased to fromJSON). It performs the inverse operation as toArgs. 
+Deserializing implies the instantiation of a new Model based on the given arguments. This deserialization can require asynchronouse 
+operations, and therefore the signature of fromArgs includes a callback: (args, cb).
 
 
 ##Collections
 
-Besides Models we also have Collections, which provides a convenient way to represent an *ordered set* of models. A Collection is able to keep itself synchronized with a server. If elements are added or remove from a collection, all instances of that collection can be kept synchronized, including the server backend that persists all the objects.
+Besides Models we also have Collections, which provides a convenient way to represent an *ordered set* of models. A Collection is 
+able to keep itself synchronized with a server. If elements are added or remove from a collection, all instances of that collection 
+can be kept synchronized, including the server backend that persists all the objects.
 
 Usually a collection is instantiated by using the *all* function on a model:
 
@@ -318,8 +331,9 @@ Usually a collection is instantiated by using the *all* function on a model:
     
     
 
-Collections *retains* all the items that are part of it. So if we for example add a item to a collection, we can safely (and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed from it.
-
+Collections *retains* all the items that are part of it. So if we for example add a item to a collection, we can safely 
+(and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed 
+from it later or if the collection is destroyed.
 
 Oftem times a collection is a *subcollection*, i.e., it is a collection part of some other model. For example:
 
@@ -338,8 +352,9 @@ Subcollections is a powerfull concept that allows us to define very complex hier
 
 ##Events
 
-Events in ginger try to mimick the EventEmitter object from early versions of nodejs. 
-One important consideration to keep in mind is that ginger events are propagated inmediately
+Events in ground try to mimick the EventEmitter object from early versions of nodejs.
+
+One important consideration to keep in mind is that ground events are propagated inmediately
 i.e., they do not wait for the next event loop. The reason for this is to provide high 
 performance and responsivity. The major implication of this is that you have always to place
 your listeners after you emit, otherwise the event will be missed. 
@@ -352,26 +367,25 @@ your listeners after you emit, otherwise the event will be missed.
 In Ground we provide a reference counting mechanism. Reference counting is a simple yet quite effective method 
 to avoid memory and event leaks. The Base class in Ground provides two methods: retain and release. The former 
 is used to increase the reference counter, its called retain because it expresses that the object that called 
-it "retains" a reference to it. It is like sharing the ownership of the retained object. It also means that
-the object that called *retain* is now responsible of calling *release* when it is not needed anymore.
+it "retains" a reference to it. It is equivalent to sharing the ownership of the retained object. It also means 
+that the object that called *retain* is now responsible of calling *release* when it is not needed anymore.
  
 Everytime *release* is called, the reference counter is decremented, and when it reaches zero, the object is
 destroyed (by calling the method *destroy*, which is also part of the Base class, although it is quite often
 overrided to perform customized clean ups for your classes).
 
-It may seem strange that a we need a reference counting mechanism when using a language that includes garbage
+It may seem strange that we need a reference counting mechanism when javascript includes garbage
 collection. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
 the garbage collector is only able to free objects that are not referenced by any other object. In complex 
-applications, it is necessary some structure mechanism in order to un-refernce the objects so that the 
-garbage collector can do its job. Also, besides memory, we also want to avoid *event leaks*, which occour when
-some event is still listening even if we do not care of it anymore. In Ground, when an object is destroyed,
-all the events associated to it are also removed.
+applications, it is necessary some structured mechanism in order to un-refernce the objects so that the 
+garbage collector can do its job. Also, besides memory, we want to avoid *event leaks*, which occour when
+some event are still listening even if we do not care of them anymore. In Ground, when an object is destroyed,
+by default all the events associated to it are also removed.
 
-#Undo / Redo Manager
+#Undo / Redo
 
 
 #Offline
-
 
 
 #Utilities
