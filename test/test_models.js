@@ -77,6 +77,41 @@ describe('Model', function(){
         otherAnimal = doc;
       });
     });
+    
+    it('releasing an instance keeps other synchronized', function(done){
+      var oneFox = new Animal({name:'fox', legs:4});
+      oneFox.save(function(err){
+        expect(err).to.not.be.ok();
+        expect(oneFox).to.have.property('_id');
+        oneFox.keepSynced();
+        
+        oneFox.on('changed:', function(){  
+          done();
+        });
+            
+        Animal.findById(oneFox._id, function(err, secondFox){
+          expect(err).to.not.be.ok();
+          expect(secondFox).to.have.property('_id');
+          expect(secondFox).to.eql(secondFox);
+          
+          secondFox.keepSynced();
+          
+          Animal.findById(oneFox._id, function(err, thirdFox){
+            expect(err).to.not.be.ok();
+            expect(secondFox).to.have.property('_id');
+            expect(secondFox).to.eql(secondFox);
+            
+            thirdFox.keepSynced();
+            
+            thirdFox.on('destroy:', function(){
+              secondFox.set('legs', 3);
+            });
+            
+            thirdFox.release();
+          });
+        });
+      });
+    });
   });
   
   describe('Fetch', function(){
