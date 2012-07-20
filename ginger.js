@@ -72,7 +72,7 @@ if (!Object.create) {
 //
 // Ginger Object
 //
-var ginger = {}
+var ginger = {};
 
 //
 // Utils
@@ -1608,12 +1608,90 @@ _.extend(Interval.prototype, {
 /**
   TODO: Define states for models 
   (not stored, stored in local, stored server, etc).
-
 */
 var ModelStates = {
   CREATED:'created', // CREATED but its not yet persistent.
   PERSISTENT:'persistent' // PERSISTENT, there is a copy in the server.
 }
+
+/**
+  This object keeps models synchronized with the server.
+*/
+var SyncManager = Base.extend({
+  constructor: function SyncManager(){
+    var self = this;
+    self.objs = {}; // {id:[model, ...]}
+    
+    this._connectFn = function(){
+      // Call resync for all models in this manager...
+      _.each(self.objs, function(models, id){
+        var model = models[0];
+        safeEmit(self._socket, 'resync', model.__bucket, id, function(err, doc){
+          if(!err){
+            model.set(doc, {sync:'false'});
+            model.local().update(doc);
+            ginger.emit('sync:'+id);
+          } else {
+            console.log('Error resyncing %s@%s, %s', model.__bucket, id, err)
+          }
+        });
+      });
+    }
+  },
+  init: function(socket){
+    this._socket = socket;
+    socket.on('connect', this._connectFn);
+   // socket.on('reconnect', this._connectFn);
+  },
+  deinit: function(){
+    var socket = this._socket;
+    if(socket){
+      socket.removeListener('connect', this._connectFn);
+      socket.removeListener('reconnect', this._connectFn);
+    }
+  },
+  startSync: function(model){
+    var self = this, id = model._id, socket = this._socket;
+
+    if(model.transport() !== 'socket') return;
+    
+    if(!self.objs[id]){
+      self.objs[id] = [model];
+      socket.emit('sync', id);
+      socket.on('update:'+id, function(doc){
+        _.each(self.objs[id], function(model){
+          model.set(doc, {sync:false, doc:doc});
+          model.local().update(doc);
+        });
+      });
+      socket.on('delete:'+id, function(){
+        _.each(self.objs[id], function(model){
+          model.local().remove();
+          model.emit('deleted:', id);
+        });
+      });
+    }else{
+      self.objs[id].push(model);
+    }
+      },
+  endSync: function(model){
+    if (!model._keepSynced) return;
+    
+    var socket = this._socket, id = model._id, models = this.objs[id];
+    
+    if(models){
+      models = _.reject(models, function(item){return item === model;});
+      if(models.length===0){
+        socket.emit('unsync', id);
+        socket.removeListener('update:'+id);
+        socket.removeListener('delete:'+id);
+        delete this.objs[id];
+      }else{
+        this.objs[id] = models;
+      }
+    }
+  }
+});
 
 var Model = ginger.Model = Base.extend( function Model(args){
   this.super(Model)
@@ -1630,6 +1708,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
   this.__bucket = this.__bucket || this.constructor.__bucket;
 },
 {
+  syncManager : new SyncManager(),
   create : function(args, keepSynced, cb){
     if(_.isFunction(keepSynced)){
       cb = keepSynced;
@@ -1643,14 +1722,14 @@ var Model = ginger.Model = Base.extend( function Model(args){
             instance.keepSynced();
           }
           instance.init(function(){
-            cb(null, instance)
+            cb(null, instance);
           })
         }else{
-          cb(err)
+          cb(err);
         }
       })
     }else{
-      cb()
+      cb();
     }
     return this;
   },
@@ -1676,6 +1755,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
       case 'socket': 
         this.socket = value;
         value && localModelQueue.init(value);
+        value && this.syncManager.init(value);
         break;
       case 'url': 
         this.url = value;
@@ -1786,27 +1866,22 @@ var Model = ginger.Model = Base.extend( function Model(args){
     this.local().first(fn, parent)
   },
   local : function(){
-    if(this._local){
-      return this._local
-    }else{
-      var self = this,
-        bucket = this.__bucket;
+    if(!this._local){
+      var self = this, bucket = this.__bucket;
       this._local = {
         findById : function(id, cb){
-          var args = Storage.findById(bucket, id)
-          self.create(args, cb)
+          self.create(Storage.findById(bucket, id), cb)
         },
         all: function(cb, parent){
           var collection = Storage.all(bucket, parent)
           Collection.instantiate(self, parent, collection, cb)
         },
         first: function(cb, parent){
-          var args = Storage.first(bucket, parent);
-          self.create(args, cb);
+          self.create(Storage.first(bucket, parent), cb);
         }
       }
-      return this._local
     }
+    return this._local
   },
   fromJSON : function(args, cb){
     cb(null, new this(args));
@@ -1955,7 +2030,7 @@ Model.prototype.update = function(args, transport, cb){
 Model.prototype.delete = function(transport, cb){
   var self = this;
   
-  self._endSync();
+  Model.syncManager.endSync(this);
   
   if(_.isFunction(transport)||arguments.length==0){
     cb = transport;
@@ -1988,12 +2063,12 @@ Model.prototype.keepSynced = function(){
   self._keepSynced = true;
   
   if (self.__persisted){
-    self._startSync();
+    Model.syncManager.startSync(self);
   } else {
     ginger.once('created:'+self.cid, function(_id){
       self.cid = self._id = _id;
       self.__persisted = true;
-      self._startSync();
+      Model.syncManager.startSync(self);
     });
   }
   
@@ -2006,50 +2081,8 @@ Model.prototype.keepSynced = function(){
   });
 }
 Model.prototype.destroy = function(){
-  this._endSync();
+  Model.syncManager.endSync(this);
   this.super(Model, 'destroy');
-}
-Model.prototype._startSync = function(){
-  if(this.transport() !== 'socket') return;
-  
-  (function(socket, self, bucket, id){
-    socket.emit('sync', id);
-    
-    self._connectFn = function(){
-      safeEmit(socket, 'resync', bucket, id, function(err, doc){
-        if (!err){
-          self.set(doc, {sync:'false'});
-          self.local().update(doc);
-          ginger.emit('sync:'+id);
-        } else {
-          console.log('Error with resync of', bucket, id, err)
-        }
-      });
-    }
-    socket.on('connect', self._connectFn);
-    socket.on('reconnect', self._connectFn);
-     
-    socket.on('update:'+id, function(doc){
-      self.set(doc, {sync:false, doc:doc});
-      self.local().update(doc);
-    });
-        
-    socket.on('delete:'+id, function(){
-      self.local().remove();
-      self.emit('deleted:', id);
-    });
-  })(Model.socket, this, this.__bucket, this._id);
-}
-Model.prototype._endSync = function(){
-  var socket = Model.socket;
-  if(socket && this._keepSynced){
-    var id = this._id;
-    socket.emit('unsync', id);
-    socket.removeListener('connect', this._connectFn);
-    socket.removeListener('reconnect', this._connectFn);
-    socket.removeListener('update:'+id);
-    socket.removeListener('delete:'+id);
-  }
 }
 /**
   A collection is a set of un-ordered models. 
