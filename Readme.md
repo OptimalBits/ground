@@ -1,11 +1,13 @@
 #Introduction
 
-Ground is a minimalistic javascript framework designed to create modern, interactive web applications. 
+Ground is a minimalistic and flexible javascript framework designed to create modern, 
+interactive web applications. 
 
-It has been inspired by other great 
-an dpopular frameworks such as Backbone, Spine, Batman and Sammy, but with some ideas of its own and some unique features.
+It has been inspired by other great and popular frameworks such as Backbone, Spine, Batman and Sammy, 
+but with some new ideas of its own and some unique features.
 
-Note that this framework is still under heavy development and subject to API changes. All feedback is therefore very much appreciated.
+Note that this framework is still under heavy development and subject to API changes. All feedback is 
+therefore very much appreciated.
 
 ## Features
 
@@ -26,23 +28,34 @@ build of curl with every new release of the framework.
 
 #Routing
 
-In modern web applications, it is desired to avoid page refreshes in order to provide a better user experience as well as to help keeping the application state. While it is possible to keep an internal state between the application different components, it is often convenient to offer urls that links to different "global" states of the application. This is achieved using a client side url routing system.
+In modern web applications, it is desired to avoid page refreshes in order to provide a better user experience 
+as well as to help keeping the application state. While it is possible to keep an internal state between the 
+application different components, it is often convenient to offer urls that links to different "global" states 
+of the application. This is achieved using a client side url routing system.
 
-ground takes a less traditional approach to url routing. Instead of defining a list of independent routes, the routes are assumed to be **hierarchical**, matching  the hierarchical nature of a web page and the underlying DOM. The framework is smart enough to not re-render unnecessary DOM nodes, as well as deleting the ones that are not part of the current route.
+Ground takes a less traditional approach to url routing. Instead of defining a list of independent routes, 
+the routes are assumed to be **hierarchical**, matching  the hierarchical nature of a web page and the 
+underlying DOM structure. The framework is smart enough to avoid re-rendering unnecessary DOM nodes, as well as 
+deleting the ones that are not part of the current route.
 
-With this approach it is possible to reduce redundancy dramatically and also create transition effects between views very easily.
+With this approach it is possible to reduce redundancy dramatically and also create transition effects between 
+views very easily.
 
 The routing module is used by firstly specifying the root route:
 
 	gnd.route.root = '/'
 
-And after that, just listen to any requests. Lets see the simplest possible example:
+After that, just listen to any requests. Lets see the simplest possible example:
 
 	gnd.route.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 	  });
 	});
+
+In this case we will render the [jade](https://github.com/visionmedia/jade/) template *main.jade* into the *body* tag.
+Note that we used jade as an example template engine, any template engine can be used by ground, although it defaults
+to [underscore](http://underscorejs.org/#template) microtemplates.
 
 Since the system is hierarchical, if we want to add some more sub routes we can do it like so:
 
@@ -76,9 +89,14 @@ This simple example will handle the following routes:
 	/products/bar
 	/about
 
-Note that the second parameter in the *get* function is a node selector. This parameter is optional (defaulting to 'body'), and it is used by the render function to place the content, as well as used by the framework internally to provide some smart features.
+Note that the second parameter in the *get* function is a node selector. This parameter is optional
+(defaulting to 'body'), and it is used by the render function to place the content, as well as used 
+by the framework internally to provide some smart features.
 
-Also Note that the framework is taking care of the asynchronicity between calls, for example, the render function will fetch a template from the server, but the user does not need to wait for it before calling the next *get* functions. This is achieved by using promises internally. Sometimes it is needed to do something after the function has finished, so render accepts a callback function for this means:
+Also note that the framework is taking care of the asynchronicity between calls, for example, the render
+function will fetch a template from the server, but the user does not need to wait for it before 
+calling the next *get* functions. This is achieved by using promises internally. Sometimes it is 
+needed to do something after the function has finished, so render accepts a callback function for this means:
 
 	req.render('/templates/products.jade', function(done){
 	  // Do something asynchronous...
@@ -157,27 +175,34 @@ In order to avoid large files with many route handlers that would keep the code 
       }  
     });
  
-#Classes
+#Objects
 
-Ground is object oriented using standard javascript prototypal inheritance. This provides a simple and powerful enough mechanism for our 
-purposes.
+Javascript does not provided Classes, although it provides a similar mechanism called prototypal inheritance, where
+objects just can inherit from other objects.
 
-Classes are declared using gnd.Declare:
+Ground provides a mechanism to simplify standard prototypal inheritance and it also provides a hierarchy of objects
+that will prove quite useful for developing advanced web applications.
 
-    gnd.Derive(Super, [constructor, statics])
+Objects inheriting from other objects are just declared using gnd.Declare:
+
+  var myObject = gnd.Declare(Super, [constructor, statics])
   
-  
-The only mandatory parameter is Super, which is the super class that your class derives from. The top of the class hierarchy in ground is the class gnd.Base, which provides some ground functionality that the rest of the system expects from all the classes. So at a minimum you should derive from gnd.Base, although usually you will be deriving from more specialized classes such as gnd.Model or gnd.View.
+The only mandatory parameter is Super, which is the super object that your object derives from. At the top of the 
+object hierarchy in ground lies the object gnd.Base, which provides some basic functionality that the rest of 
+the system expects from all the classes. So at a minimum you should derive from gnd.Base, although usually you 
+will be deriving from more specialized objects such as gnd.Model or gnd.View.
 
-The other parameters are optional, but usually quite relevant. The *constructor* allows you to define a customized constructor
-for your class. This constructor can have any number of input parameters, although if you are creating model classes it is recommended that the first parameter is *args*, which would represent all the serialized properties of your model. This will make more sense when we explain about the models later on.
+The other parameters are optional, but usually quite relevant. The *constructor* allows you to define a customized 
+constructor for your object. This constructor can have any number of input parameters, although if you are creating
+model objects it is recommended that the first parameter is *args*, which would represent all the serialized 
+properties of your model. This will make more sense when we explain about the models later on.
 
-The *statics* parameter is an object with all the static functions for this class, i.e. the functions that you can call without needing 
-to instantiate the class.
+The *statics* parameter is an object with all the static functions for this object, i.e. the functions that you 
+can call without needing to instantiate the object.
 
 Lets give some examples:
 
-    // Create a simple class without constructor.
+    // Create a simple object without constructor.
     var Animal = gnd.Derive(gnd.Base);
   
     // It is possible to add static functions and properties also after declaration
@@ -193,8 +218,16 @@ Lets give some examples:
 
     // Instantiate
     var myHouse = new House(3, 'white');
-  
-Classes derived from gnd.Base are not so much different from a normal javascript object, but we get some useful features such as:
+
+If your objects are always inheriting from some object from the gnd.Base hierarchy, you can use the simplifed
+method *extend*:
+
+    // Create a simple object
+    var Animal = gnd.Base.extend();
+
+
+Objects derived from gnd.Base are not so much different from a normal javascript object, but we get some useful 
+features such as:
 
   - Events
   - Bindings
@@ -244,13 +277,18 @@ Finally, the Base class provides reference counting. When a class is instantiate
 
 ## Models
 
-Models in ground are classes that derive from gnd.Base and that provide functionality for persisting as well as synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
+Models in ground are objects that derive from gnd.Base and that provide functionality for persisting as well as 
+synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
 
-ground can take advantage of socket.io, and it provides a nodejs component to simplify persistence and synchronization. The server component is designed to scale easily thanks to Redis which is used as a pub sub system between different nodes running the ground server component.
+Ground can take advantage of socket.io, and it provides a [NodeJS](http://nodejs.org) component to simplify 
+persistence and synchronization. The server component is designed to scale easily thanks to [Redis](http://redis.io)
+which is used as a pub sub system between different nodes running the ground server component.
 
-Besides models there are also ***collections***. A collection is a special class also derived from gnd.Base that keeps a collection of models. By using this class, a collection of models can be kept synchronized against other instances in other remote clients using a central server with ground server component.
+Besides models there are also ***collections***. A collection is a special object also derived from gnd.Base that 
+keeps a collection of models. By using this class, a collection of models can be kept synchronized against 
+other instances in other remote clients using a central server with ground server component.
 
-So lets start with some examples:
+Lets provide a few simple examples:
       
     // Define the root url for storing models
     gnd.Model.set('url', '/models');
@@ -353,12 +391,12 @@ Subcollections is a powerfull concept that allows us to define very complex hier
 
 ##Events
 
-Events in ground try to mimick the EventEmitter object from early versions of nodejs.
+Events in ground try to mimick the EventEmitter object from early versions of NodeJS.
 
 One important consideration to keep in mind is that ground events are propagated inmediately
 i.e., they do not wait for the next event loop. The reason for this is to provide high 
 performance and responsivity. The major implication of this is that you have always to place
-your listeners after you emit, otherwise the event will be missed. 
+your listeners after you emit, otherwise the event will be missed.
 
 ##Property bindings
 
@@ -366,10 +404,12 @@ your listeners after you emit, otherwise the event will be missed.
 ##Reference Counting
 
 In Ground we provide a reference counting mechanism. Reference counting is a simple yet quite effective method 
-to avoid memory and event leaks. The Base class in Ground provides two methods: retain and release. The former 
-is used to increase the reference counter, its called retain because it expresses that the object that called 
-it "retains" a reference to it. It is equivalent to sharing the ownership of the retained object. It also means 
-that the object that called *retain* is now responsible of calling *release* when it is not needed anymore.
+to avoid memory and event leaks. 
+
+The Base class in Ground provides two methods: retain and release. The former is used to increase the reference 
+counter, its called retain because it expresses that the object that called it "retains" a reference to it. 
+It is equivalent to sharing the ownership of the retained object. It also means that the object that called
+*retain* is now responsible of calling *release* when it is not needed anymore.
  
 Everytime *release* is called, the reference counter is decremented, and when it reaches zero, the object is
 destroyed (by calling the method *destroy*, which is also part of the Base class, although it is quite often
@@ -380,15 +420,24 @@ collection. Garbage collection is a powerful facility that helps in releasing un
 the garbage collector is only able to free objects that are not referenced by any other object. In complex 
 applications, it is necessary some structured mechanism in order to un-refernce the objects so that the 
 garbage collector can do its job. Also, besides memory, we want to avoid *event leaks*, which occour when
-some event are still listening even if we do not care of them anymore. In Ground, when an object is destroyed,
-by default all the events associated to it are also removed.
+some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
+, by default, all the events associated to it are also removed.
+
+
+##Offline
+
+A modern web application should be able to work offline. Ground provides a complete synchronization mechanism
+between client and server instances of models and collections. Data required by the local instances of
+models are cached so that they are available when working offline, and all data produced while being offline
+gets updated automatically as soon as the application gets connectivity with the server.
 
 #Undo / Redo
 
-
-#Offline
-
-
 #Utilities
+
+#Demos
+
+#Reference
+
 
 
