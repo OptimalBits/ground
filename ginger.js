@@ -62,11 +62,11 @@ define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
 //
 
 if (!Object.create) {  
-  Object.create = function (o) {  
-    function F() {}  
-    F.prototype = o;  
-    return new F();  
-  }  
+  Object.create = function (parent) {
+    function F(){};
+    F.prototype = parent;
+    return new F();
+  }
 }
 
 //
@@ -102,6 +102,10 @@ ginger.retain = function(objs){
     obj && obj.retain();
   });
 }
+
+var nextTick = ginger.nextTick = function(fn){
+  setTimeout(fn, 0);
+};
 
 // TODO: Add an optional timeout parameter.
 ginger.asyncDebounce = function (fn) {
@@ -858,7 +862,10 @@ ServerStorage.socket = {
     this._create(bucket, args, wrapCb);
   },
   _create: function(bucket, args, cb){
-    safeEmit(Model.socket, 'create', bucket, args, cb);
+    safeEmit(Model.socket, 'create', bucket, args, function(err, id){
+      id && ginger.emit('created:'+args.cid, id);
+      cb(err, id);
+    });
   },
   find:function(bucket, id, collection, query, cb){
     var wrapCb = function(err, items) {
@@ -1456,7 +1463,7 @@ var Queue = ginger.Base.extend({
     this._queue.push(obj);
     ls.localModelQueue = JSON.stringify(this._queue);
   },
-  fixQueue:function(oldId, newId){
+  updateIds:function(oldId, newId){
     _.each(this._queue, function(obj){
       if (obj.id == oldId){
         obj.id = newId;
@@ -1470,57 +1477,56 @@ var Queue = ginger.Base.extend({
   success:function(err) {
     this._currentTransfer = null;
     if(!err){
-      this._queue.shift();
+      this._queue.shift(); 
+      // Note: here it could happen that we shift but fail saving the queue, 
+      // and the consequence will ve that the same command can execute 2 or more times.
       ls.localModelQueue = JSON.stringify(this._queue);
-      setTimeout(_.bind(this.synchronize, this), 0);
+      nextTick(_.bind(this.synchronize, this));
     }
-  },  
+  },
   synchronize:function(){
-    var self = this,
-      done = _.bind(self.success, this);
+    var self = this, done = _.bind(self.success, self);
     
     if (!self._currentTransfer){
       if (self._queue.length){
         var obj = self._currentTransfer = self._queue[0],
-          store = ServerStorage[obj.transport],
-          bucket = obj.bucket,
-          _id = obj.id,
-          items = obj.items,
-          collection = obj.collection,
-          args = obj.args;
+          store = ServerStorage[obj.transport];
         
-        // FIXME: Persitent errors will  block the queue forever.
-        switch (obj.cmd){
-          case 'add':
-            store._add(bucket, _id, collection, items, done);
-            break;
-          case 'remove':
-            store._remove(bucket, _id, collection, items, done);
-            break;
-          case 'update':
-            store.update(bucket, _id, args, done);
-            break;
-          case 'create':
-            store._create(bucket, args, function(err, id){
-              if (err){
-                done(err);
-              } else {
-                args.cid = id;
-                Storage.create(bucket, args, function(){
-                  Storage.moved(obj.bucket, _id, id);
-                  self.fixQueue(obj.id, id);
-                  ginger.emit('created:'+_id, id);
-                  done();
-                });
-              }
-            });
-            break;
-          case 'delete':
-            store.remove(bucket, _id, done);
-            break;
+        (function(cmd, bucket, id, items, collection, args){        
+          // FIXME: Persitent errors will  block the queue forever.
+          switch (cmd){
+            case 'add':
+              store._add(bucket, id, collection, items, done);
+              break;
+            case 'remove':
+              store._remove(bucket, id, collection, items, done);
+              break;
+            case 'update':
+              store.update(bucket, id, args, done);
+              break;
+            case 'create':
+              store._create(bucket, args, function(err, sid){
+                if (err){
+                  done(err);
+                } else {
+                  args.cid = sid;
+                  Storage.create(bucket, args, function(){
+                    Storage.moved(bucket, id, sid);
+                    self.updateIds(id, sid);
+                    done();
+                  });
+                }
+              });
+              break;
+            case 'delete':
+              store.remove(bucket, id, done);
+              break;
           }
+        })(obj.cmd, obj.bucket, obj.id, obj.items, obj.collection, obj.args);
+        
       } else {
         ginger.emit('inSync:', self);
+        self.emit('synced:', self);
       }
     } else{
       console.log('busy with ', self._currentTransfer);
@@ -1602,17 +1608,9 @@ _.extend(Interval.prototype, {
 //------------------------------------------------------------------------------
 //
 // Models
-// TODO: Change .cid to .cid() to avoid serialization.
+// TODO: Change .cid to .id() to avoid serialization. (and only keep a _id
+// that can be a client id or server id depending on the __persisted property).
 //------------------------------------------------------------------------------
-
-/**
-  TODO: Define states for models 
-  (not stored, stored in local, stored server, etc).
-*/
-var ModelStates = {
-  CREATED:'created', // CREATED but its not yet persistent.
-  PERSISTENT:'persistent' // PERSISTENT, there is a copy in the server.
-}
 
 /**
   This object keeps models synchronized with the server.
@@ -1628,7 +1626,10 @@ var SyncManager = Base.extend({
         var model = models[0];
         safeEmit(self._socket, 'resync', model.__bucket, id, function(err, doc){
           if(!err){
-            model.set(doc, {sync:'false'});
+            doc.cid = doc._id, doc.__persisted = true; // HACK until we improve cid handling...
+            for(var i=0, len=models.length;i<len;i++){
+              models[i].set(doc, {sync:'false'});
+            }
             model.local().update(doc);
             ginger.emit('sync:'+id);
           } else {
@@ -1658,6 +1659,7 @@ var SyncManager = Base.extend({
     if(!self.objs[id]){
       self.objs[id] = [model];
       socket.emit('sync', id);
+      console.log('Start synching:'+id);
       socket.on('update:'+id, function(doc){
         _.each(self.objs[id], function(model){
           model.set(doc, {sync:false, doc:doc});
@@ -1673,7 +1675,7 @@ var SyncManager = Base.extend({
     }else{
       self.objs[id].push(model);
     }
-      },
+  },
   endSync: function(model){
     if (!model._keepSynced) return;
     
@@ -1694,20 +1696,28 @@ var SyncManager = Base.extend({
 });
 
 var Model = ginger.Model = Base.extend( function Model(args){
-  this.super(Model)
-  _.extend(this, args)
+  this.super(Model);
+  
+  _.extend(this, args);
+
   _.defaults(this, {
-    _socket:Model.socket,
-    _embedded:false,
     __persisted:false,
-    __model:true,
-    __dirty:false
-  })
+    __rev:0,
+    __dirty:false,
+    _socket:Model.socket,
+    _embedded:false
+  });
+
   this.cid = this._id || this.cid || uuid()
   this.__transport = Model.__transport;
   this.__bucket = this.__bucket || this.constructor.__bucket;
 },
 {
+  States : {
+    INSTANCED:0,    // INSTANCED It has been instantiated but not yet persisten in local nor server storage.
+    CREATED:1,     // CREATED but its not yet persistent.
+    PERSISTENT:2   // PERSISTENT, there is a copy in the server.
+  },
   syncManager : new SyncManager(),
   create : function(args, keepSynced, cb){
     if(_.isFunction(keepSynced)){
@@ -1789,7 +1799,6 @@ var Model = ginger.Model = Base.extend( function Model(args){
         }
         break;
     }
-
     var self = this, bucket = self.__bucket, transport = self.transport(),
       instantiate = function(doc, args, cb){
         args && _.extend(doc, args);
@@ -1970,16 +1979,20 @@ Model.prototype.save = function(transport, cb){
   this.update(this.toArgs(), transport, cb);
 }
 /*
-  update model
+  Updates a model with the given args and optional transport mechanism.
+
   update(args, [transpor, cb])
+  
+  TODO: This method needs to be throtled so that it does not call the
+  server too often. Therefore it should queue the calls and merge the
+  arguments (could be implemented at Storage Queue).
 */
 Model.prototype.update = function(args, transport, cb){
-  transport = transport ? transport : this.transport();
-  
   if(_.isFunction(transport)){
     cb = transport;
-    transport = this.transport();
+    transport = null;
   }
+  transport = transport || this.transport();
   
   var self = this, bucket = self.__bucket, store = ServerStorage[transport];
     
@@ -2017,9 +2030,11 @@ Model.prototype.update = function(args, transport, cb){
       });
     }
   }else{
-    // FIXME: this can lead to several creations of the same object, we need states!
+    // FIXME: this can lead to several creations of the same object because create
+    // could be called several times before finishing previous time we need states!
+    
     store.create(bucket, args, function(err, id){
-      if(!err&&id){
+      if(id){
         self._id = self.cid = id;
         self.__persisted = true;
       }
@@ -2065,8 +2080,8 @@ Model.prototype.keepSynced = function(){
   if (self.__persisted){
     Model.syncManager.startSync(self);
   } else {
-    ginger.once('created:'+self.cid, function(_id){
-      self.cid = self._id = _id;
+    ginger.once('created:'+self.cid, function(id){
+      self.cid = self._id = id;
       self.__persisted = true;
       Model.syncManager.startSync(self);
     });
@@ -2076,7 +2091,7 @@ Model.prototype.keepSynced = function(){
     if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
       // TODO: Use async debounce to avoid faster updates than we manage to process.
       // (we will need to merge all incoming data).
-      self.update(doc)
+      self.update(doc);
     }
   });
 }
@@ -2085,7 +2100,7 @@ Model.prototype.destroy = function(){
   this.super(Model, 'destroy');
 }
 /**
-  A collection is a set of un-ordered models. 
+  A collection is a set of optionally ordered models. 
   It provides delegation and proxing of events.
 **/
 var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
@@ -2168,296 +2183,302 @@ Collection.instantiate = function(model, parent, array, cb){
     cb(null, null)
   }
 }
-Collection.prototype.findById = function(id){
-  return this.find(function(item){return item.cid == id});
-}
-
-Collection.prototype.save = function(cb){
-  var transport = this.model.transport(), self = this;
+_.extend(Collection.prototype, {
+  findById : function(id){
+    return this.find(function(item){return item.cid == id});
+  },
+  save : function(cb){
+    var transport = this.model.transport(), self = this;
   
-  ServerStorage[transport].remove(self.parent.__bucket, 
-                                  self.parent._id,
-                                  self.model.__bucket, 
-                                  self._removed,
-                                  function(err){
-    if(err){
-      cb(err);
-    }else{
-      self._removed = []
-      asyncForEach(self.items, function(item, cb){
-        item.save(cb);
-      }, function(err){
-        if((!err)&&(self._added.length>0)){
-          var items = _.filter(self._added, function(item){
-            if(_.isUndefined(item._id)){
-              return item;
-            }else{
-              return item._id;
-            }
-          });
+    ServerStorage[transport].remove(self.parent.__bucket, 
+                                    self.parent._id,
+                                    self.model.__bucket, 
+                                    self._removed,
+                                    function(err){
+      if(err){
+        cb(err);
+      }else{
+        self._removed = []
+        asyncForEach(self.items, function(item, cb){
+          item.save(cb);
+        }, function(err){
+          if((!err)&&(self._added.length>0)){
+            var items = _.filter(self._added, function(item){
+              if(_.isUndefined(item._id)){
+                return item;
+              }else{
+                return item._id;
+              }
+            });
         
-          ServerStorage[transport].add(self.parent.__bucket, 
-                                       self.parent._id,
-                                       self.model.__bucket, 
-                                       item._id || item,
-                                       function(err){
-            if(!err){
-              self._added = [];
-            }
+            ServerStorage[transport].add(self.parent.__bucket, 
+                                         self.parent._id,
+                                         self.model.__bucket, 
+                                         item._id || item,
+                                         function(err){
+              if(!err){
+                self._added = [];
+              }
+              cb(err);
+            });
+          }else{
             cb(err);
-          });
-        }else{
-          cb(err);
-        }
-      });
-    }                           
-  });
-}
-Collection.prototype.add = function(items, cb, opts, pos){
-  var self = this;  
-  cb = cb ? cb : noop;
-  asyncForEach(items, function(item, fn){
-    self._add(item, function(err){
-      if(!err){
-        if(self._keepSynced){
-          item.keepSynced();
-        }
+          }
+        });
+      }                     
+    });
+  },
+  add : function(items, cb, opts, pos){
+    var self = this;  
+    cb = cb || noop;
+    asyncForEach(items, function(item, done){
+      self._add(item, function(err){
+        !err && self._keepSynced && item.keepSynced();
+        done(err);
+      }, opts, pos);
+    }, cb);
+  },
+  insert : function(item, pos, cb){
+    if(this.items){
+      if(pos > this.items.length){
+        pos = undefined;
       }
-      fn(err);
-    }, opts, pos);
-  }, cb);
-}
-Collection.prototype.insert = function(item, pos, cb){
-  if(this.items){
-    if(pos > this.items.length){
-      pos = undefined;
+      this.add(item, cb, {nosync:false, embedded:true}, pos);
+    }else{
+      cb();
     }
-    this.add(item, cb, {nosync:false, embedded:true}, pos);
-  }else{
-    cb();
-  }
-}
-Collection.prototype.remove = function(itemIds, cb, nosync){
-  var self = this, transport = this.model.transport();
+  },
+  remove : function(itemIds, cb, nosync){
+    var self = this, transport = this.model.transport();
   
-  cb = cb || noop;
+    cb = cb || noop;
       
-  asyncForEach(itemIds, function(itemId, fn){
-    var item, index, items = self.items;
-    for(var i=0, len=items.length;i<len;i++){
-      if(items[i].cid == itemId){
-        item = items[i];
-        index = i;
-        break;
+    asyncForEach(itemIds, function(itemId, fn){
+      var item, index, items = self.items;
+      for(var i=0, len=items.length;i<len;i++){
+        if(items[i].cid == itemId){
+          item = items[i];
+          index = i;
+          break;
+        }
       }
-    }
   
-    if(item){
-      item.off('changed:', self._updateFn);
-      item.off('deleted:', self._deleteFn);
-      self.items.splice(index, 1);
-      if(item._id){
-        if(self._keepSynced && (nosync !== true) && self.parent){
-          ServerStorage[transport].remove(
-            self.parent.__bucket, 
-            self.parent._id,
-            self.model.__bucket,
-            item._id,
-            fn);
+      if(item){
+        item.off('changed:', self._updateFn);
+        item.off('deleted:', self._deleteFn);
+        self.items.splice(index, 1);
+        if(item._id){
+          if(self._keepSynced && (nosync !== true) && self.parent){
+            ServerStorage[transport].remove(
+              self.parent.__bucket, 
+              self.parent._id,
+              self.model.__bucket,
+              item._id,
+              fn);
+          }else{
+            self._removed.push(itemId);
+            fn(null);
+          }
         }else{
-          self._removed.push(itemId);
           fn(null);
         }
+        self.emit('removed:', item, index);
+        item.release();
       }else{
         fn(null);
       }
-      self.emit('removed:', item, index);
-      item.release();
-    }else{
-      fn(null);
-    }
-  },cb);
-}
-Collection.prototype.keepSynced = function(enable){
-  if(enable==false||!Model.socket||this._keepSynced){
-    return;
-  }
-  var self = this, 
-      socket = self.socket, 
+    },cb);
+  },
+  keepSynced : function(enable){
+    if(!Model.socket||this._keepSynced||!this.parent) return;
+    
+    this._startSync();
+  
+    this.map(function(item){
+      item.keepSynced()
+    });
+  },
+  _startSync : function(){
+    var self = this,
+      socket = Model.socket,
       bucket = self.model.__bucket,
       id = self.parent && self.parent._id;
-  
-  self._keepSynced = true
-  
-  socket.emit('sync', id);
-  
-  function addItem(item){
-    if(item){
-      self.add(item, noop, {nosync:true});
-      item.release();
-    }
-  }
-  
-  self._addListenerFn = _.bind(function(items){
-    asyncForEach(items, function(item, done){
-      if(_.isObject(item)){
-        if(!self.findById(item.cid)){
-          self.model.create(item, this._keepSynced, function(err, item){
-            addItem(item);
-            done()
-          });
-        }
-      }else{
-        if(!self.findById(item.cid)){
-          self.model.findById(item, function(err, item){
-            addItem(item);
-            done();
-          })
-        }
-      }
-    }, noop);
-  }, self);
-  
-  self._removeListenerFn = _.bind(function(itemId){
-    this.remove(itemId, noop, true);
-  }, self);
-  
-  socket.on('add:'+id+':'+bucket, self._addListenerFn)
-  socket.on('remove:'+id+':'+bucket, self._removeListenerFn)
-  
-  this.map(function(item){
-    item.keepSynced()
-  });
-
-  return this
-}
-Collection.prototype.toggleSortOrder = function(){
-  if(this.sortOrder == 'asc'){
-    this.set('sortOrder', 'desc');
-  }else{
-    this.set('sortOrder', 'asc');
-  }
-}
-Collection.prototype.setFormatters = function(formatters){
-  this._formatters = formatters;
-  this.each(function(item){
-    item.format(formatters);
-  });
-}
-Collection.prototype.filtered = function(optionalItem){
-  var items = this.items;
-  if(this.filterFn && this.filterData){
-    var data = this.filterData || '';
-          
-    if(optionalItem){
-      return this.filterFn(optionalItem, data, fields);
-    }else{
-      var filtered = [], item;
-      for(var i=0, len=items.length;i<len;i++){
-        item = items[i];
-        if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
-          filtered.push(items[i]);
-        }
-      }
-      return filtered;
-    }
-  }else{
-    return optionalItem || items;
-  }
-}
-Collection.prototype.destroy = function(){ 
-  if(this.socket){
-    var bucket = this.model.__bucket;
     
-    if(this.parent){
-      var id = this.parent.cid;
-      this.socket.removeListener('add:'+id+':'+bucket, this._addListenerFn);
-      this.socket.removeListener('remove:'+id+':'+bucket, this._removeListenerFn);
-      this._keepSynced && this.socket.emit('unsync', id);
-    }
-  }
-  ginger.release(this.items);
-  this.items = null;
-  this.super(Collection, 'destroy');
-}
-Collection.prototype._initItems = function(items){
-  var self = this;
-  
-  items = _.isArray(items)? items:[items];
-  for (var i=0,len=items.length; i<len;i++){
-    var item = items[i];
-    item.retain();
-    item.on('changed:', self._updateFn);
-    item.on('deleted:', self._deleteFn);
-  }
-};
-Collection.prototype._sortedAdd = function(item){
-  (this.sortOrder == 'desc') && this.items.reverse();
-  var i = this.sortedIndex(item, this.sortByFn)
-  this.items.splice(i, 0, item);
-  (this.sortOrder == 'desc') && this.items.reverse();
-}
-Collection.prototype._add = function(item, cb, opts, pos){
-  var self = this;
-  
-  cb = cb || noop;
-  this._formatters && item.format(this._formatters);
-  
-  if(self.findById(item.cid)){
-    return cb(null);
-  }
-  
-  if(self.sortByFn){
-    pos = self._sortedAdd(item);
-  }else {
-    pos = _.isUndefined(pos)?self.items.length:pos;
-    self.items.splice(pos, 0, item);
-  }
-
-  self._initItems(item);
-  self.emit('added:', item, pos);
+    self._keepSynced = true;
     
-  if(self._keepSynced){
-    var transport = this.model.transport();
-    if(!opts || (opts.nosync !== true)){
-      function storageAdd(doc){
-        if(self.parent){
-          ServerStorage[transport].add(self.parent.__bucket, 
-                                       self.parent._id,
-                                       item.__bucket,
-                                       doc,
-                                       function(err, ids){
-            if(!err && _.isArray(ids)){
-              item.set('_id', ids[0]);
-            }
-            cb(err);         
-          });
-        }else{
-         cb();
-        }
-      }  
-      
-      if(opts && opts.embedded){
-        storageAdd(item);
-      }else if(item.__persisted){
-        storageAdd(item.cid);
-      }else{
-        item.save(function(err){
-          if(!err){
-            storageAdd(item.cid);
-          }else{
-            cb();
+    Model.syncManager.startSync(self.parent);
+    
+    function addItem(item){
+      if(item){
+        self.add(item, noop, {nosync:true});
+        item.release();
+      }
+    }
+
+    self._addListenerFn = _.bind(function(items){
+      asyncForEach(items, function(item, done){
+        if(_.isObject(item)){
+          if(!self.findById(item.cid)){
+            self.model.create(item, this._keepSynced, function(err, item){
+              addItem(item);
+              done()
+            });
           }
-        });
+        }else{
+          if(!self.findById(item.cid)){
+            self.model.findById(item, function(err, item){
+              addItem(item);
+              done();
+            })
+          }
+        }
+      }, noop);
+    }, self);
+
+    self._removeListenerFn = _.bind(function(itemId){
+      this.remove(itemId, noop, true);
+    }, self);
+
+    socket.on('add:'+id+':'+bucket, self._addListenerFn)
+    socket.on('remove:'+id+':'+bucket, self._removeListenerFn)
+  },
+  _endSync : function(){
+    var self = this, socket = self.socket;
+    if(socket){
+      var bucket = self.model.__bucket;
+      
+      if(self.parent){
+        var id = self.parent.cid;
+        socket.removeListener('add:'+id+':'+bucket, self._addListenerFn);
+        socket.removeListener('remove:'+id+':'+bucket, self._removeListenerFn);
+        this._keepSynced && Model.syncManager.endSync(self.parent);
+      }
+    }
+  },
+  toggleSortOrder : function(){
+    if(this.sortOrder == 'asc'){
+      this.set('sortOrder', 'desc');
+    }else{
+      this.set('sortOrder', 'asc');
+    }
+  },
+  setFormatters : function(formatters){
+    this._formatters = formatters;
+    this.each(function(item){
+      item.format(formatters);
+    });
+  },
+  filtered : function(optionalItem){
+    var items = this.items;
+    if(this.filterFn && this.filterData){
+      var data = this.filterData || '';
+          
+      if(optionalItem){
+        return this.filterFn(optionalItem, data, fields);
+      }else{
+        var filtered = [], item;
+        for(var i=0, len=items.length;i<len;i++){
+          item = items[i];
+          if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
+            filtered.push(items[i]);
+          }
+        }
+        return filtered;
       }
     }else{
+      return optionalItem || items;
+    }
+  },
+  reverse : function(){
+    this.items.reverse();
+    return this;
+  },
+  destroy : function(){
+    this._endSync();
+    ginger.release(this.items);
+    this.items = null;
+    this.super(Collection, 'destroy');
+  },
+  _initItems : function(items){
+    var self = this;
+  
+    items = _.isArray(items)? items:[items];
+    for (var i=0,len=items.length; i<len;i++){
+      var item = items[i];
+      item.retain();
+      item.on('changed:', self._updateFn);
+      item.on('deleted:', self._deleteFn);
+    }
+  },
+  _sortedAdd : function(item){
+    (this.sortOrder == 'desc') && this.items.reverse();
+    var i = this.sortedIndex(item, this.sortByFn)
+    this.items.splice(i, 0, item);
+    (this.sortOrder == 'desc') && this.items.reverse();
+    return i;
+  },
+  _add : function(item, cb, opts, pos){
+    var self = this;
+  
+    cb = cb || noop;
+    
+    if(self.findById(item.cid)) return cb();
+    
+    this._formatters && item.format(this._formatters);
+
+    if(self.sortByFn){
+      pos = self._sortedAdd(item);
+    }else {
+      pos = pos || self.items.length;
+      self.items.splice(pos, 0, item);
+    }
+
+    self._initItems(item);
+    
+    self.emit('added:', item, pos);
+    
+    if(self._keepSynced){
+      var transport = this.model.transport();
+      if(!opts || (opts.nosync !== true)){
+        function storageAdd(doc){
+          if(self.parent){
+            ServerStorage[transport].add(self.parent.__bucket, 
+                                         self.parent._id,
+                                         item.__bucket,
+                                         doc,
+                                         function(err, ids){
+              if(!err && _.isArray(ids)){
+                item.set('_id', ids[0]);
+              }
+              cb(err);         
+            });
+          }else{
+           cb();
+          }
+        }
+      
+        if(opts && opts.embedded){
+          storageAdd(item);
+        }else if(item.__persisted){
+          storageAdd(item.cid);
+        }else{
+          item.save(function(err){
+            if(!err){
+              storageAdd(item.cid);
+            }else{
+              cb();
+            }
+          });
+        }
+      }else{
+        cb(null);
+      }
+    }else{
+      self._added.push(item); // We need to keep pos as well here...
       cb(null);
     }
-  }else{
-    self._added.push(item); // We need to keep pos as well here...
-    cb(null);
   }
-}
+});
 
 // Underscore methods that we want to implement on the Collection.
 var methods = 
@@ -2472,10 +2493,6 @@ _.each(methods, function(method) {
     return _[method].apply(_, [this.items].concat(_.toArray(arguments)))
   }
 })
-Collection.prototype.reverse = function(){
-  this.items.reverse();
-  return this;
-}
 /*
 // Human sort from: http://my.opera.com/GreyWyvern/blog/show.dml/1671288
 Array.prototype.humanSort = function() {
@@ -2594,58 +2611,61 @@ _.extend(CanvasView.prototype,{
 //
 //------------------------------------------------------------------------------
 var Views = ginger.Views = {}
-
 //------------------------------------------------------------------------------
-var ComboBox = Views.ComboBox = View.extend(function ComboBox(items, selected){
-  this.super(Views.ComboBox)
-  var view = this
+var ComboBox = Views.ComboBox = View.extend({
+  constructor : function ComboBox(items, selected){
+    this.super(Views.ComboBox);
+    var view = this
   
-  if(selected){
-    view.value = selected
-  }else{
-    view.value = this.firstValue(items)
-  }
-  view.items = items || {};
+    if(selected){
+      view.value = selected
+    }else{
+      view.value = this.firstValue(items)
+    }
+    view.items = items || {};
 
-  view.$el.comboBox(view.items, view.value).change(function(event){
-    view.set('value', event.target.value)
-  })
+    view.$el.comboBox(view.items, view.value).change(function(event){
+      view.set('value', event.target.value)
+    })
   
-  view.on('value', function(value){
+    view.on('value', function(value){
       $('select',view.$el).val(value)
-  })
-})
-ComboBox.prototype.firstValue = function(items){
-//  return _.find(items, function(key){return true});
-  for(var key in items){
-    return key
-  }
-}
-ComboBox.prototype.willChange = function(key, value){
-  if((key === 'value')&&(value===null)){
-    return this.firstValue(this.items)
-  }else{
-    return value
-  }
-}
-ComboBox.prototype.add = function(item,selected) {  
-  this.items[item.key] = item.value;
+    })
+  },
+  firstValue : function(items){
+  //  return _.find(items, function(key){return true});
+    for(var key in items){
+      return key
+    }
+  },
+  willChange : function(key, value){
+    if((key === 'value')&&(value===null)){
+      return this.firstValue(this.items)
+    }else{
+      return value
+    }
+  },
+  add : function(item,selected) {  
+    this.items[item.key] = item.value;
   
-  var option = '<option value="'+item.key+'">'+item.value+'</option>';
-  var $select = $('select', this.$el);
-  $select.append(option);
-  var view = this;
-  view.on('value', function(value){
-      $('select',view.$el).val(value)
-  })
-  if(selected) {
-    $select.val(item.key);
+    var self = this,
+      option = '<option value="'+item.key+'">'+item.value+'</option>',
+      $select = $('select', self.$el);
+    
+    $select.append(option);
+    
+    self.on('value', function(value){
+      $('select', self.$el).val(value)
+    })
+    if(selected) {
+      $select.val(item.key);
+    }
+  },
+  remove : function(key) {
+    delete this.items[key];
+    $('select option[value="'+key+'"]', this.$el).remove();
   }
-}
-ComboBox.prototype.remove = function(key) {
-  delete this.items[key];
-  $('select option[value="'+key+'"]', this.$el).remove();
-}
+});
 //------------------------------------------------------------------------------
 var Slider = Views.Slider = View.extend( function Slider(options, classNames){
   this.super(Slider, 'constructor', classNames)
