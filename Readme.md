@@ -17,11 +17,12 @@ Note that this framework is still under heavy development and subject to API cha
 - Events.
 - Undo/Redo Manager.
 
-#Modules
+##Modules
 
-Ground is built as a set of AMD modules, and will not work without a module loader. While it should work with any AMD compatible loader, 
-we can only guarantee a consistent behavior with Curl (@unscriptable). For convenience we will provide a custom build of curl with every 
-new release of the framework.
+Ground is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
+not work without a module loader. While it should work with any AMD compatible loader, we can only guarantee a 
+consistent behavior with [Curl](https://github.com/cujojs/curl). For convenience we will provide a custom and tested
+build of curl with every new release of the framework.
 
 #Routing
 
