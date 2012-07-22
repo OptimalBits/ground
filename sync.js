@@ -7,10 +7,6 @@
   servers can be deployed, as long as they have access to a common redis server,
   the synchronization will work transparently between them.
   
-  TODO:
-    - Circular updates fix.
-    - Lock Mechanism.
-
   (c) 2011-2012 OptimalBits with selected parts from the internet
   dual licensed as public domain or MIT.
 */
