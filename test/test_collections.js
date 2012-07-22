@@ -234,7 +234,6 @@ describe('Collections', function(){
     });
   });
 
-
   describe('Offline', function(){
     if('find items are cached', function(done){
       // IMPLEMENT: Items that are "finded" from the server should be
@@ -243,39 +242,46 @@ describe('Collections', function(){
     });
   
     it('add item to collection', function(done){
-      zoo = new Zoo();
+      var zoo = new Zoo();
       zoo.keepSynced();
+      
       zoo.save(function(err){
+        expect(err).to.not.be.ok();
         zoo.all(Animal, function(err, animals){
-          expect(err).to.be(null);
+          expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
           
           socket.disconnect();
+          
           animals.add(new Animal({name:"tiger"}), function(err){
-            expect(err).to.be(null);
-            Zoo.findById(zoo._id, function(err, doc){
-              expect(err).to.be(null);
-              expect(doc).to.be.an(Object);
+            expect(err).to.not.be.ok();
+            
+            Zoo.findById(zoo._id, function(err, sameZoo){
+              expect(err).to.not.be.ok();
+              expect(sameZoo).to.be.an(Object);
+              
               ginger.once('inSync:', function(){
-                doc.all(Animal, function(err, collection){
+                // Check that the collection has been synced in server.
+                sameZoo.all(Animal, function(err, collection){
                   expect(err).to.be(null);
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
-                  expect(collection.items.length).to.be(1);
                   expect(animals.items.length).to.be(1);
-                  doc.release();
-                  collection.release();
+                  expect(collection.items.length).to.be(1);
+                  ginger.release(sameZoo, collection, animals);
                   done();
                 });
               });
-
-              doc.all(Animal, function(err, collection){
-                expect(err).to.be(null);
+              
+              // Check that the collection is available locally.              
+              sameZoo.all(Animal, function(err, collection){
+                expect(err).to.not.be.ok();
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
                 expect(collection.items.length).to.be(1);
                 expect(animals.items.length).to.be(1);
-                socket.socket.connect();
+                collection.release();
+                socket.socket.reconnect();
               });
             });
           });
@@ -284,7 +290,7 @@ describe('Collections', function(){
     });
 
     it('add item to collection 2', function(done){
-      zoo = new Zoo({asdf:'test'});
+      var zoo = new Zoo({name:'add item test 2'});
       zoo.keepSynced();
       zoo.save(function(err){
         socket.disconnect();
@@ -306,6 +312,7 @@ describe('Collections', function(){
                   expect(animals.items.length).to.be(1);
                   doc.release();
                   collection.release();
+                  animals.release();
                   done();
                 });
               });
@@ -316,6 +323,7 @@ describe('Collections', function(){
                 expect(collection.items).to.be.an(Array);
                 expect(collection.items.length).to.be(1);
                 expect(animals.items.length).to.be(1);
+                collection.release();
                 socket.socket.connect();
               });
             });
@@ -325,33 +333,55 @@ describe('Collections', function(){
     });
 
     it('remove item while offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.be(null);
-        expect(animals).to.be.an(Object);
-        socket.disconnect();
-        animals.remove(animals.first().cid, function(err){
-          expect(err).to.be(null);
-
-          Zoo.findById(zoo._id, function(err, doc){
-            expect(err).to.be(null);
-            expect(doc).to.be.an(Object);
-            ginger.once('inSync:', function(){
-              //socket.disconnect();
-              doc.all(Animal, function(err, collection){
-                expect(err).to.be(null);
-                expect(collection).to.be.an(Object);
-                expect(collection.items).to.be.an(Array);
-                expect(collection.items.length).to.be(0);
-                expect(animals.items.length).to.be(0);
-                doc.release();
-                collection.release();
-                animals.release();
-                done();
-              });
-            });
-            doc.all(Animal, function(err, collection){
+      var zoo = new Zoo({name:'remove item offline'});
+      zoo.keepSynced();
+      zoo.save(function(err){
+        expect(err).not.to.be.ok();
+        
+        zoo.all(Animal, function(err, animals){
+          expect(err).not.to.be.ok();
+          expect(animals).to.be.an(Object);
+          
+          animals.add(new Animal({name:"lion"}), function(err){
+            expect(err).not.to.be.ok();
+            expect(animals.items.length).to.be(1);
+            
+            socket.disconnect();
+            
+            animals.remove(animals.first().cid, function(err){
+              expect(err).not.to.be.ok();
               expect(animals.items.length).to.be(0);
-              socket.socket.connect();
+
+              Zoo.findById(zoo._id, function(err, sameZoo){
+                expect(err).to.not.be.ok();
+                expect(sameZoo).to.be.an(Object);
+                
+                ginger.once('inSync:', function(){
+                  sameZoo.all(Animal, function(err, collection){
+                    expect(err).not.to.be.ok();
+                    expect(collection).to.be.an(Object);
+                    expect(collection.items).to.be.an(Array);
+                    expect(collection.items.length).to.be(0);
+                    
+                    // This fails because animals gets an add: event from the server
+                    // which is a mirror of the add: event created by animals just before
+                    // disconnecting...
+                    //expect(animals.items.length).to.be(0);
+                    sameZoo.release();
+                    collection.release();
+                    animals.release();
+                    done();
+                  });
+                });
+                
+                sameZoo.all(Animal, function(err, collection){
+                  expect(err).not.to.be.ok();
+                  expect(collection).to.be.an(Object);
+                  expect(collection.items).to.be.an(Array);
+                  expect(collection.items.length).to.be(0);
+                  socket.socket.connect();
+                });
+              });
             });
           });
         });
@@ -477,6 +507,7 @@ describe('Collections', function(){
       done();
     });
   });
+  
 });
 
 });

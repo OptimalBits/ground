@@ -12,8 +12,7 @@ describe('Model', function(){
   before(function(done){  
     animal.save(function(){
       animal.keepSynced();
-      //console.log(JSON.stringify(animal));
-      done()
+      done();
     });
   });
   
@@ -59,7 +58,7 @@ describe('Model', function(){
     it('another instance propagates changes', function(done){
       var otherAnimal;
 
-      animal.on('changed:', function(){
+      animal.once('changed:', function(){
         expect(animal).to.have.property('legs');
         expect(animal).to.have.property('tail');
         expect(animal.legs).to.be(4);
@@ -85,7 +84,7 @@ describe('Model', function(){
         expect(oneFox).to.have.property('_id');
         oneFox.keepSynced();
         
-        oneFox.on('changed:', function(){  
+        oneFox.once('changed:', function(){  
           done();
         });
             
@@ -141,6 +140,14 @@ describe('Model', function(){
   });
   
   describe('Offline', function(){
+    var animal = new Animal({tail:true});
+    
+    before(function(done){  
+      animal.save(function(){
+        animal.keepSynced();
+        done()
+      });
+    });
   
     //
     // Simulate a disconnect in the middle of an emit.
@@ -174,11 +181,14 @@ describe('Model', function(){
       });
     });
     
+    /**
+      Creates a model while offline automatically creates it when 
+      going back to online.
+    */
     it('create', function(done){
       socket.disconnect();
 
-      var tempAnimal = new Animal();
-      var tempAnimal2;
+      var tempAnimal = new Animal(), tempAnimal2;
       
       ginger.once('inSync:', function(){
         Animal.findById(tempAnimal._id, function(err, doc){
@@ -191,7 +201,8 @@ describe('Model', function(){
       });
 
       tempAnimal.set({legs : 8, name:'spider'});
-      tempAnimal.save(function(){
+      tempAnimal.save(function(err){
+        expect(err).to.not.be.ok()
         tempAnimal.keepSynced();
         Animal.findById(tempAnimal.cid, function(err, doc){
           tempAnimal2 = doc;
@@ -201,11 +212,48 @@ describe('Model', function(){
       });
     });
     
+    /**
+      A model is instantiated and keep synced before saving,
+      as soon as it is saved it should be kept synced with other
+      instances.
+    */
+    it('keepSynced before save', function(done){
+      var elephant = new Animal({legs:4});
+      elephant.keepSynced();
+      elephant.save(function(err){
+        expect(err).to.not.be.ok();
+        expect(elephant.__persisted).to.be.ok();
+        expect(elephant).to.have.property('_id');
+        Animal.findById(elephant._id, function(err, otherElephant){
+          expect(err).to.not.be.ok()
+          expect(otherElephant).to.be.ok();
+          
+          otherElephant.keepSynced();
+          
+          elephant.once('changed:', function(doc){
+            expect(elephant.legs).to.be(5);
+            elephant.release();
+            otherElephant.release();
+            done();
+          });
+          
+          otherElephant.set('legs', 5);
+        });
+      });
+    });
+    
+    /**
+      Tests that after doing a findById, the object has been cached and 
+      is available in offline mode.
+    */
     it('findById caches object', function(){
-      // IMPLEMENT: This case tests that after doing a findById, the
-      // object has been cached and is available in offline mode.
+      // TO IMPLEMENT: This case 
     });
 
+    /**
+      Deletes a model while offline, the model is deleted in the server
+      as soon as we are back online.
+    */
     it('delete', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider-pig'});
@@ -226,7 +274,11 @@ describe('Model', function(){
         });
       });
     });
-  
+    /**
+      A model updated in the server while being offline gets 
+      updated as soon as we get online.
+      (Note: we do not handle conflicts yet).
+    */
     it('serverside update while offline', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider'});
@@ -248,6 +300,10 @@ describe('Model', function(){
         });
       });
     });
+    it('serverside update while offline with multiple instances', function(done){
+      // TO IMPLEMENT;
+      done();
+    });
   });
 
   describe('Delete', function(){
@@ -257,12 +313,14 @@ describe('Model', function(){
       });
         
       animal.on('deleted:', function(){
-        done();
+        Animal.findById(animal.cid, function(err, res){
+          expect(err).to.be.ok();
+          expect(res).to.not.be.ok();
+          done();
+        });
       });
     });
   });
-
-
 
 });
 
