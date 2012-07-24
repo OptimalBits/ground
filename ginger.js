@@ -840,15 +840,7 @@ ServerStorage.socket = {
     var wrapCb = function(err, id){
       if(err){
         Storage.create(bucket, args, function(err){
-          if(!err){
-            localModelQueue.add({
-              'bucket':bucket,
-              'id':args.cid,
-              'args':args, 
-              'cmd':'create',
-              'transport':'socket'
-            });
-          }
+          !err && storageQueue.createCmd('socket', bucket, args.cid, args);
           cb(err, id);
         });
       }else{
@@ -914,15 +906,8 @@ ServerStorage.socket = {
   add:function(bucket, id, collection, items, cb){
     var wrapCb = function(err, ids) {
       Storage.add(bucket, id, collection, items, function(err2){
-        if (err){
-          var obj = {'bucket':bucket, 'id':id, 
-           'cmd':'add', 'transport':'socket', 'collection':collection, 
-           'items':items}
-          localModelQueue.add(obj);
-          cb(err2);
-        } else {
-          cb(err2, ids);  
-        }
+        err && storageQueue.addCmd('socket', bucket, id, collection, items);
+        cb(err2, ids);  
       });
     }
     ServerStorage.socket._add(bucket, id, collection, items, wrapCb);
@@ -936,15 +921,8 @@ ServerStorage.socket = {
     }else{
       var wrapCb = function(err, ids) {
         Storage.remove(bucket, id, collection, items, function(err2){
-          if (err){
-            var obj = {'bucket':bucket, 'id':id, 
-             'cmd':'remove', 'transport':'socket', 'collection':collection, 
-             'items':items}
-            localModelQueue.add(obj);
-            cb(null);
-          } else {
-            cb(null, ids);  
-          }
+          err && storageQueue.removeCmd('socket', bucket, id, collection, items);
+          cb(err2, ids);
         });
       }
       ServerStorage.socket._remove(bucket, id, collection, items, wrapCb);
@@ -1437,7 +1415,6 @@ var Cache = ginger.Base.extend({
 // We can only have one local cache.
 var localCache = ginger.localCache = new Cache();
 
-
 //------------------------------------------------------------------------------
 // Local Model Queue
 // This Object is used...
@@ -1448,7 +1425,9 @@ var Queue = ginger.Base.extend({
     self.super(Queue);
   
     //TODO: get old queue from localstorage
-    self._queue = [];
+    var savedQueue = ls.storageQueue;
+    
+    self._queue = (savedQueue && JSON.parse(savedQueue)) || [];
     self._createList = {};
     self._syncFn = _.bind(self.synchronize, self);
   },
@@ -1460,9 +1439,24 @@ var Queue = ginger.Base.extend({
     this._queue = queue;
   },
   add:function(obj){
-    //TODO: MERGE DIFFERENT UPDATES?
+    //OPTIMIZATION: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
     this._queue.push(obj);
-    ls.localModelQueue = JSON.stringify(this._queue);
+    ls.storageQueue = JSON.stringify(this._queue);
+  },
+  createCmd:function(transport, bucket, id, args){
+    this.add({cmd:'create',bucket:bucket,id:id,args:args,transport:transport});
+  },
+  updateCmd:function(transport, bucket, id, args){
+    this.add({cmd:'update',bucket:bucket, id:id, args:args,transport:transport});
+  },
+  deleteCmd:function(transport, bucket, id){
+    this.add({cmd:'delete', transport:transport, bucket:bucket, id:id});
+  },
+  addCmd:function(transport, bucket, id, collection, items){
+    this.add({bucket:bucket, id:id,cmd:'add', transport:transport, collection:collection,items:items});
+  },
+  removeCmd:function(transport, bucket, id, collection, items){
+    this.add({bucket:bucket, id:id, cmd:'remove', transport:transport, collection:collection,items:items});
   },
   updateIds:function(oldId, newId){
     _.each(this._queue, function(obj){
@@ -1473,15 +1467,15 @@ var Queue = ginger.Base.extend({
         obj.items = newId;
       }
     });
-    ls.localModelQueue = JSON.stringify(this._queue);
+    ls.storageQueue = JSON.stringify(this._queue);
   },
   success:function(err) {
     this._currentTransfer = null;
     if(!err){
       this._queue.shift(); 
       // Note: here it could happen that we shift but fail saving the queue, 
-      // and the consequence will ve that the same command can execute 2 or more times.
-      ls.localModelQueue = JSON.stringify(this._queue);
+      // and the consequence will be that the same command can execute 2 or more times.
+      ls.storageQueue = JSON.stringify(this._queue);
       nextTick(_.bind(this.synchronize, this));
     }
   },
@@ -1494,7 +1488,7 @@ var Queue = ginger.Base.extend({
           store = ServerStorage[obj.transport];
         
         (function(cmd, bucket, id, items, collection, args){        
-          // FIXME: Persitent errors will  block the queue forever.
+          // FIXME: Persitent errors will  block the queue forever.(we need a watchdog).
           switch (cmd){
             case 'add':
               store._add(bucket, id, collection, items, done);
@@ -1766,7 +1760,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
     switch(attr){
       case 'socket': 
         this.socket = value;
-        value && localModelQueue.init(value);
+        value && storageQueue.init(value);
         value && this.syncManager.init(value);
         break;
       case 'url': 
@@ -2018,30 +2012,15 @@ _.extend(Model.prototype,{
       if(self._embedded){
         var parentBucket = self.parent.__bucket;
         store.update(parentBucket, self.parent.id(), bucket, self.id(), args, function(err){
-          self.local().update(args)
-          if(err){
-            //TODO: THIS DOES PROBABLY NOT PRODUCE THE EXPECTED RESULT!
-            localModelQueue.add({
-               'bucket':bucket, 
-               'id':self.id(), 
-               'args':args, 
-               'cmd':'update', 
-               'transport':transport});
-          }
+          self.local().update(args);
+          //TODO: THIS DOES MOST PROBABLY DOES NOT PRODUCE THE EXPECTED RESULT!!!
+          err && storageQueue.updateCmd(transport, bucket, self.id(), args);
           cb();
         });
       }else{
         store.update(bucket, self.id(), args, function(err){
           self.local().update(args)
-          if(err){
-            localModelQueue.add({
-              'bucket':bucket, 
-              'id':self.id(),
-              'args':args, 
-              'cmd':'update', 
-              'transport':transport
-            });
-          }
+          err && storageQueue.updateCmd(transport, bucket, self.id(), args);
           cb()
         });
       }
@@ -2056,30 +2035,26 @@ _.extend(Model.prototype,{
   },
   delete : function(transport, cb){
     var self = this;
+    
+    self.local().remove();
   
-    Model.syncManager.endSync(this);
-  
+    function wrapCb(err){
+      Model.syncManager.endSync(self);
+      self.emit('deleted:', self.id());
+      cb && cb(err);
+    }
+    
     if(_.isFunction(transport)||arguments.length==0){
       cb = transport;
       transport = this.transport();
     }
     if(transport){
       ServerStorage[transport].remove(self.__bucket, self.id(), function(err){
-        if (err){
-          localModelQueue.add({
-            'bucket':self.__bucket, 
-            'id':self.id(), 
-            'cmd':'delete', 
-            'transport':transport});
-        } else {
-          self.emit('deleted:', self.id());
-        }
-        self.local().remove()
-        cb && cb(err);
+        err && storageQueue.deleteCmd(transport, self.__bucket, self.id());
+        wrapCb(err);
       });
     }else{
-      self.emit('deleted:', self.id());
-      cb && cb();
+      wrapCb();
     }
   },
   keepSynced : function(){
@@ -2300,8 +2275,8 @@ _.extend(Collection.prototype, {
       }
     },cb);
   },
-  keepSynced : function(enable){
-    if(!Model.socket||this._keepSynced||!this.parent) return;
+  keepSynced : function(){
+    if(!Model.socket) return;
     
     this._startSync();
   
@@ -2313,12 +2288,14 @@ _.extend(Collection.prototype, {
     var self = this,
       socket = Model.socket,
       bucket = self.model.__bucket,
-      id = self.parent && self.parent.id();
+      id;
     
     self._keepSynced = true;
+        
+    if (!self.parent) return;
     
     Model.syncManager.startSync(self.parent);
-    
+      
     function addItem(item){
       if(item){
         self.add(item, noop, {nosync:true});
@@ -2350,6 +2327,8 @@ _.extend(Collection.prototype, {
       this.remove(itemId, noop, true);
     }, self);
 
+    id = self.parent.id();
+    
     socket.on('add:'+id+':'+bucket, self._addListenerFn)
     socket.on('remove:'+id+':'+bucket, self._removeListenerFn)
   },
@@ -3385,7 +3364,7 @@ Views.ToolTip = Views.PopUp.extend({
 //
 //------------------------------------------------------------------------------
 
-var localModelQueue = new Queue();
+var storageQueue = new Queue();
 
 return ginger
 })
