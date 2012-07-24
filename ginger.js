@@ -38,6 +38,7 @@ define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
 //
 // Populates the options of a select tag
 //
+// Merge into ComboBox view.
 (function( $ ){
   $.fn.comboBox = function(items, selected){
     var $comboBox = $('<select>', this)
@@ -72,99 +73,98 @@ if (!Object.create) {
 //
 // Ginger Object
 //
-var ginger = {};
 
-//
-// Utils
-//
-var noop = ginger.noop = function(){}, 
-  assert = function(cond, msg){
+var ginger = {
+  noop : function(){}, 
+  assert : function(cond, msg){
     if(!cond){
       console.log('Assert failed:%s',msg);
     }
-  };
+  },
+  refresh : function(){
+    window.location.replace('');
+  },
+  uuid : uuid,
+  retain : function(objs){
+    var items = _.isArray(objs) ? objs :arguments;
+    _.each(items, function(obj){
+      obj && obj.retain();
+    });
+  },
+  release : function(objs){
+    var items = _.isArray(objs) ? objs :arguments;
+    _.each(items, function(obj){
+      obj && obj.release(); 
+    });
+  },
+  nextTick : function(fn){
+    setTimeout(fn, 0);
+  },
+  // TODO: Add an optional timeout parameter.
+  asyncDebounce : function (fn) {
+    var delayedFunc = null, executing = null;
   
-ginger.refresh = function(){
-  window.location.replace('');
-}
-
-ginger.uuid = uuid;
-
-ginger.release = function(objs){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.release(); 
-  });
-}
-ginger.retain = function(objs){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.retain();
-  });
-}
-
-var nextTick = ginger.nextTick = function(fn){
-  setTimeout(fn, 0);
-};
-
-// TODO: Add an optional timeout parameter.
-ginger.asyncDebounce = function (fn) {
-  var delayedFunc = null, executing = null;
-
-  return function debounced () {
-    var context = this,
-      args = arguments,
-      nargs = args.length,
-      cb = args[nargs-1];
-        
-    var delayed = function() {
-      executing = fn;
-      fn.apply(context, args);
+    return function debounced () {
+      var context = this,
+        args = arguments,
+        nargs = args.length,
+        cb = args[nargs-1];
+          
+      var delayed = function() {
+        executing = fn;
+        fn.apply(context, args);
+      };
+  
+      args[nargs-1] = function(){
+        cb.apply(context, arguments);
+        executing = null;
+        if(delayedFunc){
+          var f = delayedFunc;
+          delayedFunc = null;
+          f();
+        }
+      }
+  
+      if(executing){
+        delayedFunc = delayed;
+      }else{
+        delayed();
+      }
     };
-
-    args[nargs-1] = function(){
-      cb.apply(context, arguments);
-      executing = null;
-      if(delayedFunc){
-        var f = delayedFunc;
-        delayedFunc = null;
-        f();
+  },
+  
+  // TODO: rename to delayedTrigger(fn, triggerStart, triggerEnd, threshold)
+  waitTrigger : function(func, start, end, delay){
+    return function waiter(){
+      var obj = this,
+      waiting = false,
+      timer = null,
+      args = Array.prototype.slice.call(arguments),
+      nargs = args.length,
+      callback = args[nargs-1];
+  
+      args[nargs-1] = function(){
+        clearTimeout(timer);
+        if(waiting){
+          end();
+        }
+        callback.apply(obj, arguments);
       }
+      
+      timer = setTimeout(function(){
+        waiting = true;
+        start();
+      }, delay);
+      func.apply(this, args);
     }
-
-    if(executing){
-      delayedFunc = delayed;
-    }else{
-      delayed();
-    }
-  };
-};
-
-// TODO: rename to delayedTrigger(fn, triggerStart, triggerEnd, threshold)
-ginger.waitTrigger = function(func, start, end, delay){
-  return function waiter(){
-    var obj = this,
-    waiting = false,
-    timer = null,
-    args = Array.prototype.slice.call(arguments),
-    nargs = args.length,
-    callback = args[nargs-1];
-
-    args[nargs-1] = function(){
-      clearTimeout(timer);
-      if(waiting){
-        end();
-      }
-      callback.apply(obj, arguments);
-    }
-    
-    timer = setTimeout(function(){
-      waiting = true;
-      start();
-    }, delay);
-    func.apply(this, args);
   }
 };
+
+// Shortcuts
+var noop = ginger.noop,
+  nextTick = ginger.nextTick,
+  assert = ginger.assert;
+
 
 // Search Filter. returns true if any of the fields of the 
 // obj includes the search string.
@@ -1072,6 +1072,7 @@ var Base = ginger.Base = function Base(){
   this._bindings = {};
 }
 
+// Extend 
 _.extend(Base.prototype, EventEmitter.prototype);
 
 Base.extend = function(Sub, staticOrName, bucket){
@@ -1626,9 +1627,9 @@ var SyncManager = Base.extend({
         var model = models[0];
         safeEmit(self._socket, 'resync', model.__bucket, id, function(err, doc){
           if(!err){
-            doc.cid = id, doc.__persisted = true; // HACK until we improve cid handling...
             for(var i=0, len=models.length;i<len;i++){
               models[i].set(doc, {sync:'false'});
+              models[i].id(id);
             }
             model.local().update(doc);
             ginger.emit('sync:'+id);
@@ -1652,7 +1653,7 @@ var SyncManager = Base.extend({
     }
   },
   startSync: function(model){
-    var self = this, id = model._id, socket = this._socket;
+    var self = this, id = model.id(), socket = this._socket;
 
     if(model.transport() !== 'socket') return;
     
@@ -1679,7 +1680,7 @@ var SyncManager = Base.extend({
   endSync: function(model){
     if (!model._keepSynced) return;
     
-    var socket = this._socket, id = model._id, models = this.objs[id];
+    var socket = this._socket, id = model.id(), models = this.objs[id];
     
     if(models){
       models = _.reject(models, function(item){return item === model;});
@@ -1900,211 +1901,215 @@ var Model = ginger.Model = Base.extend( function Model(args){
     cb(null, new this(args));
   }
 })
-Model.prototype.id = function(id){
-  if(id){
-    this.cid = this._id = id;
-    this.__persisted = true;
-  }
-  return this._id || this.cid;
-}
-Model.prototype.isPersisted = function(){
-  return this.__persisted || this._id;
-}
-Model.prototype.transport = function(transport){
-  if(transport){
-    this.__transport = transport;
-  }
-  return this.__transport || Model.transport();
-}
-Model.prototype.key = function(){
-  return this.__bucket+':'+this._id
-}
-Model.prototype.init = function(fn){
-  fn(this)
-}
-Model.prototype.local = function(){
-  if(this._local){
-    return this._local
-  }else{
-    var self = this,
-      bucket = this.__bucket;
-    this._local = {
-      save : function(){
-        Storage.create(bucket, self.toJSON())
-      },
-      update: function(args){
-        Storage.update(bucket, self.id(), args, noop)
-      },
-      remove: function(){
-        Storage.remove(bucket, self.id(), noop)
-      }
-    }
-    return this._local
-  }
-}
-/**
-  Model#all (model, [args{Object}, bucket{String}], cb);
-*/
-Model.prototype.all = function(model, args, bucket, cb){
-  if(_.isString(args)){
-    this._all2(model, args, bucket);
-  }else if(_.isFunction(bucket)){
-    this._all3(model, args, bucket);
-  }else if(_.isFunction(args)){
-    model.all(args, this);
-  }else{
-    model.all(cb, this, args, bucket)
-  }
-}
-Model.prototype._all = function(model, args, bucket, cb){
-  model.all(cb, this, args, bucket)
-}
-Model.prototype._all2 = function(model, bucket, cb){
-  model.all(cb, this, undefined, bucket)
-}
-Model.prototype._all3 = function(model, args, cb){
-  model.all(cb, this, args)
-}
 
-Model.prototype.toArgs = function(){
-  var args = {__persisted:this.__persisted};
-  for(var key in this){
-    if(!_.isUndefined(this[key]) &&  
-       !_.isNull(this[key]) &&
-       (key[0] !== '_') && 
-       !_.isFunction(this[key])){
-      if(_.isFunction(this[key].toArgs)){
-        args[key] = this[key].toArgs();
-      }else if(!_.isObject(this[key])){
-        args[key] = this[key]
+_.extend(Model.prototype,{
+  destroy : function(){
+    Model.syncManager.endSync(this);
+    this.super(Model, 'destroy');
+  },
+  id : function(id){
+    if(id){
+      this.cid = this._id = id;
+      this.__persisted = true;
+    }
+    return this._id || this.cid;
+  },
+  isPersisted : function(){
+    return this.__persisted || this._id;
+  },
+  transport : function(transport){
+    if(transport){
+      this.__transport = transport;
+    }
+    return this.__transport || Model.transport();
+  },
+  key : function(){
+    return this.__bucket+':'+this._id
+  },
+  init : function(fn){
+    fn(this)
+  },
+  local : function(){
+    if(this._local){
+      return this._local
+    }else{
+      var self = this,
+        bucket = this.__bucket;
+      this._local = {
+        save : function(){
+          Storage.create(bucket, self.toJSON())
+        },
+        update: function(args){
+          Storage.update(bucket, self.id(), args, noop)
+        },
+        remove: function(){
+          Storage.remove(bucket, self.id(), noop)
+        }
+      }
+      return this._local
+    }
+  },
+  /**
+    Model#all (model, [args{Object}, bucket{String}], cb);
+  */
+  all : function(model, args, bucket, cb){
+    if(_.isString(args)){
+      this._all2(model, args, bucket);
+    }else if(_.isFunction(bucket)){
+      this._all3(model, args, bucket);
+    }else if(_.isFunction(args)){
+      model.all(args, this);
+    }else{
+      model.all(cb, this, args, bucket)
+    }
+  },
+  _all : function(model, args, bucket, cb){
+    model.all(cb, this, args, bucket)
+  },
+  _all2 : function(model, bucket, cb){
+    model.all(cb, this, undefined, bucket)
+  },
+  _all3 : function(model, args, cb){
+    model.all(cb, this, args)
+  },
+  toArgs : function(){
+    var args = {__persisted:this.__persisted};
+    for(var key in this){
+      if(!_.isUndefined(this[key]) &&  
+         !_.isNull(this[key]) &&
+         (key[0] !== '_') && 
+         !_.isFunction(this[key])){
+        if(_.isFunction(this[key].toArgs)){
+          args[key] = this[key].toArgs();
+        }else if(!_.isObject(this[key])){
+          args[key] = this[key]
+        }
       }
     }
-  }
-  return args
-}
-Model.prototype.toJSON = Model.prototype.toArgs
+    return args
+  },
 
 // TODO: Add a __dirty flag so we do not save unncessarily.
 // this flag a easily be maintained by listening to the changed: event.
-Model.prototype.save = function(transport, cb){
-  this.update(this.toArgs(), transport, cb);
-}
-/*
-  Updates a model with the given args and optional transport mechanism.
+  save : function(transport, cb){
+    this.update(this.toArgs(), transport, cb);
+  },
+  /*
+    Updates a model with the given args and optional transport mechanism.
 
-  update(args, [transpor, cb])
+    update(args, [transpor, cb])
   
-  TODO: This method needs to be throtled so that it does not call the
-  server too often. Therefore it should queue the calls and merge the
-  arguments (could be implemented at Storage Queue).
-*/
-Model.prototype.update = function(args, transport, cb){
-  if(_.isFunction(transport)){
-    cb = transport;
-    transport = null;
-  }
-  transport = transport || this.transport();
+    TODO: This method needs to be throtled so that it does not call the
+    server too often. Therefore it should queue the calls and merge the
+    arguments (could be implemented at Storage Queue).
+  */
+  update : function(args, transport, cb){
+    if(_.isFunction(transport)){
+      cb = transport;
+      transport = null;
+    }
+    transport = transport || this.transport();
   
-  var self = this, bucket = self.__bucket, store = ServerStorage[transport];
+    var self = this, bucket = self.__bucket, store = ServerStorage[transport];
     
-  cb = cb || noop;
+    cb = cb || noop;
 
-  if(self.isPersisted()){
-    if(self._embedded){
-      var parentBucket = self.parent.__bucket;
-      store.update(parentBucket, self.parent.id(), bucket, self.id(), args, function(err){
-        self.local().update(args)
-        if(err){
-          //TODO: THIS DOES PROBABLY NOT PRODUCE THE EXPECTED RESULT!
+    if(self.isPersisted()){
+      if(self._embedded){
+        var parentBucket = self.parent.__bucket;
+        store.update(parentBucket, self.parent.id(), bucket, self.id(), args, function(err){
+          self.local().update(args)
+          if(err){
+            //TODO: THIS DOES PROBABLY NOT PRODUCE THE EXPECTED RESULT!
+            localModelQueue.add({
+               'bucket':bucket, 
+               'id':self.id(), 
+               'args':args, 
+               'cmd':'update', 
+               'transport':transport});
+          }
+          cb();
+        });
+      }else{
+        store.update(bucket, self.id(), args, function(err){
+          self.local().update(args)
+          if(err){
+            localModelQueue.add({
+              'bucket':bucket, 
+              'id':self.id(),
+              'args':args, 
+              'cmd':'update', 
+              'transport':transport
+            });
+          }
+          cb()
+        });
+      }
+    }else{
+      // FIXME: this can lead to several creations of the same object because create
+      // could be called several times before finishing previous time we need states!
+      store.create(bucket, args, function(err, id){
+        id && self.id(id);
+        cb(err);
+      })
+    }
+  },
+  delete : function(transport, cb){
+    var self = this;
+  
+    Model.syncManager.endSync(this);
+  
+    if(_.isFunction(transport)||arguments.length==0){
+      cb = transport;
+      transport = this.transport();
+    }
+    if(transport){
+      ServerStorage[transport].remove(self.__bucket, self.id(), function(err){
+        if (err){
           localModelQueue.add({
-             'bucket':bucket, 
-             'id':self.id(), 
-             'args':args, 
-             'cmd':'update', 
-             'transport':transport});
+            'bucket':self.__bucket, 
+            'id':self.id(), 
+            'cmd':'delete', 
+            'transport':transport});
+        } else {
+          self.emit('deleted:', self.id());
         }
-        cb();
+        self.local().remove()
+        cb && cb(err);
       });
     }else{
-      store.update(bucket, self.id(), args, function(err){
-        self.local().update(args)
-        if(err){
-          localModelQueue.add({
-            'bucket':bucket, 
-            'id':self.id(),
-            'args':args, 
-            'cmd':'update', 
-            'transport':transport
-          });
-        }
-        cb()
+      self.emit('deleted:', self.id());
+      cb && cb();
+    }
+  },
+  keepSynced : function(){
+    var self = this;
+  
+    if(self._keepSynced) return;
+  
+    self._keepSynced = true;
+  
+    if (self.isPersisted()){
+      Model.syncManager.startSync(self);
+    } else {
+      ginger.once('created:'+self.id(), function(id){
+        self.id(id);
+        Model.syncManager.startSync(self);
       });
     }
-  }else{
-    // FIXME: this can lead to several creations of the same object because create
-    // could be called several times before finishing previous time we need states!
-    store.create(bucket, args, function(err, id){
-      id && self.id(id);
-      cb(err);
-    })
-  }
-}
-Model.prototype.delete = function(transport, cb){
-  var self = this;
   
-  Model.syncManager.endSync(this);
-  
-  if(_.isFunction(transport)||arguments.length==0){
-    cb = transport;
-    transport = this.transport();
-  }
-  if(transport){
-    ServerStorage[transport].remove(self.__bucket, self.id(), function(err){
-      if (err){
-        localModelQueue.add({
-          'bucket':self.__bucket, 
-          'id':self.id(), 
-          'cmd':'delete', 
-          'transport':transport});
-      } else {
-        self.emit('deleted:', self.id());
+    self.on('changed:', function(doc, options){
+      if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
+        // TODO: Use async debounce to avoid faster updates than we manage to process.
+        // (we will need to merge all incoming data).
+        self.update(doc);
       }
-      self.local().remove()
-      cb && cb(err);
     });
-  }else{
-    self.emit('deleted:', self.id());
-    cb && cb();
-  }
-}
-Model.prototype.keepSynced = function(){
-  var self = this;
-  
-  if(self._keepSynced) return;
-  
-  self._keepSynced = true;
-  
-  if (self.isPersisted()){
-    Model.syncManager.startSync(self);
-  } else {
-    ginger.once('created:'+self.id(), function(id){
-      self.id(id);
-      Model.syncManager.startSync(self);
-    });
-  }
-  
-  self.on('changed:', function(doc, options){
-    if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
-      // TODO: Use async debounce to avoid faster updates than we manage to process.
-      // (we will need to merge all incoming data).
-      self.update(doc);
-    }
-  });
-}
-Model.prototype.destroy = function(){
-  Model.syncManager.endSync(this);
-  this.super(Model, 'destroy');
-}
+  },
+});
+
+Model.prototype.toJSON = Model.prototype.toArgs
+
 /**
   A collection is a set of optionally ordered models. 
   It provides delegation and proxing of events.
@@ -2132,8 +2137,8 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     self._initItems(items);
   }else {
     self.items = [];
-    parent = items;
-    //model = items;
+    parent = model;
+    model = items;
   }
   
   _.defaults(self, {
@@ -2197,7 +2202,7 @@ _.extend(Collection.prototype, {
     var transport = this.model.transport(), self = this;
   
     ServerStorage[transport].remove(self.parent.__bucket, 
-                                    self.parent._id,
+                                    self.parent.id(),
                                     self.model.__bucket, 
                                     self._removed,
                                     function(err){
@@ -2218,7 +2223,7 @@ _.extend(Collection.prototype, {
             });
         
             ServerStorage[transport].add(self.parent.__bucket, 
-                                         self.parent._id,
+                                         self.parent.id(),
                                          self.model.__bucket, 
                                          item._id || item,
                                          function(err){
@@ -2277,7 +2282,7 @@ _.extend(Collection.prototype, {
           if(self._keepSynced && (nosync !== true) && self.parent){
             ServerStorage[transport].remove(
               self.parent.__bucket, 
-              self.parent._id,
+              self.parent.id(),
               self.model.__bucket,
               item._id,
               fn);
@@ -2308,7 +2313,7 @@ _.extend(Collection.prototype, {
     var self = this,
       socket = Model.socket,
       bucket = self.model.__bucket,
-      id = self.parent && self.parent._id;
+      id = self.parent && self.parent.id();
     
     self._keepSynced = true;
     
@@ -2349,16 +2354,12 @@ _.extend(Collection.prototype, {
     socket.on('remove:'+id+':'+bucket, self._removeListenerFn)
   },
   _endSync : function(){
-    var self = this, socket = self.socket;
-    if(socket){
-      var bucket = self.model.__bucket;
-      
-      if(self.parent){
+    var self = this, socket = self.socket, bucket = self.model.__bucket;
+    if(socket && self.parent){
         var id = self.parent.id();
         socket.removeListener('add:'+id+':'+bucket, self._addListenerFn);
         socket.removeListener('remove:'+id+':'+bucket, self._removeListenerFn);
-        this._keepSynced && Model.syncManager.endSync(self.parent);
-      }
+        Model.syncManager.endSync(self.parent);
     }
   },
   toggleSortOrder : function(){
@@ -2400,7 +2401,7 @@ _.extend(Collection.prototype, {
     return this;
   },
   destroy : function(){
-    this._endSync();
+    this._keepSynced && this._endSync();
     ginger.release(this.items);
     this.items = null;
     this.super(Collection, 'destroy');
@@ -2595,13 +2596,13 @@ _.extend(CanvasView.prototype,{
       if(this.$canvas){
         this.$canvas.remove()
       }
-      this.$canvas = $('<canvas>', {
-        css:{width:'100%', height:'100%'}}).appendTo(this.$el)
+      this.$canvas = $('<canvas>', {css:{width:'100%', height:'100%'}})
+        .appendTo(this.$el)
 
       this.$canvas[0].width = this.$parent.width()
       this.$canvas[0].height = this.$parent.height()
     }
-    this.draw()
+    this.draw();
   },
   draw : function(){
     if(this.$canvas){
@@ -2618,7 +2619,7 @@ _.extend(CanvasView.prototype,{
 //------------------------------------------------------------------------------
 var Views = ginger.Views = {}
 //------------------------------------------------------------------------------
-var ComboBox = Views.ComboBox = View.extend({
+Views.ComboBox = View.extend({
   constructor : function ComboBox(items, selected){
     this.super(Views.ComboBox);
     var view = this
@@ -2673,80 +2674,89 @@ var ComboBox = Views.ComboBox = View.extend({
   }
 });
 //------------------------------------------------------------------------------
-var Slider = Views.Slider = View.extend( function Slider(options, classNames){
-  this.super(Slider, 'constructor', classNames)
-  var self = this
-  
-  self.options = options || {}
-  self.value = self.options.value || 0
-
-  var options = _.clone(self.options)
-  
-  options.start = function(event, ui){
-    self.emit('start').emit('started:');
-  }
-  options.slide = function(event, ui){
-    self.set('value', ui.value)
-    if(self.options.slide) self.options.slide(event, ui)
-  }
-  options.stop = function(event, ui){
-    self.set('value', ui.value)
-    console.log(ui.value);
-    if(self.options.slide) self.options.slide(event, ui)
-    self.emit('stop').emit('stopped:');
-  }
-  
-  self.$el.slider(options)
-  this.on('options', function(options){
-    self.$el.slider(options);
-  });
+Views.Slider = View.extend({
+  constructor : function Slider(options, classNames){
+    var self = this;
+    this.super(Views.Slider, 'constructor', classNames)
     
-  self.on('value', function(value){
-    self.$el.slider('value', parseFloat(value))
-  })
-})
-Slider.prototype.disable = function(disable){
-  if(disable){
-    this.$el.slider('disable');
-  }else{
-    this.$el.slider('enable');
-  }
-}
-//------------------------------------------------------------------------------
-var ColorPicker = Views.ColorPicker = View.extend( function ColorPicker(options){
-  this.super(ColorPicker)
-  var view = this
-  
-  view.$colorPicker = $('<input>').attr({name:"color",
-                                         type:"text",
-                                         value:'#FFFFFFFF'})
-  
-  var pickerOptions = {change: function(hex, rgb) {
-                        view.set('color', hex)
-                      }}
-                      
-  if(_.isUndefined(options) == false){
-    _.extend(pickerOptions, options)
-  }
-  
-  view.$colorPicker.miniColors(pickerOptions)
-  
-  view.on('color', function(value){
-    if(value!=view.$colorPicker.attr('value')){
-      view.$colorPicker.miniColors('value', value)
+    function setOptions(options){
+      self.options = _.clone(options) || {};
+      _.extend(self.options, {
+        start : function(event, ui){
+          self.emit('start').emit('started:');
+        },
+        slide : function(event, ui){
+          self.set('value', ui.value)
+          if(self.options.slide) self.options.slide(event, ui)
+        },
+        stop : function(event, ui){
+          self.set('value', ui.value)
+          if(self.options.slide) self.options.slide(event, ui)
+          self.emit('stop').emit('stopped:');
+        }
+      });
+      self.$el.slider(self.options);
     }
-  })
-})
-ColorPicker.prototype.render = function($parent){
-  this.super(Views.ColorPicker, 'render')
-  $parent.append(this.$colorPicker)
-  return this.$el
-}
-ColorPicker.prototype.disable = function(disable){
-  this.$colorPicker.miniColors('disabled', disable);
-}
+    
+    setOptions(options);
+    
+    self.value = self.options.value || 0
+    
+    this.on('options', function(options){
+      setOptions(options);
+    });
+    
+    self.on('value', function(value){
+      self.$el.slider('value', parseFloat(value))
+    })
+  },
+  disable : function(disable){
+    if(disable){
+      this.$el.slider('disable');
+    }else{
+      this.$el.slider('enable');
+    }
+  }
+});
 //------------------------------------------------------------------------------
-Views.TextField = View.extend( function TextField(classNames, options){
+Views.ColorPicker = View.extend({
+  constructor : function ColorPicker(options){
+    this.super(Views.ColorPicker)
+    var view = this
+  
+    view.$colorPicker = $('<input>').attr({name:"color",
+                                           type:"text",
+                                           value:'#FFFFFFFF'})
+  
+    var pickerOptions = {
+      change: function(hex, rgb) {
+        view.set('color', hex)
+      }
+    }
+                      
+    if(_.isUndefined(options) == false){
+      _.extend(pickerOptions, options)
+    }
+  
+    view.$colorPicker.miniColors(pickerOptions)
+  
+    view.on('color', function(value){
+      if(value!=view.$colorPicker.attr('value')){
+        view.$colorPicker.miniColors('value', value)
+      }
+    })
+  },
+  render : function($parent){
+    this.super(Views.ColorPicker, 'render')
+    $parent.append(this.$colorPicker)
+    return this.$el
+  },
+  disable : function(disable){
+    this.$colorPicker.miniColors('disabled', disable);
+  }
+});
+//------------------------------------------------------------------------------
+Views.TextField = View.extend(function TextField(classNames, options){
   var $el
   if((options)&&(options.area)){
     $el = this.$el = $('<textarea>')
@@ -2818,7 +2828,7 @@ Views.Label = View.extend( function(classNames, css){
   })
 })
 //------------------------------------------------------------------------------
-var TableRow = View.extend( function(doc, fields, widths){
+var TableRow = View.extend(function(doc, fields, widths){
   var $tr = $('<tr>').attr('data-id', doc.id());
   fields = fields || _.keys(doc);
   
@@ -2839,369 +2849,378 @@ var TableRow = View.extend( function(doc, fields, widths){
     selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
-var Table = Views.Table = View.extend( function Table(collection, options){
-  var self = this, 
-    $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
-    $table = $('<table>').appendTo($tableWrapper);
+Views.Table = View.extend({
+  constructor : function Table(collection, options){
+    var self = this,
+      $tableWrapper = $('<div>').css({height:'100%', 'overflow-y':'auto'}), 
+      $table = $('<table>').appendTo($tableWrapper);
     
-  self.$tableWrapper = $tableWrapper;
-  self.$el = $('<div>').attr('tabindex',0);
-  self.$el.mouseenter(function(){
-    $(this).focus();
-  }).mouseleave(function(){
-    $(this).blur();
-  });
-  
-  self.$selected = null;
-  self.$tbody = $('<tbody>');
-  
-  _.extend(self, options);
-  _.defaults(self, {widths:[]});
-  
-  self.super(Views.Table, 'constructor', options.classNames, options.css);
-  
-  if(self.widths){
-    $colgroups = [];
-    for(var i=0,len=self.widths.length;i<len;i++){
-      var $col = $('<colgroup>').attr('width', self.widths[i]);
-      $colgroups.push($col);
-    }
-  }
-  if(self.headers){
-    var $headerTable = $('<table>'), $row = $('<tr>'), $header = $('<thead>').appendTo($headerTable);
-    $header.append($row);
-    for(var i=0, len=self.headers.length;i<len;i++){
-      var header = self.headers[i];
-      $('<th>').append(header).appendTo($row).attr('width', self.widths[i]||0);
-    }
-    self.$el.append($headerTable);
-  }
-  
-  if(self.prebody){
-    self.$el.append(self.prebody);
-  }
-  
-  self.$el.append(self.$tableWrapper);
-  $table.append(self.$tbody);
-  self.$tbody.on('click', 'tr', function(event) {
-    var $this = $(this), cid = $this.data('id');
-    self.emit('clicked:', collection.findById(cid), $this);
-  });
-  
-  if(self.footer) {
-    self.$el.append(self.footerCon.$el);
-  }
-  
-  self.on('clicked:', function(item, $row){
-    self._selectRow($row);
-  });
-  if(!self.ignoreKeyboard){
-    self.$el.keydown(function(event){
-      if(self.$selected){
-        switch (keyToString(event.which)){
-          case 'down':
-            var $next = self.$selected.next();
-            ($next.length>0) && self._selectRow($next);
-          break;
-          case 'up':
-            var $prev = self.$selected.prev();
-            ($prev.length>0) && self._selectRow($prev);
-          break;
-          default: return true; 
-        }
-      }
-      return false;
+    self.$tableWrapper = $tableWrapper;
+    self.$el = $('<div>').attr('tabindex',0);
+    self.$el.mouseenter(function(){
+      $(this).focus();
+    }).mouseleave(function(){
+      $(this).blur();
     });
-  }
-  self.on('collection', function(val, old){
-    ginger.release(old);
-    val.retain();
-    val.on('updated: added: sortByFn', function(){
-      self.populate(self.index,self.limit);
-    }).on('removed:', function(val){
-      var $row;
-      if(self.$selected && self.$selected.data('id') == val._id){
-        $row = self.$selected.prev();
-        if($row.length == 0){
-          $row = self.$selected.next();
-        }
+  
+    self.$selected = null;
+    self.$tbody = $('<tbody>');
+  
+    _.extend(self, options);
+    _.defaults(self, {widths:[]});
+  
+    self.super(Views.Table, 'constructor', options.classNames, options.css);
+  
+    if(self.widths){
+      $colgroups = [];
+      for(var i=0,len=self.widths.length;i<len;i++){
+        var $col = $('<colgroup>').attr('width', self.widths[i]);
+        $colgroups.push($col);
       }
-      self.populate(self.index,self.limit);
-      if($row && $row.length){
-        self.select($row.data('id'));
-      }else{
-        self.set('$selected', null);
+    }
+    if(self.headers){
+      var $headerTable = $('<table>'), $row = $('<tr>'), $header = $('<thead>').appendTo($headerTable);
+      $header.append($row);
+      for(var i=0, len=self.headers.length;i<len;i++){
+        var header = self.headers[i];
+        $('<th>').append(header).appendTo($row).attr('width', self.widths[i]||0);
+      }
+      self.$el.append($headerTable);
+    }
+  
+    if(self.prebody){
+      self.$el.append(self.prebody);
+    }
+  
+    self.$el.append(self.$tableWrapper);
+    $table.append(self.$tbody);
+    self.$tbody.on('click', 'tr', function(event) {
+      var $this = $(this), cid = $this.data('id');
+      self.emit('clicked:', collection.findById(cid), $this);
+    });
+  
+    if(self.footer) {
+      self.$el.append(self.footerCon.$el);
+    }
+  
+    self.on('clicked:', function(item, $row){
+      self._selectRow($row);
+    });
+    if(!self.ignoreKeyboard){
+      self.$el.keydown(function(event){
+        if(self.$selected){
+          switch (keyToString(event.which)){
+            case 'down':
+              var $next = self.$selected.next();
+              ($next.length>0) && self._selectRow($next);
+            break;
+            case 'up':
+              var $prev = self.$selected.prev();
+              ($prev.length>0) && self._selectRow($prev);
+            break;
+            default: return true; 
+          }
+        }
+        return false;
+      });
+    }
+    self.on('collection', function(val, old){
+      ginger.release(old);
+      val.retain();
+      val.on('updated: added: sortByFn', function(){
+        // TODO: Improve so that it is not needed to re-populate the table
+        // everytime a small update is performed...
+        self.populate(self.index,self.limit);
+      }).on('removed:', function(val){
+        var $row;
+        if(self.$selected && self.$selected.data('id') == val.id()){
+          $row = self.$selected.prev();
+          if($row.length == 0){
+            $row = self.$selected.next();
+          }
+        }
+        self.populate(self.index,self.limit);
+        if($row && $row.length){
+          self.select($row.data('id'));
+        }else{
+          self.set('$selected', null);
+        }
+      });
+    });
+    self.set('collection', collection);
+    collection.emit('updated:');
+    self.on('filterData', function(){
+      self.collection.emit('updated:')
+    });
+  },
+  populate : function(index,limit){
+    var self=this;
+    self.$tbody.empty();
+    var indexStart = index || 0;
+    var indexLast = limit ? limit+indexStart : self.collection.items.length;
+    if (self.footer) {
+      self.footerCon.$showing.text(indexStart);
+      self.footerCon.$to.text(indexLast);
+    }
+    var items = self.collection.items.slice(indexStart, indexLast);
+    $.each(items, function(i, item){
+      if(!self.filter || 
+        self.filter(item, self.filterData, self.searchFields || self.fields)) {
+          self.formatters && item.format(self.formatters);
+          var row = new TableRow(item, self.fields, self.widths);
+          row.render(self.$tbody);
       }
     });
-  });
-  self.set('collection', collection);
-  collection.emit('updated:');
-  self.on('filterData', function(){
-    self.collection.emit('updated:')
-  });
+    self.select();
+  },
+  _selectRow : function($row){
+    var selected = this.selectedRowClass;
+    if(selected){
+      this.$selected && this.$selected.removeClass(selected);
+    }
+    this.set('$selected', $row);
+    $row.addClass(selected);
+  },
+  select : function(itemId){
+    itemId = itemId || this.selectedItemId;
+    if(itemId){
+      var $row = $("tr[data-id='" + itemId +"']"), index, selectedRowHeight;
+      if($row.length){
+        // animate if needed.
+        if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
+          index = $('tr', this.$body).index($row);
+          selectedRowHeight = $row.height()*index;
+          this.$tableWrapper.stop().animate({
+            scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
+          }, 400);
+        }
+        this.selectedItemId = itemId;
+        $row && this._selectRow($row);
+      }
+    }
+  },
+  destroy : function(){
+    ginger.release(this.collection);
+    this.super(Views.Table, 'destroy');
+  }
 });
 
-Table.prototype.populate = function(index,limit){
-  var self=this;
-  self.$tbody.empty();
-  var indexStart = index || 0;
-  var indexLast = limit ? limit+indexStart : self.collection.items.length;
-  if (self.footer) {
-    self.footerCon.$showing.text(indexStart);
-    self.footerCon.$to.text(indexLast);
-  }
-  var items = self.collection.items.slice(indexStart, indexLast);
-  $.each(items, function(i, item){
-    if(!self.filter || 
-       self.filter(item, self.filterData, self.searchFields || self.fields)) {
-      self.formatters && item.format(self.formatters);
-      var row = new TableRow(item, self.fields, self.widths);
-      row.render(self.$tbody);
-    }
-  });
-  self.select();
-}
-Table.prototype._selectRow = function($row){
-  var selected = this.selectedRowClass;
-  if(selected){
-    this.$selected && this.$selected.removeClass(selected);
-  }
-  this.set('$selected', $row);
-  $row.addClass(selected);
-}
-Table.prototype.select = function(itemId){
-  itemId = itemId || this.selectedItemId;
-  if(itemId){
-    var $row = $("tr[data-id='" + itemId +"']"), index, selectedRowHeight;
-    if($row.length){
-      // animate if needed.
-      if (this.$tableWrapper[0].scrollHeight > this.$tableWrapper[0].clientHeight ) {
-        index = $('tr', this.$body).index($row);
-        selectedRowHeight = $row.height()*index;
-        this.$tableWrapper.stop().animate({
-          scrollTop: selectedRowHeight - (this.$tableWrapper.height()/2)
-        }, 400);
-      }
-      this.selectedItemId = itemId;
-      $row && this._selectRow($row);
-    }
-  }
-}
-Table.prototype.destroy = function(){
-  ginger.release(this.collection);
-  this.super(Table, 'destroy');
-}
 //------------------------------------------------------------------------------
 /* Creates a html structure to use with simplemodal
  * param: obj options
  * options = {title:string,close:bool,content:html,form:obj{input:array[id,name,type,placeholder]}}
  */
-Views.Modal = View.extend(function Modal(options){
-  this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
-  var view = this;
+Views.Modal = View.extend({
+  constructor : function Modal(options){
+    this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
+    var view = this;
 
-  // header
-  var $header = $('<div class="modalTop">');
-  var $title = $('<h3 class="modalTitle">').text(options.title);
-  $header.append($title);
+    // header
+    var $header = $('<div class="modalTop">');
+    var $title = $('<h3 class="modalTitle">').text(options.title);
+    $header.append($title);
   
-  // close
-  if(options.close) {
-    view.$close = $('<div class="modalClose">');
-    view.$close.html('<div class="circularButton"><div class="buttonContent">X</div></div></div>');
+    // close
+    if(options.close) {
+      view.$close = $('<div class="modalClose">');
+      view.$close.html('<div class="circularButton"><div class="buttonContent">X</div></div></div>');
     
-    $header.prepend(view.$close);
-  }
+      $header.prepend(view.$close);
+    }
   
-  // content
-  this.$content = $content = $('<div class="modalContent">');
-  $content.append(options.content);
+    // content
+    this.$content = $content = $('<div class="modalContent">');
+    $content.append(options.content);
   
-  // form
-  if (options.form) {
-   view.inputs = {};
-    var $form = $('<form>');
-    view.$form = $form;
+    // form
+    if (options.form) {
+      view.inputs = {};
+      var $form = $('<form>');
+      view.$form = $form;
 
-    // error handling
-    view.$errorForm = $('<div id="formError">').html('<div id="errorIcon"><span>?</span></div></div>');
-    view.$errorText = $('<span id="errorText"></span>');
-    view.$errorForm.append(view.$errorText);
-    $form.append(view.$errorForm).attr('id',options.form.id);
+      // error handling
+      view.$errorForm = $('<div id="formError">').html('<div id="errorIcon"><span>?</span></div></div>');
+      view.$errorText = $('<span id="errorText"></span>');
+      view.$errorForm.append(view.$errorText);
+      $form.append(view.$errorForm).attr('id',options.form.id);
     
-    // inputs
-    var $table = $('<table border="0" cellspacing="5" cellpadding="0"/>');
-    $form.append($table);
+      // inputs
+      var $table = $('<table border="0" cellspacing="5" cellpadding="0"/>');
+      $form.append($table);
     
-    for(var i = 0;i<options.form.inputs.length;i++) {
-      var item = options.form.inputs[i];
-      if (item instanceof jQuery) {
-        var $input = item;
-      } else {
-        var $input = $('<input/>',item);
+      for(var i = 0;i<options.form.inputs.length;i++) {
+        var item = options.form.inputs[i];
+        if (item instanceof jQuery) {
+          var $input = item;
+        } else {
+          var $input = $('<input/>',item);
+        }
+        var $tr = $('<tr>'), $td = $('<td>');
+        $td.append($input);
+        $tr.append($td);
+        view.inputs['$' + $input.attr('id')] = $input;
+        $table.append($tr);
       }
-      var $tr = $('<tr>');
-      var $td = $('<td>');
-      $td.append($input);
-      $tr.append($td);
-      view.inputs['$' + $input.attr('id')] = $input;
-      $table.append($tr);
+      // Form submit button
+      if(options.submitButton) {
+        view.$submitButton = $('<button/>', options.submitButton);
+        $form.append(view.$submitButton);
+      }
+      // add content to modal
+      $content.prepend($form);
     }
-    // Form submit button
-    if(options.submitButton) {
-      view.$submitButton = $('<button/>', options.submitButton);
-      $form.append(view.$submitButton);
-    }
-    // add content to modal
-    $content.prepend($form);
-  }
 
-  // buttons
-  if(options.cancelButton) {
-    view.$cancelButton = $('<button/>',options.cancelButton);
-    $content.append(view.$cancelButton);
-  }
-  if(options.acceptButton) {
-    view.$acceptButton = $('<button/>',options.acceptButton);
-    $content.append(view.$acceptButton);
-  }
-  
-  // bottom
-  if(options.bottom) {
-    $content.append(options.bottom)
-  }
-  
-  // make the modal
-  view.$el.prepend($header);
-  view.$el.append($content);
-})
-Views.Modal.prototype.disable = function() {
-  var view = this;
-  for (var key in view.inputs) {
-    var $input = view.inputs[key];
-    $input.attr("disabled", "disabled"); 
-  }
-  if(view.$submitButton) {
-    view.$submitButton.css('opacity', 0.6).attr("disabled", "disabled");
-  }
-  if(view.$acceptButton) {
-    view.$acceptButton.css('opacity', 0.6).attr("disabled", "disabled");
-  }
-  if(view.$cancelButton) {
-    view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
-  }
-}
-Views.Modal.prototype.enable = function() {
-  var view = this;
-  for(var i = 0;i<view.inputs.length;i++) {
-    var $input = view.form.inputs[i];
-    $input.removeAttr("disabled", "disabled");
-  }
-  if(view.$submitButton) {
-    view.$submitButton.css('opacity', 1).removeAttr("disabled", "disabled");
-  }
-  if(view.$acceptButton) {
-    view.$acceptButton.css('opacity', 1).removeAttr("disabled", "disabled");
-  }
-  if(view.$cancelButton) {
-    view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
-  }
-}
-Views.Modal.prototype.content = function(content){
-  this.$content.html(content);
-}
-/* Empty all modal forms*/
-Views.Modal.prototype.empty = function() {
-  this.$el.find(':input').each(function() {
-    switch(this.type) {
-      case 'password':
-      case 'select-multiple':
-      case 'select-one':
-      case 'text':
-      case 'textarea':
-        $(this).val('');
-        break;
-      case 'checkbox':
-      case 'radio':
-        this.checked = false;
+    // buttons
+    if(options.cancelButton) {
+      view.$cancelButton = $('<button/>',options.cancelButton);
+      $content.append(view.$cancelButton);
     }
-  });
-}
+    if(options.acceptButton) {
+      view.$acceptButton = $('<button/>',options.acceptButton);
+      $content.append(view.$acceptButton);
+    }
+  
+    // bottom
+    if(options.bottom) {
+      $content.append(options.bottom)
+    }
+  
+    // make the modal
+    view.$el.prepend($header);
+    view.$el.append($content);
+  },
+  disable : function() {
+    var view = this;
+    for (var key in view.inputs) {
+      var $input = view.inputs[key];
+      $input.attr("disabled", "disabled"); 
+    }
+    if(view.$submitButton) {
+      view.$submitButton.css('opacity', 0.6).attr("disabled", "disabled");
+    }
+    if(view.$acceptButton) {
+      view.$acceptButton.css('opacity', 0.6).attr("disabled", "disabled");
+    }
+    if(view.$cancelButton) {
+      view.$cancelButton.css('opacity', 0.6).attr("disabled", "disabled");
+    }
+  },
+  enable : function() {
+    var view = this;
+    for(var i = 0;i<view.inputs.length;i++) {
+      var $input = view.form.inputs[i];
+      $input.removeAttr("disabled", "disabled");
+    }
+    if(view.$submitButton) {
+      view.$submitButton.css('opacity', 1).removeAttr("disabled", "disabled");
+    }
+    if(view.$acceptButton) {
+      view.$acceptButton.css('opacity', 1).removeAttr("disabled", "disabled");
+    }
+    if(view.$cancelButton) {
+      view.$cancelButton.css('opacity', 1).removeAttr("disabled", "disabled");
+    }
+  },
+  content : function(content){
+    this.$content.html(content);
+  },
+  /* Empty all modal forms*/
+  empty : function() {
+    this.$el.find(':input').each(function() {
+      switch(this.type) {
+        case 'password':
+        case 'select-multiple':
+        case 'select-one':
+        case 'text':
+        case 'textarea':
+          $(this).val('');
+          break;
+        case 'checkbox':
+        case 'radio':
+          this.checked = false;
+      }
+    });
+  }
+});
 //------------------------------------------------------------------------------
-Views.Button = View.extend( function Button(options){
-  this.super(Views.Button)
-  var view = this
-  _.extend(this, options)
+Views.Button = View.extend({
+  constructor : function Button(options){
+    this.super(Views.Button)
+    var view = this
+    _.extend(this, options)
   
-  view.$el.click(function(event){
-    view.emit('click', view, event) 
-  })
-  
-  view.$el.css({
-    width:'100%',
-    height:'100%',
-    cursor:'pointer'
-  })
- 
-  if(this.icons){
-    this.$icons = {}
-
-    var $icon
-    for(var i=0;i<this.icons.length;i++){
-      $icon = $('<div>', {
-        class:this.icons[i],
-        css:{float:'left'}
-      })
-      this.$icons[this.icons[i]] = $icon
-    }
-    this.icon = this.icons[0]
-    view.$el.append(view.$icons[this.icon])
-  
-    this.on('icon', function(icon, prev){
-      $('.'+prev, view.$el).detach()
-      view.$el.append(view.$icons[icon])
+    view.$el.click(function(event){
+      view.emit('click', view, event) 
     })
-  }
-
-  if(this.label){
-    var $label = $('<div>')
-      .html('<a>'+this.label+'</a>')
-      .css({float:'left'})
-    view.$el.append($label)
-  }
-})
-Views.Button.prototype.enable = function(enable){
-  if(enable){
-    // Enable button.
-  }else{
-    // Disable button.
-  }
-}
-//------------------------------------------------------------------------------
-var Toolbar = Views.Toolbar = View.extend( function ToolBar(classNames, itemsClassNames){
-  this.super(Views.Toolbar, 'constructor', classNames)
-  var self = this
-  self.itemsClassNames = itemsClassNames
   
-  self.clickCallback = function(sender, event){
-    self.emit('click', sender, event)
-  }
-})
-Toolbar.prototype.addItems = function(items, leftMargin){
-  var self = this
-  items = _.isArray(items)?items:[items]
-  for(var i=0, len=items.length; i<len;i++){
-    var $itemContainer = $('<div>').append(items[i].$el)
-    if(this.itemsClassNames){
-      $itemContainer.addClass(this.itemsClassNames)
+    view.$el.css({
+      width:'100%',
+      height:'100%',
+      cursor:'pointer'
+    })
+ 
+    if(this.icons){
+      this.$icons = {}
+
+      var $icon
+      for(var i=0;i<this.icons.length;i++){
+        $icon = $('<div>', {
+          class:this.icons[i],
+          css:{float:'left'}
+        })
+        this.$icons[this.icons[i]] = $icon
+      }
+      this.icon = this.icons[0]
+      view.$el.append(view.$icons[this.icon])
+  
+      this.on('icon', function(icon, prev){
+        $('.'+prev, view.$el).detach()
+        view.$el.append(view.$icons[icon])
+      })
     }
-    if(leftMargin&&(i===0)){
-      $itemContainer.css('margin-left',leftMargin+'px')
+
+    if(this.label){
+      var $label = $('<div>')
+        .html('<a>'+this.label+'</a>')
+        .css({float:'left'})
+      view.$el.append($label)
     }
-    self.$el.append($itemContainer)
-    items[i].on('click', self.clickCallback)
+  },
+  enable : function(enable){
+    if(enable){
+      // Enable button.
+    }else{
+      // Disable button.
+    }
   }
-}
+});
+//------------------------------------------------------------------------------
+Views.Toolbar = View.extend({
+  constructor : function ToolBar(classNames, itemsClassNames){
+    this.super(Views.Toolbar, 'constructor', classNames)
+    var self = this
+    self.itemsClassNames = itemsClassNames
+  
+    self.clickCallback = function(sender, event){
+      self.emit('click', sender, event)
+    }
+  },
+  addItems : function(items, leftMargin){
+    var self = this
+    items = _.isArray(items)?items:[items]
+    for(var i=0, len=items.length; i<len;i++){
+      var $itemContainer = $('<div>').append(items[i].$el)
+      if(this.itemsClassNames){
+        $itemContainer.addClass(this.itemsClassNames)
+      }
+      if(leftMargin&&(i===0)){
+        $itemContainer.css('margin-left',leftMargin+'px')
+      }
+      self.$el.append($itemContainer)
+      items[i].on('click', self.clickCallback)
+    }
+  }
+});
 /*
 ginger.Views.Toolbar.prototype.render = function(){
  var $el = this.super(ginger.Views.Toolbar, 'render') 
@@ -3212,155 +3231,154 @@ ginger.Views.Toolbar.prototype.render = function(){
 }
 */
 //------------------------------------------------------------------------------
-var PopUp = Views.PopUp = View.extend( function PopUp(classNames, $parent, options){
-  this.super(PopUp, 'constructor', classNames)
-  this.$el.css({position: 'absolute', display:'none'})
+Views.PopUp = View.extend({
+  constructor : function PopUp(classNames, $parent, options){
+    this.super(Views.PopUp, 'constructor', classNames)
+    this.$el.css({position: 'absolute', display:'none'})
   
-  _.extend(this, options)
-  _.defaults(this,{
-    startTime:500,
-    endTime:300,
-    showTime:500,
-    center:false
-  })
-  this._timer = null
-  this._fadingIn = false
-  this._fadingOut = false
-  this._state = 0 // 0 = hidden, 1 = fadeIn, 2 = show, 3 = fadeOut
-  this.attachTo()
-  this.$parent = $parent
-})
-PopUp.prototype.attachTo = function($parent){
-  this.$el.detach()
-  if(_.isUndefined($parent)){
-    this.$parent = $('body')
-  }else{
+    _.extend(this, options)
+    _.defaults(this,{
+      startTime:500,
+      endTime:300,
+      showTime:500,
+      center:false
+    })
+    this._timer = null
+    this._fadingIn = false
+    this._fadingOut = false
+    this._state = 0 // 0 = hidden, 1 = fadeIn, 2 = show, 3 = fadeOut
+    this.attachTo()
     this.$parent = $parent
-  }
-  this.$parent.prepend(this.$el)
-}
-PopUp.prototype.show = function(html, css, anim){
-  var self = this
-  if (_.isString(html)){
-    self.$el.html(html)
-  }else{
-    self.$el.empty()
-    self.$el.append(html)
-  }
+  },
+  attachTo : function($parent){
+    this.$el.detach()
+    if(_.isUndefined($parent)){
+      this.$parent = $('body')
+    }else{
+      this.$parent = $parent
+    }
+    this.$parent.prepend(this.$el)
+  },
+  show : function(html, css, anim){
+    var self = this
+    if (_.isString(html)){
+      self.$el.html(html)
+    }else{
+      self.$el.empty()
+      self.$el.append(html)
+    }
   
-  clearTimeout(this._timer)
-  if(css){
-    self.$el.css(css)
-  }
+    clearTimeout(this._timer)
+    if(css){
+      self.$el.css(css)
+    }
   
-  if(self.$parent){
-    var left, top
-    if(self.center){
-      var pos = self.$parent.offset()
-      left = pos.left + (self.$parent.width()- self.$el.outerWidth())/2
-      top = pos.top + (self.$parent.height() - self.$el.outerHeight())/2
-      self.$el.css({left:left, top:top})
+    if(self.$parent){
+      var left, top
+      if(self.center){
+        var pos = self.$parent.offset()
+        left = pos.left + (self.$parent.width()- self.$el.outerWidth())/2
+        top = pos.top + (self.$parent.height() - self.$el.outerHeight())/2
+        self.$el.css({left:left, top:top})
+      }
+    }
+  
+    switch(self._state){
+      case 3: self.$el.stop(false,true)
+
+      case 0: self._state = 1
+              self.$el.fadeIn(self.startTime, anim, function(){
+                self._state = 2
+                self._setFadeOut()
+              })
+              break;
+      case 2: self._setFadeOut()
+      default:
+    }
+  },
+  hide : function(cb){
+    var self = this
+    self._state = 3
+    self.$el.fadeOut(self.endTime, function(){
+      self._state = 0
+      cb && cb();
+    })
+  },
+  _setFadeOut : function(){
+    var self = this
+    if(self.showTime>0){
+      self._timer = setTimeout(function(){
+        self.hide()
+      }, self.showTime)
     }
   }
-  
-  switch(self._state){
-    case 3: self.$el.stop(false,true)
-
-    case 0: self._state = 1
-            self.$el.fadeIn(self.startTime, anim, function(){
-              self._state = 2
-              self._setFadeOut()
-            })
-            break;
-    case 2: self._setFadeOut()
-    default:
-  }
-}
-PopUp.prototype.hide = function(cb){
-  var self = this
-  self._state = 3
-  self.$el.fadeOut(self.endTime, function(){
-    self._state = 0
-    cb && cb();
-  })
-}
-PopUp.prototype._setFadeOut = function(){
-  var self = this
-  if(self.showTime>0){
-    self._timer = setTimeout(function(){
-      self.hide()
-    }, self.showTime)
-  }
-}
+});
 //------------------------------------------------------------------------------
 /**
   Valid Pos: [w, e, n, s]
 */
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-Views.ToolTip = PopUp.extend( function ToolTip(classNames, 
-                                               $target, 
-                                               pos, 
-                                               $content,
-                                               options){
-  var self = this
-  self.super(Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
+Views.ToolTip = Views.PopUp.extend({
+  constructor : function ToolTip(classNames, $target, pos, $content, options){
+    var self = this
+    self.super(Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
 
-  _.extend(self, options)
-  _.defaults(self, {
-    delay:500
-  })
-  var $el = self.$el
-  self.$target = $target
-  self.$content = $content
+    _.extend(self, options)
+    _.defaults(self, {
+      delay:500
+    })
+    var $el = self.$el
+    self.$target = $target
+    self.$content = $content
   
-  $target.append($el.append($content))
+    $target.append($el.append($content))
 
-  self._timer = null
+    self._timer = null
   
-  $target.hover(
-    function(event){
-      clearTimeout(self._delayTimer)
-      self._delayTimer = setTimeout(function(){
-        self._updatePosition(pos)
-        $el.fadeIn(self.startTime)
-      }, self.delay)
-    },
-    function(event){
-      clearTimeout(self._delayTimer)
-      $el.fadeOut(self.endTime)
+    $target.hover(
+      function(event){
+        clearTimeout(self._delayTimer)
+        self._delayTimer = setTimeout(function(){
+          self._updatePosition(pos)
+          $el.fadeIn(self.startTime)
+        }, self.delay)
+      },
+      function(event){
+        clearTimeout(self._delayTimer)
+        $el.fadeOut(self.endTime)
+      }
+    )
+  },
+  _updatePosition : function(pos){
+    var $el = this.$el,
+        $target = this.$target,
+        $content = this.$content,
+        css = $target.offset(),
+        ttw = $el.outerWidth(),
+        tth = $el.outerHeight(),
+        targetWidth = $target.width(),
+        targetHeight = $target.height();
+
+    switch(pos){
+      case 'n':
+        css.top -=tth
+        css.left -=(ttw-targetWidth)/2
+      break;
+      case 'w':
+        css.left -=ttw
+      break;
+      case 'e':
+        css.left += targetWidth+5
+      break;
+      case 's':
+        css.top += $target.height()
+        css.left -=(ttw-targetWidth)/2
+      break;
     }
-  )
-})
-Views.ToolTip.prototype._updatePosition = function(pos){
-  var $el = this.$el,
-      $target = this.$target
-      $content = this.$content
-
-  var css = $target.offset(),
-      ttw = $el.outerWidth(),
-      tth = $el.outerHeight(),
-      targetWidth = $target.width(),
-      targetHeight = $target.height()
-
-  switch(pos){
-    case 'n':
-      css.top -=tth
-      css.left -=(ttw-targetWidth)/2
-    break;
-    case 'w':
-      css.left -=ttw
-    break;
-    case 'e':
-      css.left += targetWidth+5
-    break;
-    case 's':
-      css.top += $target.height()
-      css.left -=(ttw-targetWidth)/2
-    break;
+    $el.css(css)
   }
-  $el.css(css)
-}
+});
 //------------------------------------------------------------------------------
 //
 // Singletones
