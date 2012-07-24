@@ -396,7 +396,7 @@ Events in ground try to mimick the EventEmitter object from early versions of No
 One important consideration to keep in mind is that ground events are propagated inmediately
 i.e., they do not wait for the next event loop. The reason for this is to provide high 
 performance and responsivity. The major implication of this is that you have always to place
-your listeners after you emit, otherwise the event will be missed.
+your listeners before you emit, otherwise the event will be missed.
 
 ##Property bindings
 
@@ -412,13 +412,13 @@ It is equivalent to sharing the ownership of the retained object. It also means 
 *retain* is now responsible of calling *release* when it is not needed anymore.
  
 Everytime *release* is called, the reference counter is decremented, and when it reaches zero, the object is
-destroyed (by calling the method *destroy*, which is also part of the Base class, although it is quite often
-overrided to perform customized clean ups for your classes).
+destroyed by calling the method *destroy*, which is also part of the Base class, although it is quite often
+overrided to perform customized clean ups for your classes.
 
-It may seem strange that we need a reference counting mechanism when javascript includes garbage
-collection. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
+It may seem strange that we need a reference counting mechanism when javascript includes a garbage
+collector. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
 the garbage collector is only able to free objects that are not referenced by any other object. In complex 
-applications, it is necessary some structured mechanism in order to un-refernce the objects so that the 
+applications, it is necessary some structured mechanism in order to un-reference the objects so that the 
 garbage collector can do its job. Also, besides memory, we want to avoid *event leaks*, which occour when
 some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
 , by default, all the events associated to it are also removed.
