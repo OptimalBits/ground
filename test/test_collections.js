@@ -21,9 +21,9 @@ describe('Collections', function(){
   describe('Creation', function(){
     it('save to server', function(done){
       zoo.save(function(err){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         zoo.all(Animal, function(err, animals){
-          expect(err).to.be(null);
+          expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
           animals.release();
           done();
@@ -35,16 +35,16 @@ describe('Collections', function(){
   describe('Addition', function(){
     it('add item to collection', function(done){
       zoo.all(Animal, function(err, animals){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
         expect(animals).to.be.an(Object);
             
         animals.add(new Animal({name:"tiger"}), function(err){
-          expect(err).to.be(null);
+          expect(err).to.not.be.ok();
           Zoo.findById(zoo._id, function(err, doc){
-            expect(err).to.be(null);
+            expect(err).to.not.be.ok();
             expect(doc).to.be.an(Object);
             doc.all(Animal, function(err, collection){
-              expect(err).to.be(null);
+              expect(err).to.not.be.ok();
               expect(collection).to.be.an(Object);
               expect(collection.items).to.be.an(Array);
               expect(collection.items.length).to.be(1);
