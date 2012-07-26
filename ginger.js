@@ -631,9 +631,11 @@ var ajax = ginger.ajax = {
 */
 var Storage = ginger.Storage = {};
 
+// Rename to translateId
 Storage.moved = function(bucket, oldId, newId){
   localCache.setItem(bucket+'@'+oldId, JSON.stringify(bucket+'@'+newId));
 }
+// Rename to save
 Storage.create = function(bucket, args, cb){
   localCache.setItem(bucket+'@'+args.cid, JSON.stringify(args));
   cb && cb();
@@ -720,16 +722,13 @@ Storage.update = function(bucket, id, args, cb){
   })
 }
 // FIXME: the collection in the key and the collection in the array could be different...
-// FIXME: remove duplicates.
 Storage.add = function(bucket, id, collection, ids, cb){
   Storage.findById(bucket, id+'@'+collection, function(err, doc){
     doc = doc || [];
     if(_.isArray(ids)){
-      for(var i=0,len=ids.length;i<len;i++){
-        doc.push(collection+'@'+ids[i]);
-      }
+      doc = _.union(doc, _.map(ids, function(id){return collection+'@'+id}));
     }else{
-      doc.push(collection+'@'+ids);
+      doc = _.union(doc, [collection+'@'+ids]);
     }
     localCache.setItem(bucket+'@'+id+'@'+collection, JSON.stringify(doc));
     cb && cb();
@@ -2219,7 +2218,7 @@ _.extend(Collection.prototype, {
     cb = cb || noop;
     asyncForEach(items, function(item, done){
       self._add(item, function(err){
-        !err && self._keepSynced && item.keepSynced();
+        !err && self._keepSynced && !item._keepSynced && item.keepSynced();
         done(err);
       }, opts, pos);
     }, cb);
@@ -2294,27 +2293,32 @@ _.extend(Collection.prototype, {
         
     if (!self.parent) return;
     
+    id = self.parent.id();
+    
     Model.syncManager.startSync(self.parent);
       
     function addItem(item){
       if(item){
         self.add(item, noop, {nosync:true});
-        item.release();
+        // Cache for offline use.
+        Storage.add(self.parent.__bucket, id, bucket, item.id(), function(){
+          item.release();
+        });
       }
     }
 
     self._addListenerFn = _.bind(function(items){
-      asyncForEach(items, function(item, done){
-        if(_.isObject(item)){
-          if(!self.findById(item.id())){
-            self.model.create(item, this._keepSynced, function(err, item){
+      asyncForEach(items, function(args, done){
+        if(_.isObject(args)){
+          if(!self.findById(args._id)){
+            self.model.create(args, function(err, item){
               addItem(item);
-              done()
+              done();
             });
           }
         }else{
-          if(!self.findById(item.id)){
-            self.model.findById(item, function(err, item){
+          if(!self.findById(args)){
+            self.model.findById(args, function(err, item){
               addItem(item);
               done();
             })
@@ -2322,12 +2326,10 @@ _.extend(Collection.prototype, {
         }
       }, noop);
     }, self);
-
+    
     self._removeListenerFn = _.bind(function(itemId){
       this.remove(itemId, noop, true);
     }, self);
-
-    id = self.parent.id();
     
     socket.on('add:'+id+':'+bucket, self._addListenerFn)
     socket.on('remove:'+id+':'+bucket, self._removeListenerFn)

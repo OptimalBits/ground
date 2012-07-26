@@ -241,7 +241,7 @@ describe('Collections', function(){
       done();    
     });
   
-    it('add item to collection', function(done){
+    it('add item to collection being offline', function(done){
       var zoo = new Zoo();
       zoo.keepSynced();
       
@@ -289,7 +289,7 @@ describe('Collections', function(){
       });
     });
 
-    it('add item to collection 2', function(done){
+    it('add item to collection being offline 2', function(done){
       var zoo = new Zoo({name:'add item test 2'});
       zoo.keepSynced();
       zoo.save(function(err){
@@ -331,7 +331,7 @@ describe('Collections', function(){
         });
       });
     });
-
+    
     it('remove item while offline', function(done){
       var zoo = new Zoo({name:'remove item offline'});
       zoo.keepSynced();
@@ -387,6 +387,42 @@ describe('Collections', function(){
         });
       });
     });
+    it('add item to collection online is available offline', function(done){
+      var zoo = new Zoo({name:'add item test 2'});
+      zoo.keepSynced();
+      zoo.save(function(err){
+        zoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
+          expect(animals).to.be.an(Object);
+          var tiger = new Animal({name:"tiger"});
+          animals.add(tiger, function(err){
+            expect(err).to.not.be.ok();
+          
+            socket.disconnect();
+            
+            zoo.all(Animal, function(err, offlineAnimals){
+              expect(err).to.not.be.ok();
+              expect(offlineAnimals).to.be.an(Object);
+              
+              var offlineTiger = offlineAnimals.first();
+              
+              expect(offlineTiger).to.be.an(Object);
+              expect(offlineTiger.id()).to.be.equal(tiger.id());
+              socket.socket.connect();
+              done();
+            });
+          });
+        });
+      });
+    });
+    it('added item via keepsynced is available offline', function(done){
+      // This test checks that if one collection item has been added to a collection
+      // due to that the collection is kept synced, it should be made offline.
+      // unfortunatelly is a test difficult to implement, we need a separate browser session
+      // for it.
+      done();
+    });
+    
   });
   
   describe('Sorted collection', function(){
