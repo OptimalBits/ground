@@ -2297,12 +2297,14 @@ _.extend(Collection.prototype, {
     
     Model.syncManager.startSync(self.parent);
       
-    function addItem(item){
+    function addItem(item, args){
       if(item){
         self.add(item, noop, {nosync:true});
         // Cache for offline use.
-        Storage.add(self.parent.__bucket, id, bucket, item.id(), function(){
-          item.release();
+        Storage.update(bucket, item.id(), args, function(){
+          Storage.add(self.parent.__bucket, id, bucket, item.id(), function(){
+            item.release();
+          });
         });
       }
     }
@@ -2312,14 +2314,14 @@ _.extend(Collection.prototype, {
         if(_.isObject(args)){
           if(!self.findById(args._id)){
             self.model.create(args, function(err, item){
-              addItem(item);
+              addItem(item, args);
               done();
             });
           }
         }else{
           if(!self.findById(args)){
             self.model.findById(args, function(err, item){
-              addItem(item);
+              addItem(item, args);
               done();
             })
           }
