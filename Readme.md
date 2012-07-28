@@ -1,19 +1,18 @@
 #Introduction
 
-Ground is a minimalistic and flexible javascript framework designed to create modern, 
-interactive web applications. 
+Ground is a light-weight and flexible javascript framework for NodeJs that provides the building blocks
+and the structure to create modern, realtime interactive web applications that are required to work 
+seamlessly both online and offline.
 
-It has been inspired by other great and popular frameworks such as Backbone, Spine, Batman and Sammy, 
-but with some new ideas of its own and some unique features.
-
-Note that this framework is still under heavy development and subject to API changes. All feedback is 
-therefore very much appreciated.
+It also includes some rather useful features such as a hierarchical routing system, an undo/redo
+manager, property bindings and automatic synchronization between clients and servers.
 
 ## Features
 
-- Built on top of Curl, jQuery and Underscore.
+- Built on top of Curl, jQuery, socket.io and Underscore/LoDash.
 - Hierarchical routing system.
 - Models with property binding, persistence and synchronization.
+- Complete offline support.
 - Views with some common widgets based on jQuery UI.
 - Canvas Views.
 - Events.
@@ -25,6 +24,10 @@ Ground is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD)
 not work without a module loader. While it should work with any AMD compatible loader, we can only guarantee a 
 consistent behavior with [Curl](https://github.com/cujojs/curl). For convenience we will provide a custom and tested
 build of curl with every new release of the framework.
+
+##Install
+
+
 
 #Routing
 
@@ -280,7 +283,7 @@ Finally, the Base class provides reference counting. When a class is instantiate
 Models in ground are objects that derive from gnd.Base and that provide functionality for persisting as well as 
 synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
 
-Ground can take advantage of socket.io, and it provides a [NodeJS](http://nodejs.org) component to simplify 
+Ground can take advantage of socket.io, and it provides a [Node](http://nodejs.org) component to simplify 
 persistence and synchronization. The server component is designed to scale easily thanks to [Redis](http://redis.io)
 which is used as a pub sub system between different nodes running the ground server component.
 
@@ -423,6 +426,7 @@ garbage collector can do its job. Also, besides memory, we want to avoid *event 
 some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
 , by default, all the events associated to it are also removed.
 
+##Undo / Redo
 
 ##Offline
 
@@ -431,7 +435,20 @@ between client and server instances of models and collections. Data required by 
 models are cached so that they are available when working offline, and all data produced while being offline
 gets updated automatically as soon as the application gets connectivity with the server.
 
-#Undo / Redo
+#Views
+
+#Server
+
+Ground provides a server component for [Node](http://nodejs.org) that is necessary for some of the functionality
+provided by models, such as automatic synchonization. 
+
+The server can be spawned multiple times in the same machine or in a cluster of machines in order to provide 
+scalability, but you will still need a load balancer in front of the nodes. The communication between nodes is
+achieved using the excelent pub/sub functionality in [Redis](http://redis.io), so this is a required component
+as wel.
+
+The server is designed to work with [Mongoose](http://mongoosejs.com) as database ORM. 
+
 
 #Utilities
 
