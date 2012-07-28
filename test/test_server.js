@@ -19,10 +19,27 @@ app.put('/animals/:id', function(req, res){
   })
 })
 
+app.put('/zoos/:zooId/animals/:id', function(req, res){
+  res.send(204);
+})
+
+app.del('/zoos/:zooId/animals/:id', function(req, res){
+  models.Zoo.findById(req.params.zooId, function(err, zoo){    
+    if (err) {
+      throw new Error('Error remove animal:'+req.params.id+' from Zoo:'+req.params.zooId+' '+err);
+    } else {
+      var index = zoo.animals.indexOf(req.params.id);
+      zoo.animals.splice(index, 1);
+      zoo.save(function(err){
+        res.send(204);
+      });
+    }
+  });
+})
+
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
     console.log(err); 
-
     console.log(result); 
   });
   mongoose.connect('mongodb://localhost/testGingerSync');

@@ -409,14 +409,128 @@ describe('Collections', function(){
               expect(offlineTiger).to.be.an(Object);
               expect(offlineTiger.id()).to.be.equal(tiger.id());
               socket.socket.connect();
-              done();
+              socket.once('connect', done);
             });
           });
         });
       });
     });
+    
+    /**
+      An item is added from a collection on the server, when we come back online 
+      the local cache should be updated with the removed item.
+    */
+    it('serverside add item while offline', function(done){
+      // TO IMPLEMENT;
+      done();
+    });
+    
+    it('removed item from collection online is not available offline', function(done){
+      var zoo = new Zoo({name:'remove item not available offline'});
+      zoo.keepSynced();
+      zoo.save(function(err){
+        zoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
+          expect(animals).to.be.an(Object);
+          var tiger = new Animal({name:"tiger"});
+          animals.add(tiger, function(err){
+            expect(err).to.not.be.ok();
+            
+            zoo.all(Animal, function(err, onlineAnimals){
+              expect(err).to.not.be.ok();
+              expect(onlineAnimals).to.be.an(Object);
+              
+              var onlineTiger = onlineAnimals.first();
+              
+              expect(onlineTiger).to.be.an(Object);
+              expect(onlineTiger.id()).to.be.equal(tiger.id());
+              
+              onlineAnimals.remove(onlineTiger.id(), function(err){
+                expect(err).to.not.be.ok();
+                socket.disconnect();
+                
+                zoo.all(Animal, function(err, offlineAnimals){
+                  expect(err).to.not.be.ok();
+                  expect(offlineAnimals).to.be.an(Object);
+                  
+                  var offlineTiger = offlineAnimals.findById(onlineTiger.id());
+                  expect(offlineTiger).to.not.be.ok();
+                  
+                  ginger.release(onlineAnimals);
+                  
+                  socket.socket.connect();
+                  socket.once('connect', done);
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+    
+    /**
+      An item is removed from a collection on the server, when we come back online 
+      the local cache should be updated with the removed item.
+    */
+    it('serverside remove item while offline', function(done){
+      var zoo = new Zoo({name:'remove item serverside'});
+      zoo.keepSynced();
+      zoo.save(function(err){
+        zoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
+          expect(animals).to.be.an(Object);
+          var tiger = new Animal({name:"tiger"});
+          animals.add(tiger, function(err){
+            expect(err).to.not.be.ok();
+            
+            zoo.all(Animal, function(err, onlineAnimals){
+              expect(err).to.not.be.ok();
+              expect(onlineAnimals).to.be.an(Object);
+              
+              var onlineTiger = onlineAnimals.first();
+              
+              expect(onlineTiger).to.be.an(Object);
+              expect(onlineTiger.id()).to.be.equal(tiger.id());
+              
+              ginger.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
+                
+                zoo.all(Animal, function(err, emptyZoo){
+                  expect(err).to.not.be.ok();
+                  expect(emptyZoo).to.be.an(Object);
+                  expect(emptyZoo.items.length).to.be(0);
+                  
+                  emptyZoo.release();
+                  
+                  socket.disconnect();
+                  
+                  zoo.all(Animal, function(err, emptyZoo){
+                    expect(err).to.not.be.ok();
+                    expect(emptyZoo).to.be.an(Object);
+                    expect(emptyZoo.items.length).to.be(0);
+                    
+                    ginger.release(onlineAnimals, emptyZoo);
+                    socket.socket.connect();
+                    socket.once('connect', done);
+                  });
+                });
+              });
+            });
+          });
+        });
+      });      
+    });
+
+    
     it('added item via keepsynced is available offline', function(done){
       // This test checks that if one collection item has been added to a collection
+      // due to that the collection is kept synced, it should be made offline.
+      // unfortunatelly is a test difficult to implement, we need a separate browser session
+      // for it.
+      done();
+    });
+    
+    it('removed item via keepsynced is not available offline', function(done){
+      // This test checks that if one collection item has been removed from a collection
       // due to that the collection is kept synced, it should be made offline.
       // unfortunatelly is a test difficult to implement, we need a separate browser session
       // for it.
@@ -486,12 +600,12 @@ describe('Collections', function(){
       var sortedZoo = new Zoo();
       
       sortedZoo.save(function(err){
-        expect(err).to.be(null);
+        expect(err).to.not.be.ok();
       
         sortedZoo.keepSynced();
       
-        sortedZoo.all(Animal, function(err,animals){
-          expect(err).to.be(null);
+        sortedZoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
           
           animals.set('sortByFn', function(item){return item.pos});

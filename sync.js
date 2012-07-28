@@ -85,7 +85,6 @@ var sync = function(pubClient, subClient, sockets, sio){
 }
 
 sync.prototype.update = function(id, doc){
-  console.log("Sending an update pub to:%s with doc:%s",id, doc)
   this.pubClient.publish('update:'+id, JSON.stringify(doc));
 }
 

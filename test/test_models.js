@@ -136,7 +136,6 @@ describe('Model', function(){
         done();
       })
     });
-    
   });
   
   describe('Offline', function(){
@@ -274,6 +273,31 @@ describe('Model', function(){
         });
       });
     });
+    
+    it('delete a model deletes it also from local cache', function(done){
+      var spiderPig = new Animal();
+      spiderPig.set({legs : 8, name:'spider-pig'});
+      
+      spiderPig.save(function(err){
+        expect(err).to.not.be.ok();
+        expect(spiderPig).to.have.property('_id');
+        spiderPig.keepSynced();
+          
+        spiderPig.delete(function(err){
+          expect(err).to.not.be.ok();
+          
+          socket.disconnect();
+            
+          Animal.findById(spiderPig.id(), function(err, doc){
+            expect(doc).to.not.be.ok();
+          
+            socket.socket.connect();
+            socket.once('connect', done);
+          });
+        });
+      });
+    });
+    
     /**
       A model updated in the server while being offline gets 
       updated as soon as we get online.
@@ -285,7 +309,6 @@ describe('Model', function(){
       tempAnimal.save(function(){
         tempAnimal.keepSynced();
         
-
         ginger.once('sync:'+tempAnimal._id, function(){
           Animal.findById(tempAnimal._id, function(err, doc){
             expect(tempAnimal.legs).to.be(7);

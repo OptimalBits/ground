@@ -207,7 +207,7 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
                 Model.findById(id, function(err, doc){
                   if(err){
                     cb(err);
-                  }else{
+                  }else if(doc){
                     var current = _.map(doc[collection], function(item){return String(item)}),
                       removed = _.intersection(current, itemIds);
                     if(removed.length>0){
@@ -219,8 +219,10 @@ var Server = function(models, redisPort, redisAddress, sockets, sio){
                         cb(err);
                       });
                     }else{
-                      cb(null);
+                      cb();
                     }
+                  }else{
+                    cb();
                   }
                 })
               }
@@ -320,7 +322,7 @@ Server.prototype.find = function(bucket, id, collection, query, cb){
             if(err){
               cb(err);
             }else{
-              cb(null, doc[collection]);
+              cb(null, doc && doc[collection]);
             }
           });
       }
