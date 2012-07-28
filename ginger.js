@@ -2692,11 +2692,11 @@ Views.Slider = View.extend({
         },
         slide : function(event, ui){
           self.set('value', ui.value)
-          if(self.options.slide) self.options.slide(event, ui)
+          options.slide && self.options.slide(event, ui)
         },
         stop : function(event, ui){
           self.set('value', ui.value)
-          if(self.options.slide) self.options.slide(event, ui)
+          options.slide && self.options.slide(event, ui)
           self.emit('stop').emit('stopped:');
         }
       });
