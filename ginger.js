@@ -1687,8 +1687,8 @@ var SyncManager = Base.extend({
       if(models.length===0){
         console.log('Stop synching:'+id);
         socket.emit('unsync', id);
-        socket.removeListener('update:'+id);
-        socket.removeListener('delete:'+id);
+        socket.removeAllListeners('update:'+id);
+        socket.removeAllListeners('delete:'+id);
         delete this.objs[id];
       }else{
         this.objs[id] = models;
