@@ -5,11 +5,14 @@ and the structure to create modern, realtime interactive web applications that a
 seamlessly both online and offline.
 
 It also includes some rather useful features such as a hierarchical routing system, an undo/redo
-manager, property bindings and automatic synchronization between clients and servers.
+manager, property bindings, reference coungint and automatic synchronization between clients 
+and servers.
+
+The framework is designed for high performance and low memory consumption.
 
 ## Features
 
-- Built on top of Curl, jQuery, socket.io and Underscore/LoDash.
+- Built on top of Curl, jQuery, Socket.io and Underscore/LoDash.
 - Hierarchical routing system.
 - Models with property binding, persistence and synchronization.
 - Complete offline support.
@@ -27,6 +30,9 @@ build of curl with every new release of the framework.
 
 ##Install
 
+Install Ground using npm:
+
+    npm install ground
 
 
 #Routing
@@ -106,14 +112,13 @@ needed to do something after the function has finished, so render accepts a call
 	  done();
 	});
 
-The callback takes an optional parameter done. This is a function used to tell the system that your function has finished doing what it was doing. You need this parameter when your function also performs asynchronous operations. If your callback is just doing simple synchronous stuff, just skip the parameter and the system will understand that it is a synchronous callback:
+The callback takes an optional parameter done. This is a function used to tell the system that your function has finished doing what it was doing.
+you need this parameter only when your function performs asynchronous operations. If your callback is just doing simple synchronous stuff, just
+skip the parameter and the system will understand that it is a synchronous callback:
 
 	req.render('/templates/products.jade', function(){
 	  // Do something synchronous
 	});
-
-
-Just don't forget to call done() when you are ready, so that the system can continue processing other actions.
 
 Templates usually need data that may be fetched from the server as well. For that purpose, the function *load* can be used. Let's see an example:
 
