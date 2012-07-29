@@ -5,7 +5,7 @@ and the structure to create modern, realtime interactive web applications that a
 seamlessly both online and offline.
 
 It also includes some rather useful features such as a hierarchical routing system, an undo/redo
-manager, property bindings, reference coungint and automatic synchronization between clients 
+manager, property bindings, reference counting and automatic synchronization between clients 
 and servers.
 
 The framework is designed for high performance and low memory consumption.
