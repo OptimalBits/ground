@@ -685,15 +685,15 @@ Storage.all = function(bucket, parent){ //OBSOLETE?
   return collection
 }
 
-// Note: This works because Storage is not asynchronous.
+// Note: This works because Storage is not asynchronous (and atomic).
 // Missing error reporting.
 Storage.find = function(bucket, id, collection, cb){
-  Storage.findById(bucket, id+'@'+collection, function(err, doc){
+  Storage.findById(bucket, id+'@'+collection, function(err, items){
     var result = [];
-    doc = doc || [];
-    for (var i=0, len=doc.length;i<len;i++){
-      Storage._findById(doc[i], function(err, d){
-        d && result.push(d)
+    items = items || [];
+    for (var i=0, len=items.length;i<len;i++){
+      Storage._findById(items[i], function(err, doc){
+        doc && result.push(doc)
       });
     }
     cb(err, result);
@@ -724,7 +724,7 @@ Storage.update = function(bucket, id, args, cb){
 }
 Storage.collection = function(bucket, id, collection, items){
   Storage._collection(bucket, id, collection,
-    _.map(items, function(id){return collection+'@'+id}));
+    _.map(items, function(item){return collection+'@'+item.cid}));
 }
 Storage._collection = function(bucket, id, collection, items){
   localCache.setItem(bucket+'@'+id+'@'+collection, JSON.stringify(items));
@@ -1626,6 +1626,7 @@ var SyncManager = Base.extend({
       _.each(self.objs, function(models, id){
         var model = models[0];
         safeEmit(self._socket, 'resync', model.__bucket, id, function(err, doc){
+          delete doc.cid; // Hack needed since cid is almost always outdated in server.
           if(!err){
             for(var i=0, len=models.length;i<len;i++){
               models[i].set(doc, {sync:'false'});
@@ -2436,6 +2437,7 @@ _.extend(Collection.prototype, {
     
     if(self.findById(item.id())) return cb();
     
+    // What is this for?
     this._formatters && item.format(this._formatters);
 
     if(self.sortByFn){
