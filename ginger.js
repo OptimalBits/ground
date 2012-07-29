@@ -1625,15 +1625,18 @@ var SyncManager = Base.extend({
       // Call resync for all models in this manager...
       _.each(self.objs, function(models, id){
         var model = models[0];
+        
+        // we need to re-sync here since we have a new socket sid.(TODO: integrate in resync).
+        self._socket.emit('sync', id);
+        
         safeEmit(self._socket, 'resync', model.__bucket, id, function(err, doc){
-          delete doc.cid; // Hack needed since cid is almost always outdated in server.
           if(!err){
+            doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=models.length;i<len;i++){
               models[i].set(doc, {sync:'false'});
               models[i].id(id);
             }
             model.local().update(doc);
-            ginger.emit('sync:'+id);
           } else {
             console.log('Error resyncing %s@%s, %s', model.__bucket, id, err)
           }
