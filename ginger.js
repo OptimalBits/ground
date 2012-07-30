@@ -2446,7 +2446,7 @@ _.extend(Collection.prototype, {
     if(self.sortByFn){
       pos = self._sortedAdd(item);
     }else {
-      pos = pos || self.items.length;
+      pos = _.isUndefined(pos) ? self.items.length : pos;
       self.items.splice(pos, 0, item);
     }
 
