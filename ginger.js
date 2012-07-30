@@ -1919,6 +1919,7 @@ _.extend(Model.prototype,{
     if(id){
       this.cid = this._id = id;
       this.__persisted = true;
+      this.emit('id', id);
     }
     return this._id || this.cid;
   },
