@@ -1,14 +1,15 @@
 #Introduction
 
-Ground is a light-weight and flexible javascript framework for NodeJs that provides the building blocks
-and the structure to create modern, realtime interactive web applications that are required to work 
-seamlessly both online and offline.
+Ground is a lightweight (less than 15Kb) and flexible javascript framework for NodeJs that provides 
+the building blocks and the structure to create modern, realtime interactive web applications that 
+are required to work seamlessly both online and offline.
 
-It also includes some rather useful features such as a hierarchical routing system, an undo/redo
+In ground, most of the application logic is moved from the server to the client, whereas the server
+acts just as an scalable, efficient storage.
+
+Ground includes also some rather useful features such as a hierarchical routing system, an undo/redo
 manager, property bindings, reference counting and automatic synchronization between clients 
-and servers.
-
-The framework is designed for high performance and low memory consumption.
+and servers while always maintaining high performance and low memory consumption.
 
 ## Features
 
