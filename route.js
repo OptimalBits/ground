@@ -9,7 +9,7 @@ var parseQuery = function(queryString){
         i,
         len = keyValues.length;
   
-    var obj = {}
+    var obj = {};
   
     for(i=0;i<len;i++){
       var keyValue = keyValues[i].split('=');
@@ -84,7 +84,7 @@ var wrap = function(fn, args, cb){
 var Request = function(url, prevNodes){
   var s = url.split('?'), components, last, i, len;
   
-  components = s[0].split('/')
+  components = s[0].split('/');
   if(components[0] === '#'){
     this.index = 1;
   }else{
@@ -225,7 +225,7 @@ Request.prototype.get = function(){
     }
   }
   
-  var promise = new Promise, prevPromise = self.nodePromise;
+  var promise = new Promise(), prevPromise = self.nodePromise;
   
   self.nodePromise = promise;
   
@@ -308,8 +308,7 @@ Request.prototype.load = function(urls, cb){
 }
 
 Request.prototype.exec = function(prevs){
-  var self = this;
-  var start, nodes = self.nodes;
+  var self = this, start, nodes = self.nodes, i, len, node;
     
   start = self.startIndex;
   
@@ -317,7 +316,7 @@ Request.prototype.exec = function(prevs){
   // Check for selector overwrites (prev route overwrite some DOM element from
   // (the common base).
   //
-  for(var i=0,len=start;i<len;i++){
+  for(i=0,len=start;i<len;i++){
     if(findSel(nodes[i].selector, start, prevs)){
       start = i;
       break;
@@ -328,8 +327,8 @@ Request.prototype.exec = function(prevs){
   // "Exit" from all the old nodes. We do this in reversed order so that 
   // deeper nodes are exited before the shallower
   //
-  for(var i=prevs.length-1;i>=start;i--){
-    var node = prevs[i];
+  for(i=prevs.length-1;i>=start;i--){
+    node = prevs[i];
     
     node.$el || (node.select && node.select(self));
     node.exit && node.exit(self);
@@ -340,9 +339,8 @@ Request.prototype.exec = function(prevs){
   //
   // Call all the functions for every node that needs it.
   //
-  for(var i=start, len=nodes.length;i<len;i++){
-    var node = nodes[i],
-        prev = prevs[i];
+  for(i=start, len=nodes.length;i<len;i++){
+    node = nodes[i], prev = prevs[i];
     
     self.index = i+1;
        
@@ -365,11 +363,11 @@ Request.prototype.exec = function(prevs){
 Request.prototype.resourceRoute = function(resource){
   var base = this._currentSubPath();
   components = resource.split('/');
-  return base+'/'+components[components.length-1].split('.')[0]
+  return base+'/'+components[components.length-1].split('.')[0];
 }
 
 Request.prototype.isLast = function(){
-  return this.index >= this.components.length
+  return this.index >= this.components.length;
 }
 Request.prototype.nextComponent = function(){
   return this.components[this.index];
@@ -442,12 +440,10 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
       
   var items = ['text!'+templateUrl];
           
-  if(css){
-    items.push('css!'+css)
-  }
+  css && items.push('css!'+css);
       
   curl(items, function(templ){
-    var args = {}
+    var args = {};
     if(_.isString(locals)){
       args[locals] = self.data;
     }else if(_.isObject(locals)){
@@ -455,7 +451,7 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     }else if(_.isObject(self.data)){
       args = self.data;
     }
-    var html = self.template ? self.template(templ, args) : templ
+    var html = self.template ? self.template(templ, args) : templ;
     self.$el.html(html);
     waitForImages(self.$el, function(){
       cb && cb();
@@ -482,7 +478,9 @@ function waitForImages($el, cb) {
 
 Request.prototype._load = function(urls, cb){
   var base = this._currentSubPath(),
-      self = this;
+      self = this,
+      i,
+      len;
       
   if(urls === null){
     urls = self.data;
@@ -493,15 +491,15 @@ Request.prototype._load = function(urls, cb){
   }
   
   var _urls = [];
-  for(var i=0, len=urls.length;i<len;i++){
-    _urls.push('text!'+urls[i])
+  for(i=0, len=urls.length;i<len;i++){
+    _urls.push('text!'+urls[i]);
   }
   
   curl(_urls, function(){
     var args = arguments;
     var objs = [];
-    for(var i=0, len=args.length;i<len;i++){
-      objs.push(JSON.parse(arguments[i]))
+    for(i=0, len=args.length;i<len;i++){
+      objs.push(JSON.parse(arguments[i]));
     }
     objs = objs.length===1?objs[0]:objs;
     self.data = objs;

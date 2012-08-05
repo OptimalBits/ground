@@ -41,20 +41,20 @@ define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
 // Merge into ComboBox view.
 (function( $ ){
   $.fn.comboBox = function(items, selected){
-    var $comboBox = $('<select>', this)
-    var options = ''
+    var $comboBox = $('<select>', this);
+    var options = '';
     for(var key in items){
-      options += '<option '
+      options += '<option ';
       if (selected === key){
-        options += 'selected="selected" '
+        options += 'selected="selected" ';
       }
-      options += 'value="'+key+'">'+items[key]+'</option>'
+      options += 'value="'+key+'">'+items[key]+'</option>';
     }
     
-    $comboBox.html(options)
-    this.append($comboBox)
+    $comboBox.html(options);
+    this.append($comboBox);
     
-    return this
+    return this;
   };
 })( jQuery );
 
@@ -64,10 +64,10 @@ define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
 
 if (!Object.create) {  
   Object.create = function (parent) {
-    function F(){};
+    function F(){}
     F.prototype = parent;
     return new F();
-  }
+  };
 }
 
 //
@@ -123,7 +123,7 @@ var ginger = {
           delayedFunc = null;
           f();
         }
-      }
+      };
   
       if(executing){
         delayedFunc = delayed;
@@ -149,74 +149,76 @@ var ginger = {
           end();
         }
         callback.apply(obj, arguments);
-      }
+      };
       
       timer = setTimeout(function(){
         waiting = true;
         start();
       }, delay);
       func.apply(this, args);
+    };
+  },
+  // Search Filter. returns true if any of the fields of the 
+  // obj includes the search string.
+  searchFilter : function(obj, search, fields){
+    if(search){
+      result = false;
+      search = search.toLowerCase();
+      for(var i=0,len=fields.length;i<len;i++){
+        result |= String(obj[fields[i]]).toLowerCase().indexOf(search) != -1;
+      }
+      return result;
+    }else {
+      return true;
     }
+  },
+  
+  // Apply asynchronous functions to every element in the array
+  asyncForEach : function(array, fn, cb) {
+    var deferred = $.Deferred(), completed = 0;
+    
+    function iter(item, len){
+      fn(item, function(err) {
+        if(err){
+          deferred.reject()
+          cb && cb(err);
+          cb = noop;
+        }else{
+          completed++;
+          if(completed === len) {
+            cb && cb(null);
+            deferred.resolve()
+           }
+        }
+      });
+    }
+    
+    if(_.isArray(array)){
+      if(array.length === 0) {
+        cb && cb(null);
+        deferred.resolve()
+      }else{
+        for(var i=0,len = array.length;i<len;i++) {
+          iter(array[i], len);
+        }
+      }
+    }else{
+      iter(array, 1);
+    }
+    
+    return deferred
   }
+  
 };
 
+//
 // Shortcuts
+//
 var noop = ginger.noop,
   nextTick = ginger.nextTick,
   assert = ginger.assert,
-  makeArray = function(obj){return _.isArray(obj) ? obj : [obj]};
-
-
-// Search Filter. returns true if any of the fields of the 
-// obj includes the search string.
-ginger.searchFilter = function(obj, search, fields){
-  if(search){
-    result = false;
-    search = search.toLowerCase();
-    for(var i=0,len=fields.length;i<len;i++){
-      result |= String(obj[fields[i]]).toLowerCase().indexOf(search) != -1;
-    }
-    return result;
-  }else {
-    return true;
-  }
-}
-
-// Apply asynchronous functions to every element in the array
-var asyncForEach = ginger.asyncForEach = function(array, fn, cb) {
-  var deferred = $.Deferred(), completed = 0;
-  
-  function iter(item, len){
-    fn(item, function(err) {
-      if(err){
-        deferred.reject()
-        cb && cb(err);
-        cb = noop;
-      }else{
-        completed++;
-        if(completed === len) {
-          cb && cb(null);
-          deferred.resolve()
-         }
-      }
-    });
-  }
-  
-  if(_.isArray(array)){
-    if(array.length === 0) {
-      cb && cb(null);
-      deferred.resolve()
-    }else{
-      for(var i=0,len = array.length;i<len;i++) {
-        iter(array[i], len);
-      }
-    }
-  }else{
-    iter(array, 1);
-  }
-  
-  return deferred
-}
+  makeArray = function(obj){return _.isArray(obj) ? obj : [obj]},
+  asyncForEach = ginger.asyncForEach;
 
 //
 // Promise (Minimal promise implementation).
@@ -238,12 +240,15 @@ _.extend(ginger.Promise.prototype,{
     this.resolved = arguments;
     this._fireCallbacks(); 
   },
+  reject : function(){
+    // TO IMPLEMENT;
+  },
   abort : function(){
-    // TODO Implement
+    // TO IMPLEMENT;
   },
   _fireCallbacks : function(){
     var args = this.resolved;
-    if(args!=null){
+    if(args!==null){
       var len = this.callbacks.length;
       if(len>0){
         for(var i=0;i<len;i++){
@@ -334,7 +339,6 @@ _.extend(EventEmitter.prototype,{
     }		
     return this
   },
-  	
   /**
     * Returns an array of listeners for the specified event name
     * 
@@ -357,8 +361,8 @@ _.extend(EventEmitter.prototype,{
     var self = this
   
     function wrapper() {
-		  self.off(eventName, wrapper);
-		  listener.apply(this, arguments);
+      self.off(eventName, wrapper);
+      listener.apply(this, arguments);
     }
 		return self.on(eventName, wrapper);
   },
@@ -377,7 +381,7 @@ _.extend(EventEmitter.prototype,{
       for(var i=0, len=events.length;i<len;i++){
         if(this._removeListener(events[i], listener)){
           break;
-        };
+        }
       }
     }else{
       this.removeAllListeners(eventNames);
@@ -401,7 +405,7 @@ _.extend(EventEmitter.prototype,{
           this._removeNamespacedEvent(events[i], listeners)
         }
       }else{
-        delete this['_listeners'];
+        delete this._listeners;
       }
     }
     return this;
@@ -450,7 +454,7 @@ _.extend(EventEmitter.prototype,{
   },
 
   _removeNamespacedEvent : function(event, listeners){
-    var namespaces = this._namespaces, eventAndNamespace = event.split('/'), event;
+    var namespaces = this._namespaces, eventAndNamespace = event.split('/');
       
     if(eventAndNamespace.length === 1){
       event = eventAndNamespace[0];
@@ -462,14 +466,14 @@ _.extend(EventEmitter.prototype,{
         
       if(namespaces[namespace]){
         var _listeners;
-        if(event == ''){
+        if(event !== ''){
           var events = namespaces[namespace];
-          for(event in events){
+          _.each(events, function(event){
             var listeners = events[event];
             for(var i=0, len=listeners.length;i<len;i++){
               this._removeListener(event, listeners[i]);
             }
-          }
+          });
         }else{
           _listeners = _.union(_listeners, namespaces[namespace][event]);
           if(_listeners){
@@ -480,8 +484,7 @@ _.extend(EventEmitter.prototype,{
         }
       }
     }
-  },
-  
+  }
 });
 
 /**
@@ -516,7 +519,7 @@ _.extend(UndoManager.prototype,{
   action : function(doFn, undoFn, fn, name){
     this.undones.length = 0
     name = _.isString(fn)?fn:name
-    var action = {do:doFn, undo:undoFn, fn:fn, name:name}
+    var action = {'do':doFn, undo:undoFn, fn:fn, name:name}
     if(this._group){
       this.actions.push(action)
     }else{
@@ -533,7 +536,7 @@ _.extend(UndoManager.prototype,{
     ;(function(group){
       this.action( function(){
         for(var i=0, len = group.length; i<len; i++){
-          group[i].action.do(group[i].action.fn)
+          group[i].action['do'](group[i].action.fn)
         }
       },
       function(){
@@ -1862,22 +1865,25 @@ var Model = ginger.Model = Base.extend( function Model(args){
       cb = parent;
       parent = tmp;
     }
+    
     if(parent){
       bucket = parent.__bucket;
       id = parent.id();
       collection = altBucket || this.__bucket;
-      this.fetch(bucket, id, collection, function(err, docs){
-        if(docs){
-          args && _.each(docs, function(doc){_.extend(doc, args)});
-          Storage.collection(bucket, id, collection, docs)
-          Collection.instantiate(self, parent, docs, cb);
-        }else{
-          cb(err);
-        }
-      });
     }else{
-      cb();
+      bucket = this.__bucket;
     }
+    
+    this.fetch(bucket, id, collection, function(err, docs){
+      if(docs){
+        args && _.each(docs, function(doc){_.extend(doc, args)});
+        Storage.collection(bucket, id, collection, docs)
+        Collection.instantiate(self, parent, docs, cb);
+      }else{
+        cb(err);
+      }
+    });
+    
     return this;
   },
   first : function(fn, parent){
