@@ -454,7 +454,7 @@ _.extend(EventEmitter.prototype,{
   },
 
   _removeNamespacedEvent : function(event, listeners){
-    var namespaces = this._namespaces, eventAndNamespace = event.split('/');
+    var self = this, namespaces = self._namespaces, eventAndNamespace = event.split('/');
       
     if(eventAndNamespace.length === 1){
       event = eventAndNamespace[0];
@@ -466,12 +466,12 @@ _.extend(EventEmitter.prototype,{
         
       if(namespaces[namespace]){
         var _listeners;
-        if(event !== ''){
+        if(event === ''){
           var events = namespaces[namespace];
-          _.each(events, function(event){
-            var listeners = events[event];
+          
+          _.each(events, function(listeners, event){
             for(var i=0, len=listeners.length;i<len;i++){
-              this._removeListener(event, listeners[i]);
+              self._removeListener(event, listeners[i]);
             }
           });
         }else{
