@@ -29,7 +29,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
 */
 
-define(['jquery', 'underscore', 'ginger/uuid'], function($, _, uuid){
+define(['jquery', 'underscore'], function($, _){
 
 /**
   Define some useful jQuery plugins.
@@ -81,10 +81,10 @@ var ginger = {
       console.log('Assert failed:%s',msg);
     }
   },
+  uuid : function(a,b){for(b=a='';a++<36;b+=a*51&52?(a^15?8^Math.random()*(a^20?16:4):4).toString(16):'-');return b},  
   refresh : function(){
     window.location.replace('');
   },
-  uuid : uuid,
   retain : function(objs){
     var items = _.isArray(objs) ? objs :arguments;
     _.each(items, function(obj){
