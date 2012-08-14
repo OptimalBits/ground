@@ -2565,7 +2565,7 @@ var View = ginger.View = Base.extend({
   },
   render : function($parent){
     this.$parent = $parent || this.$parent;
-    this.$parent && this.$el.detach().appendTo(this.$parent);
+    this.$parent && this.$el && this.$el.detach().appendTo(this.$parent);
     return this.$el;
   },
   refresh : function(){
