@@ -248,40 +248,87 @@ var noop = ginger.noop,
 // Promise (Minimal promise implementation).
 //
 ginger.Promise = function(){
-  this.results = [];  
   this.callbacks = [];
   this.resolved = null;
 };
 _.extend(ginger.Promise.prototype,{
   then : function(cb){
     if(this.resolved){
-      cb(this.resolved);    
+      this._fire(cb);
     }else{
       this.callbacks.push(cb);
     }
   },
   resolve : function(){
+    if(this.isAborted) return;
     this.resolved = arguments;
     this._fireCallbacks(); 
   },
-  reject : function(){
-    // TO IMPLEMENT;
-  },
   abort : function(){
-    // TO IMPLEMENT;
+    this.isAborted = true;
+  },
+  _fire : function(cb){
+    cb.apply(this, this.resolved);
   },
   _fireCallbacks : function(){
-    var args = this.resolved;
-    if(args!==null){
-      var len = this.callbacks.length;
-      if(len>0){
-        for(var i=0;i<len;i++){
-          this.callbacks[i](args);
-        }
+    var len = this.callbacks.length;
+    if(len>0){
+      for(var i=0;i<len;i++){
+        this._fire(this.callbacks[i]);
       }
     }
   }
 });
+ginger.PromiseQueue = function(){
+  this._promises = _.toArray(arguments);
+}
+_.extend(ginger.PromiseQueue.prototype, {
+  abort : function(){
+    _.invoke(this._promises, 'abort');
+  },
+  then : function(cb){
+    ginger.asyncForEachSeries(this._promises, function(promise, done){
+      promise && promise.then(done);
+    }, cb)
+  }
+});
+
+ginger.TaskQueue = function(){
+  this._tasks = [];
+}
+ginger.TaskQueue.prototype = {
+  /**
+    Appends a task to the queue. The tasks are executed in order. A task is just a
+    function with an optional callback. 
+    
+    TODO: 
+    The callback can return an error and results.
+    The result can be anything and it will be passed as input parameter to the next task.
+    append(function([function(err, callback)]))    
+  */
+  append : function(task){
+    this._tasks.push(task);
+  },
+  /**
+    Starts the execution of the task queue.
+  */
+  run : function(cb){
+    var self = this;
+    ginger.asyncForEachSeries(self._tasks, function(task, done){
+      if(!self.isCancelled){
+        task(done);
+      }else{
+        done();
+      }
+    }, cb);
+  },
+  /**
+    Cancels the execution of the task queue.
+  */
+  cancel : function(){
+    this.isCancelled = true;
+  }
+}
 
 //
 // Event Emitter
