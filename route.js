@@ -45,36 +45,29 @@ AutoreleasePool.prototype.drain = function(){
   this._drained = true;
 }
 
-
-//
-// Node Command wrapper.
-// This wrapping allows us to chain asynchronous commands after each other.
-//
+/**
+  A Task factory for route actuators.
+*/
 var wrap = function(fn, args, cb){
-  return function(ctx){
+  return function(done){
     if(_.isFunction(args)){
       cb = args;
       args = undefined;
     }
-    var promise = new Promise();
     cb = _.isFunction(cb)?cb:undefined;
-    (function(done, args, node){
-      ctx.promise.then(function(err){
-        // TODO HANDLE ERROR AND PROPAGATE!
-        /*if(err){
-          done(err);
-        }else{*/
-          args = args?args:[];
-          args.push(function(){
-            cb || done();
-            cb && cb(done);
-            cb && cb.length === 0 && done();
-          });
-          fn.apply(ctx, args);
-        //}
+    
+    (function(args){
+      args = args?args:[];
+      args.push(function(){
+        if(cb){
+          cb(done);
+        }
+        if(!cb || cb.length === 0){
+          done();
+        }
       });
-    })(_.bind(promise.resolve,promise), _.clone(args), this);
-    ctx.promise = promise;
+      fn.apply(null, args);
+    })(_.clone(args));
   }
 }
 
@@ -126,6 +119,8 @@ var Request = function(url, prevNodes){
   this.nodePromise.resolve();
   
   this.endPromise = new Promise();
+  
+  this.queue = new ginger.TaskQueue();
 }
 
 /**
@@ -271,46 +266,53 @@ Request.prototype.get = function(){
   executing.
 */
 Request.prototype.before = function(cb){
-  this.node().before =  wrap(function(cb){cb()},cb);
+  var fn = _.bind(function(cb){cb()}, this);
+  this.node().before =  wrap(fn, cb);
   return this;
 }
 Request.prototype.after = function(cb){
-  this.node().after =  wrap(function(cb){cb()},cb);
+  var fn = _.bind(function(cb){cb()}, this);
+  this.node().after =  wrap(fn, cb);
   return this;
 }
 Request.prototype.exit = function(name, speed, cb){
   cb = _.last(arguments);
   speed = _.isFunction(speed)?undefined:speed;
   var node = this.node();
-  node.exit =  wrap(this._anim,[node, name, speed], cb);
+  var fn = _.bind(this._anim, this);
+  node.exit =  wrap(fn, [node, name, speed], cb);
   return this;
 }
 Request.prototype.enter = function(name, speed, cb){
   cb = _.last(arguments);
   speed = _.isFunction(speed)?undefined:speed;
   var node = this.node();
-  node.enter = wrap(this._anim,[node,name,speed], cb);
+  var fn = _.bind(this._anim, this);
+  node.enter = wrap(fn, [node,name,speed], cb);
   return this;
 }
 Request.prototype.render = function(templateUrl, css, locals, cb){
   cb = _.last(arguments);
   css = _.isFunction(css)?undefined:css;
   locals = _.isFunction(locals)?undefined:locals;
-  this.node().render = wrap(this._render,[templateUrl, css, locals], cb);
+  var fn = _.bind(this._render, this);
+  this.node().render = wrap(fn, [templateUrl, css, locals], cb);
   return this;
 }
 Request.prototype.load = function(urls, cb){
   cb = _.last(arguments);
   urls = _.isFunction(urls)?null:urls;
-  
-  this.node().load = wrap(this._load,[urls], cb);
+  var fn = _.bind(this._load, this);
+  this.node().load = wrap(fn,[urls], cb);
   return this;
 }
 
 Request.prototype.exec = function(prevs){
-  var self = this, start, nodes = self.nodes, i, len, node;
-    
+  var self = this, start, nodes = self.nodes, i, len, node, queue;
+  
   start = self.startIndex;
+  
+  queue = this.queue;
   
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
@@ -323,6 +325,8 @@ Request.prototype.exec = function(prevs){
     }
   }
   
+  queue.append(_.bind(self.promise.then, self.promise));
+  
   //
   // "Exit" from all the old nodes. We do this in reversed order so that 
   // deeper nodes are exited before the shallower
@@ -330,34 +334,39 @@ Request.prototype.exec = function(prevs){
   for(i=prevs.length-1;i>=start;i--){
     node = prevs[i];
     
-    node.$el || (node.select && node.select(self));
-    node.exit && node.exit(self);
-    node.exit || (node.hide && node.hide(self));
-    node.drain && node.drain(self);
+    node.$el || (node.select && queue.append(node.select));
+    
+    if(node.exit){
+      queue.append(node.exit);
+    }else{
+      node.hide && queue.append(node.hide);
+    }
+    
+    node.drain && queue.append(node.drain);
   }
   
   //
   // Call all the functions for every node that needs it.
   //
   for(i=start, len=nodes.length;i<len;i++){
-    node = nodes[i], prev = prevs[i];
+    node = nodes[i]; // prev = prevs[i];
     
     self.index = i+1;
-       
-    node.select && node.select(self);
     
-    node.hide && node.hide(self);
-    
-    node.before && node.before(self);
-    
-    node.load && node.load(self);
-    node.render && node.render(self);
-
-    node.enter && node.enter(self);
-    node.enter || (node.show && node.show(self));
-    
-    node.after && node.after(self);
+    node.select && queue.append(node.select)
+    node.hide && queue.append(node.hide)
+    node.before && queue.append(node.before)
+    node.load && queue.append(node.load)
+    node.render && queue.append(node.render)
+    if(node.enter){
+      queue.append(node.enter)
+    }else{
+      node.show && queue.append(node.show);
+    }
+    node.after && queue.append(node.after)
   }
+  
+  queue.run(ginger.noop);
 }
 
 Request.prototype.resourceRoute = function(resource){
@@ -538,10 +547,15 @@ route.listen = function (cb) {
   var prevNodes = [];
 
   var fn = function(){
-    if(route.prevUrl !== location.hash){
-      var prevUrl = location.hash,
-          req = new Request(location.hash, prevNodes);
-          
+    if(!route.prevReq || route.prevReq.url !== location.hash){
+      var prevUrl = location.hash;
+      
+      // TODO: Improve cancel to call drain in case the pools may
+      // have stuff in them.
+      route.prevReq && route.prevReq.queue.cancel();
+      
+      var req = new Request(location.hash, prevNodes);
+             
       cb && cb(req);
       
       if(prevUrl == location.hash){
@@ -560,7 +574,7 @@ route.listen = function (cb) {
           req.exec(prevNodes);
           prevNodes = req.nodes;
         
-          route.prevUrl = prevUrl;
+          route.prevReq = req;
         });
       }
     }
@@ -593,6 +607,9 @@ route.stop = function(){
 }
 
 route.redirect = function(url) {
+  // TODO: Investigate if we should wait until current route is totally resolved or not...
+  // The issue is that the new route execution may assume there is a certain node tree
+  // but if we just cancel the previous execution this tree may not be there...
   location.hash = url;
   if ('onhashchange' in window) {
     $(window).trigger('onhashchange');
