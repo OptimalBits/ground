@@ -173,7 +173,7 @@ var ginger = {
     }
   },
   
-  // Apply asynchronous functions to every element in the array
+  // Apply asynchronous functions to every element in the array in parallel
   asyncForEach : function(array, fn, cb) {
     var deferred = $.Deferred(), completed = 0;
     
@@ -205,8 +205,32 @@ var ginger = {
     }else{
       iter(array, 1);
     }
-    
     return deferred
+  },
+  
+  // Credits: https://github.com/caolan/async
+  asyncForEachSeries : function(arr, fn, cb){
+    cb = cb || function () {};
+    if (!arr.length) {
+      return cb();
+    }
+    var completed = 0;
+    var iterate = function () {
+      fn(arr[completed], function (err) {
+        if (err) {
+          cb(err);
+          cb = function () {};
+        } else {
+          completed += 1;
+          if (completed === arr.length) {
+            cb(null);
+          } else {
+            iterate();
+          }
+        }
+      });
+    };
+    iterate();  
   }
   
 };
