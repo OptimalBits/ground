@@ -38,7 +38,8 @@
     socket.once('connect', function(){
       $(function () {
         curl(['test/test_cache'], function(){
-          curl(['test/test_routes',
+          curl(['test/test_promises',
+                'test/test_routes',
                 'test/test_events',
                 'test/test_declare',
                 'test/test_base',
