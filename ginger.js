@@ -1790,7 +1790,7 @@ var Model = ginger.Model = Base.extend( function Model(args){
     _embedded:false
   });
 
-  this.cid = this._id || this.cid || uuid();
+  this.cid = this._id || this.cid || ginger.uuid();
 },
 {
   States : {
