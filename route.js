@@ -46,7 +46,7 @@ AutoreleasePool.prototype.drain = function(){
 }
 
 /**
-  A Task factory for route actuators.
+  A Task factory for route actions.
 */
 var wrap = function(fn, args, cb){
   return function(done){
@@ -311,8 +311,12 @@ Request.prototype.exec = function(prevs){
   var self = this, start, nodes = self.nodes, i, len, node, queue;
   
   start = self.startIndex;
-  
   queue = this.queue;
+  
+  //
+  // We have a non-cancelable task queue for exiting the previous route.
+  //
+  exitQueue = new ginger.TaskQueue();
   
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
@@ -325,7 +329,7 @@ Request.prototype.exec = function(prevs){
     }
   }
   
-  queue.append(_.bind(self.promise.then, self.promise));
+  exitQueue.append(_.bind(self.promise.then, self.promise));
   
   //
   // "Exit" from all the old nodes. We do this in reversed order so that 
@@ -334,15 +338,15 @@ Request.prototype.exec = function(prevs){
   for(i=prevs.length-1;i>=start;i--){
     node = prevs[i];
     
-    node.$el || (node.select && queue.append(node.select));
+    node.$el || exitQueue.append(node.select);
     
     if(node.exit){
-      queue.append(node.exit);
+      exitQueue.append(node.exit);
     }else{
-      node.hide && queue.append(node.hide);
+      exitQueue.append(node.hide);
     }
     
-    node.drain && queue.append(node.drain);
+    exitQueue.append(node.drain);
   }
   
   //
@@ -353,20 +357,18 @@ Request.prototype.exec = function(prevs){
     
     self.index = i+1;
     
-    node.select && queue.append(node.select)
-    node.hide && queue.append(node.hide)
-    node.before && queue.append(node.before)
-    node.load && queue.append(node.load)
-    node.render && queue.append(node.render)
+    queue.append(node.select, node.hide, node.before, node.load, node.render);
     if(node.enter){
       queue.append(node.enter)
     }else{
-      node.show && queue.append(node.show);
+      queue.append(node.show);
     }
-    node.after && queue.append(node.after)
+    queue.append(node.after)
   }
   
-  queue.run(ginger.noop);
+  exitQueue.run(function(){
+    queue.run(ginger.noop);
+  });
 }
 
 Request.prototype.resourceRoute = function(resource){
@@ -550,8 +552,6 @@ route.listen = function (cb) {
     if(!route.prevReq || route.prevReq.url !== location.hash){
       var prevUrl = location.hash;
       
-      // TODO: Improve cancel to call drain in case the pools may
-      // have stuff in them.
       route.prevReq && route.prevReq.queue.cancel();
       
       var req = new Request(location.hash, prevNodes);
