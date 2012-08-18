@@ -41,8 +41,7 @@ define(['jquery', 'underscore'], function($, _){
 // Merge into ComboBox view.
 (function( $ ){
   $.fn.comboBox = function(items, selected){
-    var $comboBox = $('<select>', this);
-    var options = '';
+    var $comboBox = $('<select>', this), options = '';
     for(var key in items){
       options += '<option ';
       if (selected === key){
@@ -298,16 +297,18 @@ ginger.TaskQueue = function(){
 }
 ginger.TaskQueue.prototype = {
   /**
-    Appends a task to the queue. The tasks are executed in order. A task is just a
+    Appends one or several tasks to the queue. The tasks are executed in order. A task is just a
     function with an optional callback. 
+    
+    Note that this call accepts also null or undefined values as inputs, they will just be ignored.
     
     TODO: 
     The callback can return an error and results.
     The result can be anything and it will be passed as input parameter to the next task.
     append(function([function(err, callback)]))    
   */
-  append : function(task){
-    this._tasks.push(task);
+  append : function(){
+    this._tasks.push.apply(this._tasks, _.compact(arguments));
   },
   /**
     Starts the execution of the task queue.
