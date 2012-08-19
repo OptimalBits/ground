@@ -17,7 +17,7 @@ describe('simple routes', function(){
   route.stop();
   goToUrl('');
   it('root route', function(done){
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         route.stop();
         done();
@@ -27,7 +27,7 @@ describe('simple routes', function(){
   it('consume routes in correct order', function(done){
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('foo','#test', function(){
           req.get('bar', '#foo', function(){
@@ -47,7 +47,7 @@ describe('simple routes', function(){
   it('hierarchical route', function(done){
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -70,7 +70,7 @@ describe('simple routes', function(){
   it('change from one deep route to another deep route', function(done){
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -92,7 +92,7 @@ describe('simple routes', function(){
   it('change one route component in the middle of a route', function(done){
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#foo', function(){
@@ -118,7 +118,7 @@ describe('simple routes', function(){
     
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -164,7 +164,7 @@ describe('simple routes', function(){
   
     route.stop();
     goToUrl('');
-    route.listen(function(req){
+    route(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){

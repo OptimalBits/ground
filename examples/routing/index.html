@@ -32,11 +32,8 @@
   <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
   <script>
     curl(['ginger', 'ginger/route', 'underscore'], function(ginger, route, _){
-
-      // The root route :)
-      route.root = '/';
-
-      route.listen(function(req) {
+		
+      route(function(req) {
         // Use Underscores micro-templates
         req.use('template', _.template);
 

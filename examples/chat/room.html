@@ -35,8 +35,7 @@
 
     curl(['ginger', 'ginger/route'], function(ginger, route) {
 
-      route.root = '/';
-      route.listen(function(req) {
+      route(function(req) {
           // Route to room
           req.get(':roomid', function() {
             console.log(req.params['roomid']);
