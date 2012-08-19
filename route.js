@@ -1,8 +1,6 @@
 
 define(['jquery', 'underscore', 'ginger'], function($,_, ginger){
 
-var route = {};
-
 var parseQuery = function(queryString){
   if(queryString){
     var keyValues = queryString.split('&'),
@@ -543,12 +541,16 @@ Request.prototype._currentSubPath = function(){
 
 //
 // Route
-//
-
-route.listen = function (cb) {
-  var prevNodes = [];
-
-  var fn = function(){
+// Listen to changes in location hash, and routes to the specified routes. 
+// route([root='/':String], callback:Function)
+// 
+var route = function (root, cb) {
+  if(_.isFunction(root)){
+    cb = root;
+    root = '/';
+  }
+  
+  var prevNodes = [], fn = function(){
     if(!route.prevReq || route.prevReq.url !== location.hash){
       var prevUrl = location.hash;
       
@@ -581,8 +583,8 @@ route.listen = function (cb) {
   }
 
   if (location.hash === '') {
-    if (route.root) {
-      location.hash = route.root;
+    if (root) {
+      location.hash = root;
     }
   }else{
     fn();
@@ -603,7 +605,7 @@ route.stop = function(){
   if ('onhashchange' in window) {
     window.onhashchange = null;
   }
-  route.prevUrl = '';
+  route.prevReq = null;
 }
 
 route.redirect = function(url) {
@@ -615,8 +617,6 @@ route.redirect = function(url) {
     $(window).trigger('onhashchange');
   }
 }
-
-route.prevUrl = null;
 
 return route;
   
