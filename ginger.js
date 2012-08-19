@@ -854,9 +854,22 @@ ServerStorage.local = Storage;
   If the model has an _id then we send the complete object.
 
 */
+
+function appendQuery(url, query){
+  var q = Model.urlQuery(url)
+  if(query){
+    q = _.extend(q, query);
+  }
+  if(!_.isEmpty(q)){
+    return url + '?' + $.param(q);
+  }else{
+    return url;
+  }
+}
+
 ServerStorage.ajax = {
   create: function(bucket, args, cb){
-    url = Model.url+'/'+bucket;
+    url = appendQuery(Model.url+'/'+bucket);
     ajax.post(url, args, cb);
   },
   find:function(bucket, id, collection, query, cb){
@@ -864,25 +877,25 @@ ServerStorage.ajax = {
     if(bucket) url += '/' + bucket;
     if(id) url += '/'+id;
     if(collection) url += '/'+collection;
-    if(query) url += '?'+$.param(query);
+    url = appendQuery(url, query);
     ajax.get(url, cb);
   },
   findById:function(bucket, id, cb){
-    ajax.get(Model.url+'/'+bucket+'/'+id, cb);
+    ajax.get(appendQuery(Model.url+'/'+bucket+'/'+id), cb);
   },
   update:function(bucket, id, args, cb){
-    ajax.put(Model.url+'/'+bucket+'/'+id, args, cb);
+    ajax.put(appendQuery(Model.url+'/'+bucket+'/'+id), args, cb);
   },
   add:function(bucket, id, collection, items, cb){
     if(items){
-      ajax.put(Model.url+'/'+bucket+'/'+id+'/'+collection, items, cb);
+      ajax.put(appendQuery(Model.url+'/'+bucket+'/'+id+'/'+collection), items, cb);
     }else{
       cb();
     }
   },
   remove:function(bucket, id, collection, objIds, cb){
     if(_.isFunction(collection)){
-      ajax.del(Model.url+'/'+bucket+'/'+id, collection);    
+      ajax.del(appendQuery(Model.url+'/'+bucket+'/'+id, collection));
     } else if(objIds.length>0){
       ajax.del(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
     }else{
@@ -2173,7 +2186,15 @@ _.extend(Model.prototype,{
   },
 });
 
-Model.prototype.toJSON = Model.prototype.toArgs
+Model.prototype.toJSON = Model.prototype.toArgs;
+
+/**
+  Function to add query params before calling to the server.
+  Useful for  adding for example authentication.
+*/
+Model.urlQuery = function(url){
+  return {};
+}
 
 /**
   A collection is a set of optionally ordered models. 
