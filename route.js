@@ -316,7 +316,7 @@ Request.prototype.exec = function(prevs){
   //
   // We have a non-cancelable task queue for exiting the previous route.
   //
-  exitQueue = new ginger.TaskQueue();
+  var exitQueue = new ginger.TaskQueue();
   
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
