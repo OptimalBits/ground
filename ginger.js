@@ -3071,6 +3071,7 @@ Views.Table = View.extend({
     if (self.footer) {
       self.footerCon.$showing.text(indexStart);
       self.footerCon.$to.text(indexLast);
+      self.footerCon.$of.text(self.collection.items.length);
     }
     var items = self.collection.items.slice(indexStart, indexLast);
     $.each(items, function(i, item){
