@@ -209,29 +209,28 @@ var ginger = {
   
   // Credits: https://github.com/caolan/async
   asyncForEachSeries : function(arr, fn, cb){
-    cb = cb || function () {};
+    cb = cb || noop;
     if (!arr.length) {
       return cb();
     }
     var completed = 0;
-    var iterate = function () {
+    function iterate() {
       fn(arr[completed], function (err) {
         if (err) {
           cb(err);
-          cb = function () {};
+          cb = noop;
         } else {
-          completed += 1;
-          if (completed === arr.length) {
-            cb(null);
-          } else {
+          completed ++;
+          if (completed < arr.length) {
             iterate();
+          } else {
+            cb();
           }
         }
       });
     };
     iterate();  
   }
-  
 };
 
 //
