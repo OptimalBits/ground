@@ -3073,7 +3073,7 @@ Views.Table = View.extend({
       self.footerCon.$to.text(indexLast);
     }
     var items = self.collection.items.slice(indexStart, indexLast);
-    $.each(items, function(i, item){
+    _.each(items, function(item){
       if(!self.filter || 
         self.filter(item, self.filterData, self.searchFields || self.fields)) {
           self.formatters && item.format(self.formatters);
