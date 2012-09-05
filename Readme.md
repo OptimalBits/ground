@@ -1,33 +1,43 @@
 #Introduction
 
-Ground is a lightweight (less than 15Kb) and flexible javascript framework for NodeJs that provides 
+Ground is a lightweight (less than 15Kb) and flexible HTML5 javascript framework that provides 
 the building blocks and the structure to create modern, realtime interactive web applications that 
 are required to work seamlessly both online and offline.
 
 In ground, most of the application logic is moved from the server to the client, whereas the server
-acts just as an scalable, efficient storage.
+acts just as an scalable, efficient storage and synchronization controller.
 
 Ground includes also some rather useful features such as a hierarchical routing system, an undo/redo
 manager, property bindings, reference counting and automatic synchronization between clients 
 and servers while always maintaining high performance and low memory consumption.
 
-## Features
+##Highlights
 
-- Built on top of Curl, jQuery, Socket.io and Underscore/LoDash.
-- Hierarchical routing system.
-- Models with property binding, persistence and synchronization.
-- Complete offline support.
-- Views with some common widgets based on jQuery UI.
+- Designed and optimized for NodeJS servers.
+- Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
+- Models with property **bindings**, **persistence** and client-server **synchronization**.
+- Complete **offline** support.
 - Canvas Views.
+- Views with some common widgets based on jQuery UI.
 - Events.
 - Undo/Redo Manager.
 
-##Modules
 
-Ground is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
-not work without a module loader. While it should work with any AMD compatible loader, we can only guarantee a 
-consistent behavior with [Curl](https://github.com/cujojs/curl). For convenience we will provide a custom and tested
-build of curl with every new release of the framework.
+##Philosophy
+
+The philosophy of Ground is to focus on *performance* and *simplicity*. It should be a complete Web framework 
+that is fun to use and that uses efficiently the newest web browser technologies, and that relies on NodeJs server technology to 
+provide scalability and synchronization. It tries to be un-orthodox in some areas, like providing a hierarchical 
+routing system or only relaying on socket.io for communication instead of AJAX.
+
+##Dependencies
+
+Ground depends on the following external libraries: Curl, jQuery, Socket.io and Underscore or LoDash. There are also
+provided some optional views that depend on jQuery UI.
+
+Ground itself is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
+not work without a module loader. While it should work with any AMD compatible loader, although we recomend Curl since it
+is already a required dependency.
 
 ##Install
 
@@ -51,13 +61,10 @@ deleting the ones that are not part of the current route.
 With this approach it is possible to reduce redundancy dramatically and also create transition effects between 
 views very easily.
 
-The routing module is used by firstly specifying the root route:
+The routing module is started by specifying an optional root (defaults to '/') and a function callback where
+all the routes will be defined. Lets see the simplest possible example:
 
-	gnd.route.root = '/'
-
-After that, just listen to any requests. Lets see the simplest possible example:
-
-	gnd.route.listen(function(req){
+	gnd.route(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 	  });
@@ -69,7 +76,7 @@ to [underscore](http://underscorejs.org/#template) microtemplates.
 
 Since the system is hierarchical, if we want to add some more sub routes we can do it like so:
 
-	gnd.route.listen(function(req){
+	gnd.route(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');
 
