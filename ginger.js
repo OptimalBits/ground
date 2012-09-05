@@ -1517,7 +1517,6 @@ var Queue = ginger.Base.extend({
     var self = this;
     self.super(Queue);
   
-    //TODO: get old queue from localstorage
     var savedQueue = ls.storageQueue;
     
     self._queue = (savedQueue && JSON.parse(savedQueue)) || [];
@@ -1564,10 +1563,11 @@ var Queue = ginger.Base.extend({
   },
   success:function(err) {
     this._currentTransfer = null;
-    if(!err){
-      this._queue.shift(); 
-      // Note: here it could happen that we shift but fail saving the queue, 
-      // and the consequence will be that the same command can execute 2 or more times.
+    if(!err || (err.status >= 400 && err.status < 500)){
+      this._queue.shift();
+      
+      // Note: since we cannot have an atomic operation for updating the server and the
+      // execution queue, the same command could be executed 2 or more times.
       ls.storageQueue = JSON.stringify(this._queue);
       nextTick(_.bind(this.synchronize, this));
     }
@@ -1580,8 +1580,8 @@ var Queue = ginger.Base.extend({
         var obj = self._currentTransfer = self._queue[0],
           store = ServerStorage[obj.transport];
         
-        (function(cmd, bucket, id, items, collection, args){        
-          // FIXME: Persitent errors will  block the queue forever.(we need a watchdog).
+        (function(cmd, bucket, id, items, collection, args){
+          // FIXME: Persistent errors will  block the queue forever.(we need a watchdog).
           switch (cmd){
             case 'add':
               store._add(bucket, id, collection, items, done);
