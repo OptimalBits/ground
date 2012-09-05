@@ -894,7 +894,7 @@ ServerStorage.ajax = {
   },
   remove:function(bucket, id, collection, objIds, cb){
     if(_.isFunction(collection)){
-      ajax.del(appendQuery(Model.url+'/'+bucket+'/'+id, collection));
+      ajax.del(Model.url+'/'+bucket+'/'+id, collection);
     } else if(objIds.length>0){
       ajax.del(Model.url+'/'+bucket+'/'+id+'/'+collection, objIds, cb);
     }else{
