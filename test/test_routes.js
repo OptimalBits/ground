@@ -195,13 +195,143 @@ describe('simple routes', function(){
       });
     });
     goToUrl('/test/foo/bar');
-  });  
+  });
+  
+  it('redirect from a deep route to another deep route', function(done){
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.get('foo','#test', function(){
+            req.get('bar', '#foo', function(){
+              req.after(function(){
+                req.redirect('/test/baz/qux');
+              })
+            });
+          });
+          req.get('baz','#test', function(){
+            req.get('qux','#baz', function(){
+              req.after(function(){
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+  
+  it('redirect from a deep route to another deep route and redirect to another route', function(done){
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.get('foo','#test', function(){
+            req.get('bar', '#foo', function(){
+              req.after(function(){
+                req.redirect('/test/baz');
+              })
+            });
+          });
+          req.get('baz','#test', function(){
+            req.after(function(){
+              req.redirect('/test/qux')
+            })
+          });
+          req.get('qux','#baz', function(){
+            req.after(function(){
+              done();
+            })
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+
+  it('Change from a deep route to another deep route, redirect to some route, then redirect to original route', function(done){
+    route.stop();
+    goToUrl('');
+    var counter = 0;
+    route(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.get('foo','#test', function(){
+            req.get('bar', '#foo', function(){
+              req.after(function(){
+                counter++;
+                if(counter == 2){
+                  done();
+                }else{
+                  goToUrl('/test/baz/foo');
+                }
+              })
+            });
+          });
+          req.get('qux','#qux', function(){
+            req.get('bar','#bar', function(){
+              req.after(function(){
+                req.redirect('/test/foo/bar');
+              });
+            });
+          });
+                    
+          req.get('baz','#baz', function(){
+            req.get('foo', '#foo', function(){
+              req.after(function(){
+                req.redirect('/test/qux/bar')
+              });
+            })
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+  
+  it('Simulate the route redirections in a automatic outlogging and consequently manually login', function(done){
+    route.stop();
+    goToUrl('');
+    var counter = 0;
+    
+    route(function(req){
+      req.get(function(){
+        req.get('b', '#main', function(){
+          req.get('c', '#test', function(){
+            req.after(function(){
+              goToUrl('/b/d');
+            })            
+          });
+          req.get('d', '#test', function(){
+            req.after(function(){
+              counter++;
+              if(counter==2){
+                done();
+              }else{
+                req.redirect('/e');
+              }
+            })
+          });
+        })
+        req.get('e', '#main', function(){
+          req.after(function(){
+            req.redirect('/b/d');
+          })
+        })
+      })
+    })
+    goToUrl('/b/c');
+    
+  });
+  
   
   it('stop listening route', function(){
     route.stop();
   });
 
-  
 });
 
 });

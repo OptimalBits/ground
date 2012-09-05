@@ -59,8 +59,10 @@ var wrap = function(fn, args, cb){
       args.push(function(){
         if(cb){
           cb(done);
-        }
-        if(!cb || cb.length === 0){
+          if(cb.length === 0){
+            done();
+          }
+        }else{
           done();
         }
       });
@@ -305,7 +307,7 @@ Request.prototype.load = function(urls, cb){
   return this;
 }
 
-Request.prototype.exec = function(prevs){
+Request.prototype.exec = function(prevs, cb){
   var self = this, start, nodes = self.nodes, i, len, node, queue;
   
   start = self.startIndex;
@@ -337,13 +339,7 @@ Request.prototype.exec = function(prevs){
     node = prevs[i];
     
     node.$el || exitQueue.append(node.select);
-    
-    if(node.exit){
-      exitQueue.append(node.exit);
-    }else{
-      exitQueue.append(node.hide);
-    }
-    
+    exitQueue.append(node.exit || node.hide);    
     exitQueue.append(node.drain);
   }
   
@@ -356,25 +352,19 @@ Request.prototype.exec = function(prevs){
     self.index = i+1;
     
     queue.append(node.select, node.hide, node.before, node.load, node.render);
-    if(node.enter){
-      queue.append(node.enter)
-    }else{
-      queue.append(node.show);
-    }
+    queue.append(node.enter || node.show);
     queue.append(node.after)
   }
   
   exitQueue.run(function(){
-    queue.run(ginger.noop);
+    queue.run(cb);
   });
 }
-
 Request.prototype.resourceRoute = function(resource){
   var base = this._currentSubPath();
   components = resource.split('/');
   return base+'/'+components[components.length-1].split('.')[0];
 }
-
 Request.prototype.isLast = function(){
   return this.index >= this.components.length;
 }
@@ -383,13 +373,28 @@ Request.prototype.nextComponent = function(){
 }
 Request.prototype.redirect = function(url, params){
   var self = this;
+  url = params ? url+'?'+$.param(params) : url;
+  if(self.isExecuting){
+    self.promise.then(function(){
+      self.queue && self.queue.cancel();
+      self.redirectTo = url;
+    });
+  }else{
+    route.redirect(url);
+  }
+}
+/*
+Request.prototype.redirect = function(url, params){
+  var self = this;
   self.promise.then(function(){
+    self.queue.cancel();
     if(params){
       url+='?'+$.param(params);
     }
     route.redirect(url);
   });
 }
+*/
 Request.prototype.node = function(){
   var index = this.index-1;
   index = index < 0? 0:index;
@@ -446,12 +451,17 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     cb = locals;
     locals = undefined;
   }
-      
+  
+  cb = cb || ginger.noop;
+  
   var items = ['text!'+templateUrl];
-          
   css && items.push('css!'+css);
-      
+  
   curl(items, function(templ){
+    applyTemplate(templ);
+  });
+  
+  function applyTemplate(templ){
     var args = {};
     if(_.isString(locals)){
       args[locals] = self.data;
@@ -462,26 +472,24 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
     }
     var html = self.template ? self.template(templ, args) : templ;
     self.$el.html(html);
-    waitForImages(self.$el, function(){
-      cb && cb();
-    });
-  });
-}
+    waitForImages(self.$el, cb);
+  }
+  
+  function waitForImages($el, cb) {
+    var $imgs = $('img', $el),
+          len = $imgs.length,
+      counter = 0;
 
-function waitForImages($el, cb) {
-  var $imgs = $('img', $el),
-        len = $imgs.length,
-    counter = 0;
-
-  if(len>0){
-    $imgs.load(function(){
-      counter++;
-      if(counter===len){
-        cb();
-      }
-    });
-  }else{
-    cb && cb();
+    if(len>0){
+      $imgs.load(function(){
+        counter++;
+        if(counter===len){
+          cb();
+        }
+      });
+    }else{
+      cb();
+    }
   }
 }
 
@@ -544,43 +552,55 @@ Request.prototype._currentSubPath = function(){
 // Listen to changes in location hash, and routes to the specified routes. 
 // route([root='/':String], callback:Function)
 // 
+/*
+Note: The main performance improvement to do here is to try to traverse the 
+route and execute it at the same time, instead of first traversing it and
+then executing it. This will reduce latency considerably.
+*/
 var route = function (root, cb) {
   if(_.isFunction(root)){
     cb = root;
     root = '/';
   }
   
-  var prevNodes = [], fn = function(){
-    if(!route.prevReq || route.prevReq.url !== location.hash){
-      var prevUrl = location.hash;
+  var 
+    prevNodes = [], 
+    fn = function(){
+      if(!route.prevReq || route.prevReq.url !== location.hash){
+        var prevUrl = location.hash;
       
-      route.prevReq && route.prevReq.queue.cancel();
+        route.prevReq && route.prevReq.queue.cancel();
       
-      var req = new Request(location.hash, prevNodes);
-             
-      cb && cb(req);
-      
-      if(prevUrl == location.hash){
-        req.endPromise.then(function(){
-          if(req.index !== req.nodes.length){
-            if(req.notFound && _.isFunction(req.notFound)){
-              req.index = 1;
-              req._initNode('body')
-              req.notFound.call(req, req);
-            }else{
-              console.log('Undefined route:'+location.hash);
-              return;
-            }
-          }
-  
-          req.exec(prevNodes);
-          prevNodes = req.nodes;
+        var req = new Request(location.hash, prevNodes);
+        req.isExecuting = true;
         
-          route.prevReq = req;
-        });
+        cb && cb(req);
+      
+        if(prevUrl == location.hash){
+          req.endPromise.then(function(){
+            if(req.index !== req.nodes.length){
+              if(req.notFound && _.isFunction(req.notFound)){
+                req.index = 1;
+                req._initNode('body')
+                req.notFound.call(req, req);
+              }else{
+                console.log('Undefined route:'+location.hash);
+                return;
+              }
+            }
+            
+            req.exec(prevNodes, function(){
+              prevNodes = req.nodes;
+              route.prevReq = req;
+              req.isExecuting = false;
+              if(req.redirectTo){
+                route.redirect(req.redirectTo);
+              }
+            });
+          });
+        }
       }
     }
-  }
 
   if (location.hash === '') {
     if (root) {
