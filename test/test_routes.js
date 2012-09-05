@@ -324,9 +324,116 @@ describe('simple routes', function(){
       })
     })
     goToUrl('/b/c');
-    
   });
   
+  it('notFound should be called when no routes defined', function(done){
+    route.stop();
+    goToUrl('');
+    
+    route(function(req){      
+      req.notFound = function(){
+        done();
+      }
+    });
+    
+    goToUrl('/foo/bar');
+  });
+  
+  it("notFound's after should be called when no matching a route", function(done){
+    route.stop();
+    goToUrl('');
+    
+    route(function(req){
+      req.get(function(){
+        req.get('b', '#main', function(){
+          req.get('c', '#test', function(){
+            req.after(function(){
+              expect(1).to.be(0);
+            })            
+          });
+        });
+        req.get('d', '#main', function(){
+          req.get('e', '#test', function(){
+            req.after(function(){
+              done();
+            })            
+          });
+        });
+      });
+      req.notFound = function(req){
+        req.after(function(){
+          req.redirect('/d/e');
+        });
+      }
+    });
+    
+    goToUrl('/foo/bar');
+  });
+  
+  it("notFound's after should be called when partially matching a route", function(done){
+    route.stop();
+    goToUrl('');
+    
+    route(function(req){
+      req.get(function(){
+        req.get('b', '#main', function(){
+          req.get('c', '#test', function(){
+            req.after(function(){
+              expect(1).to.be(0);
+            })            
+          });
+        });
+        req.get('d', '#main', function(){
+          req.get('e', '#test', function(){
+            req.after(function(){
+              done();
+            })            
+          });
+        });
+      });
+      req.notFound = function(req){
+        req.after(function(){
+          req.redirect('/d/e');
+        });
+      }
+    });
+    
+    goToUrl('/b/f');
+  });
+  
+  //TODO: Give support for specifying wrong subroutes
+  /*
+  it("notFound's after should be called when matching a sub-route", function(done){
+    route.stop();
+    goToUrl('');
+    
+    route(function(req){
+      req.get(function(){
+        req.get('b', '#main', function(){
+          req.get('c', '#test', function(){
+            req.after(function(){
+              expect(1).to.be(0);
+            })            
+          });
+        });
+        req.get('d', '#main', function(){
+          req.get('e', '#test', function(){
+            req.after(function(){
+              done();
+            })            
+          });
+        });
+      });
+      req.notFound = function(req){
+        req.after(function(){
+          req.redirect('/d/e');
+        });
+      }
+    });
+    
+    goToUrl('/b');
+  });
+  */
   
   it('stop listening route', function(){
     route.stop();

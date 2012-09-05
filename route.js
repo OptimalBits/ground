@@ -118,8 +118,6 @@ var Request = function(url, prevNodes){
   this.nodePromise = new Promise();
   this.nodePromise.resolve();
   
-  this.endPromise = new Promise();
-  
   this.queue = new ginger.TaskQueue();
 }
 
@@ -191,7 +189,7 @@ function parseGetArguments(args){
 function processMiddlewares(req, middlewares, cb){
   ginger.asyncForEach(middlewares, function(fn, cb){
     fn(req, cb);
-  },cb);  
+  },cb);
 }
 Request.prototype.get = function(){
   var self = this, 
@@ -220,23 +218,27 @@ Request.prototype.get = function(){
     }
   }
   
-  var promise = new Promise(), prevPromise = self.nodePromise;
+   // TODO: Remove all this promise cruft and use a TaskQueue instead
+  var 
+    promise = new Promise(), 
+    prevPromise = self.nodePromise,
+    endPromise = self.endPromise = self.endPromise || new Promise();
   
   self.nodePromise = promise;
   
-  prevPromise.then(function(){  
+  prevPromise.then(function(){
     processMiddlewares(self, a.middlewares, function(err){
       if(!err){
         var autoreleasePool = self.node().autoreleasePool;
-      
+
         self._initNode(selector);
-  
+
         if(cb){
           self.level = level + 1;
           cb.call(self, autoreleasePool);
           promise.resolve();
           if(promise.callbacks.length===0){
-            self.endPromise.resolve();
+            endPromise.resolve();
           }
         } else {
           curl([handler], function(f){
@@ -245,7 +247,7 @@ Request.prototype.get = function(){
             f && f.call(self, self, args, autoreleasePool);
             promise.resolve();
             if(promise.callbacks.length===0){
-              self.endPromise.resolve();
+              endPromise.resolve();
             }
           });
         }
@@ -577,18 +579,19 @@ var route = function (root, cb) {
         cb && cb(req);
       
         if(prevUrl == location.hash){
-          req.endPromise.then(function(){
-            if(req.index !== req.nodes.length){
-              if(req.notFound && _.isFunction(req.notFound)){
-                req.index = 1;
-                req._initNode('body')
-                req.notFound.call(req, req);
+          if(req.endPromise){
+            req.endPromise.then(function(){
+              if(req.index === req.nodes.length){
+                exec()
               }else{
-                console.log('Undefined route:'+location.hash);
-                return;
+                handleWrongRoute();
               }
-            }
-            
+            });
+          }else{
+            handleWrongRoute();
+          }
+          
+          function exec(){
             req.exec(prevNodes, function(){
               prevNodes = req.nodes;
               route.prevReq = req;
@@ -597,7 +600,19 @@ var route = function (root, cb) {
                 route.redirect(req.redirectTo);
               }
             });
-          });
+          }
+         
+          function handleWrongRoute(){
+            if(req.notFound && _.isFunction(req.notFound)){
+              req.index = 1;
+              req._initNode('body');
+              req.notFound.call(req, req);
+              exec();
+            }else{
+              console.log('Undefined route:'+location.hash);
+              return;
+            }
+          } 
         }
       }
     }
