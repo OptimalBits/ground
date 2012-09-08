@@ -78,7 +78,7 @@ var Request = function(url, prevNodes){
   var s = url.split('?'), components, last, i, len;
   
   components = s[0].split('/');
-  if(components[0] === '#'){
+  if(components[0] === ''){
     this.index = 1;
   }else{
     this.index = 0;
@@ -264,8 +264,8 @@ Request.prototype.get = function(){
   
   Callback can only be called when the promise has been resolved.
 
-  In exec, we have also to wait until the last node promise has been resolved before we can start
-  executing.
+  In exec, we have also to wait until the last node promise has been resolved 
+  before we can start executing.
 */
 Request.prototype.before = function(cb){
   var fn = _.bind(function(cb){cb()}, this);
@@ -309,20 +309,20 @@ Request.prototype.load = function(urls, cb){
   return this;
 }
 
+/**
+  Executes the route.
+  Exits from the previous route calling the relevant callbacks 
+  and calls the callbacks on the needed nodes in the new route.
+*/
 Request.prototype.exec = function(prevs, cb){
   var self = this, start, nodes = self.nodes, i, len, node, queue;
   
   start = self.startIndex;
   queue = this.queue;
-  
-  //
-  // We have a non-cancelable task queue for exiting the previous route.
-  //
-  var exitQueue = new ginger.TaskQueue();
-  
+    
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
-  // (the common base).
+  // the common base).
   //
   for(i=0,len=start;i<len;i++){
     if(findSel(nodes[i].selector, start, prevs)){
@@ -330,6 +330,11 @@ Request.prototype.exec = function(prevs, cb){
       break;
     }
   }
+  
+  //
+  // We have a non-cancelable task queue for exiting the previous route.
+  //
+  var exitQueue = new ginger.TaskQueue();
   
   exitQueue.append(_.bind(self.promise.then, self.promise));
   
@@ -341,23 +346,29 @@ Request.prototype.exec = function(prevs, cb){
     node = prevs[i];
     
     node.$el || exitQueue.append(node.select);
-    exitQueue.append(node.exit || node.hide);    
-    exitQueue.append(node.drain);
+    exitQueue.append(node.exit || node.hide, node.drain);
   }
   
   //
-  // Call all the functions for every node that needs it.
+  // Append all the functions for every node that needs it.
   //
   for(i=start, len=nodes.length;i<len;i++){
     node = nodes[i]; // prev = prevs[i];
     
     self.index = i+1;
     
-    queue.append(node.select, node.hide, node.before, node.load, node.render);
-    queue.append(node.enter || node.show);
-    queue.append(node.after)
+    queue.append(node.select, 
+                 node.hide, 
+                 node.before, 
+                 node.load, 
+                 node.render, 
+                 node.enter || node.show, 
+                 node.after);
   }
   
+  //
+  // Run task queues.
+  //
   exitQueue.run(function(){
     queue.run(cb);
   });
@@ -376,6 +387,7 @@ Request.prototype.nextComponent = function(){
 Request.prototype.redirect = function(url, params){
   var self = this;
   url = params ? url+'?'+$.param(params) : url;
+  if(self.url === url) return;
   if(self.isExecuting){
     self.promise.then(function(){
       self.queue && self.queue.cancel();
@@ -568,17 +580,18 @@ var route = function (root, cb) {
   var 
     prevNodes = [], 
     fn = function(){
-      if(!route.prevReq || route.prevReq.url !== location.hash){
-        var prevUrl = location.hash;
+      var url = location.hash.substring(1),
+        prevUrl = url;
       
+      if(!route.prevReq || route.prevReq.url !== url){
         route.prevReq && route.prevReq.queue.cancel();
       
-        var req = new Request(location.hash, prevNodes);
+        var req = new Request(url, prevNodes);
         req.isExecuting = true;
         
         cb && cb(req);
       
-        if(prevUrl == location.hash){
+        if(prevUrl == url){
           if(req.endPromise){
             req.endPromise.then(function(){
               if(req.index === req.nodes.length){
