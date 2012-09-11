@@ -397,18 +397,6 @@ Request.prototype.redirect = function(url, params){
     route.redirect(url);
   }
 }
-/*
-Request.prototype.redirect = function(url, params){
-  var self = this;
-  self.promise.then(function(){
-    self.queue.cancel();
-    if(params){
-      url+='?'+$.param(params);
-    }
-    route.redirect(url);
-  });
-}
-*/
 Request.prototype.node = function(){
   var index = this.index-1;
   index = index < 0? 0:index;
