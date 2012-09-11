@@ -2785,7 +2785,7 @@ Views.ComboBox = View.extend({
 Views.Slider = View.extend({
   constructor : function Slider(options, classNames){
     var self = this;
-    this.super(Views.Slider, 'constructor', classNames)
+    this.super(Views.Slider, 'constructor', classNames);
     
     function setOptions(options){
       self.options = _.clone(options) || {};
@@ -2803,12 +2803,12 @@ Views.Slider = View.extend({
           self.emit('stop').emit('stopped:');
         }
       });
+      self.value = self.options.value || self.value || 0;
       self.$el.slider(self.options);
+      self.$el.slider('value', self.value);
     }
     
     setOptions(options);
-    
-    self.value = self.options.value || 0
     
     this.on('options', function(options){
       setOptions(options);
