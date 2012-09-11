@@ -1656,15 +1656,15 @@ _.extend(Interval.prototype, {
   /**
     start(resolution, duration)
     
-    Starts a new timer with the given duration in milliseconds.
+    Starts a new timer with the given optionally duration in milliseconds.
   */
   start : function(duration){
     clearTimeout(this._timer);
     if(duration){
       this.duration = duration;
       this._baseline = Date.now();
-      this._iter();
     }
+    this.duration && this._iter();
   },
   isRunning : function(){
     return (this._timer!==null);
