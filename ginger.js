@@ -17,9 +17,8 @@
    Dependencies:
    - jQuery
    - Underscore / LoDash
-      
-   (c) 2011-2012 OptimalBits with selected parts from the internet
-   dual licensed as public domain or MIT.
+
+   (c) 2011-2012 OptimalBits - Licensed as MIT.
    
    Resources:
    - http://kevinoncode.blogspot.com/2011/04/understanding-javascript-inheritance.html
