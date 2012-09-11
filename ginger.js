@@ -1,5 +1,5 @@
 /**
-   Ground MVC framework v0.1.0
+   Ground Web Framework v0.1.0
 
    Features:
    - Modular design.
@@ -92,7 +92,7 @@ var ginger = {
   release : function(objs){
     var items = _.isArray(objs) ? objs :arguments;
     _.each(items, function(obj){
-      obj && obj.release(); 
+      obj && obj.release();
     });
   },
   nextTick : function(fn){
@@ -102,16 +102,15 @@ var ginger = {
   asyncDebounce : function (fn) {
     var delayedFunc = null, executing = null;
   
-    return function debounced () {
+    return function debounced() {
       var context = this,
         args = arguments,
         nargs = args.length,
-        cb = args[nargs-1];
-          
-      var delayed = function() {
-        executing = fn;
-        fn.apply(context, args);
-      };
+        cb = args[nargs-1],
+        delayed = function() {
+          executing = fn;
+          fn.apply(context, args);
+        };
   
       args[nargs-1] = function(){
         cb.apply(context, arguments);
@@ -865,6 +864,7 @@ function appendQuery(url, query){
   }
 }
 
+// AJAX IS DEPRECATED.
 ServerStorage.ajax = {
   create: function(bucket, args, cb){
     url = appendQuery(Model.url+'/'+bucket);
