@@ -2955,6 +2955,17 @@ var TableRow = View.extend(function(doc, fields, widths){
     selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
+
+function compareItems(a, b){
+  var len = a.length;
+  if (a === b) return true;
+  if (len !== b.length) return false;
+  for (var i=0;i<len;i++){
+    if(a[i].id() !== b[i].id()) return false;
+  }
+  return true;
+}
+
 Views.Table = View.extend({
   constructor : function Table(collection, options){
     var self = this,
@@ -3032,11 +3043,14 @@ Views.Table = View.extend({
     }
     self.on('collection', function(val, old){
       ginger.release(old);
-      val.retain();
-      val.on('updated: added: sortByFn', function(){
-        // TODO: Improve so that it is not needed to re-populate the table
-        // everytime a small update is performed...
-        self.populate(self.index,self.limit);
+      val.retain()
+      .on('sorted:', function(items, oldItems){
+        if(!compareItems(items, oldItems)){
+          self.populate(self.index, self.limit);
+        }
+      })
+      .on('added:', function(){
+        self.populate(self.index, self.limit);
       }).on('removed:', function(val){
         var $row;
         if(self.$selected && self.$selected.data('id') == val.id()){
@@ -3054,9 +3068,9 @@ Views.Table = View.extend({
       });
     });
     self.set('collection', collection);
-    collection.emit('updated:');
+    self.populate(self.index, self.limit);
     self.on('filterData', function(){
-      self.collection.emit('updated:')
+      self.populate(self.index, self.limit);
     });
   },
   populate : function(index,limit){
