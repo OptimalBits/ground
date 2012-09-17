@@ -2237,10 +2237,12 @@ var Collection = ginger.Collection = Base.extend(function Collection(items, mode
     socket : Model.socket
   });
   self.on('sortByFn sortOrder', function(fn){
+    var oldItems = self.items;
     if(self.sortByFn){
       self.items = self.sortBy(self.sortByFn)
     }
     (self.sortOrder == 'desc') && self.items.reverse();
+    self.emit('sorted:', self.items, oldItems)
   });
 })
 
@@ -2470,11 +2472,7 @@ _.extend(Collection.prototype, {
     }
   },
   toggleSortOrder : function(){
-    if(this.sortOrder == 'asc'){
-      this.set('sortOrder', 'desc');
-    }else{
-      this.set('sortOrder', 'asc');
-    }
+    this.set('sortOrder', this.sortOrder == 'asc' ? 'desc' : 'asc');
   },
   setFormatters : function(formatters){
     this._formatters = formatters;
