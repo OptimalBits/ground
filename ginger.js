@@ -2944,6 +2944,7 @@ var TableRow = View.extend(function(doc, fields, widths){
   }
   this.$el = $tr;
 });
+
 /**
   options:
     headers : ['header1', 'header2', ...] (html text or jquery or DOM
@@ -2955,7 +2956,6 @@ var TableRow = View.extend(function(doc, fields, widths){
     selectRowClass: 'wqeqwe'
     filter : fn(doc, filterData)
 */
-
 function compareItems(a, b){
   var len = a.length;
   if (a === b) return true;
@@ -3019,7 +3019,7 @@ Views.Table = View.extend({
     if(self.footer) {
       self.$el.append(self.footerCon.$el);
     }
-  
+
     self.on('clicked:', function(item, $row){
       self._selectRow($row);
     });
@@ -3051,7 +3051,8 @@ Views.Table = View.extend({
       })
       .on('added:', function(){
         self.populate(self.index, self.limit);
-      }).on('removed:', function(val){
+      })
+      .on('removed:', function(val){
         var $row;
         if(self.$selected && self.$selected.data('id') == val.id()){
           $row = self.$selected.prev();
@@ -3065,7 +3066,14 @@ Views.Table = View.extend({
         }else{
           self.set('$selected', null);
         }
-      });
+      })
+      .on('updated:', function(item){
+        var 
+          $oldRow = $("tr[data-id='" + item.id() +"']"),
+          row = new TableRow(item, self.fields, self.widths);
+        $oldRow.replaceWith(row.$el);
+        (self.$selected[0] === $oldRow[0]) && self._selectRow(row.$el);
+      })
     });
     self.set('collection', collection);
     self.populate(self.index, self.limit);
