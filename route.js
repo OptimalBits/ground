@@ -387,8 +387,8 @@ Request.prototype.nextComponent = function(){
 Request.prototype.redirect = function(url, params){
   var self = this;
   url = params ? url+'?'+$.param(params) : url;
-  if(self.url === url) return;
   if(self.isExecuting){
+    if(self.url === url) return;
     self.promise.then(function(){
       self.queue && self.queue.cancel();
       self.redirectTo = url;
