@@ -150,7 +150,7 @@ The framework also provides an easy function to make transitions between routes.
 	  req.get(function(){
 	    req
 	      .enter('fadeOut');
-		  .render('/templates/main.jade');
+		    .render('/templates/main.jade');
 	      .exit('fadeIn');
 	  });
 	});
@@ -188,8 +188,23 @@ In order to avoid large files with many route handlers that would keep the code 
         
       req.notFound = function(){
         req.render('views/notfound.jade');  
-      }  
+      }
     });
+    
+
+##Auto release pools
+
+Ground uses a reference counting based mechanism to avoid memory and event leaks. This
+mechanism requires the user to manually call *release*. Usually, when entering a new
+route, several objects are created and it can be difficult to keep track when to release
+them. For this reason the route system provides autorelease pools where you can put all 
+the created objects and the the pools will be released automatically when leaving the
+route.
+
+Example:
+
+
+
  
 #Objects
 
