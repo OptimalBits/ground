@@ -1,8 +1,6 @@
 define(['ginger', 'ginger/route'], function(ginger, route){
 
-route.root = '/';
-
-
+// Helpers
 var goToUrl = function(url){
   location.hash = url;
   if ('onhashchange' in window) {
@@ -13,10 +11,9 @@ var goToUrl = function(url){
 describe('Routes', function(){
 
 describe('simple routes', function(){
-
-  route.stop();
-  goToUrl('');
   it('root route', function(done){
+    route.stop();
+    goToUrl('');
     route(function(req){
       req.get(function(){
         route.stop();
@@ -24,6 +21,59 @@ describe('simple routes', function(){
       });
     });
   });
+ 
+  it('foobar route', function(done){
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('foo', '#foo', function(){
+          req.get('bar', '#bar', function(){
+            done();
+          });
+        });
+      });
+    });
+    goToUrl('/foo/bar');
+  });
+  
+  it('parametric route', function(done){
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('foo', '#foo', function(){
+          req.get(':bar', '#bar', function(){
+            expect(req.params.bar).to.be.equal('123456');
+            done();
+          });
+        });
+      });
+    });
+    goToUrl('/foo/123456');
+  });
+  
+  it('foobar route with baz in main and subroute', function(done){
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('foo', '#foo', function(){
+          req.get('bar', '#bar', function(){
+            expect(1).to.be(0);
+          });
+          req.get('baz', '#baz', function(){
+            done();
+          });
+        })
+        req.get('baz', function(){
+          expect(1).to.be(0);
+        });
+      });
+    });
+    goToUrl('/foo/baz');
+  });
+
   it('consume routes in correct order', function(done){
     route.stop();
     goToUrl('');
@@ -103,6 +153,68 @@ describe('simple routes', function(){
           req.get('qux','#qux', function(){
             req.get('bar','#bar', function(){
               done(); 
+            });
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+  
+  it('changing from one route to another does not execute after on common nodes', function(done){
+    var onceTest = 0, onceFoo = 0;
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.after(function(){
+            onceTest ++;
+          });
+          req.get('foo','#foo', function(){
+            req.after(function(){
+              onceFoo ++;
+            })
+            req.get('bar', '#bar', function(){
+              goToUrl('/test/foo/qux');
+            });
+            req.get('qux','#qux', function(){
+              expect(onceTest).to.be.equal(1);
+              expect(onceFoo).to.be.equal(1);
+              done();
+            });
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+  
+  it('changing from one route to another only exits from old nodes once', function(done){
+    var onceTest = 0, onceFoo = 0, onceBar = 0;
+    route.stop();
+    goToUrl('');
+    route(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.leave(function(){
+            onceTest ++;
+          });
+          req.get('foo','#foo', function(){
+            req.leave(function(){
+              onceFoo ++;
+            })
+            req.get('bar', '#bar', function(){
+              req.leave(function(){
+                onceBar ++;
+              })
+              goToUrl('/test/foo/qux');
+            });
+            req.get('qux','#qux', function(){
+              expect(onceTest).to.be.equal(0);
+              expect(onceFoo).to.be.equal(0);
+              expect(onceBar).to.be.equal(1);
+              done();
             });
           });
         });
@@ -251,7 +363,7 @@ describe('simple routes', function(){
     });
     goToUrl('/test/foo/bar');
   });
-
+  
   it('Change from a deep route to another deep route, redirect to some route, then redirect to original route', function(done){
     route.stop();
     goToUrl('');
@@ -331,9 +443,9 @@ describe('simple routes', function(){
     goToUrl('');
     
     route(function(req){      
-      req.notFound = function(){
+      req.notFound(function(){
         done();
-      }
+      });
     });
     
     goToUrl('/foo/bar');
@@ -360,11 +472,11 @@ describe('simple routes', function(){
           });
         });
       });
-      req.notFound = function(req){
+      req.notFound(function(req){
         req.after(function(){
           req.redirect('/d/e');
         });
-      }
+      });
     });
     
     goToUrl('/foo/bar');
@@ -391,17 +503,17 @@ describe('simple routes', function(){
           });
         });
       });
-      req.notFound = function(req){
+      req.notFound(function(req){
         req.after(function(){
           req.redirect('/d/e');
         });
-      }
+      });
     });
     
     goToUrl('/b/f');
   });
   
-  //TODO: Give support for specifying wrong subroutes
+  //TODO: Give support for specifying unfinished subroutes
   /*
   it("notFound's after should be called when matching a sub-route", function(done){
     route.stop();
@@ -424,11 +536,11 @@ describe('simple routes', function(){
           });
         });
       });
-      req.notFound = function(req){
+      req.notFound(function(req){
         req.after(function(){
           req.redirect('/d/e');
         });
-      }
+      });
     });
     
     goToUrl('/b');
