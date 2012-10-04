@@ -120,10 +120,10 @@ describe('Promises and Tasks', function(){
       cb();
     });
     
-    queue.run(function(){
+    queue.end(function(){
       expect(index).to.be(3);
       done();
-    });
+    })
   });
   
   it('Task queue with a few elements is cancelled', function(done){  
@@ -149,7 +149,7 @@ describe('Promises and Tasks', function(){
         cb();
       });
       
-      queue.run(function(){
+      queue.end(function(){
         expect(index).to.be(2);
         done();
       });
