@@ -3,7 +3,6 @@
   <meta charset="utf-8">
   <title>Mocha Tests</title>
   <link rel="stylesheet" href="https://raw.github.com/visionmedia/mocha/master/mocha.css" />
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
   <script src="https://raw.github.com/LearnBoost/expect.js/d2440da086bf8dc38c6085641f23b968a0f48b29/expect.js"></script>
   <script src="https://raw.github.com/visionmedia/mocha/master/mocha.js"></script>
   <script src="http://localhost:8080/socket.io/socket.io.js"></script>
@@ -12,11 +11,6 @@
     curl = {
            baseUrl: 'http://localhost:8080/',
            packages: {
-             'ginger': {
-                 path: 'http://localhost:8080/',
-                 main: 'ginger',
-                  lib: ''
-             },
              'jquery': {
                path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
                main:'jquery.min'
@@ -24,19 +18,24 @@
              'underscore':{
                path:'https://raw.github.com/amdjs/underscore/master/',
                main:'underscore-min'
+             },
+             'ginger': {
+                 path: 'http://localhost:8080/',
+                 main: 'ginger',
+                  lib: ''
              }
            }
        };
   </script>
   
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <script src="https://raw.github.com/cujojs/curl/dev/dist/curl-kitchen-sink/curl.js"></script>
   
   <script>
     mocha.setup('bdd')
   
     var socket = io.connect('http://localhost:8080');
     socket.once('connect', function(){
-      $(function () {
+      //$(function () {
         curl(['test/test_cache'], function(){
           curl(['test/test_promises',
                 'test/test_routes',
@@ -52,7 +51,7 @@
                 .globals(['socket']) // acceptable globals
           });
         });
-      })
+        //})
     });
   </script>
 </head>
