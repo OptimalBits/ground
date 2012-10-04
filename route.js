@@ -1,6 +1,19 @@
-
+/**
+  Ground Web Framework. Route Management. (c) OptimalBits 2011-2012.
+*/
+/**
+  Hierarchical Routing.
+  
+  Define routes hierarchically creating views by rendering templates at
+  the specified DOM nodes in the hierarchy.
+  
+*/
 define(['jquery', 'underscore', 'ginger'], function($,_, ginger){
 
+/**
+  Parses A query string and returns an object with key, value pairs.
+
+*/
 var parseQuery = function(queryString){
   if(queryString){
     var keyValues = queryString.split('&'),
@@ -19,8 +32,9 @@ var parseQuery = function(queryString){
   }
 }
 
-var Promise = ginger.Promise;
-
+/**
+  Pool of objects that will be autoreleased when leaving a route.
+*/
 var AutoreleasePool = function(){
   this.pool = [];
 }
@@ -72,29 +86,49 @@ var wrap = function(fn, args, cb){
 }
 
 //
+// Decompose URL into components and query object.
+//
+var decomposeUrl = function(url){
+  var s = url.split('?'), components, len;
+  
+  components = s[0].split('/');
+  /*if(components[0] === ''){
+    components.splice(0,1);
+  }*/
+  len = components.length
+  if(_.last(components) === '' && len > 1){
+    components.splice(len-1, 1);
+  }
+  return {components:components, query:parseQuery(s[1])};
+}
+
+//
 // Request
 //
 var Request = function(url, prevNodes){
-  var s = url.split('?'), components, last, i, len;
+  var self = this, components, i, len;
   
-  components = s[0].split('/');
-  if(components[0] === ''){
-    this.index = 1;
-  }else{
-    this.index = 0;
-  }
-  this.level = 0;
-
-  if(components[last=components.length-1] === ''){
-    components.splice(last, 1);
-  }
+  _.extend(self, decomposeUrl(url));
+  components = self.components;
+  len = components.length;
   
-  this.nodes = [];
-  this.startIndex = 0;
-  for (i=0, len=components.length;i<len;i++){
-    var prev = prevNodes[i]; 
+  _.extend(self, {
+    nodes : [],
+    index : 0,
+    level : 0,
+    params : {},
+    url : url,
+    queue : new ginger.TaskQueue(),
+    prevNodes : prevNodes
+  });
+  
+  //
+  // Reuse previous autorelease pools and find the starting index for the new route.
+  //
+  for (i=0; i<len; i++){
+    var prev = prevNodes[i];
     if(prev && (prev.component === components[i])){
-      this.nodes.push({
+      self.nodes.push({
         component:components[i], 
         autoreleasePool:prev.autoreleasePool
       });
@@ -102,23 +136,15 @@ var Request = function(url, prevNodes){
       break;
     }
   }
-  this.startIndex = i;
-  for (i=this.startIndex, len=components.length;i<len;i++){
-    this.nodes.push({component:components[i], autoreleasePool:new AutoreleasePool()});
+  
+  //
+  // Create nodes autorelease pools
+  //
+  self.startIndex = i;
+  for (i=self.startIndex; i<len; i++){
+    self.nodes.push({component:components[i], autoreleasePool:new AutoreleasePool()});
   }
   
-  this.url = url;
-  this.query = parseQuery(s[1]);
-  this.params = {};
-  this.components = components;
-  
-  this.promise = new Promise();
-  this.promise.resolve();
-  
-  this.nodePromise = new Promise();
-  this.nodePromise.resolve();
-  
-  this.queue = new ginger.TaskQueue();
 }
 
 /**
@@ -145,9 +171,7 @@ Request.prototype.use = function(kind, plugin){
   get - Define a GET route.
   
   get([middleware, ...], cb:{Function})
-  
   get(component:{String}, selector:{String}, [middleware, ...], cb:{Function})
-  
   get(component:{String}, selector:{String}, [middleware, ...], handler:{String}, [args:{Object}])
   
   Handler is a AMD module that returns a function with the signature: function(req).
@@ -191,77 +215,80 @@ function processMiddlewares(req, middlewares, cb){
     fn(req, cb);
   },cb);
 }
-Request.prototype.get = function(){
-  var self = this, 
-    a = parseGetArguments(arguments),
-    component = a.component, 
-    handler = a.handler, 
-    selector = a.selector,
-    cb = a.cb,
-    args = a.args,
-    level = self.level;
 
-  if(component){
-    if(level != self.index){
-      return self;
+function parseParams(expr, component, params){
+  if(expr.charAt(0) === ':'){
+    params[expr.replace(':','')] = component;
+    return true;
+  }
+  return false;
+}
+
+Request.prototype._consume = function(expr, level){
+  var 
+    self = this,
+    index = self.index;
+  
+  if(expr){
+    if((level != index) || (index >= self.components.length)){
+      return false
     }
-    
-    if(self.index < self.components.length){
-      if(component.charAt(0) === ':'){
-        self.params[component.replace(':','')] = self.components[self.index];
-      } else if(component !== self.components[self.index]){
-        return self;
-      }
-      self.index++;
-    }else{
-      return self;
+    var comp = self.components[index];
+    if(!parseParams(expr, comp, self.params) && expr !== comp){
+      return false;
     }
   }
-  
-   // TODO: Remove all this promise cruft and use a TaskQueue instead
-  var 
-    promise = new Promise(), 
-    prevPromise = self.nodePromise,
-    endPromise = self.endPromise = self.endPromise || new Promise();
-  
-  self.nodePromise = promise;
-  
-  prevPromise.then(function(){
-    processMiddlewares(self, a.middlewares, function(err){
-      if(!err){
-        var autoreleasePool = self.node().autoreleasePool;
+  self.index++;
+  return true;
+}
 
-        self._initNode(selector);
+Request.prototype.get = function(){
+  var
+    self = this, 
+    args = parseGetArguments(arguments),
+    component = args.component, 
+    handler = args.handler, 
+    selector = args.selector,
+    cb = args.cb,
+    level = self.level;
 
+  if(!self._consume(component, level)){
+    return self;
+  }
+  
+  //
+  // Create a task for entering this subroute
+  //
+  self.queue.append(function(done){
+    processMiddlewares(self, args.middlewares, function(err){
+      var
+        node = self.node(),
+        pool = node.autoreleasePool,
+        index = self.index,
+        isLastRoute = index === self.components.length;
+        
+        if(index == self.startIndex){
+          exitNodes(self.queue, self.prevNodes, self.startIndex);
+        }
+      
+        self._initNode(selector, node);
+    
         if(cb){
-          self.level = level + 1;
-          cb.call(self, autoreleasePool);
-          promise.resolve();
-          if(promise.callbacks.length===0){
-            endPromise.resolve();
-          }
-        } else {
-          curl([handler], function(f){
-            args = args || autoreleasePool;
-            self.level = level + 1;
-            f && f.call(self, self, args, autoreleasePool);
-            promise.resolve();
-            if(promise.callbacks.length===0){
-              endPromise.resolve();
-            }
+          self._enterNode(cb, node, index, level, pool, isLastRoute);
+          done();
+        }else{
+          curl([handler], function(cb){
+            self._enterNode(cb, node, index, level, args.args, pool, isLastRoute);
+            done();
           });
         }
-      }
     });
   });
-
   self.level = level;
   return self;
 }
 
 /**
-  Promise for last initialized node.
-  
   Callback can only be called when the promise has been resolved.
 
   In exec, we have also to wait until the last node promise has been resolved 
@@ -282,7 +309,7 @@ Request.prototype.exit = function(name, speed, cb){
   speed = _.isFunction(speed)?undefined:speed;
   var node = this.node();
   var fn = _.bind(this._anim, this);
-  node.exit =  wrap(fn, [node, name, speed], cb);
+  node.exit = wrap(fn, [node, name, speed], cb);
   return this;
 }
 Request.prototype.enter = function(name, speed, cb){
@@ -291,6 +318,11 @@ Request.prototype.enter = function(name, speed, cb){
   var node = this.node();
   var fn = _.bind(this._anim, this);
   node.enter = wrap(fn, [node,name,speed], cb);
+  return this;
+}
+Request.prototype.leave = function(cb){
+  var fn = _.bind(function(cb){cb()}, this);
+  this.node().leave = wrap(fn, cb);
   return this;
 }
 Request.prototype.render = function(templateUrl, css, locals, cb){
@@ -309,16 +341,63 @@ Request.prototype.load = function(urls, cb){
   return this;
 }
 
+Request.prototype.notFound = function(fn){
+  this.notFoundFn = fn;
+}
+
+Request.prototype._enterNode = function(fn, node, index, level, args, pool, isLastRoute){
+  var self = this;
+  self.level = level + 1;
+  if(arguments.length==7){
+    // This is just for backwards compatibility... should be: fn.call(self, self, pool, [args]);
+    fn && fn.call(self, self, args || pool, pool);
+  }else{
+    fn && fn.call(self, args);
+    isLastRoute = pool;
+  }
+  
+  self._notFound = (index >= self.index) && !isLastRoute;
+  if(!self._notFound && index > self.startIndex){
+    enqueueNode(self.queue, node);
+  }
+          
+  if(self._notFound || isLastRoute){
+    self.queue.end();
+  }
+          
+  if(isLastRoute){
+    self.queue.end();
+  }
+}
+
+function exitNodes(queue, nodes, start){
+  for(var i=nodes.length-1;i>=start;i--){
+    var node = nodes[i];
+    node.$el || queue.append(node.select);
+    queue.append(node.exit || node.hide, node.drain, node.leave);
+  }
+}
+
+function enqueueNode(queue, node){
+  queue.append(node.select, 
+               node.hide, 
+               node.before, 
+               node.load, 
+               node.render, 
+               node.enter || node.show, 
+               node.after);
+}
+
 /**
   Executes the route.
   Exits from the previous route calling the relevant callbacks 
   and calls the callbacks on the needed nodes in the new route.
+  (OBSOLETE and not used, left for reference...)
 */
 Request.prototype.exec = function(prevs, cb){
-  var self = this, start, nodes = self.nodes, i, len, node, queue;
+  var self = this, start, i, len, node, nodes = self.nodes;
   
   start = self.startIndex;
-  queue = this.queue;
     
   //
   // Check for selector overwrites (prev route overwrite some DOM element from
@@ -336,42 +415,25 @@ Request.prototype.exec = function(prevs, cb){
   //
   var exitQueue = new ginger.TaskQueue();
   
-  exitQueue.append(_.bind(self.promise.then, self.promise));
-  
   //
   // "Exit" from all the old nodes. We do this in reversed order so that 
   // deeper nodes are exited before the shallower
   //
-  for(i=prevs.length-1;i>=start;i--){
-    node = prevs[i];
-    
-    node.$el || exitQueue.append(node.select);
-    exitQueue.append(node.exit || node.hide, node.drain);
-  }
+  exitNodes(exitQueue, prevs, start);
   
-  //
-  // Append all the functions for every node that needs it.
-  //
-  for(i=start, len=nodes.length;i<len;i++){
-    node = nodes[i]; // prev = prevs[i];
+  exitQueue.end().then(function(){
+
+    //
+    // Append all the functions for every node that needs it.
+    // 
     
-    self.index = i+1;
-    
-    queue.append(node.select, 
-                 node.hide, 
-                 node.before, 
-                 node.load, 
-                 node.render, 
-                 node.enter || node.show, 
-                 node.after);
-  }
-  
-  //
-  // Run task queues.
-  //
-  exitQueue.run(function(){
-    queue.run(cb);
-  });
+    var queue = new ginger.TaskQueue();
+
+    for(i=start, len=nodes.length;i<len;i++){      
+      enqueueNode(queue, nodes[i]);      
+    }
+    queue.end().then(cb);
+  })
 }
 Request.prototype.resourceRoute = function(resource){
   var base = this._currentSubPath();
@@ -387,26 +449,17 @@ Request.prototype.nextComponent = function(){
 Request.prototype.redirect = function(url, params){
   var self = this;
   url = params ? url+'?'+$.param(params) : url;
-  if(self.isExecuting){
-    if(self.url === url) return;
-    self.promise.then(function(){
-      self.queue && self.queue.cancel();
-      self.redirectTo = url;
-    });
-  }else{
-    route.redirect(url);
-  }
+  console.log("REDIRECT TO:"+url);
+  route.redirect(url);
 }
 Request.prototype.node = function(){
-  var index = this.index-1;
-  index = index < 0? 0:index;
-  return this.nodes[index];
+  return this.nodes[this.index<=0 ? 0:(this.index-1)];
 }
 
 //
 // Private methods
 // TODO: Generate error if selector returns empty set or more than one DOM node!
-Request.prototype._initNode = function(selector){
+Request.prototype._initNode = function(selector, node){
   var self = this;
   
   (function(node){
@@ -430,7 +483,7 @@ Request.prototype._initNode = function(selector){
        node.autoreleasePool.drain();
        cb();
      });
- })(self.node());
+ })(node || self.node());
 }
 
 Request.prototype._anim = function(node, name, speed, cb){
@@ -553,68 +606,45 @@ Request.prototype._currentSubPath = function(){
 // Route
 // Listen to changes in location hash, and routes to the specified routes. 
 // route([root='/':String], callback:Function)
-// 
-/*
-Note: The main performance improvement to do here is to try to traverse the 
-route and execute it at the same time, instead of first traversing it and
-then executing it. This will reduce latency considerably.
-*/
+//
 var route = function (root, cb) {
   if(_.isFunction(root)){
     cb = root;
     root = '/';
   }
   
-  var 
-    prevNodes = [], 
-    fn = function(){
-      var url = location.hash.substring(1),
-        prevUrl = url;
+  var req, fn = function(){
+      var url = location.hash.substring(1);
+      if(!req || (req.url !== url)){
+        req && req.queue.cancel();
       
-      if(!route.prevReq || route.prevReq.url !== url){
-        route.prevReq && route.prevReq.queue.cancel();
-      
-        var req = new Request(url, prevNodes);
-        req.isExecuting = true;
+        req = new Request(url, req && req.nodes || []);
         
-        cb && cb(req);
-      
-        if(prevUrl == url){
-          if(req.endPromise){
-            req.endPromise.then(function(){
-              if(req.index === req.nodes.length){
-                exec()
-              }else{
-                handleWrongRoute();
-              }
-            });
-          }else{
-            handleWrongRoute();
-          }
-          
-          function exec(){
-            req.exec(prevNodes, function(){
-              prevNodes = req.nodes;
-              route.prevReq = req;
-              req.isExecuting = false;
-              if(req.redirectTo){
-                route.redirect(req.redirectTo);
-              }
-            });
-          }
-         
-          function handleWrongRoute(){
-            if(req.notFound && _.isFunction(req.notFound)){
+        //
+        // Starts the recursive route traversing
+        // (TODO: improve this copy paste stuff...
+        //
+        var index = req.index;
+        cb(req);
+        if(index == req.index){
+          req._notFound = true;
+          req.queue.end();
+        }
+        
+        req.queue.then(function(isCancelled){
+          if(req._notFound){
+            if(req.notFoundFn){
               req.index = 1;
               req._initNode('body');
-              req.notFound.call(req, req);
-              exec();
+              req.notFoundFn.call(req, req);
+              var queue = new ginger.TaskQueue();
+              enqueueNode(queue, req.node())
             }else{
               console.log('Undefined route:'+location.hash);
               return;
             }
-          } 
-        }
+          }
+        });
       }
     }
 
