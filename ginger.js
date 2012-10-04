@@ -288,11 +288,11 @@ _.extend(ginger.PromiseQueue.prototype, {
     }, cb)
   }
 });
-
 ginger.TaskQueue = function(){
   this._tasks = [];
+  this.endPromise = new ginger.Promise();
 }
-ginger.TaskQueue.prototype = {
+_.extend(ginger.TaskQueue.prototype, {
   /**
     Appends one or several tasks to the queue. The tasks are executed in order. A task is just a
     function with an optional callback. 
@@ -305,28 +305,56 @@ ginger.TaskQueue.prototype = {
     append(function([function(err, callback)]))    
   */
   append : function(){
-    this._tasks.push.apply(this._tasks, _.compact(arguments));
-  },
-  /**
-    Starts the execution of the task queue.
-  */
-  run : function(cb){
     var self = this;
-    ginger.asyncForEachSeries(self._tasks, function(task, done){
-      if(!self.isCancelled){
-        task(done);
-      }else{
-        done();
-      }
-    }, cb);
+    if(self.isEnded){
+      throw new Error("TaskQueue already ended");
+    }
+    self._tasks.push.apply(self._tasks, _.compact(arguments));
+    self._executeTasks();
+    return self;
   },
-  /**
-    Cancels the execution of the task queue.
-  */
+  
+  //
+  //  Cancels the execution of the task queue.
+  //
   cancel : function(){
     this.isCancelled = true;
+  },
+  
+  //
+  // Ends this task queue. This function just mark this queue as ended,
+  // so no nore tasks can be appended to it.
+  end : function(){
+    var self = this;
+    self.isEnded = true;
+    if(!self.isExecuting){
+      self.endPromise.resolve();
+    }
+    return self;
+  },
+  
+  //
+  // Waits for this task queue to finalize processing
+  //
+  then : function(cb){
+    this.endPromise.then(cb);
+  },
+  
+  _executeTasks : function(){
+    var self = this;
+    if(self._tasks.length>0 && !self.isCancelled && !self.isExecuting){
+      self.isExecuting = true;
+      var fn = self._tasks.splice(0,1)[0];
+      fn(function(){
+        self.isExecuting = false;
+        self._executeTasks();
+      });
+    }else if(self.isEnded || self.isCancelled){
+      self.endPromise.resolve(self.isCancelled);
+    }
   }
-}
+});
+
 
 //
 // Event Emitter
