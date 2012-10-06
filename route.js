@@ -127,7 +127,7 @@ var Request = function(url, prevNodes){
   //
   for (i=0; i<len; i++){
     var prev = prevNodes[i];
-    if(prev && (prev.component === components[i])){
+    if(prev && prev.autoreleasePool && (prev.component === components[i])){
       self.nodes.push({
         component:components[i], 
         autoreleasePool:prev.autoreleasePool
@@ -138,11 +138,11 @@ var Request = function(url, prevNodes){
   }
   
   //
-  // Create nodes autorelease pools
+  // Create new nodes
   //
   self.startIndex = i;
   for (i=self.startIndex; i<len; i++){
-    self.nodes.push({component:components[i], autoreleasePool:new AutoreleasePool()});
+    self.nodes.push({component:components[i]});
   }
   
 }
@@ -263,13 +263,16 @@ Request.prototype.get = function(){
     processMiddlewares(self, args.middlewares, function(err){
       var
         node = self.node(),
-        pool = node.autoreleasePool,
         index = self.index,
         isLastRoute = index === self.components.length;
         
         if(index == self.startIndex){
           exitNodes(self.queue, self.prevNodes, self.startIndex);
+        }else{
+          node.autoreleasePool = new AutoreleasePool();
         }
+        
+        var pool = node.autoreleasePool;
       
         self._initNode(selector, node);
     
