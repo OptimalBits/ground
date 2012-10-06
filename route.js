@@ -364,10 +364,6 @@ Request.prototype._enterNode = function(fn, node, index, level, args, pool, isLa
   if(self._notFound || isLastRoute){
     self.queue.end();
   }
-          
-  if(isLastRoute){
-    self.queue.end();
-  }
 }
 
 function exitNodes(queue, nodes, start){
