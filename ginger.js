@@ -362,7 +362,6 @@ _.extend(ginger.TaskQueue.prototype, {
 // Dual licensed under the MIT or GPL Version 2 licenses.
 // https://github.com/Wolfy87/EventEmitter
 //
-
 var EventEmitter = function() {};
 _.extend(EventEmitter.prototype,{
 
@@ -2740,34 +2739,31 @@ Array.prototype.humanSort = function() {
   });
 }
 */
-//------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------
 /**
-  FUTURE:
-  Perhaps we could add a "childs" parameter in the constructor.
-  A child should also know who is his father, but doing this we could
-  have a better rendering model, where we first traverse the view tree upwards,
-  and find the first parent that we need to render. calling render on this parent
-  will trigger rendering of all its childs recursively.
-  
-  As it is now, we have an explicit rendering model which is not particularly
-  convenient nor flexible.
+TODO: Add keyboard & mouse events. Ex: 
+ ('keydown:a', modifiers ['shift', 'ctrl', 'alt', 'cmd'])
+ ('mouseenter:')
+ ('mousedown:')
 */
 var View = ginger.View = Base.extend({
   constructor : function View(classNames, css, tag){
-    this.super(View)
-    this.classNames = classNames;
-    this.tag = tag || '<div>';
-    this.css = css;
+    var self = this;
+    self.super(View)
+    self.classNames = classNames;
+    self.tag = tag || '<div>';
+    self.css = css;
     
-    this._createElement();
+    self._createElement();
     
-    this.classNames && this.$el.addClass(this.classNames)
-    this.css && this.$el.css(this.css);
+    self.classNames && self.$el.addClass(self.classNames)
+    self.css && self.$el.css(self.css);
   },
   render : function($parent){
     this.$parent = $parent || this.$parent;
     this.$parent && this.$el && this.$el.detach().appendTo(this.$parent);
+    
     return this.$el;
   },
   refresh : function(){
@@ -2831,6 +2827,7 @@ _.extend(CanvasView.prototype,{
     }
   }
 });
+
 //------------------------------------------------------------------------------
 //
 // Views
