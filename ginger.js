@@ -2233,11 +2233,84 @@ Model.prototype.toJSON = Model.prototype.toArgs;
 Model.urlQuery = function(url){
   return {};
 }
+//-----------------------------------------------------------------------------
+/**
+  A sequence is a ordered set of models. The main difference is that the order
+  of the sequence is persisted in the storage (whereas collections are 
+  stored in unordered form). A sequence can also include multiple copies of the
+  same model.
+*/
+//-----------------------------------------------------------------------------
+function arrayify(x){return _.isArray(x)?x:[x]};
 
+var Sequence = Base.extend(function Sequence(items, model, parent){
+  this.super(Sequence, 'cosntructor', items, model, parent);
+  this._items = [];
+})
+_.extend(Sequence.prototype, {
+  /**
+    Adds a model (or models) to the sequence. If index is omitted,
+    the model is appended at the end of the sequence.
+        
+    add(items{Array|Model}, [index{Integer}, opts{Object}]);  
+    
+    Available opts and their defaults:
+      sync : false Determines if the operation should be synced with the Storage
+  */
+  add: function(items, index, opts){
+    if(_.isObject(index)){
+      opts = index;
+      index = undefined;
+    }
+    if(_.isUndefined(index)){
+      index = self.items.length;
+    }
+    items = arrayify(items);
+    for(var i=0;i<items.length;i++){
+      this._addOne(items[i], index++, opts);
+    }
+  },
+  _addOne: function(item, index, opts){
+    var self = this;
+    self.items.splice(index, 0, item);
+    
+    if(self.shouldSync()){
+      if(item.shouldPersist()){
+        Storage.create(self.bucket(), item);
+      }
+      self.update();
+    }
+    self.emit('added:', item, index, opts);
+  },
+  /**
+    Removes a model (or models) from the sequence.
+  */
+  remove: function(items, opts){
+    
+  },
+  /**
+    Gets the model at the given index
+  */
+  getAt: function(index){
+    return this._items[index];
+  },
+  
+  /**
+    Returns a jsonfiable representation of this sequence.
+  */
+  toArgs : function(){
+    return this._items;
+  }
+});
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
 /**
   A collection is a set of optionally ordered models. 
   It provides delegation and proxing of events.
 **/
+//-----------------------------------------------------------------------------
 var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
   this.super(Collection);
   
