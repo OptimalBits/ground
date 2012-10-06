@@ -1815,7 +1815,19 @@ var SyncManager = Base.extend({
   }
 });
 
-var Model = ginger.Model = Base.extend( function Model(args){
+/**
+  An abstract class representing a synchronizable object.
+*/
+var Synchronizable = ginger.Synchronizable = Base.extend({
+  /**
+    KeepSynced - Enables/Disables synchronization.
+  */
+  keepSynced: noop,
+  shouldSync: noop,
+  update: noop,
+});
+
+var Model = ginger.Model = Base.extend(function Model(args){
   this.super(Model);
   
   _.extend(this, args);
