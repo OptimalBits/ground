@@ -438,6 +438,32 @@ describe('simple routes', function(){
     goToUrl('/b/c');
   });
   
+  it('redirect to a deeper route calls after functions correctly', function(done){
+    var execAfter = false;
+    
+    route.stop();
+    goToUrl('');
+    
+    route(function(req){
+      req.get(function(){
+        if(req.isLast()){
+          req.redirect('/foo');
+        }
+        
+        req.after(function(){
+          execAfter = true;
+        })
+      
+        req.get('foo', '#foo', function(){
+          expect(execAfter).to.be.ok();
+          done();
+        })
+      })      
+    });
+    
+    goToUrl('/');
+  });
+  
   it('notFound should be called when no routes defined', function(done){
     route.stop();
     goToUrl('');
