@@ -299,6 +299,15 @@ describe('Model', function(){
     });
     
     /**
+      A model is deleted while being offline, as soon as we get back
+      online the client must delete the object.
+    */
+    it('serverside delete while offline', function(done){
+      // TO IMPLEMENT;
+      done();
+    });
+    
+    /**
       A model updated in the server while being offline gets 
       updated as soon as we get online.
       (Note: we do not handle conflicts yet).
