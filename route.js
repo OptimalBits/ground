@@ -448,8 +448,10 @@ Request.prototype.nextComponent = function(){
 Request.prototype.redirect = function(url, params){
   var self = this;
   url = params ? url+'?'+$.param(params) : url;
-  console.log("REDIRECT TO:"+url);
-  route.redirect(url);
+  self.queue.then(function(){
+    route.redirect(url);
+  })
+  self._wantsRedirect = true;
 }
 Request.prototype.node = function(){
   return this.nodes[this.index<=0 ? 0:(this.index-1)];
