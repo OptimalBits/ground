@@ -127,9 +127,9 @@ var Request = function(url, prevNodes){
   //
   for (i=0; i<len; i++){
     var prev = prevNodes[i];
-    if(prev && prev.autoreleasePool && (prev.component === components[i])){
+    if(prev && (prev.component === components[i])){
       self.nodes.push({
-        component:components[i], 
+        component:components[i],
         autoreleasePool:prev.autoreleasePool
       });
     }else{
@@ -142,7 +142,7 @@ var Request = function(url, prevNodes){
   //
   self.startIndex = i;
   for (i=self.startIndex; i<len; i++){
-    self.nodes.push({component:components[i]});
+    self.nodes.push({component:components[i], autoreleasePool: new AutoreleasePool()});
   }
   
 }
@@ -252,7 +252,7 @@ Request.prototype.get = function(){
     cb = args.cb,
     level = self.level;
 
-  if(!self._consume(component, level)){
+  if(self._wantsRedirect || !self._consume(component, level)){
     return self;
   }
   
@@ -263,17 +263,13 @@ Request.prototype.get = function(){
     processMiddlewares(self, args.middlewares, function(err){
       var
         node = self.node(),
+        pool = node.autoreleasePool,
         index = self.index,
         isLastRoute = index === self.components.length;
         
         if(index == self.startIndex){
           exitNodes(self.queue, self.prevNodes, self.startIndex);
-        }else{
-          node.autoreleasePool = new AutoreleasePool();
         }
-        
-        var pool = node.autoreleasePool;
-      
         self._initNode(selector, node);
     
         if(cb){
