@@ -668,7 +668,7 @@ _.extend(UndoManager.prototype,{
   redo : function(){
     var action = this.undones.pop();
     if(action){
-      action.do(action.fn)
+      action['do'](action.fn)
       var name = action.name || ''
       this.emit('redo', name)
       this.actions.push(action);
