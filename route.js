@@ -64,19 +64,15 @@ var wrap = function(fn, args, cb){
   return function(done){
     if(_.isFunction(args)){
       cb = args;
-      args = undefined;
+      args = [];
     }
-    cb = _.isFunction(cb)?cb:undefined;
+    cb = _.isFunction(cb) ? cb : ginger.noop;
     
     (function(args){
-      args = args?args:[];
+      args = args || [];
       args.push(function(){
-        if(cb){
-          cb(done);
-          if(cb.length === 0){
-            done();
-          }
-        }else{
+        cb(done);
+        if(cb.length === 0){
           done();
         }
       });
@@ -92,9 +88,6 @@ var decomposeUrl = function(url){
   var s = url.split('?'), components, len;
   
   components = s[0].split('/');
-  /*if(components[0] === ''){
-    components.splice(0,1);
-  }*/
   len = components.length
   if(_.last(components) === '' && len > 1){
     components.splice(len-1, 1);
@@ -295,12 +288,12 @@ Request.prototype.get = function(){
 */
 Request.prototype.before = function(cb){
   var fn = _.bind(function(cb){cb()}, this);
-  this.node().before =  wrap(fn, cb);
+  this.node().before = wrap(fn, cb);
   return this;
 }
 Request.prototype.after = function(cb){
   var fn = _.bind(function(cb){cb()}, this);
-  this.node().after =  wrap(fn, cb);
+  this.node().after = wrap(fn, cb);
   return this;
 }
 Request.prototype.exit = function(name, speed, cb){
