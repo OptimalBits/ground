@@ -3125,10 +3125,6 @@ Views.Table = View.extend({
       var $this = $(this), cid = $this.data('id');
       self.emit('clicked:', collection.findById(cid), $this);
     });
-  
-    if(self.footer) {
-      self.$el.append(self.footerCon.$el);
-    }
 
     self.on('clicked:', function(item, $row){
       self._selectRow($row);
@@ -3191,25 +3187,42 @@ Views.Table = View.extend({
       self.populate(self.index, self.limit);
     });
   },
+  makeFooter : function(shownItems) {
+    $('.table-footer', this.$el).remove();
+    var $textContainer = $('<div class="table-footer-text-container">').append('Showing ' + shownItems);
+    if(shownItems < this.collection.items.length) {
+      $textContainer.append(' of ' + this.collection.items.length);
+    } 
+     if(this.collection.items.length == 1) {
+      $textContainer.append(' entry');
+    } else {
+      $textContainer.append(' entries');
+    } 
+
+    var $footer = $('<div class="table-footer">').append($textContainer);                                                  
+    this.$el.append($footer);
+  },
   populate : function(index,limit){
     var self=this;
     self.$tbody.empty();
     var indexStart = index || 0;
     var indexLast = limit ? limit+indexStart : self.collection.items.length;
-    if (self.footer) {
-      self.footerCon.$showing.text(indexStart);
-      self.footerCon.$to.text(indexLast);
-      self.footerCon.$of.text(self.collection.items.length);
-    }
+
     var items = self.collection.items.slice(indexStart, indexLast);
+    var shownItems = 0;
     _.each(items, function(item){
       if(!self.filter || 
         self.filter(item, self.filterData, self.searchFields || self.fields)) {
           self.formatters && item.format(self.formatters);
           var row = new TableRow(item, self.fields, self.widths);
           row.render(self.$tbody);
+          shownItems++;
       }
     });
+    
+    if (self.footer) {
+      self.makeFooter(shownItems);
+    }
     self.select();
   },
   _selectRow : function($row){
