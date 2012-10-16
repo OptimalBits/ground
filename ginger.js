@@ -816,7 +816,7 @@ Storage.first = function(bucket, parent){
 Storage.update = function(bucket, id, args, cb){
   Storage.findById(bucket, id, function(err, obj){
     // we safely ignore errors here
-    obj = obj || {cid:id};
+    obj = obj || {cid:id};
     _.extend(obj, args)
     Storage.create(bucket, obj, cb);
   })
@@ -933,24 +933,24 @@ ServerStorage.ajax = {
 }
 
 function safeEmit(socket){
-  var cb = _.last(arguments), args = _.rest(arguments);
-   
-  function errorFn(){
-    cb(new Error('Socket disconnected'));
-  };
-  function proxyCb(err, res){
-    Model.socket.removeListener('disconnect', errorFn);
-    cb(err,res);
-  };
-  
+  var cb = _.last(arguments), args = _.rest(arguments);
+   
+  function errorFn(){
+    cb(new Error('Socket disconnected'));
+  };
+  function proxyCb(err, res){
+    Model.socket.removeListener('disconnect', errorFn);
+    cb(err,res);
+  };
+
   args[args.length-1] = proxyCb;
-    
-  if(socket.socket.connected){
+
+ if(socket.socket.connected){
     socket.once('disconnect', errorFn);
-    socket.emit.apply(socket, args);
-  }else{
+    socket.emit.apply(socket, args);
+ }else{
     errorFn();
-  }
+ }
 }
 
 ServerStorage.socket = {
@@ -984,7 +984,7 @@ ServerStorage.socket = {
       } else {
         if(items.length){
           var ids = [], args;
-          collection = collection || bucket;
+          collection = collection || bucket;
           for(var i=0, len=items.length;i<len;i++){
             args = items[i];
             args.cid = args._id || args.cid;
@@ -1426,7 +1426,7 @@ var Cache = ginger.Base.extend({
   constructor : function Cache(maxSize){ 
     this.super(Cache);
     this._populate();
-    this._maxSize = maxSize || 5*1024*1024;
+    this._maxSize = maxSize || 5*1024*1024;
   },
   each:function(cb){
     var result;
@@ -2052,7 +2052,7 @@ _.extend(Model.prototype,{
     return this._id || this.cid;
   },
   isPersisted : function(){
-    return this.__persisted || this._id;
+    return this.__persisted || this._id;
   },
   transport : function(transport){
     if(transport){
@@ -2364,7 +2364,7 @@ Collection.instantiate = function(model, parent, array, cb){
     array = parent;
     parent = null;
   }
-  cb = cb || noop;
+  cb = cb || noop;
   
   if(array){
     var items = [];
@@ -2761,7 +2761,7 @@ var View = ginger.View = Base.extend({
     self.css && self.$el.css(self.css);
   },
   render : function($parent){
-    this.$parent = $parent || this.$parent;
+    this.$parent = $parent || this.$parent;
     this.$parent && this.$el && this.$el.detach().appendTo(this.$parent);
     
     return this.$el;
@@ -2896,7 +2896,7 @@ Views.Slider = View.extend({
     this.super(Views.Slider, 'constructor', classNames);
     
     function setOptions(options){
-      self.options = _.clone(options) || {};
+      self.options = _.clone(options) || {};
       _.extend(self.options, {
         start : function(event, ui){
           self.emit('start').emit('started:');
@@ -3221,7 +3221,7 @@ Views.Table = View.extend({
     $row.addClass(selected);
   },
   select : function(itemId){
-    itemId = itemId || this.selectedItemId;
+    itemId = itemId || this.selectedItemId;
     if(itemId){
       var $row = $("tr[data-id='" + itemId +"']"), index, selectedRowHeight;
       if($row.length){
@@ -3251,7 +3251,7 @@ Views.Table = View.extend({
  */
 Views.Modal = View.extend({
   constructor : function Modal(options){
-    this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
+    this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
     var view = this;
 
     // header
