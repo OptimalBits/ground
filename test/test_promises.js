@@ -106,22 +106,20 @@ describe('Promises and Tasks', function(){
       expect(index).to.be(0);
       index++;
       cb();
-    });
- 
-    queue.append(function(cb){
+    }).append(function(cb){
       expect(index).to.be(1);
       index++;
       cb();
-    });
-
-    queue.append(function(cb){
+    }).append(function(cb){
       expect(index).to.be(2);
       index++;
       cb();
-    });
-    
-    queue.end(function(){
+    }).append(function(cb){
       expect(index).to.be(3);
+      index++;
+      cb();
+    }).end().then(function(){
+      expect(index).to.be(4);
       done();
     })
   });
@@ -135,21 +133,15 @@ describe('Promises and Tasks', function(){
         expect(index).to.be(0);
         index++;
         cb();
-      });
-   
-      queue.append(function(cb){
+      }).append(function(cb){
         expect(index).to.be(1);
         index++;
         queue.cancel();
         cb();
-      });
-  
-      queue.append(function(cb){
+      }).append(function(cb){
         expect(1).to.be(false);
         cb();
-      });
-      
-      queue.end(function(){
+      }).end().then(function(){
         expect(index).to.be(2);
         done();
       });
