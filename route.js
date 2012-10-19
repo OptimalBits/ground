@@ -525,8 +525,13 @@ Request.prototype._render = function(templateUrl, css, locals, cb){
           len = $imgs.length,
       counter = 0;
 
+    cb = _.once(cb);
+    var deferTimeout = _.debounce(cb, 200); //sensible?
+
     if(len>0){
+      deferTimeout(); //start timer
       $imgs.load(function(){
+        deferTimeout();
         counter++;
         if(counter===len){
           cb();
