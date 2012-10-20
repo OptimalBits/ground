@@ -5,11 +5,25 @@ var express = require('express'),
     sio = require('socket.io').listen(app),
     models = require('./test_mongo_models'),
     redis = require('redis'),
-    staticDir = __dirname + '/../',
-    Server = require('../server');
+    cabinet = require('cabinet'),
+    Server = require('../server'),
+    staticDir = __dirname + '/../';
 
-app.use(express.static(staticDir));
-app.use(express.static(__dirname));
+app.use(cabinet(staticDir, 
+  {
+    typescript: {
+      tmpPath: '/var/tmp'
+    }
+  },
+  function(url){
+    console.log(url);
+    sio.sockets.emit('file_changed:', url);
+  }
+));
+app.use(cabinet(__dirname, function(url){
+  sio.sockets.emit('file_changed:', url);
+  console.log(url);
+}));
 app.use(express.bodyParser());
 
 app.put('/animals/:id', function(req, res){
