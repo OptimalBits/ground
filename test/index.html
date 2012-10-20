@@ -23,6 +23,11 @@
                path: 'http://localhost:8080/',
                main: 'ginger',
                 lib: ''
+             },
+             'task': {
+               path: 'http://localhost:8080/',
+               main: 'task.ts?',
+               lib: ''
              }
            }
        };
@@ -35,9 +40,12 @@
   
     var socket = io.connect('http://localhost:8080');
     socket.once('connect', function(){
+      socket.on('file_changed:', function(url){
+        document.location.reload(true)
+      })
       //$(function () {
         curl(['test/test_cache'], function(){
-          curl(['test/test_promises',
+          curl(['test/task',
                 'test/test_routes',
                 'test/test_events',
                 'test/test_declare',
@@ -52,6 +60,7 @@
           });
         });
         //})
+        
     });
   </script>
 </head>
