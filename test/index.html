@@ -10,19 +10,15 @@
   <script type="text/javascript">
     curl = {
            baseUrl: 'http://localhost:8080/',
+           paths: {
+              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+           },
            packages: {
-             'jquery': {
-               path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-               main:'jquery.min'
-             },
-             'underscore':{
-               path:'https://raw.github.com/amdjs/underscore/master/',
-               main:'underscore-min'
-             },
              'ginger': {
-                 path: 'http://localhost:8080/',
+                 path: '', // http://localhost:8080 (relative)
                  main: 'ginger',
-                  lib: ''
+                 lib: ''
              }
            }
        };
