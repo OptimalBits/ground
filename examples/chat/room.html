@@ -2,35 +2,32 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Chat Example</title>
-  <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
+  <title>Chat Room</title>
+  <link rel="stylesheet" type="text/css" href="../styles.css">
   <script src="http://localhost:8080/socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
-      packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
-          lib: ''
-        },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
-      }
-    };
+           baseUrl: 'http://localhost:8080/',
+           paths: {
+//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+//              'jqueryui': 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min'
+              'jquery': 'local/jquery-1.7.1',
+              'underscore': 'local/underscore',
+              'jqueryui': 'local/jquery-ui'
+           },
+           packages: {
+             'ginger': {
+                 path: '', // http://localhost:8080 (relative)
+                 main: 'ginger',
+                 lib: ''
+             }
+           }
+       };
   </script>
   
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <!--  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script> -->
+  <script src="../local/curl.js"></script>
   <script>
 
     curl(['ginger', 'ginger/route'], function(ginger, route) {
@@ -76,14 +73,17 @@
               });
               history.render($('#history'));
               
+              $('#msgbox').focus();
+              
               $('#submit').click(function() {
-                var msg = new Message({text : $('#msgbox').val()}); 
+                var msg = new Message({text : '> '+$('#msgbox').val()}); 
                 messages.add(
                   msg,
                   function(err){
                     console.log(err); 
                   }
                 );
+                $('#msgbox').val('').focus();
               }); 
 
               $('#msgbox').keypress(function(e) {
@@ -100,6 +100,7 @@
 </head>
 <body>
   <div id="chatroom">
+    <h1>This is the chat room you just created. Send this URL to your friends to start chatting :)</h1>
     <div id="history"></div>
     <input id="msgbox" type="text"></input>
     <input id="submit" type="submit"></input>

@@ -2,6 +2,14 @@
   font-family: sans-serif;
 }
 
+h1 {
+  font-size: 1.3em;
+}
+
 a {
   text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }

@@ -3,34 +3,31 @@
 <head>
   <meta charset="utf-8">
   <title>Chat Example</title>
-  <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
+  <link rel="stylesheet" type="text/css" href="../styles.css">
   <script src="http://localhost:8080/socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
-      packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
-          lib: ''
-        },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
-      }
-    };
+           baseUrl: 'http://localhost:8080/',
+           paths: {
+//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+//              'jqueryui': 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min'
+              'jquery': 'local/jquery-1.7.1',
+              'underscore': 'local/underscore',
+              'jqueryui': 'local/jquery-ui'
+           },
+           packages: {
+             'ginger': {
+                 path: '', // http://localhost:8080 (relative)
+                 main: 'ginger',
+                 lib: ''
+             }
+           }
+       };
   </script>
   
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <!--  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script> -->
+  <script src="../local/curl.js"></script>
   <script>
 
     curl(['ginger'], function(ginger){
@@ -38,10 +35,6 @@
       socket.on('connect', function(){
         
         ginger.Model.set('socket', socket);
-
-//        var Message = ginger.Declare(ginger.Model);
-//        Message.bucket('messages');
-//        Message.use('socket');
 
         var Chat = ginger.Declare(ginger.Model);
         Chat.bucket('Chat');
@@ -51,10 +44,11 @@
           chat.keepSynced();
           
           chat.save(function(err){
-            var url = 'http://localhost:8080/chat/room.html#/' + chat._id;
+            // create an URL pointing at the new room
+            var url = location.href.replace(/[^\/]*$/, '') +
+              'room.html#' + chat._id;
 
-            console.log(err);
-
+            // show the link to the new chat room on the page
             $('#link').append('<li><a href="' + url + '" target="_blank">' + url + '</a></li>');
           });
         });
@@ -63,6 +57,8 @@
   </script>
 </head>
 <body>
+  <h1>Chat example</h1>
+  <p>This example demonstrates how Ground models can be used to create chat roooms on the fly.</p>
   <input id="submit" type="submit" value="Create new Room"></input>
   <ul id="link"></ul>
 </body>

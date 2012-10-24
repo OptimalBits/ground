@@ -3,33 +3,31 @@
 <head>
   <meta charset="utf-8">
   <title>Routing Example</title>
-  <link rel="stylesheet" type="text/css" href="styles.css"> 
+  <link rel="stylesheet" type="text/css" href="../styles.css">
+  <link rel="stylesheet" type="text/css" href="styles.css">
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
-      packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
-          lib: ''
-        },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
-      }
-    };
+           baseUrl: 'http://localhost:8080/',
+           paths: {
+//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+//              'jqueryui': 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min'
+              'jquery': 'local/jquery-1.7.1',
+              'underscore': 'local/underscore',
+              'jqueryui': 'local/jquery-ui'
+           },
+           packages: {
+             'ginger': {
+                 path: '', // http://localhost:8080 (relative)
+                 main: 'ginger',
+                 lib: ''
+             }
+           }
+       };
   </script>
   
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <!--  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script> -->
+  <script src="../local/curl.js"></script>
   <script>
     curl(['ginger', 'ginger/route', 'underscore'], function(ginger, route, _){
 		
@@ -39,26 +37,26 @@
 
 
         // Define the route hierachy
-        req.get(function() {
+        req.get('','#main',function() {
           req
-            .load('data/fauna.json')
-            .render('templates/fauna.tmpl')
+            .load('routing/data/fauna.json')
+            .render('routing/templates/fauna.tmpl')
             .enter('fadeIn', 'fast');
 
           // Family
           req.get(':family', '#family', function() { // ':family' is a parameter
             req
-              .load('data/families/' + req.params['family'] + '.json')
-              .render('templates/family.tmpl')
+              .load('routing/data/families/' + req.params['family'] + '.json')
+              .render('routing/templates/family.tmpl')
               .enter('slideDown', 'slow')
               .exit('slideUp', 'slow');
        
             // Animal
             req.get(':animal', '#animal', function() { // ':animal' is a parameter
               req
-                .load('data/families/' + req.params['family'] + '/' +
+                .load('routing/data/families/' + req.params['family'] + '/' +
                   req.params['animal'] + '.json')
-                .render('templates/animal.tmpl')
+                .render('routing/templates/animal.tmpl')
                 .enter('fadeIn', 'slow')
                 .exit('fadeOut', 'slow');
             });
@@ -69,5 +67,8 @@
   </script>
 </head>
 <body>
+  <h1>Routing example</h1>
+  <p>This example demonstrates how Ground's hierarchical routing works</p>
+  <div id="main"></div>
 </body>
 </html>

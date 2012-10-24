@@ -1,29 +1,29 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tables Examples</title>  
+  <title>Table Example</title>  
+  <link rel="stylesheet" type="text/css" href="../styles.css">
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/',
-        packages: {
-          'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
-          lib: ''
-        },
-        'jquery': {
-          path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main:'jquery.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        }
-     }
-   };
+           baseUrl: 'http://localhost:8080/',
+           paths: {
+//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+              'jquery': 'local/jquery-1.7.1',
+              'underscore': 'local/underscore'
+           },
+           packages: {
+             'ginger': {
+                 path: '', // http://localhost:8080 (relative)
+                 main: 'ginger',
+                 lib: ''
+             }
+           }
+       };
   </script>
   
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <!--  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script> -->
+  <script src="../local/curl.js"></script>
   
   <script>
     curl(['ginger'], function(ginger){
@@ -72,6 +72,8 @@
   </script>
 </head>
 <body>
+  <h1>Table example</h1>
+  <p>This example demonstrates how Ground's table works</p>
   <div id="example1"></div>
 </body>
 </html>
