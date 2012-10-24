@@ -7,10 +7,8 @@
     curl = {
            baseUrl: 'http://localhost:8080/',
            paths: {
-//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
-//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
-              'jquery': 'local/jquery-1.7.1',
-              'underscore': 'local/underscore'
+              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
            },
            packages: {
              'ginger': {
@@ -22,8 +20,7 @@
        };
   </script>
   
-  <!--  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script> -->
-  <script src="../local/curl.js"></script>
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
   
   <script>
     curl(['ginger'], function(ginger){
