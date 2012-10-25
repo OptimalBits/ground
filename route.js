@@ -609,7 +609,7 @@ var route = function (root, cb) {
   }
   
   var req, fn = function(){
-      var url = location.hash.substring(1);
+      var url = location.hash.replace(/^#!?/, '');
       if(!req || (req.url !== url)){
         req && req.queue.cancel();
       
@@ -645,7 +645,7 @@ var route = function (root, cb) {
 
   if (location.hash === '') {
     if (root) {
-      location.hash = root;
+      location.hash = '!' + root;
     }
   }else{
     fn();

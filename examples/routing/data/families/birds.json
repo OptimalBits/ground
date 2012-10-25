@@ -3,11 +3,11 @@
   "animals": [
     {
       "name": "Parrot",
-      "link": "#/birds/parrot"
+      "link": "#!/birds/parrot"
     },  
     {
       "name": "Eagle",
-      "link": "#/birds/eagle"
+      "link": "#!/birds/eagle"
     } 
   ]
 }

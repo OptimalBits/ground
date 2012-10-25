@@ -3,15 +3,15 @@
   "animals": [
     {
       "name": "Crocodile",
-      "link": "#/reptiles/crocodile"
+      "link": "#!/reptiles/crocodile"
     },  
     {
       "name": "Snake",
-      "link": "#/reptiles/snake"
+      "link": "#!/reptiles/snake"
     } ,
     {
       "name": "Turtle",
-      "link": "#/reptiles/turtle"
+      "link": "#!/reptiles/turtle"
     } 
   ]
 }

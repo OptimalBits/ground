@@ -3,15 +3,15 @@
   "animals": [
     {
       "name": "Shark",
-      "link": "#/fish/shark"
+      "link": "#!/fish/shark"
     },  
     {
       "name": "Pike",
-      "link": "#/fish/pike"
+      "link": "#!/fish/pike"
     },  
     {
       "name": "Salmon",
-      "link": "#/fish/salmon"
+      "link": "#!/fish/salmon"
     } 
   ]
 }

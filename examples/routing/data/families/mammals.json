@@ -3,15 +3,15 @@
   "animals": [
     {
       "name": "Dog",
-      "link": "#/mammals/dog"
+      "link": "#!/mammals/dog"
     },  
     {
       "name": "Cat",
-      "link": "#/mammals/cat"
+      "link": "#!/mammals/cat"
     },  
     {
       "name": "Cow",
-      "link": "#/mammals/cow"
+      "link": "#!/mammals/cow"
     } 
   ]
 }
