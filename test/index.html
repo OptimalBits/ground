@@ -2,19 +2,17 @@
 <head>
   <meta charset="utf-8">
   <title>Mocha Tests</title>
-  <link rel="stylesheet" href="local/mocha.css" />
-  <script src="local/expect.js"></script>
-  <script src="local/mocha.js"></script>
+  <link rel="stylesheet" href="https://raw.github.com/visionmedia/mocha/master/mocha.css" />
+  <script src="https://raw.github.com/LearnBoost/expect.js/d2440da086bf8dc38c6085641f23b968a0f48b29/expect.js"></script>
+  <script src="https://raw.github.com/visionmedia/mocha/master/mocha.js"></script>
   <script src="http://localhost:8080/socket.io/socket.io.js"></script>
   
   <script type="text/javascript">
     curl = {
            baseUrl: 'http://localhost:8080/',
            paths: {
-//              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
-//              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
-              'jquery': 'local/jquery-1.7.1',
-              'underscore': 'local/underscore'
+              'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
            },
            packages: {
              'ginger': {
@@ -26,7 +24,7 @@
        };
   </script>
   
-  <script src="local/curl.js"></script>
+  <script src="https://raw.github.com/cujojs/curl/dev/dist/curl-kitchen-sink/curl.js"></script>
   
   <script>
     mocha.setup('bdd')
