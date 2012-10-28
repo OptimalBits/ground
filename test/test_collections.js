@@ -227,7 +227,7 @@ describe('Collections', function(){
           });
           
           animals.add(tiger, function(err){
-            tiger.delete();
+            tiger['delete']();
           });
         });
       });

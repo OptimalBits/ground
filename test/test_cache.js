@@ -7,7 +7,7 @@ describe('Local Cache', function(){
     'foo' : 'payload1',
     'bar' : 'payload2',
     'baz' : 'payload3',
-    'qux' : 'payload4',        
+    'qux' : 'payload4'
   };
   
   after(function(){

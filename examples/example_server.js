@@ -38,6 +38,6 @@ mongoose.connect('mongodb://localhost/exampleDB', function(){
     mongoose.connect('mongodb://localhost/exampleDB');
     var server = new Server(models, 6379, 'localhost', sio.sockets);
 
-  app.listen(8080);
+  app.listen(8081);
   console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
 });

@@ -5,11 +5,11 @@
   <link rel="stylesheet" href="https://raw.github.com/visionmedia/mocha/master/mocha.css" />
   <script src="https://raw.github.com/LearnBoost/expect.js/d2440da086bf8dc38c6085641f23b968a0f48b29/expect.js"></script>
   <script src="https://raw.github.com/visionmedia/mocha/master/mocha.js"></script>
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   
   <script type="text/javascript">
     curl = {
-           baseUrl: 'http://localhost:8080/',
+           baseUrl: '',
            paths: {
               'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
               'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
@@ -29,14 +29,14 @@
   <script>
     mocha.setup('bdd')
   
-    var socket = io.connect('http://localhost:8080');
+    var socket = io.connect(location.protocol+'//'+location.host);
     socket.once('connect', function(){
       //$(function () {
-        curl(['test/test_cache'], function(){
-          curl(['test/test_promises',
+//        curl(['test/test_cache'], function(){
+          curl([//'test/test_promises',
                 'test/test_routes',
-                'test/test_events',
-                'test/test_declare',
+//                'test/test_events',
+//                'test/test_declare',
                 'test/test_base',
                 'test/test_models',
                 'test/test_collections',
@@ -46,7 +46,7 @@
                 .run()
                 .globals(['socket']) // acceptable globals
           });
-        });
+//        });
         //})
     });
   </script>

@@ -268,7 +268,7 @@ describe('Model', function(){
         tempAnimal.keepSynced();
         expect(tempAnimal).to.have.property('_id');
         socket.disconnect();
-        tempAnimal.delete(function(){
+        tempAnimal['delete'](function(){
           socket.socket.connect();              
         });
       });
@@ -283,7 +283,7 @@ describe('Model', function(){
         expect(spiderPig).to.have.property('_id');
         spiderPig.keepSynced();
           
-        spiderPig.delete(function(err){
+        spiderPig['delete'](function(err){
           expect(err).to.not.be.ok();
           
           socket.disconnect();
@@ -340,7 +340,7 @@ describe('Model', function(){
 
   describe('Delete', function(){
     it('deletes and propagates delete event', function(done){
-      animal.delete(function(err){
+      animal['delete'](function(err){
         expect(err).to.not.be.ok();
       });
         

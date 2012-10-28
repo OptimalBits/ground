@@ -7,7 +7,7 @@
   <link rel="stylesheet" type="text/css" href="styles.css">
   <script type="text/javascript">
     curl = {
-           baseUrl: 'http://localhost:8080/',
+           baseUrl: '',
            paths: {
               'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
               'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min',
@@ -35,24 +35,24 @@
         // Define the route hierachy
         req.get('','#main',function() {
           req
-            .load('routing/data/fauna.json')
-            .render('routing/templates/fauna.tmpl')
+            .load('data/fauna.json')
+            .render('templates/fauna.tmpl')
             .enter('fadeIn', 'fast');
 
           // Family
           req.get(':family', '#family', function() { // ':family' is a parameter
             req
-              .load('routing/data/families/' + req.params['family'] + '.json')
-              .render('routing/templates/family.tmpl')
+              .load('data/families/' + req.params['family'] + '.json')
+              .render('templates/family.tmpl')
               .enter('slideDown', 'slow')
               .exit('slideUp', 'slow');
        
             // Animal
             req.get(':animal', '#animal', function() { // ':animal' is a parameter
               req
-                .load('routing/data/families/' + req.params['family'] + '/' +
+                .load('data/families/' + req.params['family'] + '/' +
                   req.params['animal'] + '.json')
-                .render('routing/templates/animal.tmpl')
+                .render('templates/animal.tmpl')
                 .enter('fadeIn', 'slow')
                 .exit('fadeOut', 'slow');
             });

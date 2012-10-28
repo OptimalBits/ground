@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <title>Chat Room</title>
   <link rel="stylesheet" type="text/css" href="../styles.css">
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="../socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-           baseUrl: 'http://localhost:8080/',
+           baseUrl: '',
            paths: {
               'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
               'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min',
@@ -31,7 +31,6 @@
       route(function(req) {
           // Route to room
           req.get(':roomid', function() {
-            console.log(req.params['roomid']);
             
             enterRoom(req.params['roomid']);
           });
@@ -40,13 +39,11 @@
       function enterRoom(roomId) {
 
         // Connect to backend
-        var socket = io.connect('http://localhost:8080');
+        var socket = io.connect(location.protocol+'//'+location.host);
         socket.on('connect', function() {
           // Declare models
           var Message = ginger.Declare(ginger.Model),
               Chat = ginger.Declare(ginger.Model);
-
-          console.log('connected')
 
           // Setup models
           ginger.Model.set('socket', socket);

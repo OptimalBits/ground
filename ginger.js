@@ -69,6 +69,25 @@ if (!Object.create) {
 }
 
 //
+// IE support
+//
+
+if (!Date.now) {
+  Date.now = function() {
+    return new Date().valueOf();
+  };
+}
+
+if (!console || !console.log) {
+  console = {
+    log: function() {
+      // Logging?
+    }
+  };
+}
+
+
+//
 // Ginger Object
 //
 
@@ -1109,7 +1128,7 @@ function Inherit(Sub, Super){
   Sub.superproto = Super.prototype
 
   // TODO: try to deprecate klass
-  Sub.prototype.super = function(klass, fn){
+  Sub.prototype['super'] = function(klass, fn){
     //console.log(arguments.callee.caller === klass);
     return klass.superproto[fn||'constructor'].apply(this, _.rest(arguments, 2));
   }
@@ -1135,8 +1154,9 @@ var Declare = ginger.Declare = function(Super, Sub, staticOrName, bucket){
   
   if(!Sub){
     Sub = function Gnd(){
+
       var self = this;
-      if(!(self instanceof Gnd)){
+      if(!(self instanceof Gnd) && !(self instanceof Sub)){
         return new Gnd(arguments);
       }else{
         return Super.prototype.constructor.apply(self, arguments);
@@ -1424,7 +1444,7 @@ var ls = localStorage;
 
 var Cache = ginger.Base.extend({
   constructor : function Cache(maxSize){ 
-    this.super(Cache);
+    this['super'](Cache);
     this._populate();
     this._maxSize = maxSize || 5*1024*1024;
   },
@@ -1541,7 +1561,7 @@ var localCache = ginger.localCache = new Cache();
 var Queue = ginger.Base.extend({
   'constructor' : function Queue(args){
     var self = this;
-    self.super(Queue);
+    self['super'](Queue);
   
     var savedQueue = ls.storageQueue;
     
@@ -1668,7 +1688,7 @@ var Queue = ginger.Base.extend({
   TODO: Rename to Timer.
 */
 var Interval = ginger.Interval = Base.extend(function Interval(resolution){
-  this.super(Interval);
+  this['super'](Interval);
   this.time = 0;
   this._timer = null;
   this._resolution = resolution;
@@ -1677,7 +1697,7 @@ var Interval = ginger.Interval = Base.extend(function Interval(resolution){
 _.extend(Interval.prototype, {
   destroy : function(){
     this.stop();
-    this.super(Interval, 'destroy');
+    this['super'](Interval, 'destroy');
   },
   
   /**
@@ -1823,11 +1843,11 @@ var Synchronizable = ginger.Synchronizable = Base.extend({
   */
   keepSynced: noop,
   shouldSync: noop,
-  update: noop,
+  update: noop
 });
 
 var Model = ginger.Model = Base.extend(function Model(args){
-  this.super(Model);
+  this['super'](Model);
   
   _.extend(this, args);
 
@@ -2041,7 +2061,7 @@ var Model = ginger.Model = Base.extend(function Model(args){
 _.extend(Model.prototype,{
   destroy : function(){
     Model.syncManager.endSync(this);
-    this.super(Model, 'destroy');
+    this['super'](Model, 'destroy');
   },
   id : function(id){
     if(id){
@@ -2173,7 +2193,7 @@ _.extend(Model.prototype,{
       })
     }
   },
-  delete : function(transport, cb){
+  'delete' : function(transport, cb){
     var self = this;
     
     self.local().remove();
@@ -2220,7 +2240,7 @@ _.extend(Model.prototype,{
         self.update(doc);
       }
     });
-  },
+  }
 });
 
 Model.prototype.toJSON = Model.prototype.toArgs;
@@ -2243,7 +2263,7 @@ Model.urlQuery = function(url){
 function arrayify(x){return _.isArray(x)?x:[x]};
 
 var Sequence = Base.extend(function Sequence(items, model, parent){
-  this.super(Sequence, 'cosntructor', items, model, parent);
+  this['super'](Sequence, 'cosntructor', items, model, parent);
   this._items = [];
 })
 _.extend(Sequence.prototype, {
@@ -2311,7 +2331,7 @@ _.extend(Sequence.prototype, {
 **/
 //-----------------------------------------------------------------------------
 var Collection = ginger.Collection = Base.extend(function Collection(items, model, parent, sortByFn){
-  this.super(Collection);
+  this['super'](Collection);
   
   var self = this;
   
@@ -2621,7 +2641,7 @@ _.extend(Collection.prototype, {
     this._keepSynced && this._endSync();
     ginger.release(this.items);
     this.items = null;
-    this.super(Collection, 'destroy');
+    this['super'](Collection, 'destroy');
   },
   _initItems : function(items){
     var self = this;
@@ -2750,7 +2770,7 @@ TODO: Add keyboard & mouse events. Ex:
 var View = ginger.View = Base.extend({
   constructor : function View(classNames, css, tag){
     var self = this;
-    self.super(View)
+    self['super'](View)
     self.classNames = classNames;
     self.tag = tag || '<div>';
     self.css = css;
@@ -2787,7 +2807,7 @@ var View = ginger.View = Base.extend({
   },
   destroy : function(){
     this.remove();
-    this.super(View, 'destroy');
+    this['super'](View, 'destroy');
   },
   _createElement: function(){
     if(!this.$el){
@@ -2797,7 +2817,7 @@ var View = ginger.View = Base.extend({
 });
 //------------------------------------------------------------------------------
 var CanvasView = ginger.CanvasView = View.extend(function CanvasView(classNames){
-  this.super(CanvasView, 'constructor', classNames)
+  this['super'](CanvasView, 'constructor', classNames)
   this.$canvas = null
   var cv = this
   this.on('changed:', function(){
@@ -2806,7 +2826,7 @@ var CanvasView = ginger.CanvasView = View.extend(function CanvasView(classNames)
 });
 _.extend(CanvasView.prototype,{
   render : function($parent){
-    this.super(CanvasView, 'render', $parent)
+    this['super'](CanvasView, 'render', $parent)
     if(this.$parent){
       if(this.$canvas){
         this.$canvas.remove()
@@ -2837,7 +2857,7 @@ var Views = ginger.Views = {}
 //------------------------------------------------------------------------------
 Views.ComboBox = View.extend({
   constructor : function ComboBox(items, selected){
-    this.super(Views.ComboBox);
+    this['super'](Views.ComboBox);
     var view = this
   
     if(selected){
@@ -2893,7 +2913,7 @@ Views.ComboBox = View.extend({
 Views.Slider = View.extend({
   constructor : function Slider(options, classNames){
     var self = this;
-    this.super(Views.Slider, 'constructor', classNames);
+    this['super'](Views.Slider, 'constructor', classNames);
     
     function setOptions(options){
       self.options = _.clone(options) || {};
@@ -2937,7 +2957,7 @@ Views.Slider = View.extend({
 //------------------------------------------------------------------------------
 Views.ColorPicker = View.extend({
   constructor : function ColorPicker(options){
-    this.super(Views.ColorPicker)
+    this['super'](Views.ColorPicker)
     var view = this
   
     view.$colorPicker = $('<input>').attr({name:"color",
@@ -2963,7 +2983,7 @@ Views.ColorPicker = View.extend({
     })
   },
   render : function($parent){
-    this.super(Views.ColorPicker, 'render')
+    this['super'](Views.ColorPicker, 'render')
     $parent.append(this.$colorPicker)
     return this.$el
   },
@@ -2979,7 +2999,7 @@ Views.TextField = View.extend(function TextField(classNames, options){
   }else{
     $el = this.$el = $('<input>')
   }
-  this.super(Views.TextField, 'constructor', classNames)
+  this['super'](Views.TextField, 'constructor', classNames)
   
   _.extend(this, options)
   _.defaults(this, {
@@ -3012,7 +3032,7 @@ Views.TextField = View.extend(function TextField(classNames, options){
 })
 //------------------------------------------------------------------------------
 Views.CheckBox = View.extend( function CheckBox(css){
-  this.super(Views.CheckBox)
+  this['super'](Views.CheckBox)
   if(css) {
     this.$el.css(css);
   }
@@ -3031,12 +3051,12 @@ Views.CheckBox = View.extend( function CheckBox(css){
 })
 //------------------------------------------------------------------------------
 Views.RadioButton = View.extend( function(){
-  this.super(Views.RadioButton)
+  this['super'](Views.RadioButton)
 })
 //------------------------------------------------------------------------------
 Views.Label = View.extend( function(classNames, css){
   this.$el = $('<span>');
-  this.super(Views.Label, 'constructor', classNames, css)
+  this['super'](Views.Label, 'constructor', classNames, css)
 
   var view = this
   this.on('text', function(value){
@@ -3096,7 +3116,7 @@ Views.Table = View.extend({
     _.extend(self, options);
     _.defaults(self, {widths:[]});
   
-    self.super(Views.Table, 'constructor', options.classNames, options.css);
+    self['super'](Views.Table, 'constructor', options.classNames, options.css);
   
     if(self.widths){
       $colgroups = [];
@@ -3253,7 +3273,7 @@ Views.Table = View.extend({
   },
   destroy : function(){
     ginger.release(this.collection);
-    this.super(Views.Table, 'destroy');
+    this['super'](Views.Table, 'destroy');
   }
 });
 
@@ -3264,7 +3284,7 @@ Views.Table = View.extend({
  */
 Views.Modal = View.extend({
   constructor : function Modal(options){
-    this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
+    this['super'](Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
     var view = this;
 
     // header
@@ -3397,7 +3417,7 @@ Views.Modal = View.extend({
 //------------------------------------------------------------------------------
 Views.Button = View.extend({
   constructor : function Button(options){
-    this.super(Views.Button)
+    this['super'](Views.Button)
     var view = this
     _.extend(this, options)
   
@@ -3417,7 +3437,7 @@ Views.Button = View.extend({
       var $icon
       for(var i=0;i<this.icons.length;i++){
         $icon = $('<div>', {
-          class:this.icons[i],
+          'class':this.icons[i],
           css:{float:'left'}
         })
         this.$icons[this.icons[i]] = $icon
@@ -3449,7 +3469,7 @@ Views.Button = View.extend({
 //------------------------------------------------------------------------------
 Views.Toolbar = View.extend({
   constructor : function ToolBar(classNames, itemsClassNames){
-    this.super(Views.Toolbar, 'constructor', classNames)
+    this['super'](Views.Toolbar, 'constructor', classNames)
     var self = this
     self.itemsClassNames = itemsClassNames
   
@@ -3475,7 +3495,7 @@ Views.Toolbar = View.extend({
 });
 /*
 ginger.Views.Toolbar.prototype.render = function(){
- var $el = this.super(ginger.Views.Toolbar, 'render') 
+ var $el = this['super'](ginger.Views.Toolbar, 'render') 
   for(var i=0; i<this.items.length;i++){
     $el.append(this.items[i].render().css({float:'left'}))
   }
@@ -3485,7 +3505,7 @@ ginger.Views.Toolbar.prototype.render = function(){
 //------------------------------------------------------------------------------
 Views.PopUp = View.extend({
   constructor : function PopUp(classNames, $parent, options){
-    this.super(Views.PopUp, 'constructor', classNames)
+    this['super'](Views.PopUp, 'constructor', classNames)
     this.$el.css({position: 'absolute', display:'none'})
   
     _.extend(this, options)
@@ -3574,7 +3594,7 @@ Views.PopUp = View.extend({
 Views.ToolTip = Views.PopUp.extend({
   constructor : function ToolTip(classNames, $target, pos, $content, options){
     var self = this
-    self.super(Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
+    self['super'](Views.ToolTip, 'constructor', classNames, $target, {showTime:0})
 
     _.extend(self, options)
     _.defaults(self, {

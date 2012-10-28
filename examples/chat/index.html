@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <title>Chat Example</title>
   <link rel="stylesheet" type="text/css" href="../styles.css">
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="../socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-           baseUrl: 'http://localhost:8080/',
+           baseUrl: '',
            paths: {
               'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
               'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min',
@@ -27,7 +27,7 @@
   <script>
 
     curl(['ginger'], function(ginger){
-      var socket = io.connect('http://localhost:8080');
+      var socket = io.connect(location.protocol+'//'+location.host);
       socket.on('connect', function(){
         
         ginger.Model.set('socket', socket);
