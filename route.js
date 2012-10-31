@@ -651,7 +651,10 @@ var route = function (root, cb) {
     fn();
   }
 
-  $(window).bind('hashchange', fn);
+  $(window).bind('hashchange', function(event) {
+    event.stopImmediatePropagation();
+    fn();
+  });
 }
 
 route.stop = function(){
