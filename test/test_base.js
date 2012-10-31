@@ -20,11 +20,11 @@ describe('Base', function(){
     it('listen to property change', function(done){
       obj.on('foo', function(foo){
         expect(foo).to.be(42);
+        obj.off('foo');
         done();
       });
       
       obj.set('foo', 42);
-      obj.off('foo');
     });
     
     it('listen to any change', function(done){
@@ -32,11 +32,11 @@ describe('Base', function(){
         expect(args).to.be.an(Object);
         expect(args).to.have.property('bar');
         expect(args).to.not.have.property('foo');
+        obj.off('changed:');
         done();
       });
       
       obj.set('bar', 42);
-      obj.off('changed:');
     });
     
     it('listen to several properties changed at once', function(done){
@@ -44,6 +44,7 @@ describe('Base', function(){
       obj.on('bar', function(value){
         expect(value).to.be(43);
         counter--;
+        obj.off('bar');
         if(counter == 0){
           done();
         }
@@ -51,13 +52,12 @@ describe('Base', function(){
       obj.on('baz', function(value){
         expect(value).to.be(48);
         counter--;
+        obj.off('baz');
         if(counter == 0){
           done();
         }
       });
       obj.set({bar:43, baz:48});
-      obj.off('bar');
-      obj.off('baz');
     });
   });
   
