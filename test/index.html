@@ -12,7 +12,8 @@
            baseUrl: '',
            paths: {
               'jquery': 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
-              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+              'underscore': 'https://raw.github.com/amdjs/underscore/master/underscore-min',
+              'json2': 'json2' // for older IE versions
            },
            packages: {
              'ginger': {
@@ -37,14 +38,15 @@
                 'test/test_routes',
 //                'test/test_events',
 //                'test/test_declare',
-                'test/test_base',
-                'test/test_models',
-                'test/test_collections',
+//                'test/test_base',
+//                'test/test_models',
+//                'test/test_collections',
                 ], function(){
             // We need to run this first.
             mocha
+//                .setup({ignoreLeaks: true})
+                .globals(['socket', 'jQuery*']) // acceptable globals
                 .run()
-                .globals(['socket']) // acceptable globals
           });
 //        });
         //})

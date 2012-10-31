@@ -28,7 +28,7 @@
    - http://blog.willcannings.com/2009/03/19/key-value-coding-with-javascript/
 */
 
-define(['jquery', 'underscore'], function($, _){
+define(['jquery', 'underscore', 'js!json2'], function($, _){
 
 /**
   Define some useful jQuery plugins.
@@ -1509,7 +1509,12 @@ var Cache = ginger.Base.extend({
   },
   _remove:function(key, timestamp){
     var key = this._key(key,timestamp);
-    delete ls[key];
+    try { 
+        delete ls[key];
+    } catch(e) { 
+        // IE fallback
+        ls[key] = undefined; 
+    }
   },
   _populate:function(){
     var i, len, key, s, k, size;

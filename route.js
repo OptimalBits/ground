@@ -651,21 +651,18 @@ var route = function (root, cb) {
     fn();
   }
 
-  if ('onhashchange' in window) {
-    window.onhashchange = fn;
-  } else {
-    route.interval = setInterval(fn, 50);
-  }
+  $(window).bind('hashchange', fn);
 }
 
 route.stop = function(){
-  if(route.interval){
-    clearInterval(route.interval);
-    route.interval = null;
-  }
-  if ('onhashchange' in window) {
-    window.onhashchange = null;
-  }
+  $(window).unbind('hashchange');
+//  if(route.interval){
+//    clearInterval(route.interval);
+//    route.interval = null;
+//  }
+//  if ('onhashchange' in window) {
+//    window.onhashchange = null;
+//  }
   route.prevReq = null;
 }
 

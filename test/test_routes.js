@@ -4,7 +4,7 @@ define(['ginger', 'ginger/route'], function(ginger, route){
 var goToUrl = function(url){
   location.hash = url;
   if ('onhashchange' in window) {
-    $(window).trigger('onhashchange');
+    $(window).trigger('hashchange');
   }
 }
 
