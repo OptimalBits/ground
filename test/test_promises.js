@@ -119,7 +119,7 @@ describe('Promises and Tasks', function(){
       index++;
       cb();
     });
-    
+
     queue.end(function(){
       expect(index).to.be(3);
       done();
@@ -150,10 +150,12 @@ describe('Promises and Tasks', function(){
       });
       
       queue.end(function(){
-        expect(index).to.be(2);
-        done();
+        expect(index).to.be(false);
       });
+
+      done();
     });
+
 });
 
 });

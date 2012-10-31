@@ -338,6 +338,7 @@ _.extend(ginger.TaskQueue.prototype, {
   //
   cancel : function(){
     this.isCancelled = true;
+    // TODO: Execute after() here?
   },
   
   //
@@ -345,6 +346,9 @@ _.extend(ginger.TaskQueue.prototype, {
   // so no nore tasks can be appended to it.
   end : function(){
     var self = this;
+    if(arguments.length > 0){
+      self.append.apply(self, arguments);
+    }
     self.isEnded = true;
     if(!self.isExecuting){
       self.endPromise.resolve();

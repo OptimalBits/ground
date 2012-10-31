@@ -651,21 +651,11 @@ var route = function (root, cb) {
     fn();
   }
 
-  $(window).bind('hashchange', function(event) {
-    event.stopImmediatePropagation();
-    fn();
-  });
+  $(window).bind('hashchange', fn);
 }
 
 route.stop = function(){
   $(window).unbind('hashchange');
-//  if(route.interval){
-//    clearInterval(route.interval);
-//    route.interval = null;
-//  }
-//  if ('onhashchange' in window) {
-//    window.onhashchange = null;
-//  }
   route.prevReq = null;
 }
 
@@ -674,9 +664,7 @@ route.redirect = function(url) {
   // The issue is that the new route execution may assume there is a certain node tree
   // but if we just cancel the previous execution this tree may not be there...
   location.hash = url;
-  if ('onhashchange' in window) {
-    $(window).trigger('onhashchange');
-  }
+  $(window).trigger('hashchange');
 }
 
 return route;
