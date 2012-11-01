@@ -1,8 +1,7 @@
-define(['ginger'], function(ginger){
+define(['event','base'], function(Event, Base){
 
 describe('Events', function(){
-  var Obj = ginger.Declare(ginger.Base),
-    obj = new Obj();
+  var obj = new Event.Emitter();
     
   it('listen to one event', function(done){  
       obj.on('test', function(val){
@@ -132,17 +131,19 @@ describe('Events', function(){
   });
   
   it('destructor cleans all the events', function(){
+    var obj2 = new Base.Base();
+    
     var counter = 0;
-    obj.on('flip flop swap swop', function(val){
+    obj2.on('flip flop swap swop', function(val){
       counter++;
     });
     
-    obj.release();
+    obj2.release();
     
-    obj.emit('flip', 'foo');
-    obj.emit('flop', 'bar');
-    obj.emit('swap', 'baz');
-    obj.emit('swop', 'foo');
+    obj2.emit('flip', 'foo');
+    obj2.emit('flop', 'bar');
+    obj2.emit('swap', 'baz');
+    obj2.emit('swop', 'foo');
     
     expect(counter).to.be(0);
   });
