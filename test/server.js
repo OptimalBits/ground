@@ -16,8 +16,10 @@ app.use(cabinet(staticDir,
     }
   },
   function(url){
-    console.log(url);
-    sio.sockets.emit('file_changed:', url);
+    console.log("FILE Changed:"+url);
+    if(url.indexOf('.ts') != -1){
+      sio.sockets.emit('file_changed:', url);
+    }
   }
 ));
 app.use(cabinet(__dirname, function(url){
@@ -53,7 +55,6 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
 
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
-    console.log(err); 
     console.log(result); 
   });
   mongoose.connect('mongodb://localhost/testGingerSync');
