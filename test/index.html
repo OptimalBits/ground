@@ -22,13 +22,43 @@
              'ginger': {
                path: 'http://localhost:8080/',
                main: 'ginger',
-                lib: ''
+               lib: ''
+             },             
+            'route': {
+               path: 'http://localhost:8080/lib',
+               main: 'route.ts?',
+               lib: ''
              },
              'task': {
-               path: 'http://localhost:8080/',
+               path: 'http://localhost:8080/lib',
                main: 'task.ts?',
                lib: ''
-             }
+             },
+             'event': {
+               path: 'http://localhost:8080/lib',
+               main: 'event.ts?',
+               lib: ''
+             },
+             'base': {
+               path: 'http://localhost:8080/lib',
+               main: 'base.ts?',
+               lib: ''
+             },
+             'undo': {
+               path: 'http://localhost:8080/lib',
+               main: 'undo.ts?',
+               lib: ''
+             },
+             'cache': {
+               path: 'http://localhost:8080/lib',
+               main: 'cache.ts?',
+               lib: ''
+             },
+             'overload': {
+               path: 'http://localhost:8080/lib',
+               main: 'overload.ts?',
+               lib: ''
+             },
            }
        };
   </script>
@@ -43,15 +73,16 @@
       socket.on('file_changed:', function(url){
         document.location.reload(true)
       })
-      //$(function () {
+      curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
-          curl(['test/task',
-                'test/test_routes',
+          curl(['test/test_overload',
+                'test/test_tasks',
                 'test/test_events',
-                'test/test_declare',
+                'test/test_routes',
                 'test/test_base',
-                'test/test_models',
-                'test/test_collections',
+                //'test/test_declare',
+                //'test/test_models',
+                //'test/test_collections',
                 ], function(){
             // We need to run this first.
             mocha
@@ -59,8 +90,7 @@
                 .globals(['socket']) // acceptable globals
           });
         });
-        //})
-        
+      });
     });
   </script>
 </head>
