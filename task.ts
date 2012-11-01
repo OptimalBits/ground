@@ -14,8 +14,13 @@
 
 import Util = module("./util");
 
-interface Task{
-  func(cb? : ()=>void) : void;
+export interface TaskCallback {
+  () : void;
+}
+
+
+export interface Task {
+  (cb? : TaskCallback) : void;
 }
 
 export class TaskQueue {
