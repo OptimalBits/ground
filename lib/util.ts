@@ -8,7 +8,7 @@
   the framework.
 */
 
-/// <reference path="./lib/underscore.browser.d.ts" />
+/// <reference path="../third/underscore.browser.d.ts" />
 
 // we can not import due to a bug in tsc.
 // import _ = module("underscore");
