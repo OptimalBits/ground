@@ -1,4 +1,4 @@
-define(['ginger', 'task'], function(gnd, Task){
+define(['task'], function(Task){
 
 describe('Tasks and Promises', function(){
   it('create and resolve a promise', function(done){  
@@ -96,7 +96,6 @@ describe('Tasks and Promises', function(){
     promise2.resolve();
     expect(triggered).to.be(true);
   });
-  
   
   it('Task queue with a few elements executes in order', function(done){  
     var queue = new Task.TaskQueue();
