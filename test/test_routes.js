@@ -1,4 +1,4 @@
-define(['ginger', 'ginger/route'], function(ginger, route){
+define(['base', 'route', 'jquery'], function(base, route, $){
 
 // Helpers
 var goToUrl = function(url){
@@ -14,7 +14,7 @@ describe('simple routes', function(){
   it('root route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         route.stop();
         done();
@@ -25,7 +25,7 @@ describe('simple routes', function(){
   it('foobar route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get('bar', '#bar', function(){
@@ -40,7 +40,7 @@ describe('simple routes', function(){
   it('parametric route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get(':bar', '#bar', function(){
@@ -56,7 +56,7 @@ describe('simple routes', function(){
   it('foobar route with baz in main and subroute', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get('bar', '#bar', function(){
@@ -77,7 +77,7 @@ describe('simple routes', function(){
   it('consume routes in correct order', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('foo','#test', function(){
           req.get('bar', '#foo', function(){
@@ -97,7 +97,7 @@ describe('simple routes', function(){
   it('hierarchical route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -120,7 +120,7 @@ describe('simple routes', function(){
   it('change from one deep route to another deep route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -142,7 +142,7 @@ describe('simple routes', function(){
   it('change one route component in the middle of a route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#foo', function(){
@@ -165,7 +165,7 @@ describe('simple routes', function(){
     var onceTest = 0, onceFoo = 0;
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.after(function(){
@@ -194,7 +194,7 @@ describe('simple routes', function(){
     var onceTest = 0, onceFoo = 0, onceBar = 0;
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.leave(function(){
@@ -224,13 +224,13 @@ describe('simple routes', function(){
   });
   
   it('autorelease objects after change from one deep route to another deep route', function(done){
-    var test = new ginger.Base();
-    var foo = new ginger.Base();
-    var bar = new ginger.Base();
+    var test = new base.Base();
+    var foo = new base.Base();
+    var bar = new base.Base();
     
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -270,13 +270,13 @@ describe('simple routes', function(){
   });
   
   it('autorelease objects in route that changes a middle component', function(done){
-    var test = new ginger.Base();
-    var foo = new ginger.Base();
-    var bar = new ginger.Base();
+    var test = new base.Base();
+    var foo = new base.Base();
+    var bar = new base.Base();
   
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -312,7 +312,7 @@ describe('simple routes', function(){
   it('redirect from a deep route to another deep route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -338,7 +338,7 @@ describe('simple routes', function(){
   it('redirect from a deep route to another deep route and redirect to another route', function(done){
     route.stop();
     goToUrl('');
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -368,7 +368,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     var counter = 0;
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -409,7 +409,7 @@ describe('simple routes', function(){
     goToUrl('');
     var counter = 0;
     
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -444,7 +444,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         if(req.isLast()){
           req.redirect('/foo');
@@ -468,7 +468,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     
-    route(function(req){      
+    route.listen(function(req){      
       req.notFound(function(){
         done();
       });
@@ -481,7 +481,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -512,7 +512,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -545,7 +545,7 @@ describe('simple routes', function(){
     route.stop();
     goToUrl('');
     
-    route(function(req){
+    route.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){

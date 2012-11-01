@@ -1,7 +1,7 @@
-define(['ginger'], function(ginger){
+define(['cache'], function(Cache){
 
 describe('Local Cache', function(){
-  var cache = ginger.localCache;
+  var cache = new Cache.Cache();
   
   var fixture = {
     'foo' : 'payload1',
