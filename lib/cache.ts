@@ -51,7 +51,7 @@ export class Cache extends Base.Base {
     var old = this.map[key], value;
     if(old){
       value = ls[this.key(key, old.time)];
-      this.setItem(key, value); // Touch to update timestamp.
+      value && this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
   }
