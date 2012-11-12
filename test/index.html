@@ -59,6 +59,17 @@
                main: 'overload.ts?',
                lib: ''
              },
+             'storage': {
+               path: 'http://localhost:8080/lib',
+               main: 'storage.ts?',
+               lib: ''
+             },
+             'local': {
+               path: 'http://localhost:8080/lib/storage',
+               main: 'local.ts?',
+               lib: ''
+             },
+             
            }
        };
   </script>
@@ -76,10 +87,11 @@
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
           curl(['test/test_overload',
-                'test/test_tasks',
-                'test/test_events',
-                'test/test_routes',
-                'test/test_base',
+             //   'test/test_tasks',
+            //    'test/test_events',
+          //      'test/test_routes',
+            //    'test/test_base',
+                'test/test_storage_local',
                 //'test/test_declare',
                 //'test/test_models',
                 //'test/test_collections',
