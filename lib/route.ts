@@ -8,7 +8,6 @@
   the specified DOM nodes in the hierarchy.
   
 */
-
 /// <reference path="../third/underscore.browser.d.ts" />
 /// <reference path="../third/jquery.d.ts" />
 
@@ -569,10 +568,26 @@ class Request {
     return this;
   }
   
-  public render(templateUrl, css?, locals?, cb?): Request {
-    var fn = _.bind(this.render, this);
-    this.node().render = wrap(fn, [templateUrl, css, locals], cb);
-    return this;
+  public render(templateUrl: string, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
+    return Overload.overload({
+      "String String Object Function": function(templateUrl, css, locals, cb){
+        var fn = _.bind(this.render, this);
+        this.node().render = wrap(fn, [templateUrl, css, locals], cb);
+        return this;
+      },
+      "String String Function": function(templateUrl, css, cb){
+        return this.render(templateUrl, css, undefined, cb);
+      },
+      "String Object Function": function(templateUrl, locals, cb){
+        return this.render(templateUrl, undefined, locals, cb);
+      },
+      "String Function": function(templateUrl, cb){
+        return this.render(templateUrl, undefined, undefined, cb);
+      },
+      "String Function": function(templateUrl){
+        return this.render(templateUrl, Util.noop);
+      },
+    })(arguments)
   }
 
   public load(urls?, cb?): Request {
@@ -673,22 +688,7 @@ class Request {
   }
 }
 
-Request.prototype.render = Overload.overload({
-  "String String Object Function": Request.prototype.render,
-  
-  "String String Function": function(templateUrl, css, cb){
-    return this.render(templateUrl, css, undefined, cb);
-  },
-  "String Object Function": function(templateUrl, locals, cb){
-    return this.render(templateUrl, undefined, locals, cb);
-  },
-  "String Function": function(templateUrl, cb){
-    return this.render(templateUrl, undefined, undefined, cb);
-  },
-  "String Function": function(templateUrl){
-    return this.render(templateUrl, Util.noop);
-  },
-})
+Request.prototype.render = 
 
 Request.prototype.load = Overload.overload({
   "String String Object Function": Request.prototype.load,
@@ -719,3 +719,4 @@ var findSel = function(selector, start, nodes){
   return false;
 }
 */
+
