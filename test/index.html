@@ -4,7 +4,7 @@
   <title>Mocha Tests</title>
   <link rel="stylesheet" href="https://raw.github.com/visionmedia/mocha/master/mocha.css" />
   <script src="https://raw.github.com/LearnBoost/expect.js/d2440da086bf8dc38c6085641f23b968a0f48b29/expect.js"></script>
-  <script src="https://raw.github.com/visionmedia/mocha/master/mocha.js"></script>
+  <script src="https://raw.github.com/visionmedia/mocha/1.6.0/mocha.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   
   <script type="text/javascript">
@@ -33,22 +33,21 @@
     var socket = io.connect(location.protocol+'//'+location.host);
     socket.once('connect', function(){
       //$(function () {
-//        curl(['test/test_cache'], function(){
-          curl([//'test/test_promises', // IE ok
-//                'test/test_routes', // IE ok ----
-//                'test/test_events', // IE ok
-//                'test/test_declare', // IE ok
-                'test/test_base',
-//                'test/test_models',
-//                'test/test_collections',
+        curl(['test/test_cache'], function(){ // Fails in IE 8
+          curl(['test/test_promises', // IE ok
+                'test/test_routes', // IE ok with remark
+                'test/test_events', // IE ok
+                'test/test_declare', // IE ok
+                'test/test_base', // IE ok
+                'test/test_models', // Offline tests in IE
+                'test/test_collections', // Offline tests fails in IE
                 ], function(){
             // We need to run this first.
             mocha
-//                .setup({ignoreLeaks: true})
                 .globals(['socket', 'jQuery*']) // acceptable globals
                 .run()
           });
-//        });
+        });
         //})
     });
   </script>

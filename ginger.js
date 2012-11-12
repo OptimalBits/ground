@@ -78,7 +78,7 @@ if (!Date.now) {
   };
 }
 
-if (!console || !console.log) {
+if (typeof console === 'undefined' || !console.log) {
   console = {
     log: function() {
       // Logging?
@@ -768,6 +768,9 @@ Storage.findById = function(bucket, id, cb){
 }
 Storage._findById= function(key, cb){
   var doc = localCache.getItem(key);
+
+  //IE
+  doc = doc === 'undefined' ? undefined : doc;
 
   if (doc){
     doc = JSON.parse(doc);
