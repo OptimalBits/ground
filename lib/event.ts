@@ -17,9 +17,6 @@
 
 /// <reference path="../third/underscore.browser.d.ts" />
 
-// we can not import due to a bug in tsc.
-// import _ = module("underscore");
-
 export class Emitter {
   private _listeners;
   private _namespaces;
