@@ -19,17 +19,17 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   // Basic Storage for Models (Follows CRUD semantics)
   //
   
-  create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void): void;
-  put(keyPath: string[], doc: any, cb: (err?: Error) => void): void;
-  get(keyPath: string[], cb: (err?: Error, doc?: any) => void): void;
+  create(keyPath: string[], doc: {}, cb: (err: Error, key?: string) => void): void;
+  put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
+  get(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
   del(keyPath: string[], cb: (err?: Error) => void): void;
-  link(keyPath: string[], newKeyPath: string[], cb: (err?: Error) => void): void;
+  link?(keyPath: string[], newKeyPath: string[], cb: (err?: Error) => void): void;
 }
 
 //
 //  Set (Collection) Storage
 //
-interface ISetStorage {
+export interface ISetStorage {
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void;
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void;
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void;
@@ -38,9 +38,9 @@ interface ISetStorage {
 //
 //  Seq (Collection) Storage
 //
-interface ISeqStorage {
+export interface ISeqStorage {
   insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void);
-  extract(keyPath: string[], index:number, cb: (err: Error) => void);
+  extract(keyPath: string[], index:number, cb: (err: Error, doc?:{}) => void);
   all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void;
 }
 
@@ -168,7 +168,7 @@ export class Queue extends Base.Base {
               store.put([bucket, id], args, done);
               break;
             case 'create':
-              store.create([bucket], args, function(err, sid){
+              store.create([bucket], args, function(err?, sid?){
                 if (err){
                   done(err);
                 } else {

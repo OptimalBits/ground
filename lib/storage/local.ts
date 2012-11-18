@@ -8,6 +8,7 @@
 
 import Cache = module('../cache');
 import Storage = module('../storage');
+import Util = module('../util');
 
 var localCache = new Cache.Cache(1024*1024); // 1Mb
 
@@ -37,9 +38,10 @@ function makeKey(keyPath: string[]): string {
 export class Local implements Storage.IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
-    if(doc.cid){
-      keyPath.push(doc.cid);
+    if(!doc.cid){
+      doc.cid = Util.uuid();
     }
+    keyPath.push(doc.cid);
     _put(makeKey(keyPath), doc);
     cb(null, doc.cid);
   }
@@ -53,14 +55,14 @@ export class Local implements Storage.IStorage {
   }
   
   private isLink(doc){
-    return _.isArray(doc);
+    return _.isString(doc);
   }
   
   get(keyPath: string[], cb: (err: Error, doc?: any) => void) {
     var doc = _get(makeKey(keyPath));
     if (doc){
       if (this.isLink(doc)){
-        this.get(doc, cb);
+        this.get(doc.split('@'), cb);
       } else {
         cb(null, doc);
       }
@@ -74,8 +76,8 @@ export class Local implements Storage.IStorage {
     cb();
   }
   
-  link(keyPath: string[], newKeyPath: string[], cb: (err?: Error) => void){
-    _put(makeKey(keyPath), makeKey(newKeyPath));
+  link(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void){
+    _put(makeKey(keyPathLink), makeKey(keyPath));
     cb();
   }
   

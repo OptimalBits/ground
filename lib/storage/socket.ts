@@ -22,6 +22,9 @@ function safeEmit(socket, ...args:any[]): void
   };
   function proxyCb(err, res){
     socket.removeListener('disconnect', errorFn);
+    if(err){
+      err = new Error(err);
+    }
     cb(err,res);
   };
   
@@ -44,57 +47,55 @@ export class Socket implements Storage.IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void): void
   {
-    this.socket.emit('create', keyPath, doc, cb);
+    safeEmit(this.socket, 'create', keyPath, doc, cb);
   }
   
   put(keyPath: string[], doc: any, cb: (err?: Error) => void): void
   {
-    this.socket.emit('put', keyPath, doc, cb);
+    safeEmit(this.socket, 'put', keyPath, doc, cb);
   }
   
   get(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
   {
-    this.socket.emit('get', keyPath, cb);
+    safeEmit(this.socket, 'get', keyPath, cb);
   }
   
   del(keyPath: string[], cb: (err?: Error) => void): void
   {
-    this.socket.emit('del', keyPath, cb);
-  }
-  
-  link(srcKeyPath: string[], dstKeyPath: string[], cb: (err?: Error) => void): void
-  {
-    this.socket.emit('link', srcKeyPath, dstKeyPath, cb);
+    safeEmit(this.socket, 'del', keyPath, cb);
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
   {
-    this.socket.emit('add', keyPath, itemsKeyPath, itemIds, cb);
+    safeEmit(this.socket, 'add', keyPath, itemsKeyPath, itemIds, cb);
   }
 
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
   {
-    this.socket.emit('remove', keyPath, itemsKeyPath, itemIds, cb);
+    safeEmit(this.socket, 'remove', keyPath, itemsKeyPath, itemIds, cb);
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
-    this.socket.emit('find', keyPath, query, options, cb);
+    safeEmit(this.socket, 'find', keyPath, query, options, cb);
   }
   
   insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
   {
-    this.socket.emit('insert', keyPath, index, doc, cb);
+    safeEmit(this.socket, 'insert', keyPath, index, doc, cb);
   }
+  
   extract(keyPath: string[], index:number, cb: (err: Error) => void)
   {
-    this.socket.emit('extract', keyPath, index, doc, cb);
+    safeEmit(this.socket, 'extract', keyPath, index, cb);
   }
+  
   all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void
   {
-    this.socket.emit('all', keyPath, cb);
+    safeEmit(this.socket, 'all', keyPath, cb);
   }
 }
+
 
 
 
