@@ -69,6 +69,11 @@
                main: 'local.ts?',
                lib: ''
              },
+             'socket': {
+               path: 'http://localhost:8080/lib/storage',
+               main: 'socket.ts?',
+               lib: ''
+             },
              
            }
        };
@@ -86,17 +91,21 @@
       })
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
-          curl(['test/test_overload',
-             //   'test/test_tasks',
-            //    'test/test_events',
-          //      'test/test_routes',
-            //    'test/test_base',
-                'test/test_storage_local',
+          curl([//'test/test_storage_local',
+                'test/test_storage_socket',
+                'test/test_overload',
+            // 'test/test_tasks',
+            // 'test/test_events',
+            // 'test/test_routes',
+            // 'test/test_base',
                 //'test/test_declare',
                 //'test/test_models',
                 //'test/test_collections',
-                ], function(){
-            // We need to run this first.
+                ], function(Storage){
+                  // We need to run this first.
+            /*
+
+            */
             mocha
                 .run()
                 .globals(['socket']) // acceptable globals
