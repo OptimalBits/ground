@@ -1,9 +1,15 @@
 
+require('require-typescript');
+
+var GndServer = require('../lib/gnd-server.ts');
+var SocketServer = require('../lib/storage/socket-backend.ts');
+var MongooseStorage = require('../lib/storage/mongoose-backend.ts');
+
 var express = require('express'),
     mongoose = require('mongoose'),
     app = express.createServer(),
     sio = require('socket.io').listen(app),
-    models = require('./test_mongo_models'),
+    models = require('./fixtures/mongo_models'),
     redis = require('redis'),
     cabinet = require('cabinet'),
     Server = require('../server'),
@@ -11,6 +17,7 @@ var express = require('express'),
 
 app.use(cabinet(staticDir, 
   {
+    ignore: ['.git', 'node_modules', '*~', 'examples'],
     typescript: {
       tmpPath: '/var/tmp'
     }
@@ -22,12 +29,17 @@ app.use(cabinet(staticDir,
     }
   }
 ));
-app.use(cabinet(__dirname, function(url){
+app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   sio.sockets.emit('file_changed:', url);
   console.log(url);
 }));
 app.use(express.bodyParser());
 
+var mongooseStorage = new MongooseStorage.Mongoose(models);
+var gndServer = new GndServer.Server(mongooseStorage);
+var socketServer = new SocketServer.SocketBackend(sio.sockets, gndServer);
+
+// Ajax APIs used for some unit tests (DEPRECATED)
 app.put('/animals/:id', function(req, res){
   models.Animal.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
@@ -51,18 +63,23 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
       });
     }
   });
-})
+});
+
+//
+// Mongoose test database
+//
 
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
-    console.log(result); 
-  });
-  mongoose.connect('mongodb://localhost/testGingerSync');
-  var server = new Server(models, 6379, 'localhost', sio.sockets);
+    console.log(result);
+    mongoose.disconnect(function(){
+      mongoose.connect('mongodb://localhost/testGingerSync');
+      //var server = new Server(models, 6379, 'localhost', sio.sockets);
   
-  app.listen(8080);
-  console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
-    
+      app.listen(8080);
+      console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
+    });
+  });
 });
 
 
