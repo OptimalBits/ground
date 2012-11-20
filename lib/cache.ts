@@ -24,21 +24,16 @@
 import Base = module('./base');
 
 // TODO: factorize storage into a generic storage interface.
-var ls = {
-  key: function(e: any): string {
-    return e;
-  },
-  length: 0
-}; //localStorage;
+var ls = localStorage;
 
-interface IndexItem {
+interface IndexElem {
   next: number;
   prev: number;
   key: string;
 }
 
 class Index {
-  private index : IndexItem[];
+  private index : IndexElem[];
   private first : number;
   private last : number;
 
