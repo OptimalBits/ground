@@ -124,7 +124,7 @@ class Index {
   }
 }
 
-export class Cache { // extends Base.Base {
+export class Cache extends Base.Base {
   private maxSize : number;
   private size : number = 0;
   private map : {};
@@ -132,7 +132,7 @@ export class Cache { // extends Base.Base {
   private length : number = 0;
   
   constructor(maxSize? : number = 5*1024*1024){ 
-//    super();
+    super();
     this.maxSize = maxSize;
     this.populate();
   }
