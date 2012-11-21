@@ -34,31 +34,45 @@ interface IndexElem {
 
 class Index {
   private index : IndexElem[];
+  private tail : IndexElem;
   private first : number;
   private last : number;
 
   private unusedKeys : number[];
+
+  constructor(){ 
+    this.tail = {
+      prev: 0,
+      next: 0,
+      key: ''
+    };
+    this.index = [this.tail];
+    this.first = this.last = 0;
+    this.unusedKeys = [];
+  }
 
   // get an unused index for new elements
   private newIdx() {
     if (this.unusedKeys.length > 0) {
       return this.unusedKeys.pop();
     } else {
-      return this.unusedKeys.length;
+      return this.index.length;
     }
   }
     
-  // Insert the key first in the index
+  // Insert key first in the index
   addKey(key: string) : number {
     var elem = {
       prev : this.last, // circular
       next : this.first,
       key : key
     };
-    var firstElem = this.index[this.first];
-    var lastElem = this.index[this.last];
 
     var idx = this.newIdx();
+    this.index[idx] = elem;
+
+    var firstElem = this.index[this.first];
+    var lastElem = this.index[this.last];
 
     firstElem.prev = idx;
     lastElem.next = idx; // circular
@@ -75,6 +89,9 @@ class Index {
 
   // Remove element idx from the index
   remove(idx: number) : string {
+    // don't allow removal of tail
+    if (idx === 0) return null;
+
     var elem = this.index[idx];
     var nextElem = this.index[elem.next];
     var prevElem = this.index[elem.prev];
@@ -98,11 +115,16 @@ class Index {
 
   // Get the last element in the index
   getLast() : string {
-    return this.index[this.last].key;
+    if (this.first === this.last) {
+      return null;
+    } else {
+      // return last element (element before tail)
+      return this.index[this.tail.prev].key;
+    }
   }
 }
 
-export class Cache extends Base.Base {
+export class Cache { // extends Base.Base {
   private maxSize : number;
   private size : number = 0;
   private map : {};
@@ -110,7 +132,8 @@ export class Cache extends Base.Base {
   private length : number = 0;
   
   constructor(maxSize? : number = 5*1024*1024){ 
-    super();
+//    super();
+    this.maxSize = maxSize;
     this.populate();
   }
   /**
@@ -136,6 +159,7 @@ export class Cache extends Base.Base {
   setItem(key, value){
     var time = Date.now();
     var old = this.map[key];
+    value = String(value);
     var requested = value.length;
     var idx;
     
@@ -201,6 +225,7 @@ export class Cache extends Base.Base {
   }
   
   private populate(){
+    var that = this;
     var i, len, key, s, k, size;
     this.size = 0;
     this.map = {};
@@ -208,7 +233,9 @@ export class Cache extends Base.Base {
     for (i=0, len=ls.length;i<len;i++){
       key = ls.key(i);
       if (key.indexOf('|') != -1){
+        //TODO: length is the strlen here. check if ok
         size = ls[key].length;
+
         s = key.split('|');
         // avoid possible duplicated keys due to previous error
         k = s[0];
@@ -228,8 +255,9 @@ export class Cache extends Base.Base {
     });
     // add keys to index
     _.each(sorted, function(elem) {
-      var idx = this.index.addKey(elem.key);
-      this.map[elem.key].idx = idx;
+      var idx = that.index.addKey(elem.key);
+      // TODO: better way in ts?
+      that.map[elem.key].idx = idx;
     });
 
     this.length = _.size(this.map);
@@ -240,12 +268,14 @@ export class Cache extends Base.Base {
   //
   private makeRoom(size){
     var target = this.maxSize - size;
+    var last;
     if(this.size > target){
-      if(target<0){
+      if(target < 0){
         return false;
       }else{
-        var last = this.index.getLast();
-        while ((this.size > target) && last) {
+        last = this.index.getLast();
+        while (this.size > target) {
+          if (last === null) return false;
           this.removeItem(last);
           last = this.index.getLast();
         }
