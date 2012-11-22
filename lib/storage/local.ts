@@ -38,12 +38,12 @@ function makeKey(keyPath: string[]): string {
 export class Local implements Storage.IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
-    if(!doc.cid){
-      doc.cid = Util.uuid();
+    if(!doc._cid){
+      doc._cid = Util.uuid();
     }
-    keyPath.push(doc.cid);
+    keyPath.push(doc._cid);
     _put(makeKey(keyPath), doc);
-    cb(null, doc.cid);
+    cb(null, doc._cid);
   }
   
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {

@@ -13,7 +13,7 @@ import Storage = module('../storage');
 /**
   A safe emit wrapper for socket.io that handles connection errors.
 */
-function safeEmit(socket, ...args:any[]): void
+export function safeEmit(socket, ...args:any[]): void
 {
   var cb = _.last(args);
    
