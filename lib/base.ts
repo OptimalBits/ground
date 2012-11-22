@@ -22,12 +22,12 @@ import Undo = module("./undo");
 // Error.prototype.stack = Error.prototype.stack || '';
 
 export class Base extends Event.Emitter{
-  private refCounter: number = 1;
-  private bindings: any = {};
-  private formatters;
-  private destroyed: bool;
-  private destroyedTrace: string;
-  private undoMgr: Undo.Manager = new Undo.Manager();
+  private _refCounter: number = 1;
+  private _bindings: any = {};
+  private _formatters;
+  private _destroyed: bool;
+  private _destroyedTrace: string;
+  private _undoMgr: Undo.Manager = new Undo.Manager();
   
   constructor (){
     super();
@@ -37,12 +37,12 @@ export class Base extends Event.Emitter{
   }
   
   private _set(keypath, val, options) {
-    var path = keypath.split('.'), obj, len=path.length-1, key = path[len];
+    var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
   
     for(var i=0;i<len;i++){
       var t = this[path[i]];
       if (!t){
-        obj = this[path[i]] = {};
+        obj = this[path[i]] = new Base();
       }else{
         obj = t;
       }
@@ -123,7 +123,7 @@ export class Base extends Event.Emitter{
     var srcListener = _.bind(this.set, this, key)
     object.on(dstKey, srcListener)
   
-    this.bindings[key] = [dstListener, object, dstKey, srcListener];
+    this._bindings[key] = [dstListener, object, dstKey, srcListener];
   
     // sync
     this.set(key, object[dstKey])
@@ -135,7 +135,7 @@ export class Base extends Event.Emitter{
 
   */
   unbind(key){
-    var bindings = this.bindings
+    var bindings = this._bindings
     if( (bindings!=null) && (bindings[key]) ){
       var binding = bindings[key]
       this.removeListener(key, binding[0])
@@ -146,24 +146,24 @@ export class Base extends Event.Emitter{
   format(property, fn){
     if(arguments.length==1){
       if(_.isObject(property)){
-        if(!this.formatters){
-          this.formatters = {};
+        if(!this._formatters){
+          this._formatters = {};
         }
-        _.extend(this.formatters, property);
-      } else if((this.formatters)&&(property in this.formatters)){
+        _.extend(this._formatters, property);
+      } else if((this._formatters)&&(property in this._formatters)){
         var val = this.get(property);
         if(_.isFunction(val)){
           val = val.call(this);
         }
-        return this.formatters[property].call(this, val);
+        return this._formatters[property].call(this, val);
       }else{
         return this.get(property);
       }
     }else{
-      if(!this.formatters){
-        this.formatters = {};
+      if(!this._formatters){
+        this._formatters = {};
       }
-      this.formatters[property] = fn;
+      this._formatters[property] = fn;
     }
   }
   /**
@@ -200,25 +200,25 @@ export class Base extends Event.Emitter{
   }
   
   retain(){
-    if(this.destroyed){
+    if(this._destroyed){
       throw new Error("Cannot retain destroyed object");
     }
-    this.refCounter++;
+    this._refCounter++;
     return this;
   }
   release(){
-    this.refCounter--;
-    if(this.refCounter===0){
+    this._refCounter--;
+    if(this._refCounter===0){
       this.emit('destroy:');
       this.destroy();
-      this.destroyed = true;
-      this.destroyedTrace = "";//new Error().stack;
-    }else if(this.refCounter < 0){
+      this._destroyed = true;
+      this._destroyedTrace = "";//new Error().stack;
+    }else if(this._refCounter < 0){
       var msg;
-      if(this.destroyed){
+      if(this._destroyed){
         msg = "Object has already been released";
-        if(this.destroyedTrace){
-          msg += '\n'+this.destroyedTrace;
+        if(this._destroyedTrace){
+          msg += '\n'+this._destroyedTrace;
         }
         throw new Error(msg);
       }else{
@@ -230,6 +230,6 @@ export class Base extends Event.Emitter{
   }
   
   isDestroyed(){
-    return this.refCounter === 0;
+    return this._refCounter === 0;
   }
 }
