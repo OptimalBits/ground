@@ -20,7 +20,7 @@ export function assert(cond, msg){
     console.log('Assert failed:%s',msg);
   }
 };
-  
+
 export function uuid(a?,b?){
   for(b=a='';a++<36;b+=a*51&52?(a^15?8^Math.random()*(a^20?16:4):4).toString(16):'-');
   return b;
@@ -125,20 +125,17 @@ export function searchFilter(obj, search, fields){
   
 // Apply asynchronous functions to every element in the array in parallel
 export function asyncForEach(array, fn, cb) {
- // var deferred = $.Deferred(), 
   var completed = 0;
     
   function iter(item, len){
     fn(item, function(err) {
       if(err){
-   //     deferred.reject()
         cb && cb(err);
         cb = noop;
       }else{
         completed++;
         if(completed === len) {
           cb && cb(null);
-     //     deferred.resolve()
          }
       }
     });
@@ -147,7 +144,6 @@ export function asyncForEach(array, fn, cb) {
   if(_.isArray(array)){
     if(array.length === 0) {
       cb && cb(null);
-     // deferred.resolve()
     }else{
       for(var i=0,len = array.length;i<len;i++) {
         iter(array[i], len);
@@ -156,7 +152,6 @@ export function asyncForEach(array, fn, cb) {
   }else{
      iter(array, 1);
   }
-//  return deferred
 };
   
 // Credits: https://github.com/caolan/async
