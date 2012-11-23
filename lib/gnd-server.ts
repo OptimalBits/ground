@@ -10,6 +10,7 @@
 /// <reference path="../third/underscore.browser.d.ts" />
 
 import Storage = module('./storage');
+import Sync = module('./sync/sync-backend');
 
 /*
   GndServer gndServer = new GndServer(new MongoStorage(...));
@@ -17,19 +18,19 @@ import Storage = module('./storage');
 export class Server {
   public storage: Storage.IStorage;
 
-  constructor(persistentStorage: Storage.IStorage) 
+  constructor(persistentStorage: Storage.IStorage, syncHub: Sync.SyncHub) 
   {
-    this.storage = new ProxyStorage(persistentStorage, null);
+    this.storage = new ProxyStorage(persistentStorage, syncHub);
   }
 }
 
 class ProxyStorage implements Storage.IStorage {
   private storage: Storage.IStorage;
-  private sync:any;
+  private syncHub: Sync.SyncHub;
   
-  constructor(storage: Storage.IStorage, sync){
+  constructor(storage: Storage.IStorage, sync: Sync.SyncHub){
     this.storage = storage;
-    this.sync = sync;
+    this.syncHub = sync;
   }
 
   create(keyPath: string[], doc: any, cb: (err: Error, key?: string) => void): void
@@ -41,7 +42,7 @@ class ProxyStorage implements Storage.IStorage {
   {
     this.storage.put(keyPath, doc, (err?: Error) => {
       if(!err){
-        this.sync && this.sync.update(keyPath, doc); // Notifies all clients about the update.
+        this.syncHub && this.syncHub.update(keyPath, doc);
       }
       cb(err);
     });
@@ -56,7 +57,7 @@ class ProxyStorage implements Storage.IStorage {
   {
     this.storage.del(keyPath, (err?: Error) => {
       if(!err){
-        this.sync && this.sync.delete(keyPath);
+        this.syncHub && this.syncHub.delete(keyPath);
       }
       cb(err);
     })
@@ -66,7 +67,7 @@ class ProxyStorage implements Storage.IStorage {
   {
     this.storage.add(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
       if(!err){
-        this.sync && this.sync.add(keyPath, itemsKeyPath, itemIds);
+        this.syncHub && this.syncHub.add(keyPath, itemsKeyPath, itemIds);
       }
       cb(err);
     })
@@ -76,7 +77,7 @@ class ProxyStorage implements Storage.IStorage {
   {
     this.storage.remove(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
       if(!err){
-        this.sync && this.sync.remove(keyPath, itemsKeyPath, itemIds);
+        this.syncHub && this.syncHub.remove(keyPath, itemsKeyPath, itemIds);
       }
       cb(err);
     })
@@ -92,7 +93,7 @@ class ProxyStorage implements Storage.IStorage {
     var self = this;
     this.storage.insert(keyPath, index, doc, function(err?: Error){
       if(!err){
-        this.sync && self.sync.insert(keyPath, index, doc);
+        this.syncHub && self.syncHub.insert(keyPath, index, doc);
       }
       cb(err);
     })
@@ -103,7 +104,7 @@ class ProxyStorage implements Storage.IStorage {
     var self = this;
     this.storage.extract(keyPath, index, function(err: Error, doc?: {}){
       if(!err){
-        this.sync && self.sync.extract(keyPath, index);
+        this.syncHub && self.syncHub.extract(keyPath, index);
       }
       cb(err, doc);
     })

@@ -90,7 +90,6 @@ export class SyncHub {
   }
 
   update(keyPath: string[], doc:{}){
-//    this.pubClient.publish('update:'+id, JSON.stringify(doc));  
     var args = {keyPath:keyPath, doc: doc};
     this.pubClient.publish('update:', JSON.stringify(args));
   }
@@ -100,12 +99,14 @@ export class SyncHub {
     this.pubClient.publish('delete:', JSON.stringify(args));
   }
 
-  add(objId, bucket, ids){
-    this.pubClient.publish('add:'+objId+':'+bucket, JSON.stringify(ids));
+  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
+    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds};
+    this.pubClient.publish('add:', JSON.stringify(args));
   }
 
-  remove(objId, bucket, ids){
-    this.pubClient.publish('remove:'+objId+':'+bucket, JSON.stringify(ids));
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
+    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds};
+    this.pubClient.publish('remove:', JSON.stringify(args));
   }
   
   insert(keyPath, index, obj){
