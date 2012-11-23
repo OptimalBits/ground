@@ -186,7 +186,7 @@ export class Model extends Base.Base {
       this._state = ModelState.CREATING;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
-       // this._persisted && Model.syncManager.startSync(this);
+        this._persisted && Model.syncManager.startSync(this);
       });
       Model.storageQueue.createCmd([bucket], args, cb);
     }
@@ -214,7 +214,7 @@ export class Model extends Base.Base {
     this._keepSynced = true;
   
     if (this.isPersisted()){
-      Model.syncManager.startSync(self);
+      Model.syncManager && Model.syncManager.startSync(self);
     }
   
     this.on('changed:', (doc, options) => {
