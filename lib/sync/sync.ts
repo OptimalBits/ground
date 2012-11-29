@@ -13,11 +13,37 @@
   models and their IDs.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="../../third/underscore.browser.d.ts" />
 
-import Base = module('./base');
-import Socket = module('../storage/socket');
+import Base = module('../base');
 
+//import Socket = module('../storage/socket');
+// import is not working so we copy/paste safeEmit here...
+function safeEmit(socket, ...args:any[]): void
+{
+  var cb = _.last(args);
+   
+  function errorFn(){
+    cb(new Error('Socket disconnected'));
+  };
+  function proxyCb(err, res){
+    socket.removeListener('disconnect', errorFn);
+    if(err){
+      err = new Error(err);
+    }
+    cb(err,res);
+  };
+  
+  args[args.length-1] = proxyCb;
+
+ if(socket.socket.connected){
+    socket.once('disconnect', errorFn);
+    socket.emit.apply(socket, args);
+ }else{
+    errorFn();
+ }
+}
+var Socket = {safeEmit : safeEmit};
 
 /**
   An abstract class representing a synchronizable object.
@@ -34,6 +60,18 @@ interface ISynchronizable
 };
 */
 
+function getKeyPath(model){
+  return [model.__bucket, model.id()];
+}
+
+function keyPathToKey(keyPath: string[]){
+  return keyPath.join(':');
+}
+
+function modelKey(model){
+  return keyPathToKey(getKeyPath(model));
+}
+
 export class Manager extends Base.Base {
   private socket;
   private objs: {}; // objs: {id: ISynchonizable[]} [];
@@ -43,6 +81,7 @@ export class Manager extends Base.Base {
   {
     super();
     
+    this.socket = socket;
     this.objs = {}; // {id:[model, ...]}
     
     this.connectFn = () => {
@@ -52,10 +91,18 @@ export class Manager extends Base.Base {
       _.each(this.objs, (models, id) => {
         var model = models[0];
         
-        // we need to re-sync here since we have a new socket sid. (TODO: integrate in resync).
-        socket.emit('sync', id);
+        // TODO: send also the current __rev, if newer in server, 
+        // get the latest doc.
+        Socket.safeEmit(socket, 'sync', getKeyPath(model), function(err){
+          if(err){
+            console.log('Error syncing %s, %s', getKeyPath(model), err);
+          }else{
+            console.log('Syncing %s', getKeyPath(model));
+          }
+        });
         
-        Socket.safeEmit(socket, 'resync', model._bucket, id, (err, doc) => {
+        // OBSOLETE if done according to new 'sync'
+        Socket.safeEmit(socket, 'resync', getKeyPath(model), (err, doc) => {
           if(!err){
             doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=models.length; i<len; i++){
@@ -65,11 +112,27 @@ export class Manager extends Base.Base {
             // TODO: we should update locally...
             // model.local().update(doc);
           } else {
-            console.log('Error resyncing %s@%s, %s', model.__bucket, id, err)
+            console.log('Error resyncing %s, %s', getKeyPath(model), err)
           }
         });
       });
     }
+    
+    socket.on('update:', (keyPath, doc) => {
+      var key = keyPathToKey(keyPath);
+      
+      _.each(this.objs[key], function(model){
+        model.set(doc, {sync:false, doc:doc});
+      });
+    });
+      
+    socket.on('delete:', (keyPath) => {
+      var key = keyPathToKey(keyPath);
+      _.each(this.objs[key], function(model){
+        //model.local().remove();
+        model.emit('deleted:', keyPath);
+      });
+    });
   }
   
   init()
@@ -93,31 +156,20 @@ export class Manager extends Base.Base {
   startSync(model)
   {
     var 
-      id = model.id(), 
+      key = modelKey(model),
       socket = this.socket;
     
-    if(!this.objs[id]){
-      this.objs[id] = [model];
+    if(!this.objs[key]){
+      this.objs[key] = [model];
       
-      socket.emit('sync', id);
-      console.log('Start synching:'+id);
-      
-      socket.on('update:'+id, (doc) => {
-        _.each(this.objs[id], function(model){
-          model.set(doc, {sync:false, doc:doc});
-          //model.local().update(doc);
-        });
-      });
-      socket.on('delete:'+id, function(){
-        _.each(this.objs[id], function(model){
-          model.local().remove();
-          model.emit('deleted:', id);
-        });
+      Socket.safeEmit(this.socket, 'sync', getKeyPath(model), function(err){
+        console.log('Start synching:'+getKeyPath(model));
       });
     }else{
-      this.objs[id].push(model);
+      this.objs[key].push(model);
     }
   }
+  
   
   /**
     Ends synchronization for a given model.
@@ -125,24 +177,22 @@ export class Manager extends Base.Base {
   endSync(model)
   {
     if (!model._keepSynced) return;
-    
+
     var 
-      socket = this.socket, 
-      id = model.id(),
-      models = this.objs[id];
+      key = modelKey(model),
+      socket = this.socket,
+      models = this.objs[key];
     
     if(models){
       models = _.reject(models, function(item){return item === model;});
       if(models.length===0){
-        console.log('Stop synching:'+id);
-        socket.emit('unsync', id);
-        socket.removeAllListeners('update:'+id);
-        socket.removeAllListeners('delete:'+id);
-        delete this.objs[id];
+        console.log('Stop synching:'+key);
+        Socket.safeEmit(this.socket, 'unsync', key);
+        delete this.objs[key];
       }else{
-        this.objs[id] = models;
+        this.objs[key] = models;
       }
     }
-  }
+  }  
 }
 
