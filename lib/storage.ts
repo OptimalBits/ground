@@ -9,6 +9,19 @@
 import Base = module('./base');
 import Util = module('./util');
 
+/*
+export enum ErrorCode {
+  OK                      = 0,
+  TEMPORARILY_UNAVAILABLE = 1,
+  UNRECOVARABLE_ERROR     = 2,
+  REMOTE_ERROR            = 3,
+}
+
+export class StorageError {
+  code: ErrorCode = 0;
+  msg: string = "Success";
+}
+*/
 /**
   Storage Interface. Any storage fullfilling this interface can be used by
   Ground.
@@ -27,7 +40,7 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
   get(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
   del(keyPath: string[], cb: (err?: Error) => void): void;
-  link?(keyPath: string[], newKeyPath: string[], cb: (err?: Error) => void): void;
+  link?(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void): void;
 }
 
 //
@@ -84,7 +97,7 @@ export class Queue extends Base.Base {
     this.localStorage = local;
     this.remoteStorage = remote;
         
-    this.syncFn = _.bind(this.synchronize, self);
+    this.syncFn = _.bind(this.synchronize, this);
   }
   
   init(cb:(err?: Error) => void){
@@ -103,43 +116,91 @@ export class Queue extends Base.Base {
   }
   */
   
+  getDoc(keyPath: string[], cb){
+    // TODO: 
+    // For fast performance we first get from local,
+    // then we get from remote (but this needs a changed event or something...), 
+    // if the __rev has changed
+    // we update models and local cache.
+    //
+    this.remoteStorage.get(keyPath, (err?, doc?) => {
+      if(err){
+        this.localStorage.get(keyPath, (err?, doc?) => {
+          if(doc){
+            doc['_id'] = _.last(keyPath);
+          }
+          cb(err, doc);
+        });
+      }else{
+        cb(err, doc);
+      }
+    });
+  }
+  
   private add(cmd: Command, cb:(err: Error)=>void){
-    this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, cb);
-    this.queue.push(cmd);
-    this.synchronize();
+    this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, (err) => {
+      if(!err){
+        this.queue.push(cmd);
+        this.synchronize();
+      }
+      cb(err);
+    });
   }
   
   createCmd(keyPath: string[], args:{}, cb){
-    this.add({cmd: 'create', keyPath: keyPath, args: args}, cb);
+    this.localStorage.create(keyPath, args, (err, cid?) => {
+      if(!err){
+        args['cid'] = cid;
+        this.add({cmd:'create', keyPath: keyPath, args: args}, cb);
+      }else{
+        cb(err);
+      }
+    });
   }
   
   updateCmd(keyPath: string[], args:{}, cb){
     //OPTIMIZATION?: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
-    this.add({cmd:'update', keyPath: keyPath, args:args}, cb);
-  }
-  
-  getDoc(keyPath: string[], cb){
-    // TODO: 
-    // For fast performance we first get from local,
-    // then we get from remote, if the __rev has changed
-    // we update models and local cache.
-    this.remoteStorage.get(keyPath, cb);
+    this.localStorage.put(keyPath, args, (err?) => {
+      if(!err){
+        this.add({cmd:'update', keyPath: keyPath, args: args}, cb);
+      }else{
+        cb(err);
+      }
+    });
   }
   
   deleteCmd(keyPath: string[], cb){
-    this.add({cmd:'delete', keyPath: keyPath}, cb);
+    this.localStorage.del(keyPath, (err?) => {
+      if(!err){
+        this.add({cmd:'delete', keyPath: keyPath}, cb);
+      }else{
+        cb(err);
+      }
+    });
   }
   
   addCmd(keyPath: string[], itemsKeyPath: string[], items, cb){
-    this.add({
-      cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
-    }, cb);
+    this.localStorage.add(keyPath, itemsKeyPath, items, (err) => {
+      if(!err){
+        this.add({
+          cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
+        }, cb);
+      }else{
+        cb(err);
+      }
+    });
   }
   
   removeCmd(keyPath: string[], itemsKeyPath: string[], items, cb){
-    this.add({
-      cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
-    }, cb);
+    this.localStorage.remove(keyPath, itemsKeyPath, items, (err) => {
+      if(!err){
+        this.add({
+          cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
+        }, cb);
+      }else{
+        cb(err);
+      }
+    });
   }
   
   updateIds(oldId, newId){
@@ -194,22 +255,18 @@ export class Queue extends Base.Base {
         
         switch (obj.cmd){
           case 'create':
-            var _args = _.clone(args);
-            localStorage.create(keyPath, _args, (err, cid?) => {
-              if(!err){
-                remoteStorage.create(keyPath, _args, function(err?, sid?){
-                  if(err){
-                    done(err);
-                  }else{
-                    localStorage.link([sid], keyPath, (err?: Error) => {
-                      this.updateIds(cid, sid); // needed?
-                      this.emit('created:'+cid, sid);
-                      done();
-                    });
-                  }
-                });
-              }else{
+            var _args = _.clone(args), cid = args.cid;
+            remoteStorage.create(keyPath, _args, function(err?, sid?){
+              if(err){
                 done(err);
+              }else{
+                var newKeyPath = _.initial(keyPath);
+                newKeyPath.push(sid);
+                localStorage.link(newKeyPath, keyPath, (err?: Error) => {
+                  this.updateIds(cid, sid); // needed?
+                  this.emit('created:'+cid, sid);
+                  done();
+                });
               }
             });
             break;
