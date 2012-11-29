@@ -24,68 +24,64 @@ export class SyncHub {
       if(!sio){
         sio = sockets;
       }
-    
+
       sio.on('connection', (socket) => {
         console.log("Socket %s connected in the Sync Module", socket.id);
-        socket.on('sync', function(keyPath){
+        
+        socket.on('sync', function(keyPath: string[], cb:(err?: Error) => void){
+          console.log(keyPath)
           var id = keyPath.join(':');
+          console.log("ID:"+id)
           if(this.check){
             if (this.check(socket.id, keyPath)){
               socket.join(id);
             }
           }else{
-            console.log("Socket %s started synchronization for id:%s",socket.id, keyPath);
+            console.log("Socket %s started synchronization for id:%s", socket.id, keyPath);
             socket.join(id);
           }
+          cb();
         });
     
-        socket.on('unsync', function(keyPath){
+        socket.on('unsync', function(keyPath: string[]){
           var id = keyPath.join(':');
           console.log("Socket %s stopped synchronization for id:%s", socket.id, id);
           socket.leave(id);
         });
       });
 
-      subClient.subscribe('delete:');
       subClient.subscribe('update:');
+      subClient.subscribe('delete:');
+      subClient.subscribe('add:');
+      subClient.subscribe('remove:');
+      
       subClient.on('message', (channel, msg) => {
         var args = JSON.parse(msg);
         var id = args.keyPath.join(':');
-                
+        console.log("MESSAGE:"+channel);
+        console.log(msg);
+        console.log("ID:"+id)
         switch(channel) 
         {
           case 'update:':
-            sio.in(id).emit('update:'+id, args.doc);
-           break;
-        
+            sio.in(id).emit('update:', args.keyPath, args.doc);
+            break;
           case 'delete:': 
-            sio.in(id).emit('delete:'+id, args.keyPath);
-           break;
+            sio.in(id).emit('delete:', args.keyPath);
+            break;
+          case 'add:':
+            sio.in(id).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            break;
+          case 'remove:':
+            sio.in(id).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            break;
         }
       });
-  
-      subClient.psubscribe('add:*')
-      subClient.psubscribe('remove:*');
-      subClient.psubscribe('update:*');
-
-      subClient.on('pmessage', (pattern, channel, msg) => {
-        var comps = channel.split(':'), 
-            cmd = comps[0],
-            objId = comps[1],
-            bucket = comps[2];
-
-        msg = JSON.parse(msg);
-    
-        if(pattern === 'update:*'){
-          sio.in(objId).emit(cmd+':'+objId, msg);
-        }else{
-          sio.in(objId).emit(cmd+':'+objId+':'+bucket, msg);
-        }
-        // TODO: Implement "except" to avoid the sender to receive the message it sent
-        // Note that this has the implication that if you have several instances of one
-        // model or connection in the same browser, they will not be notificated, so
-        // some kind of intra model notification will be needed (Model Factory?)
-      });
+      
+      // TODO: Implement "except" to avoid the sender to receive the message it sent
+      // Note that this has the implication that if you have several instances of one
+      // model or connection in the same browser, they will not be notificated, so
+      // some kind of intra model notification will be needed (Model Factory?)  
     }
   }
 
