@@ -6,8 +6,8 @@
   Model Class
   
   This class represents a Model in a MVC architecture.
-  The model supports persistent storage, offline and
-  automatic client<->server synchronization.
+  The model supports persistent storage, offline operation 
+  and automatic client<->server synchronization.
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
@@ -18,7 +18,7 @@ import Overload = module('./overload');
 import Storage = module('./storage');
 import Sync = module('./sync/sync');
 
-enum ModelState {
+export enum ModelState {
   INITIAL,
   CREATING,
   CREATED
@@ -38,7 +38,7 @@ export class Model extends Base.Base {
   private _cid: string;
   private _id: string;
   
-  private _state: ModelState = ModelState.INITIAL;
+  public state: ModelState = ModelState.INITIAL;
   
   static syncManager: Sync.Manager;
   static storageQueue: Storage.Queue;
@@ -57,9 +57,9 @@ export class Model extends Base.Base {
   }
   
   static extend(bucket: string){
-    var self = this;
+    var _this = this;
     function __(args, _bucket) {
-      self.call(this, args, bucket || _bucket);
+      _this.call(this, args, bucket || _bucket);
     }; 
     
     __.prototype = this.prototype;
@@ -86,6 +86,15 @@ export class Model extends Base.Base {
         this.fromJSON(args, (err, instance) => {
           if(instance){
             keepSynced && instance.keepSynced();
+            if(!instance.isPersisted()){
+              var id = instance.id();
+              Model.storageQueue.once('created:'+id, (id) => {
+                instance.id(id);
+                instance.state = ModelState.CREATED;
+              });
+            }else{
+              instance.state = ModelState.CREATED;
+            }
             instance.init(() => {
               cb(null, instance);
             })
@@ -145,12 +154,16 @@ export class Model extends Base.Base {
     if(id){
       this._cid = this._id = id;
       this._persisted = true;
+      if(this._keepSynced){
+        Model.syncManager && Model.syncManager.startSync(this);
+      }
     }
     return this._id || this._cid;
   }
   
-  isPersisted(){
-    return this._persisted || this._id;
+  isPersisted(): bool
+  {
+    return this._persisted || (this.state >= ModelState.CREATED);
   }
   
   init(fn){
@@ -163,14 +176,15 @@ export class Model extends Base.Base {
     }
   }
   
+  //
+  // TODO: Should update and delete be static functions instead? since
+  // we can have several instances of the same model...
+  //
+  
   /*
       Updates a model (in its storage) with the given args.
 
       update(args)
-  
-      TODO: This method needs to be throtled so that it does not call the
-      server too often. Therefore it should queue the calls and merge the
-      arguments (could be implemented at Storage Queue).
   */
   update(args: {}, cb?: (err: Error) => void)
   {
@@ -180,22 +194,19 @@ export class Model extends Base.Base {
       
     cb = cb || (err: Error)=>{};
     
-    if(this._state != ModelState.INITIAL){
-      Model.storageQueue.updateCmd([bucket, id], args, cb);
-    }else{
-      this._state = ModelState.CREATING;
+    if(this.state == ModelState.INITIAL){
+      this.state = ModelState.CREATING;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
         this._persisted && Model.syncManager.startSync(this);
+        this.state = ModelState.CREATED;
       });
       Model.storageQueue.createCmd([bucket], args, cb);
+    }else{
+      Model.storageQueue.updateCmd([bucket, id], args, cb);
     }
   }
   
-  //
-  // TODO: Should delete and update be static functions instead? since
-  // we can have several instances of the same model...
-  //
   delete(cb?: (err: Error) => void)
   {
     cb = cb || (err: Error)=>{};
@@ -214,22 +225,21 @@ export class Model extends Base.Base {
     this._keepSynced = true;
   
     if (this.isPersisted()){
-      Model.syncManager && Model.syncManager.startSync(self);
+      Model.syncManager && Model.syncManager.startSync(this);
     }
   
     this.on('changed:', (doc, options) => {
       if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
-        //
-        // TODO: Use async debounce to avoid faster updates than we manage to process.
-        // (we will maybe also need to merge all queued incoming data).
-        //
         this.update(doc);
       }
     });
   }
   
   toArgs(){
-    var args = {_persisted:this._persisted, _cid:this._cid};
+    var args = {
+      _persisted:this._persisted, 
+      _cid:this._cid
+    };
     
     for(var key in this){
       if(!_.isUndefined(this[key])  &&  

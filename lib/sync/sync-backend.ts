@@ -29,7 +29,8 @@ export class SyncHub {
         console.log("Socket %s connected in the Sync Module", socket.id);
         
         socket.on('sync', function(keyPath: string[], cb:(err?: Error) => void){
-          console.log(keyPath)
+          console.log("SYNC:"+keyPath);
+          console.log(keyPath);
           var id = keyPath.join(':');
           console.log("ID:"+id)
           if(this.check){
@@ -43,10 +44,12 @@ export class SyncHub {
           cb();
         });
     
-        socket.on('unsync', function(keyPath: string[]){
+        socket.on('unsync', function(keyPath: string[], cb:(err?: Error) => void){
+          console.log("UNSYNC:"+keyPath);
           var id = keyPath.join(':');
           console.log("Socket %s stopped synchronization for id:%s", socket.id, id);
           socket.leave(id);
+          cb();
         });
       });
 

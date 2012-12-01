@@ -23,7 +23,12 @@
                path: 'http://localhost:8080/',
                main: 'ginger',
                lib: ''
-             },             
+             },
+             'util': {
+                path: 'http://localhost:8080/lib',
+                main: 'util.ts?',
+                lib: ''
+            },
             'route': {
                path: 'http://localhost:8080/lib',
                main: 'route.ts?',
@@ -70,11 +75,25 @@
                lib: ''
              },
              'socket': {
-               path: 'http://localhost:8080/lib/storage',
+               path: 'lib/storage',
                main: 'socket.ts?',
                lib: ''
              },
-             
+             'storage/socket': {
+               path: 'lib/storage',
+               main: 'qwesocketqwe.ts?',
+               lib: ''
+             },
+             'model': {
+               path: 'http://localhost:8080/lib',
+               main: 'model.ts?',
+               lib: ''
+             },
+             'sync': {
+               path: 'http://localhost:8080/lib/sync',
+               main: 'sync.ts?',
+               lib: ''
+             }
            }
        };
   </script>
@@ -94,12 +113,12 @@
           curl([//'test/test_storage_local',
                 'test/test_storage_socket',
                 'test/test_overload',
+                'test/test_models',
             // 'test/test_tasks',
             // 'test/test_events',
             // 'test/test_routes',
             // 'test/test_base',
-                //'test/test_declare',
-                //'test/test_models',
+            //'test/test_declare',
                 //'test/test_collections',
                 ], function(Storage){
                   // We need to run this first.

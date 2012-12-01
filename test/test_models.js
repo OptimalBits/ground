@@ -1,19 +1,30 @@
-define(['ginger'], function(ginger){
+define(['util', 'local', 'socket', 'storage', 'base', 'model', 'sync', 'jquery'],
+  function(Util, Local, Socket, Storage, Base, Model, Sync, $){
+  
+localStorage.clear();
 
-ginger.Model.set('socket', socket);
+var storageLocal  = new Local.Local();
+var storageSocket = new Socket.Socket(socket);
+var storageQueue  = new Storage.Queue(storageLocal, storageSocket);
 
-var Animal = ginger.Model.extend();
-Animal.bucket('animals');
-Animal.use('transport', 'socket');
+var syncManager = new Sync.Manager(socket);
+
+Model.Model.storageQueue = storageQueue;
+Model.Model.syncManager = syncManager;
 
 describe('Model', function(){
+  
+  var Animal = Model.Model.extend('animals');
   var animal = new Animal();
   
-  before(function(done){  
-    animal.save(function(){
-      animal.keepSynced();
-      done();
-    });
+  before(function(done){
+    storageQueue.init(function(){
+      animal.save(function(){
+      });
+      storageQueue.once('synced:', function(){
+        done();
+      })
+    })
   });
   
   describe('Instantiation', function(){
@@ -21,43 +32,50 @@ describe('Model', function(){
       var instance = new Animal();
       expect(instance).to.be.a(Animal);
     });
-    
+    /*
     it('as a factory method', function(){
       var instance = Animal();
       expect(instance).to.be.a(Animal);
-    });
+    });*/
   });
   
   describe('findById', function(){
     it('finds the animal', function(done){
-      Animal.findById(animal.cid, function(err, doc){
+      Animal.findById(animal.id(), function(err, doc){
         expect(err).to.not.be.ok();
-        expect(doc.cid).to.eql(animal.cid);
+        expect(doc).to.be.ok();
+        expect(doc.id()).to.equal(animal.id());
         doc.release();
         done();
       });
     });
   });
+  
   describe('Update', function(){
     it('updates the server model', function(done){
-      animal.set('name', 'foobar');
-      animal.save(function(err){
-        expect(err).to.not.be.ok();
-        expect(animal).to.have.property('_id');
-        Animal.findById(animal._id, function(err, doc){
+      storageQueue.once('synced:', function(){
+        Animal.findById(animal.id(), function(err, doc){
           expect(err).to.not.be.ok();
           expect(doc).to.have.property('_id');
-          expect(doc._id).to.eql(animal._id);
+          expect(doc.id()).to.eql(animal.id());
           expect(doc).to.have.property('name');
           expect(doc.name).to.be.eql('foobar');
           doc.release();
           done();
         });
+      })
+      
+      animal.set('name', 'foobar');
+      animal.save(function(err){
+        expect(err).to.not.be.ok();
+        expect(animal).to.have.property('_id');
+        expect(animal._id).to.be.eql(animal.id())
       });
     });
+    
     it('another instance propagates changes', function(done){
       var otherAnimal;
-
+      
       animal.once('changed:', function(){
         expect(animal).to.have.property('legs');
         expect(animal).to.have.property('tail');
@@ -78,16 +96,11 @@ describe('Model', function(){
     });
     
     it('releasing an instance keeps other synchronized', function(done){
+      
       var oneFox = new Animal({name:'fox', legs:4});
-      oneFox.save(function(err){
-        expect(err).to.not.be.ok();
+      storageQueue.once('synced:', function(){
         expect(oneFox).to.have.property('_id');
-        oneFox.keepSynced();
         
-        oneFox.once('changed:', function(){  
-          done();
-        });
-            
         Animal.findById(oneFox._id, function(err, secondFox){
           expect(err).to.not.be.ok();
           expect(secondFox).to.have.property('_id');
@@ -97,8 +110,9 @@ describe('Model', function(){
           
           Animal.findById(oneFox._id, function(err, thirdFox){
             expect(err).to.not.be.ok();
-            expect(secondFox).to.have.property('_id');
-            expect(secondFox).to.eql(secondFox);
+            expect(thirdFox).to.have.property('_id', secondFox._id);
+            expect(thirdFox).to.have.property('legs', secondFox.legs);
+            expect(thirdFox).to.have.property('name', secondFox.name);
             
             thirdFox.keepSynced();
             
@@ -110,9 +124,19 @@ describe('Model', function(){
           });
         });
       });
+      
+      oneFox.save(function(err){
+        expect(err).to.not.be.ok();
+        oneFox.keepSynced();
+        
+        oneFox.once('changed:', function(){  
+          done();
+        });
+      });
+      
     });
   });
-  
+  /*
   describe('Fetch', function(){
     var dolphin, whale, shark;
     
@@ -137,11 +161,13 @@ describe('Model', function(){
       })
     });
   });
-  
+  */
   describe('Offline', function(){
     var animal = new Animal({tail:true});
     
-    before(function(done){  
+    socket.on('connect', storageQueue.syncFn);
+    
+    before(function(done){
       animal.save(function(){
         animal.keepSynced();
         done()
@@ -160,7 +186,7 @@ describe('Model', function(){
         socket.socket.disconnect();
       }
 
-      Animal.findById(animal._id, function(err, doc){
+      Animal.findById(animal.id(), function(err, doc){
         expect(err).to.not.be.ok();
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
@@ -168,7 +194,8 @@ describe('Model', function(){
         doc.set({legs:3});
         otherAnimal = doc;
         
-        Animal.findById(animal._id, function(err, doc){
+        Animal.findById(animal.id(), function(err, doc){
+          expect(err).to.not.be.ok();
           expect(doc).to.have.property('legs');
           expect(doc).to.have.property('tail');
           expect(doc.legs).to.be(3);
@@ -180,17 +207,17 @@ describe('Model', function(){
       });
     });
     
-    /**
-      Creates a model while offline automatically creates it when 
-      going back to online.
-    */
+    //
+    //  Creates a model while offline automatically creates it when 
+    //  going back to online.
+    //
     it('create', function(done){
       socket.disconnect();
 
       var tempAnimal = new Animal(), tempAnimal2;
-      
-      ginger.once('inSync:', function(){
-        Animal.findById(tempAnimal._id, function(err, doc){
+            
+      storageQueue.once('synced:', function(){
+        Animal.findById(tempAnimal.id(), function(err, doc){
           expect(tempAnimal._id).to.be(doc._id);
           expect(tempAnimal2._id).to.be(doc._id);
           expect(err).to.not.be.ok();
@@ -203,7 +230,8 @@ describe('Model', function(){
       tempAnimal.save(function(err){
         expect(err).to.not.be.ok()
         tempAnimal.keepSynced();
-        Animal.findById(tempAnimal.cid, function(err, doc){
+        
+        Animal.findById(tempAnimal.id(), function(err, doc){
           tempAnimal2 = doc;
           tempAnimal2.keepSynced();
           socket.socket.connect();           
@@ -211,17 +239,20 @@ describe('Model', function(){
       });
     });
     
-    /**
-      A model is instantiated and keep synced before saving,
-      as soon as it is saved it should be kept synced with other
-      instances.
-    */
+    //
+    //  A model is instantiated and keep synced before saving,
+    //  as soon as it is saved it should be kept synced with other
+    //  instances.
+    
     it('keepSynced before save', function(done){
       var elephant = new Animal({legs:4});
       elephant.keepSynced();
       elephant.save(function(err){
         expect(err).to.not.be.ok();
-        expect(elephant.__persisted).to.be.ok();
+      });
+      
+      storageQueue.once('synced:', function(){
+        expect(elephant._persisted).to.be.ok();
         expect(elephant).to.have.property('_id');
         Animal.findById(elephant._id, function(err, otherElephant){
           expect(err).to.not.be.ok()
@@ -241,37 +272,43 @@ describe('Model', function(){
       });
     });
     
-    /**
-      Tests that after doing a findById, the object has been cached and 
-      is available in offline mode.
-    */
+    //
+    //  Tests that after doing a findById, the object has been cached and 
+    //  is available in offline mode.
+    //
     it('findById caches object', function(){
       // TO IMPLEMENT: This case 
     });
 
-    /**
-      Deletes a model while offline, the model is deleted in the server
-      as soon as we are back online.
-    */
+    //
+    //  Deletes a model while offline, the model is deleted in the server
+    //  as soon as we are back online.
+    //
     it('delete', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider-pig'});
-
-      ginger.once('inSync:', function(){
-        Animal.findById(tempAnimal._id, function(err, doc){
-          expect(err).to.be.an(Error);
-          done();
-        });
-      });
-
-      tempAnimal.save(function(){
+      
+      tempAnimal.save(function(err){
+        expect(err).to.not.be.ok();
         tempAnimal.keepSynced();
+      });
+      
+      storageQueue.once('synced:', function(){
         expect(tempAnimal).to.have.property('_id');
+        
         socket.disconnect();
         tempAnimal.delete(function(){
           socket.socket.connect();              
         });
+        
+        storageQueue.once('synced:', function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(err).to.be.an(Error);
+            done();
+          });
+        });
       });
+      
     });
     
     it('delete a model deletes it also from local cache', function(done){
@@ -280,17 +317,21 @@ describe('Model', function(){
       
       spiderPig.save(function(err){
         expect(err).to.not.be.ok();
-        expect(spiderPig).to.have.property('_id');
         spiderPig.keepSynced();
+      });
           
+      storageQueue.once('synced:', function(){
+        expect(spiderPig).to.have.property('_id');
+        
         spiderPig.delete(function(err){
           expect(err).to.not.be.ok();
           
           socket.disconnect();
             
           Animal.findById(spiderPig.id(), function(err, doc){
+            expect(err).to.be.an(Error);
             expect(doc).to.not.be.ok();
-          
+
             socket.socket.connect();
             socket.once('connect', done);
           });
@@ -298,37 +339,41 @@ describe('Model', function(){
       });
     });
     
-    /**
-      A model is deleted while being offline, as soon as we get back
-      online the client must delete the object.
-    */
+    //
+    //  A model is deleted while being offline, as soon as we get back
+    //  online the client must delete the object.
+    //
     it('serverside delete while offline', function(done){
       // TO IMPLEMENT;
       done();
     });
     
-    /**
-      A model updated in the server while being offline gets 
-      updated as soon as we get online.
-      (Note: we do not handle conflicts yet).
-    */
+    //
+    // A model updated in the server while being offline gets 
+    // updated as soon as we get online.
+    // (Note: we do not handle conflicts yet).
+    //
     it('serverside update while offline', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider'});
       tempAnimal.save(function(){
         tempAnimal.keepSynced();
-        
-        ginger.once('sync:'+tempAnimal._id, function(){
-          Animal.findById(tempAnimal._id, function(err, doc){
-            expect(tempAnimal.legs).to.be(7);
-            done();    
-          });
-        });
-
+      });
+      
+      storageQueue.once('synced:', function(){
         var obj = {legs:7}
-        ginger.ajax.put('http://localhost:8080/animals/'+tempAnimal._id,obj, function(err, res) { 
+        Util.ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) { 
           socket.socket.disconnect();
           socket.socket.connect();
+        });
+        
+        storageQueue.once('synced:', function(){
+          Animal.findById(tempAnimal._id, function(err, doc){
+            expect(doc.legs).to.be(7);
+            // This case will be worked-out later...
+            //expect(tempAnimal.legs).to.be(7);
+            done();    
+          });
         });
       });
     });
@@ -340,20 +385,22 @@ describe('Model', function(){
 
   describe('Delete', function(){
     it('deletes and propagates delete event', function(done){
-      animal.delete(function(err){
-        expect(err).to.not.be.ok();
-      });
-        
-      animal.on('deleted:', function(){
-        Animal.findById(animal.cid, function(err, res){
+      var tempAnimal = new Animal();
+      tempAnimal.set({legs : 8, name:'spider'});
+      
+      tempAnimal.on('deleted:', function(){
+        Animal.findById(tempAnimal.id(), function(err, res){
           expect(err).to.be.ok();
           expect(res).to.not.be.ok();
           done();
         });
       });
+      
+      tempAnimal.delete(function(err){
+        expect(err).to.not.be.ok();
+      });
     });
   });
-
 });
 
 

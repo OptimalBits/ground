@@ -168,8 +168,8 @@ export class Manager extends Base.Base {
     }else{
       this.objs[key].push(model);
     }
+    // Should'nt we keep all the instance of a model up-to-date?
   }
-  
   
   /**
     Ends synchronization for a given model.
@@ -187,7 +187,9 @@ export class Manager extends Base.Base {
       models = _.reject(models, function(item){return item === model;});
       if(models.length===0){
         console.log('Stop synching:'+key);
-        Socket.safeEmit(this.socket, 'unsync', key);
+        Socket.safeEmit(this.socket, 'unsync', getKeyPath(model), function(err){
+          console.log('Stop synching:'+getKeyPath(model));
+        });
         delete this.objs[key];
       }else{
         this.objs[key] = models;

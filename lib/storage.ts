@@ -126,12 +126,14 @@ export class Queue extends Base.Base {
     this.remoteStorage.get(keyPath, (err?, doc?) => {
       if(err){
         this.localStorage.get(keyPath, (err?, doc?) => {
-          if(doc){
+          if(doc){            
             doc['_id'] = _.last(keyPath);
           }
           cb(err, doc);
         });
       }else{
+        doc['_persisted'] = true;
+        // Shoudlnt we need to cache here to local?
         cb(err, doc);
       }
     });
@@ -255,20 +257,24 @@ export class Queue extends Base.Base {
         
         switch (obj.cmd){
           case 'create':
-            var _args = _.clone(args), cid = args.cid;
-            remoteStorage.create(keyPath, _args, function(err?, sid?){
-              if(err){
-                done(err);
-              }else{
-                var newKeyPath = _.initial(keyPath);
-                newKeyPath.push(sid);
-                localStorage.link(newKeyPath, keyPath, (err?: Error) => {
-                  this.updateIds(cid, sid); // needed?
-                  this.emit('created:'+cid, sid);
-                  done();
-                });
-              }
-            });
+            (function(cid, args){
+              remoteStorage.create(keyPath, args, function(err?, sid?){
+                if(err){
+                  done(err);
+                }else{
+                  localStorage.put(keyPath, {_persisted:true}, (err?: Error) => {
+                    var newKeyPath = _.initial(keyPath);
+                    newKeyPath.push(sid);
+                    localStorage.link(newKeyPath, keyPath, (err?: Error) => {
+                      this.updateIds(cid, sid); // needed?
+                      this.emit('created:'+cid, sid);
+                      done();
+                    });
+                  });
+                }
+              });
+            })(args['_cid'], args);
+            
             break;
           case 'update':
             remoteStorage.put(keyPath, args, done);

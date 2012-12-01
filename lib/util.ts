@@ -9,6 +9,8 @@
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="../third/jquery.d.ts" />
+
 
 // we can not import due to a bug in tsc.
 // import _ = module("underscore");
@@ -178,3 +180,46 @@ export function asyncForEachSeries(arr, fn, cb){
   };
   iterate();  
 }
+
+
+//------------------------------------------------------------------------------
+//
+// Ajax (DEPRECATED)
+// 
+//------------------------------------------------------------------------------
+
+var ajaxBase = function(method, url, obj, cb){
+  cb = _.isFunction(obj) ? obj : cb;
+  obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
+  return {
+    type:method,
+    url:url,
+    data:obj,
+    contentType:'application/json',
+    dataType:'json',
+    success:function(data, textStatus, jqXHR){
+      cb(null, data)
+    },
+    error:function(jqXHR, status, errorThrown){
+      cb(jqXHR)
+    }
+  }
+}
+
+export var ajax = {
+  get:function(url, obj, cb){
+    return $.ajax(ajaxBase('GET', url, obj, cb))
+  },
+  put:function(url, obj, cb){
+    return $.ajax(ajaxBase('PUT', url, obj, cb));
+  },
+  post:function(url, obj, cb){
+    return $.ajax(ajaxBase('POST', url, obj, cb));
+  },
+  del:function(url, obj, cb){
+    return $.ajax(ajaxBase('DELETE', url, obj, cb));
+  }
+}
+
+
+
