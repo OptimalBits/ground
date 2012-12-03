@@ -31,17 +31,21 @@ export class SyncHub {
         socket.on('sync', function(keyPath: string[], cb:(err?: Error) => void){
           console.log("SYNC:"+keyPath);
           console.log(keyPath);
-          var id = keyPath.join(':');
-          console.log("ID:"+id)
-          if(this.check){
-            if (this.check(socket.id, keyPath)){
+          if(!Array.isArray(keyPath)){
+            cb && cb(new TypeError("keyPath must be a string[]"));
+          }else{
+            var id = keyPath.join(':');
+            console.log("ID:"+id)
+            if(this.check){
+              if (this.check(socket.id, keyPath)){
+                socket.join(id);
+              }
+            }else{
+              console.log("Socket %s started synchronization for id:%s", socket.id, keyPath);
               socket.join(id);
             }
-          }else{
-            console.log("Socket %s started synchronization for id:%s", socket.id, keyPath);
-            socket.join(id);
+            cb();
           }
-          cb();
         });
     
         socket.on('unsync', function(keyPath: string[], cb:(err?: Error) => void){
