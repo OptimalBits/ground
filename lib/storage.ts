@@ -109,13 +109,13 @@ export class Queue extends Base.Base {
     });
   }
   
-  /* We need to have this listener somewhere...
+  /* 
+  We need to have this listener somewhere...
   init(socket){
     socket.removeListener('connect', this.syncFn);
     socket.on('connect', this.syncFn);
   }
   */
-  
   getDoc(keyPath: string[], cb){
     // TODO: 
     // For fast performance we first get from local,
@@ -136,6 +136,15 @@ export class Queue extends Base.Base {
         // Shoudlnt we need to cache here to local?
         cb(err, doc);
       }
+    });
+  }
+  
+  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
+  {
+    this.remoteStorage.find(keyPath, query, options, (err?, doc?) => {
+      if(err){
+        this.localStorage.find(keyPath, query, options, cb);
+      };
     });
   }
   
