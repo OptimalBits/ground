@@ -104,15 +104,16 @@ export class Local implements Storage.IStorage {
     cb(null);
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: {}[]) => void) : void
+  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: {}[]) => void) : void
   {
     var collection = _get(makeKey(keyPath));
     var result = [];
-    
-    for(var i=0; i<collection.length;i++){
-      result.push(_get(collection[i]));
+    if(collection){
+      for(var i=0; i<collection.length;i++){
+        result.push(_get(collection[i]));
+      }
     }
-    cb(null, result)
+    cb(null, result);
   }
   
   //
