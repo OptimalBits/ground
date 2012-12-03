@@ -1,18 +1,35 @@
-define(['ginger'], function(ginger){
+define(['util', 'local', 'socket', 'storage', 'base', 'model', 'sync', 'collection'],
+  function(Util, Local, Socket, Storage, Base, Model, Sync, Collection){
 
-ginger.Model.set('socket', socket);
+localStorage.clear();
 
-var Animal = ginger.Declare(ginger.Model);
-Animal.bucket('animals');
-Animal.use('socket');
+var storageLocal  = new Local.Local();
+var storageSocket = new Socket.Socket(socket);
+var storageQueue  = new Storage.Queue(storageLocal, storageSocket);
 
+var syncManager = new Sync.Manager(socket);
+
+Model.Model.storageQueue = storageQueue;
+Model.Model.syncManager = syncManager;
+
+var Animal = Model.Model.extend('animals');
+var animal = new Animal();
+  
+before(function(done){
+  storageQueue.init(function(){
+    animal.save(function(){
+    });
+    storageQueue.once('synced:', function(){
+      done();
+    })
+  })
+});
 
 describe('Collections', function(){
   var Zoo, zoo;
 
   before(function(){
-    Zoo = ginger.Declare(ginger.Model);
-    Zoo.bucket('zoo');
+    Zoo = Model.Model.extend('zoo');
     
     zoo = new Zoo();
     zoo.keepSynced();
