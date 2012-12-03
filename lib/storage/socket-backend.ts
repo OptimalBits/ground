@@ -16,7 +16,7 @@ function scb(cb){
     if(arguments[0]){
       arguments[0] = arguments[0].message;
     }
-    cb.apply(null, arguments);
+    cb && cb.apply(null, arguments);
   }
 }
 
