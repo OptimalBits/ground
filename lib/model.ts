@@ -8,15 +8,22 @@
   This class represents a Model in a MVC architecture.
   The model supports persistent storage, offline operation 
   and automatic client<->server synchronization.
+  
+  Events:
+  
+  'deleted:', emitted when a model has been deleted.
+  
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
+
 
 import Base = module('./base');
 import Util = module('./util');
 import Overload = module('./overload');
 import Storage = module('./storage');
 import Sync = module('./sync/sync');
+import Collection = module('./collection');
 
 export enum ModelState {
   INITIAL,
@@ -24,7 +31,15 @@ export enum ModelState {
   CREATED
 }
 
-export class Model extends Base.Base {
+export interface IModel{
+  new (args: {}, bucket: string): Model;
+  __bucket: string;
+  create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
+  all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
+}
+
+export class Model extends Base.Base implements Sync.ISynchronizable
+{
   static  __bucket: string;
   private __bucket: string;
   
@@ -71,12 +86,14 @@ export class Model extends Base.Base {
       extend: this.extend,
       create: this.create,
       findById: this.findById,
+      all: this.all,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
     
     return __;
   }
+
 
   //static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
   static create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void
@@ -149,6 +166,10 @@ export class Model extends Base.Base {
     super.destroy();
   }
   
+  init(fn){
+    fn(this)
+  }
+  
   id(id?: string): string 
   {
     if(id){
@@ -161,16 +182,33 @@ export class Model extends Base.Base {
     return this._id || this._cid;
   }
   
+  getName(): string
+  {
+    return "Model";
+  }
+  
+  getKeyPath(): string[]
+  {
+    return [this.__bucket, this.id()];
+  }
+  
+  isKeptSynced(): bool
+  {
+    return this._keepSynced;
+  }
+  
   isPersisted(): bool
   {
     return this._persisted || (this.state >= ModelState.CREATED);
   }
   
-  init(fn){
-    fn(this)
+  bucket(): string
+  {
+    return this.__bucket;
   }
   
-  save(cb?: (err: Error) => void){
+  save(cb?: (err: Error) => void)
+  {
     if(this._dirty){
       this.update(this.toArgs(), cb);
     }
@@ -203,7 +241,12 @@ export class Model extends Base.Base {
       });
       Model.storageQueue.createCmd([bucket], args, cb);
     }else{
-      Model.storageQueue.updateCmd([bucket, id], args, cb);
+      Model.storageQueue.updateCmd([bucket, id], args, (err)=>{
+        if(!err){
+          this.emit('updated:', this, args);
+        }
+        cb(err);
+      });
     }
   }
   
@@ -255,5 +298,47 @@ export class Model extends Base.Base {
       }
     }
     return args
+  }
+  
+  /**
+    Returns all the instances of collection determined by a parent model and
+    the given model class.
+    (Should we deprecate this in favor of a keyPath based method?)
+  */
+  static all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void){
+    Overload.overload({
+      'Model Array Object Function': function(parent, keyPath, args, cb){
+        Model.storageQueue.find(keyPath, {}, {}, (err, docs) => {
+          if(docs){
+            _.each(docs, function(doc){_.extend(doc, args)});
+            Collection.Collection.create(this, parent, docs, cb);
+          }else{
+            cb(err);
+          }
+        });
+      },
+      'Model Object String Function': function(parent, args, bucket, cb){
+        var keyPath = parent.getKeyPath();
+        keyPath.push(bucket);
+        this.all(parent, args, cb);
+      },
+      /*
+      'String Function': function(bucket, cb){
+        this.all([bucket], {}, cb);
+      },
+      'Object Function': function(args, cb){
+        this.all([this.__bucket], args, cb);
+      },
+      */
+      'Model Function': function(parent, cb){
+        var keyPath = parent.getKeyPath();
+        keyPath.push(this.__bucket);
+        this.all(parent, keyPath, {}, cb);
+      }
+    }).apply(this, arguments);
+  }
+  public all(model: IModel, args, bucket, cb)
+  {
+    model.all(this, args, bucket, cb);
   }
 }
