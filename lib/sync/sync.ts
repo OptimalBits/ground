@@ -18,6 +18,8 @@
 import Base = module('../base');
 
 //import Socket = module('../storage/socket');
+
+// -----------8<-----------8<------------8<-------------------
 // import is not working so we copy/paste safeEmit here...
 function safeEmit(socket, ...args:any[]): void
 {
@@ -44,37 +46,28 @@ function safeEmit(socket, ...args:any[]): void
  }
 }
 var Socket = {safeEmit : safeEmit};
+// -----------8<-----------8<------------8<-------------------
 
 /**
   An abstract class representing a synchronizable object.
 */
-/*
-interface ISynchronizable
+export interface ISynchronizable
 {
-  //
-  //  KeepSynced - Enables/Disables synchronization.
-  //
-  keepSynced: bool,
-  shouldSync: bool,
-  update: noop,
+  isKeptSynced:() => bool;
+  getKeyPath:() => string[];
 };
-*/
-
-function getKeyPath(model){
-  return [model.__bucket, model.id()];
-}
 
 function keyPathToKey(keyPath: string[]){
   return keyPath.join(':');
 }
 
-function modelKey(model){
-  return keyPathToKey(getKeyPath(model));
+function docKey(doc: ISynchronizable){
+  return keyPathToKey(doc.getKeyPath());
 }
 
 export class Manager extends Base.Base {
   private socket;
-  private objs: {}; // objs: {id: ISynchonizable[]} [];
+  private docs: { [key: string]: ISynchronizable[];} = {};
   private connectFn: ()=>void;
   
   constructor(socket)
@@ -82,57 +75,68 @@ export class Manager extends Base.Base {
     super();
     
     this.socket = socket;
-    this.objs = {}; // {id:[model, ...]}
-    
+        
     this.connectFn = () => {
       var socket = this.socket;
       
       // Call re-sync for all models in this manager...
-      _.each(this.objs, (models, id) => {
-        var model = models[0];
+      _.each(this.docs, (docs, id) => {
+        var doc = docs[0];
         
         // TODO: send also the current __rev, if newer in server, 
         // get the latest doc.
-        Socket.safeEmit(socket, 'sync', getKeyPath(model), function(err){
+        Socket.safeEmit(socket, 'sync', doc.getKeyPath(), function(err){
           if(err){
-            console.log('Error syncing %s, %s', getKeyPath(model), err);
+            console.log('Error syncing %s, %s', doc.getKeyPath(), err);
           }else{
-            console.log('Syncing %s', getKeyPath(model));
+            console.log('Syncing %s', doc.getKeyPath());
           }
         });
         
         // OBSOLETE if done according to new 'sync'
-        Socket.safeEmit(socket, 'resync', getKeyPath(model), (err, doc) => {
+        Socket.safeEmit(socket, 'resync', doc.getKeyPath(), (err, doc) => {
           if(!err){
             doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
-            for(var i=0, len=models.length; i<len; i++){
-              models[i].set(doc, {sync:'false'});
-              models[i].id(id);
+            for(var i=0, len=docs.length; i<len; i++){
+              docs[i].set(doc, {sync:'false'});
+              docs[i].id(id);
             }
-            // TODO: we should update locally...
-            // model.local().update(doc);
+            // TODO: we probably should update locally...
+            // doc.local().update(doc);
           } else {
-            console.log('Error resyncing %s, %s', getKeyPath(model), err)
+            console.log('Error resyncing %s, %s', doc.getKeyPath(), err)
           }
         });
       });
     }
     
-    socket.on('update:', (keyPath, doc) => {
+    //
+    // Listeners
+    //
+    socket.on('update:', (keyPath, args) => {
       var key = keyPathToKey(keyPath);
       
-      _.each(this.objs[key], function(model){
-        model.set(doc, {sync:false, doc:doc});
+      _.each(this.docs[key], function(doc){
+        doc.set(doc, {sync:false, doc:args});
       });
     });
       
     socket.on('delete:', (keyPath) => {
       var key = keyPathToKey(keyPath);
-      _.each(this.objs[key], function(model){
-        //model.local().remove();
-        model.emit('deleted:', keyPath);
+      _.each(this.docs[key], function(doc){
+        doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
       });
     });
+    
+    socket.on('add:', (keyPath, items) => {
+      var key = keyPathToKey(keyPath);
+      this.docs[key] && _.first(this.docs[key]).emit('add:', items);
+    });
+    
+    socket.on('remove:', (keyPath, itemIds) => {
+      var key = keyPathToKey(keyPath);
+      this.docs[key] && _.first(this.docs[key]).emit('remove:', itemIds);
+    })
   }
   
   init()
@@ -153,20 +157,20 @@ export class Manager extends Base.Base {
   /**
     Starts synchronization for a given model.
   */
-  startSync(model)
+  startSync(doc: ISynchronizable)
   {
     var 
-      key = modelKey(model),
+      key = docKey(doc),
       socket = this.socket;
     
-    if(!this.objs[key]){
-      this.objs[key] = [model];
+    if(!this.docs[key]){
+      this.docs[key] = [doc];
       
-      Socket.safeEmit(this.socket, 'sync', getKeyPath(model), function(err){
-        console.log('Start synching:'+getKeyPath(model));
+      Socket.safeEmit(this.socket, 'sync', doc.getKeyPath(), function(err){
+        console.log('Start synching:'+doc.getKeyPath());
       });
     }else{
-      this.objs[key].push(model);
+      this.docs[key].push(doc);
     }
     // Should'nt we keep all the instance of a model up-to-date?
   }
@@ -174,25 +178,25 @@ export class Manager extends Base.Base {
   /**
     Ends synchronization for a given model.
   */
-  endSync(model)
+  endSync(doc: ISynchronizable)
   {
-    if (!model._keepSynced) return;
+    if (!doc.isKeptSynced()) return;
 
     var 
-      key = modelKey(model),
+      key = docKey(doc),
       socket = this.socket,
-      models = this.objs[key];
+      docs = this.docs[key];
     
-    if(models){
-      models = _.reject(models, function(item){return item === model;});
-      if(models.length===0){
+    if(docs){
+      docs = _.reject(docs, function(item){return item === doc;});
+      if(docs.length===0){
         console.log('Stop synching:'+key);
-        Socket.safeEmit(this.socket, 'unsync', getKeyPath(model), function(err){
-          console.log('Stop synching:'+getKeyPath(model));
+        Socket.safeEmit(this.socket, 'unsync', doc.getKeyPath(), function(err){
+          console.log('Stop synching:'+doc.getKeyPath());
         });
-        delete this.objs[key];
+        delete this.docs[key];
       }else{
-        this.objs[key] = models;
+        this.docs[key] = docs;
       }
     }
   }  
