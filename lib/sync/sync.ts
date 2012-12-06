@@ -55,6 +55,7 @@ export interface ISynchronizable
 {
   isKeptSynced:() => bool;
   getKeyPath:() => string[];
+  emit:(event: string, ...params: any[]) => void;
 };
 
 function keyPathToKey(keyPath: string[]){
@@ -128,15 +129,23 @@ export class Manager extends Base.Base {
       });
     });
     
-    socket.on('add:', (keyPath, items) => {
+    function notifyObservers(observers, message, itemsKeyPath, itemIds){
+      if(observers){
+        for(var i=0; i<observers.length; i++){
+          observers[i].emit(message, itemsKeyPath, itemIds);
+        }
+      }
+    }
+    
+    socket.on('add:', (keyPath, itemsKeyPath, itemIds) => {
       var key = keyPathToKey(keyPath);
-      this.docs[key] && _.first(this.docs[key]).emit('add:', items);
+      notifyObservers(this.docs[key], 'add:', itemsKeyPath, itemIds);
     });
     
-    socket.on('remove:', (keyPath, itemIds) => {
+    socket.on('remove:', (keyPath, itemsKeyPath, itemIds) => {
       var key = keyPathToKey(keyPath);
-      this.docs[key] && _.first(this.docs[key]).emit('remove:', itemIds);
-    })
+      notifyObservers(this.docs[key], 'remove:', itemsKeyPath, itemIds);
+    });
   }
   
   init()

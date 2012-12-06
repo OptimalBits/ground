@@ -144,7 +144,9 @@ export class Queue extends Base.Base {
     this.remoteStorage.find(keyPath, query, options, (err?, doc?) => {
       if(err){
         this.localStorage.find(keyPath, query, options, cb);
-      };
+      }else{
+        cb(err, doc);
+      }
     });
   }
   

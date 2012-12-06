@@ -14,11 +14,18 @@ Model.Model.syncManager = syncManager;
 
 var Animal = Model.Model.extend('animals');
 var animal = new Animal();
+
+var Zoo, zoo;
+Zoo = Model.Model.extend('zoo');
   
 before(function(done){
   storageQueue.init(function(){
-    animal.save(function(){
-    });
+    zoo = new Zoo();
+    zoo.keepSynced();
+    
+    animal.save();
+    zoo.save();
+    
     storageQueue.once('synced:', function(){
       done();
     })
@@ -26,17 +33,10 @@ before(function(done){
 });
 
 describe('Collections', function(){
-  var Zoo, zoo;
-
-  before(function(){
-    Zoo = Model.Model.extend('zoo');
-    
-    zoo = new Zoo();
-    zoo.keepSynced();
-  });
-
-  describe('Creation', function(){
+  describe('Creation', function(){ 
     it('save to server', function(done){
+      var zoo = new Zoo();
+      
       zoo.save(function(err){
         expect(err).to.not.be.ok();
         zoo.all(Animal, function(err, animals){
@@ -50,34 +50,36 @@ describe('Collections', function(){
   });
 
   describe('Addition', function(){
-    it('add item to collection', function(done){
+    it('add item to collection', function(done){      
       zoo.all(Animal, function(err, animals){
         expect(err).to.not.be.ok();
         expect(animals).to.be.an(Object);
             
         animals.add(new Animal({name:"tiger"}), function(err){
           expect(err).to.not.be.ok();
-          Zoo.findById(zoo._id, function(err, doc){
-            expect(err).to.not.be.ok();
-            expect(doc).to.be.an(Object);
-            doc.all(Animal, function(err, collection){
+          storageQueue.once('synced:', function(){
+            Zoo.findById(zoo._id, function(err, doc){
               expect(err).to.not.be.ok();
-              expect(collection).to.be.an(Object);
-              expect(collection.items).to.be.an(Array);
-              expect(collection.items.length).to.be(1);
-              expect(animals.items.length).to.be(1);
-              doc.release();
-              collection.release();
-              animals.release();
-              done();
+              expect(doc).to.be.an(Object);
+              doc.all(Animal, function(err, collection){
+                expect(err).to.not.be.ok();
+                expect(collection).to.be.an(Object);
+                expect(collection.items).to.be.an(Array);
+                expect(collection.items.length).to.be(1);
+                expect(animals.items.length).to.be(1);
+                doc.release();
+                collection.release();
+                animals.release();
+                done();
+              });
             });
-          });
+          })
         });
       });
     });
   
     it('add item to collection propagates to other collections', function(done){
-      Zoo.findById(zoo._id, function(err, mirrorZoo){
+      Zoo.findById(zoo.id(), function(err, mirrorZoo){
         mirrorZoo.keepSynced();
       
         zoo.all(Animal, function(err, animals){
@@ -277,7 +279,7 @@ describe('Collections', function(){
               expect(err).to.not.be.ok();
               expect(sameZoo).to.be.an(Object);
               
-              ginger.once('inSync:', function(){
+              storageQueue.once('synced:', function(){
                 // Check that the collection has been synced in server.
                 sameZoo.all(Animal, function(err, collection){
                   expect(err).to.be(null);
@@ -285,7 +287,7 @@ describe('Collections', function(){
                   expect(collection.items).to.be.an(Array);
                   expect(animals.items.length).to.be(1);
                   expect(collection.items.length).to.be(1);
-                  ginger.release(sameZoo, collection, animals);
+                  Util.release(sameZoo, collection, animals);
                   done();
                 });
               });
@@ -320,7 +322,7 @@ describe('Collections', function(){
             Zoo.findById(zoo._id, function(err, doc){
               expect(err).to.be(null);
               expect(doc).to.be.an(Object);
-              ginger.once('inSync:', function(){
+              storageQueue.once('synced:', function(){
                 doc.all(Animal, function(err, collection){
                   expect(err).to.be(null);
                   expect(collection).to.be.an(Object);
@@ -373,7 +375,7 @@ describe('Collections', function(){
                 expect(err).to.not.be.ok();
                 expect(sameZoo).to.be.an(Object);
                 
-                ginger.once('inSync:', function(){
+                storageQueue.once('synced:', function(){
                   sameZoo.all(Animal, function(err, collection){
                     expect(err).not.to.be.ok();
                     expect(collection).to.be.an(Object);
@@ -473,7 +475,7 @@ describe('Collections', function(){
                   var offlineTiger = offlineAnimals.findById(onlineTiger.id());
                   expect(offlineTiger).to.not.be.ok();
                   
-                  ginger.release(onlineAnimals);
+                  Util.release(onlineAnimals);
                   
                   socket.socket.connect();
                   socket.once('connect', done);
@@ -509,7 +511,7 @@ describe('Collections', function(){
               expect(onlineTiger).to.be.an(Object);
               expect(onlineTiger.id()).to.be.equal(tiger.id());
               
-              ginger.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
+              Util.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
                 
                 zoo.all(Animal, function(err, emptyZoo){
                   expect(err).to.not.be.ok();
@@ -525,7 +527,7 @@ describe('Collections', function(){
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.items.length).to.be(0);
                     
-                    ginger.release(onlineAnimals, emptyZoo);
+                    Util.release(onlineAnimals, emptyZoo);
                     socket.socket.connect();
                     socket.once('connect', done);
                   });
@@ -558,12 +560,12 @@ describe('Collections', function(){
   
   describe('Sorted collection', function(){
     it('add items to sorted collection', function(done){
-      var item1 = new ginger.Model({val:1}),
-          item2 = new ginger.Model({val:5}),
-          item3 = new ginger.Model({val:10}),
-          item4 = new ginger.Model({val:15});
+      var item1 = new Model.Model({val:1}),
+          item2 = new Model.Model({val:5}),
+          item3 = new Model.Model({val:10}),
+          item4 = new Model.Model({val:15});
           
-      var collection = new ginger.Collection();
+      var collection = new Collection.Collection();
       collection.add(item3);
       collection.add(item2);
       collection.add(item4);
@@ -579,10 +581,10 @@ describe('Collections', function(){
     });
     
     it('update items in sorted collection keeps order', function(done){
-      var item1 = new ginger.Model({val:1}),
-          item2 = new ginger.Model({val:5}),
-          item3 = new ginger.Model({val:10}),
-          item4 = new ginger.Model({val:15});
+      var item1 = new Model.Model({val:1}),
+          item2 = new Model.Model({val:5}),
+          item3 = new Model.Model({val:10}),
+          item4 = new Model.Model({val:15});
           
       var collection = new ginger.Collection();
       

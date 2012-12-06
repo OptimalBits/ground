@@ -26,8 +26,8 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   public items: Model.Model[];
   
   private _keepSynced: bool = false;
-  private _added: Model.Model [];
-  private _removed: Model.Model [];
+  private _added: Model.Model[] = [];
+  private _removed: Model.Model[] = [];
   private _formatters: any[];
   
   private updateFn: (model: Model.Model, args) => void;
@@ -84,13 +84,13 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   
   static public create(model: Model.IModel, parent: Model.Model, docs: {}[], cb)
   {
-    var items = [];
+    var _items = [];
     
     function createModels(docs, done){
       Util.asyncForEach(docs, function(args, fn){
         model.create(args, false, function(err, instance?: Model.Model){
           if(instance){
-            items.push(instance);
+            _items.push(instance);
           }
           fn(err);
         });
@@ -113,7 +113,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
           if(err){
             cb(err, null)
           }else{
-            cb(err, createCollection(model, parent, items));
+            cb(err, createCollection(model, parent, _items));
           }
         });
       },
@@ -122,7 +122,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
           if(err){
             cb(err, null)
           }else{
-            cb(err, createCollection(model, undefined, items));
+            cb(err, createCollection(model, undefined, _items));
           }
         })
       },
@@ -141,8 +141,17 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   
   save(cb?: (err: Error) => void): void
   {
+    
     var keyPath = [this.parent.bucket(), this.parent.id(), this.model.__bucket];
-    Model.Model.storageQueue.removeCmd(keyPath, keyPath, this._removed, (err?: Error) => {
+    var itemsKeyPath = [];
+    
+    if(this._removed.length){
+      itemsKeyPath = _.initial(this._removed[0].getKeyPath());
+    }else if(this._added.length){
+      itemsKeyPath = _.initial(this._added[0].getKeyPath());
+    }
+    
+    Model.Model.storageQueue.removeCmd(keyPath, itemsKeyPath, this._removed, (err?: Error) => {
       if(!err){
         this._removed = []
         Util.asyncForEach(this.items, function(item, cb){
@@ -157,7 +166,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
               }
             });
             
-            Model.Model.storageQueue.addCmd(keyPath, keyPath, this._added, (err?: Error) => {
+            Model.Model.storageQueue.addCmd(keyPath, itemsKeyPath, this._added, (err?: Error) => {
               if(!err){
                 this._added = [];
               }
@@ -200,7 +209,8 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
       if(!opts || (opts.nosync !== true)){
         var storageAdd = (doc) => {
           var keyPath = this.getKeyPath();
-          Model.Model.storageQueue.addCmd(keyPath, keyPath, [item.id()], cb);
+          var itemKeyPath = _.initial(item.getKeyPath());
+          Model.Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
         }
 
         if(item.isPersisted()){
@@ -250,7 +260,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     
     items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
     len = items.length;
-      
+    
     Util.asyncForEach(itemIds, function(itemId, done){
       item = 0;
       for(index=0; index<len; index++){
@@ -268,7 +278,8 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
         
         if(item.isPersisted()){
           if(this._keepSynced && nosync !== true){
-            Model.Model.storageQueue.removeCmd(keyPath, keyPath, [item.id()], done);
+            var itemKeyPath = _.initial(item.getKeyPath());
+            Model.Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
           }else{
             this._removed.push(itemId);
             done();
@@ -304,20 +315,21 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     
     Model.Model.syncManager && Model.Model.syncManager.startSync(this);
     
-    this.on('add:', (items) => {
-      Util.asyncForEach(items, (args: {}, done) => {
-        if(!this.findById(args['_id'])){
-          this.model.create(args, true, (err: Error, item?: Model.Model): void => {
-            this.addItem(item, {nosync: true}, done);
+    this.on('add:', (itemsKeyPath, itemIds) => {
+      Util.asyncForEach(itemIds, (itemId: string, done) => {
+        if(!this.findById(itemId)){
+          Model.Model.findById([itemsKeyPath, itemId], true, {}, (err: Error, item?: Model.Model): void => {
+            if(item){
+              this.addItem(item, {nosync: true}, done);
+            }
           });
         }
       }, Util.noop);
     });
       
-    this.on('add:', (itemId) => {
+    this.on('remove:', (itemsKeyPath, itemId) => {
       this.remove(itemId, true, Util.noop);
     });
-    
   }
   
   private endSync()
@@ -366,9 +378,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   }
   
   private initItems(items)
-  {
-    var self = this;
-  
+  {  
     items = _.isArray(items)? items:[items];
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];

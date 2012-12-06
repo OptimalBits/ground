@@ -94,7 +94,6 @@ export class Model extends Base.Base implements Sync.ISynchronizable
     return __;
   }
 
-
   //static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
   static create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void
   {
@@ -126,11 +125,11 @@ export class Model extends Base.Base implements Sync.ISynchronizable
     }).apply(this, arguments);
   }
   
-  static findById(id: string, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void): Model
+  static findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void)
   {
     return Overload.overload({
-      'String Boolean Object Function': function(id, keepSynced, args, cb){
-        Model.storageQueue.getDoc([this.__bucket, id], (err?, doc?: {}) => {
+      'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
+        Model.storageQueue.getDoc(keyPath, (err?, doc?: {}) => {
           if(doc){
             _.extend(doc, args);
             this.create(doc, keepSynced, cb);
@@ -139,6 +138,9 @@ export class Model extends Base.Base implements Sync.ISynchronizable
           }
         });
         return this;
+      },
+      'String Boolean Object Function': function(id, keepSynced, args, cb){
+        return this.findById([this.__bucket, id], keepSynced, args, cb);
       },
       'String Function': function(id, cb){
         return this.findById(id, false, {}, cb);
