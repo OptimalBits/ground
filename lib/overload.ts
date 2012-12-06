@@ -42,9 +42,11 @@ export function overload(map:{}) {
 }
 
 function type(obj:any){
+  var typeStr;
   if(obj && obj.getName){
     return obj.getName();
   }else{
-    return Object.prototype.toString.call(obj).match(/^\[object (.*)\]$/)[1]
+    typeStr = Object.prototype.toString.call(obj);
+    return typeStr.slice(8, typeStr.length - 1);
   }
 }
