@@ -76,10 +76,31 @@ export class Local implements Storage.IStorage {
     cb();
   }
   
-  link(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void){
+  /*
+  link(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void): void
+  {
     _put(makeKey(keyPathLink), makeKey(keyPath));
     cb();
   }
+  */
+  
+  link(newKeyPath: string[], oldKeyPath: string[], cb: (err?: Error) => void): void
+  {
+    // Find all the keypaths with oldKeyPath as subpath, replacing the 
+    var oldKey = makeKey(oldKeyPath);
+    var newKey = makeKey(newKeyPath);
+    
+    var keys = localCache.getKeys();
+    for(var i=0; i<keys.length; i++){
+      if(keys[i].substring(0, oldKey.length) === oldKey){
+        // Make Link
+        var link = keys[i].replace(oldKey, newKey);
+        _put(link, keys[i]);
+      }
+    }
+    cb();  
+  }
+  
   
   //
   // ISetStorage
