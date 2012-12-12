@@ -139,9 +139,13 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     });
   }
   
+  static private getItemIds(items: Model.Model[])
+  {
+    return _.map(items, function(item){return item.id()});
+  }
+  
   save(cb?: (err: Error) => void): void
   {
-    
     var keyPath = [this.parent.bucket(), this.parent.id(), this.model.__bucket];
     var itemsKeyPath = [];
     
@@ -151,22 +155,17 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
       itemsKeyPath = _.initial(this._added[0].getKeyPath());
     }
     
-    Model.Model.storageQueue.removeCmd(keyPath, itemsKeyPath, this._removed, (err?: Error) => {
+    var itemIds = Collection.getItemIds(this._removed);
+    Model.Model.storageQueue.removeCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
       if(!err){
         this._removed = []
-        Util.asyncForEach(this.items, function(item, cb){
+        Util.asyncForEach(this.items, (item, cb) => {
           item.save(cb);
         }, (err) => {
           if((!err)&&(this._added.length > 0)){
-            var items = _.filter(this._added, function(item){
-              if(item.isPersisted()){
-                return item; // THIS MUST BE WRONG
-              }else{
-                return item.id();
-              }
-            });
+            itemIds = Collection.getItemIds(this._added);
             
-            Model.Model.storageQueue.addCmd(keyPath, itemsKeyPath, this._added, (err?: Error) => {
+            Model.Model.storageQueue.addCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
               if(!err){
                 this._added = [];
               }
@@ -185,11 +184,19 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   add(items: Model.Model [], opts, cb)
   {
     Util.asyncForEach(items, (item, done) => {
-      this.addItem(item, function(err){
+      this.addItem(item, (err) => {
         !err && this._keepSynced && !item._keepSynced && item.keepSynced();
         done(err);
       }, opts);
     }, cb);
+  }
+  
+  private persistAddItem(item: Model.Model, cb:(err?: Error) => void): void
+  {
+    var keyPath = this.getKeyPath();
+    var itemKeyPath = _.initial(item.getKeyPath());
+    
+    Model.Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
   }
 
   private addItem(item, opts, cb){
@@ -207,19 +214,12 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     
     if(this.isKeptSynced()){
       if(!opts || (opts.nosync !== true)){
-        var storageAdd = (doc) => {
-          var keyPath = this.getKeyPath();
-          var itemKeyPath = _.initial(item.getKeyPath());
-          Model.Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
-        }
-
         if(item.isPersisted()){
-          storageAdd(item.id());
+          this.persistAddItem(item, cb);
         }else{
-          // This is wrong, how do we add non persisted items to a collection?
-          item.save(function(err){
+          item.save((err) => {
             if(!err){
-              storageAdd(item.id());
+              this.persistAddItem(item, cb);
             }else{
               cb();
             }
@@ -261,7 +261,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
     len = items.length;
     
-    Util.asyncForEach(itemIds, function(itemId, done){
+    Util.asyncForEach(itemIds, (itemId, done) => {
       item = 0;
       for(index=0; index<len; index++){
         if(items[index].id() == itemId){
@@ -276,7 +276,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
         
         this.items.splice(index, 1);
         
-        if(item.isPersisted()){
+       // if(item.isPersisted()){
           if(this._keepSynced && nosync !== true){
             var itemKeyPath = _.initial(item.getKeyPath());
             Model.Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
@@ -284,9 +284,9 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
             this._removed.push(itemId);
             done();
           }
-        }else{
-          done();
-        }
+      //  }else{
+      //    done();
+      //  }
         this.emit('removed:', item, index);
         item.release();
       }else{
@@ -330,6 +330,12 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     this.on('remove:', (itemsKeyPath, itemId) => {
       this.remove(itemId, true, Util.noop);
     });
+    
+    if(Model.Model.storageQueue){
+      Model.Model.storageQueue.on('resync:'+this.getKeyPath().join(':'), (items) => {
+        // We have to remove old items, and add new.
+      })
+    }
   }
   
   private endSync()
@@ -383,8 +389,8 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
       item.retain();
-      item.on('changed:', this.updateFn);
-      item.on('deleted:', this.deleteFn);
+      item.on('changed:', _.bind(this.updateFn, this, item));
+      item.on('deleted:', _.bind(this.deleteFn, this));
     }
   }
   
