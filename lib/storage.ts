@@ -66,12 +66,21 @@ export interface ISeqStorage {
 // and a remote Storage.
 //
 
+function updateIds(keyPath: string[], oldId: string, newId: string)
+{
+  for(var i=0; i<keyPath.length; i++){
+    if(keyPath[i] == oldId){
+      keyPath[i] = newId;
+    }
+  }
+}
+
 interface Command {
   cmd: string;
   keyPath: string[];
   itemsKeyPath?: string[];
   args?: {};
-  items?: string[];
+  itemIds?: string[];
 }
 
 /**
@@ -110,19 +119,13 @@ export class Queue extends Base.Base {
   }
   
   /* 
-  We need to have this listener somewhere...
-  init(socket){
-    socket.removeListener('connect', this.syncFn);
-    socket.on('connect', this.syncFn);
-  }
+    We need to have this listener somewhere...
+    init(socket){
+      socket.removeListener('connect', this.syncFn);
+      socket.on('connect', this.syncFn);
+      }
   */
   getDoc(keyPath: string[], cb){
-    // TODO: 
-    // For fast performance we first get from local,
-    // then we get from remote (but this needs a changed event or something...), 
-    // if the __rev has changed
-    // we update models and local cache.
-    //
     this.remoteStorage.get(keyPath, (err?, doc?) => {
       if(err){
         this.localStorage.get(keyPath, (err?, doc?) => {
@@ -139,6 +142,21 @@ export class Queue extends Base.Base {
     });
   }
   
+  private static makeKey(keyPath: string[]){
+    return keyPath.join(':');
+  }
+  
+  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
+  {
+    this.localStorage.find(keyPath, query, options, cb);
+    this.remoteStorage.find(keyPath, query, options, (err?, result?) => {
+      if(!err){
+        this.emit('resync:'+Queue.makeKey(keyPath), result);
+      }
+    });
+  }
+  
+  /*
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
     this.remoteStorage.find(keyPath, query, options, (err?, doc?) => {
@@ -149,7 +167,7 @@ export class Queue extends Base.Base {
       }
     });
   }
-  
+  */
   private add(cmd: Command, cb:(err: Error)=>void){
     this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, (err) => {
       if(!err){
@@ -192,11 +210,11 @@ export class Queue extends Base.Base {
     });
   }
   
-  addCmd(keyPath: string[], itemsKeyPath: string[], items, cb){
-    this.localStorage.add(keyPath, itemsKeyPath, items, (err) => {
+  addCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb){
+    this.localStorage.add(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
         this.add({
-          cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
+          cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
         }, cb);
       }else{
         cb(err);
@@ -204,11 +222,11 @@ export class Queue extends Base.Base {
     });
   }
   
-  removeCmd(keyPath: string[], itemsKeyPath: string[], items, cb){
-    this.localStorage.remove(keyPath, itemsKeyPath, items, (err) => {
+  removeCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb){
+    this.localStorage.remove(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
         this.add({
-          cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, items:items
+          cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
         }, cb);
       }else{
         cb(err);
@@ -216,24 +234,10 @@ export class Queue extends Base.Base {
     });
   }
   
-  updateIds(oldId, newId){
-    _.each(this.queue, function(obj){
-      if (obj.id == oldId){
-        obj.id = newId;
-      } 
-      if (obj.items && obj.items == oldId){
-        obj.items = newId;
-      }
-    });
-    
-    // TODO: Serialize after updating Ids
-    // How to rename Ids from old Ids to new ones...
-    // ls.storageQueue = JSON.stringify(this.queue);
-  }
-  
-  success(err: Error) {
+  private success(err: Error) {
     this.currentTransfer = null;
-    if(!err){ // || (err.status >= 400 && err.status < 500)){
+    // for now we treat errors as irreversible.
+    //if(!err){ // || (err.status >= 400 && err.status < 500)){
       this.queue.shift();
       
       //
@@ -245,7 +249,7 @@ export class Queue extends Base.Base {
       this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
         Util.nextTick(_.bind(this.synchronize, this));
       });
-    }
+    //}
   }
   
   synchronize(){
@@ -259,7 +263,7 @@ export class Queue extends Base.Base {
           remoteStorage = this.remoteStorage,
           keyPath = obj.keyPath,
           itemsKeyPath = obj.itemsKeyPath,
-          items = obj.items,
+          itemIds = obj.itemIds,
           args = obj.args;
 
         //
@@ -276,8 +280,8 @@ export class Queue extends Base.Base {
                   localStorage.put(keyPath, {_persisted:true}, (err?: Error) => {
                     var newKeyPath = _.initial(keyPath);
                     newKeyPath.push(sid);
-                    localStorage.link(newKeyPath, keyPath, (err?: Error) => {
-                      this.updateIds(cid, sid); // needed?
+                      localStorage.link(newKeyPath, keyPath, (err?: Error) => {
+                      this.updateQueueIds(cid, sid); // needed?
                       this.emit('created:'+cid, sid);
                       done();
                     });
@@ -294,10 +298,10 @@ export class Queue extends Base.Base {
             remoteStorage.del(keyPath, done);
             break;
           case 'add':
-            remoteStorage.add(keyPath, itemsKeyPath, items, done);
+            remoteStorage.add(keyPath, itemsKeyPath, itemIds, done);
             break;
           case 'remove':
-            remoteStorage.remove(keyPath, itemsKeyPath, items, done);
+            remoteStorage.remove(keyPath, itemsKeyPath, itemIds, done);
             break;
         }
       } else {        
@@ -306,6 +310,16 @@ export class Queue extends Base.Base {
     } else{
       console.log('busy with ', this.currentTransfer);
     }
+  }
+  
+  private updateQueueIds(oldId, newId){ 
+    _.each(this.queue, (cmd: Command) => {
+      updateIds(cmd.keyPath, oldId, newId);
+      cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
+      cmd.itemIds && updateIds(cmd.itemIds, oldId, newId);
+    });
+    
+    // TODO: Serialize after updating Ids
   }
 }
 
