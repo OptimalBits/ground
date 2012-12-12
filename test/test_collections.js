@@ -58,7 +58,7 @@ describe('Collections', function(){
         animals.add(new Animal({name:"tiger"}), function(err){
           expect(err).to.not.be.ok();
           storageQueue.once('synced:', function(){
-            Zoo.findById(zoo._id, function(err, doc){
+            Zoo.findById(zoo.id(), function(err, doc){
               expect(err).to.not.be.ok();
               expect(doc).to.be.an(Object);
               doc.all(Animal, function(err, collection){
@@ -96,11 +96,11 @@ describe('Collections', function(){
           });
 
           mirrorZoo.all(Animal, function(err, animals){
-            expect(err).to.be(null);
+            expect(err).to.not.be.ok();
             expect(animals).to.be.an(Object);
             var fox = new Animal({name:'fox'});
             animals.add(fox, function(err){
-              expect(err).to.be(null);
+              expect(err).to.not.be.ok();
               animals.release();
             })
             fox.release();
@@ -112,119 +112,162 @@ describe('Collections', function(){
 
   describe('Updating', function(){
     it('update item propagates to the same item in a collection', function(done){
-      Zoo.findById(zoo._id, function(err, zoo){
+      Zoo.findById(zoo.id(), function(err, zoo){
         var testAnimal;
-      
+
         expect(err).to.eql(null);
         expect(zoo).to.not.be(undefined);
       
         zoo.keepSynced();
+                
         zoo.all(Animal, function(err, animals){
-          var tiger = animals.find(function(item){return item.name==='tiger'});
+          
+          animals.add(new Animal({name:"leopard"}), function(err){
+
+            var leopard = animals.find(function(item){ return item.name==='leopard'});
+
+            expect(leopard).to.be.an(Object);
+            expect(leopard.name).to.be.eql('leopard');
         
-          expect(tiger).to.be.an(Object);
-          expect(tiger.name).to.be.eql('tiger');
+            leopard.on('changed:', function(args){
+              expect(args).to.be.an(Object);
+              expect(args.legs).to.be(5);
+              animals.release();
+              zoo.release();
+              testAnimal.release();
+              done();
+            });
         
-          tiger.on('changed:', function(args){
-            expect(args).to.be.an(Object);
-            expect(args.legs).to.be(5);
-            animals.release();
-            zoo.release();
-            testAnimal.release();
-            done();
-          });
-        
-          Animal.findById(tiger._id, function(err, animal){
-            expect(err).to.be(null);
-            animal.keepSynced();
-            animal.set('legs', 5);
-            testAnimal = animal;
+            storageQueue.once('synced:', function(){
+              Animal.findById(leopard.id(), function(err, animal){
+                expect(err).to.not.be.ok();
+                animal.keepSynced();
+                animal.set('legs', 5);
+                testAnimal = animal;
+              });
+            });
           });
         });
       });
     });
   
-    it('update item in collection generates changed: event on collection', function(done){
-      Zoo.findById(zoo._id, function(err, zoo){      
+    it('collection proxies add item event', function(done){
+      Zoo.findById(zoo.id(), function(err, zoo){
+        var testAnimal;
+
+        expect(err).to.not.be.ok();
+        expect(zoo).to.not.be(undefined);
+      
+        zoo.keepSynced();
+                
         zoo.all(Animal, function(err, animals){
-          var tiger = animals.find(function(item){ return item.name==='tiger'});
+          
+          animals.add(new Animal({name:"panther"}), function(err){
+
+            var panther = animals.find(function(item){ return item.name==='panther'});
+
+            expect(panther).to.be.an(Object);
+            expect(panther.name).to.be.eql('panther');
         
-          expect(tiger).to.be.an(Object);
-          expect(tiger.name).to.be.eql('tiger');
+            animals.on('updated:', function(model, args){
+              expect(args).to.be.an(Object);
+              expect(args.legs).to.be(5);
+              animals.release();
+              zoo.release();
+              testAnimal.release();
+              done();
+            });
         
-          animals.on('updated:', function(item, args){
-            expect(item).to.be(tiger);
-            expect(args).to.be.an(Object);
-            expect(args.legs).to.be(6);
-            zoo.release();
-            animals.release();
-            done();
+            storageQueue.once('synced:', function(){
+              Animal.findById(panther.id(), function(err, animal){
+                expect(err).to.not.be.ok();
+                animal.keepSynced();
+                animal.set('legs', 5);
+                testAnimal = animal;
+              });
+            });
           });
-        
-          tiger.set('legs', 6);
         });
       });
     });
   });
   describe('Remove', function(){
     it('remove item from collection', function(done){
-      Zoo.findById(zoo._id, function(err, zoo){
+      Zoo.findById(zoo.id(), function(err, zoo){
+        zoo.keepSynced();
+        
         zoo.all(Animal, function(err, animals){
-          expect(err).to.be(null);
+          expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
           
-          var animal = animals.first();
-          expect(animal).to.be.an(Object);
-          animals.remove(animal._id);
-                    
-          var found = animals.find(function(item){return item._id === animal._id});
-          expect(found).to.be(undefined);
+          animals.add(new Animal({name:"gorilla"}), function(err){   
+            expect(err).to.not.be.ok();
           
-          animals.save(function(err){
-            expect(err).to.be(null);
+            var animal = animals.first();
+            expect(animal).to.be.an(Object);
+            animals.remove(animal.id());
+                    
+            var found = animals.find(function(item){return item.id() === animal.id()});
+            expect(found).to.be(undefined);
+          
+            animals.save(function(err){
+              expect(err).to.not.be.ok();
               
-            zoo.all(Animal, function(err, otherAnimals){
-              expect(err).to.be(null);
-              expect(otherAnimals).to.be.an(Object);
+              zoo.all(Animal, function(err, otherAnimals){
+                expect(err).to.not.be.ok();
+                expect(otherAnimals).to.be.an(Object);
 
-              var found = otherAnimals.find(function(item){return item._id === animal._id});
-              expect(found).to.be(undefined);
-              zoo.release();
-              otherAnimals.release();
-              animals.release();
-              expect(otherAnimals.isDestroyed()).to.be(true);
-              expect(animals.isDestroyed()).to.be(true);
-              done();
+                var found = otherAnimals.find(function(item){return item.id() === animal.id()});
+                expect(found).to.be(undefined);
+                zoo.release();
+                otherAnimals.release();
+                animals.release();
+                expect(otherAnimals.isDestroyed()).to.be(true);
+                expect(animals.isDestroyed()).to.be(true);
+                done();
+              });
             });
           });
         });
       });
     });
     
-    it('remove item from collection propagates', function(done){
-      Zoo.findById(zoo._id, function(err, zoo){
+    it('collection  proxies delete item event', function(done){
+      Zoo.findById(zoo.id(), function(err, zoo){
         zoo.keepSynced();
         
         zoo.all(Animal, function(err, animals){
           var otherAnimal;
           
-          animals.on('removed:', function(item){
-            expect(item).to.be.an(Object);
-            expect(item).to.have.property('_id');
-            expect(item._id).to.be.eql(otherAnimal._id);
-            animals.release();
-            zoo.release();
-            done();
-          });
-        
-          Zoo.findById(zoo._id, function(err, anotherZoo){
-            anotherZoo.keepSynced();
-            anotherZoo.all(Animal, function(err, otherAnimals){
-              otherAnimal = otherAnimals.first();
-              otherAnimals.remove(otherAnimal._id);
-              //otherAnimals.release();
+          animals.add(new Animal({name:"koala"}), function(err){   
+            expect(err).to.not.be.ok();
+          
+            animals.on('removed:', function(item){
+              expect(item).to.be.an(Object);
+              expect(item).to.have.property('_id');
+              expect(item.id()).to.be.eql(otherAnimal.id());
+              animals.release();
+              zoo.release();
+              done();
             });
-          });        
+
+            Zoo.findById(zoo.id(), function(err, anotherZoo){
+              expect(err).to.not.be.ok();
+              expect(anotherZoo).to.be.an(Object);
+              
+              anotherZoo.keepSynced();
+              anotherZoo.all(Animal, function(err, otherAnimals){
+                expect(err).to.not.be.ok()
+                expect(otherAnimals).to.be.an(Object);
+                
+                otherAnimal = otherAnimals.first();
+                otherAnimal.delete(function(err){
+                  expect(err).to.not.be.ok();
+                  otherAnimals.release();
+                });
+              });
+            });
+          });
         });
       });
     });
@@ -236,7 +279,7 @@ describe('Collections', function(){
   
   describe('Delete', function(){
     it('delete item that is part of a collection', function(done){
-      Zoo.findById(zoo._id, function(err, zoo){
+      Zoo.findById(zoo.id(), function(err, zoo){
         zoo.keepSynced();
         zoo.all(Animal, function(err, animals){
           var tiger = new Animal({name:"tiger"});
@@ -275,13 +318,15 @@ describe('Collections', function(){
           animals.add(new Animal({name:"tiger"}), function(err){
             expect(err).to.not.be.ok();
             
-            Zoo.findById(zoo._id, function(err, sameZoo){
+            Zoo.findById(zoo.id(), function(err, sameZoo){
               expect(err).to.not.be.ok();
               expect(sameZoo).to.be.an(Object);
               
               storageQueue.once('synced:', function(){
                 // Check that the collection has been synced in server.
                 sameZoo.all(Animal, function(err, collection){
+                  
+                  
                   expect(err).to.be(null);
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
@@ -319,7 +364,7 @@ describe('Collections', function(){
           
           animals.add(new Animal({name:"tiger"}), function(err){
             expect(err).to.be(null);
-            Zoo.findById(zoo._id, function(err, doc){
+            Zoo.findById(zoo.id(), function(err, doc){
               expect(err).to.be(null);
               expect(doc).to.be.an(Object);
               storageQueue.once('synced:', function(){
@@ -371,7 +416,7 @@ describe('Collections', function(){
               expect(err).not.to.be.ok();
               expect(animals.items.length).to.be(0);
 
-              Zoo.findById(zoo._id, function(err, sameZoo){
+              Zoo.findById(zoo.id(), function(err, sameZoo){
                 expect(err).to.not.be.ok();
                 expect(sameZoo).to.be.an(Object);
                 
