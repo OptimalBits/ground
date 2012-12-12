@@ -118,7 +118,7 @@ export class Manager extends Base.Base {
       var key = keyPathToKey(keyPath);
       
       _.each(this.docs[key], function(doc){
-        doc.set(doc, {sync:false, doc:args});
+        doc.set(args, {sync:false});
       });
     });
       
