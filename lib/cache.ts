@@ -147,6 +147,10 @@ export class Cache extends Base.Base {
     }
   }
   
+  getKeys(): string[]{
+    return _.keys(this.map);
+  }
+  
   getItem(key){
     var old = this.map[key], value;
     if(old){
