@@ -19,11 +19,8 @@
   is needed. This conversion is a candidate for optimization.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="base.ts" />
 
-import Base = module('./base');
-
-// TODO: factorize storage into a generic storage interface.
 var ls = localStorage;
 
 interface IndexElem {
@@ -124,7 +121,9 @@ class Index {
   }
 }
 
-export class Cache extends Base.Base {
+module Gnd {
+
+export class Cache extends Base {
   private maxSize : number;
   private size : number = 0;
   private map : {};
@@ -288,3 +287,5 @@ export class Cache extends Base.Base {
     return true;
   }
 }
+
+} // Module Gnd

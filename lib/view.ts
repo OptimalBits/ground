@@ -10,13 +10,12 @@
   Events:
     
 */
-/// <reference path="../third/underscore.browser.d.ts" />
+
+/// <reference path="base.ts" />
 /// <reference path="../third/jquery.d.ts" />
 
-import Base = module('./base');
-
-
-class View extends Base.Base
+module Gnd {
+class View extends Base
 {
   public tag: string;
   public classNames: string[];
@@ -80,3 +79,4 @@ class View extends Base.Base
   }
 }
 
+}

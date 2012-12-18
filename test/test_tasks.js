@@ -1,8 +1,8 @@
-define(['task'], function(Task){
+define(['gnd'], function(Gnd){
 
 describe('Tasks and Promises', function(){
   it('create and resolve a promise', function(done){  
-    var promise = new Task.Promise();
+    var promise = new Gnd.Promise();
     
     promise.then(function(val0, val1){
       expect(arguments.length).to.be(2);
@@ -14,7 +14,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('create and resolve a promise with multiple listeners', function(done){  
-    var promise = new Task.Promise();
+    var promise = new Gnd.Promise();
     var counter = 3;
     promise.then(function(val0, val1){
       expect(arguments.length).to.be(2);
@@ -42,7 +42,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('create a promise, resolve first listen after', function(done){  
-    var promise = new Task.Promise();
+    var promise = new Gnd.Promise();
     
     promise.resolve(42);
     
@@ -53,7 +53,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('listen before and after resolution', function(done){  
-    var promise = new Task.Promise();
+    var promise = new Gnd.Promise();
     var counter = 2;
     
     promise.then(function(val){
@@ -72,7 +72,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('aborted promise does not trigger then after resolution', function(){  
-    var promise = new Task.Promise();
+    var promise = new Gnd.Promise();
     
     promise.then(function(){
       expect(0).to.be(true);
@@ -83,8 +83,8 @@ describe('Tasks and Promises', function(){
   });
   
   it('simple promise queue with 2 promises triggers after second', function(){
-    var promise1 = new Task.Promise(), promise2 = new Task.Promise();
-    var queue = new Task.PromiseQueue(promise1, promise2);
+    var promise1 = new Gnd.Promise(), promise2 = new Gnd.Promise();
+    var queue = new Gnd.PromiseQueue(promise1, promise2);
     
     var triggered = false;
     queue.then(function(){
@@ -98,7 +98,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('Task queue with a few elements executes in order', function(done){  
-    var queue = new Task.TaskQueue();
+    var queue = new Gnd.TaskQueue();
     
     var index = 0;
     queue.append(function(cb){
@@ -124,7 +124,7 @@ describe('Tasks and Promises', function(){
   });
   
   it('Task queue with a few elements is cancelled', function(done){  
-      var queue = new Task.TaskQueue();
+      var queue = new Gnd.TaskQueue();
       
       var index = 0;
       

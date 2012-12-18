@@ -1,7 +1,7 @@
-define(['ginger'], function(ginger){
+define(['gnd'], function(Gnd){
 
 describe('Base', function(){
-  var Obj = ginger.Base.extend(),
+  var Obj = Gnd.Base.extend(),
     obj = new Obj();
     
   describe('instantiation', function(){

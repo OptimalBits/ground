@@ -1,22 +1,22 @@
-define(['util', 'local', 'socket', 'storage', 'base', 'model', 'sync', 'collection'],
-  function(Util, Local, Socket, Storage, Base, Model, Sync, Collection){
+define(['gnd'],
+  function(Gnd){
 
 localStorage.clear();
 
-var storageLocal  = new Local.Local();
-var storageSocket = new Socket.Socket(socket);
-var storageQueue  = new Storage.Queue(storageLocal, storageSocket);
+var storageLocal  = new Gnd.Storage.Local();
+var storageSocket = new Gnd.Storage.Socket(socket);
+var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
 
-var syncManager = new Sync.Manager(socket);
+var syncManager = new Gnd.Sync.Manager(socket);
 
-Model.Model.storageQueue = storageQueue;
-Model.Model.syncManager = syncManager;
+Gnd.Model.storageQueue = storageQueue;
+Gnd.Model.syncManager = syncManager;
 
-var Animal = Model.Model.extend('animals');
+var Animal = Gnd.Model.extend('animals');
 var animal = new Animal();
 
 var Zoo, zoo;
-Zoo = Model.Model.extend('zoo');
+Zoo = Gnd.Model.extend('zoo');
   
 before(function(done){
   storageQueue.init(function(){
@@ -332,7 +332,7 @@ describe('Collections', function(){
                   expect(collection.items).to.be.an(Array);
                   expect(animals.items.length).to.be(1);
                   expect(collection.items.length).to.be(1);
-                  Util.release(sameZoo, collection, animals);
+                  Gnd.Util.release(sameZoo, collection, animals);
                   done();
                 });
               });
@@ -520,7 +520,7 @@ describe('Collections', function(){
                   var offlineTiger = offlineAnimals.findById(onlineTiger.id());
                   expect(offlineTiger).to.not.be.ok();
                   
-                  Util.release(onlineAnimals);
+                  Gnd.Util.release(onlineAnimals);
                   
                   socket.socket.connect();
                   socket.once('connect', done);
@@ -556,7 +556,7 @@ describe('Collections', function(){
               expect(onlineTiger).to.be.an(Object);
               expect(onlineTiger.id()).to.be.equal(tiger.id());
               
-              Util.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
+              Gnd.Util.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
                 
                 zoo.all(Animal, function(err, emptyZoo){
                   expect(err).to.not.be.ok();
@@ -572,7 +572,7 @@ describe('Collections', function(){
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.items.length).to.be(0);
                     
-                    Util.release(onlineAnimals, emptyZoo);
+                    Gnd.Util.release(onlineAnimals, emptyZoo);
                     socket.socket.connect();
                     socket.once('connect', done);
                   });
@@ -605,12 +605,12 @@ describe('Collections', function(){
   
   describe('Sorted collection', function(){
     it('add items to sorted collection', function(done){
-      var item1 = new Model.Model({val:1}),
-          item2 = new Model.Model({val:5}),
-          item3 = new Model.Model({val:10}),
-          item4 = new Model.Model({val:15});
+      var item1 = new Gnd.Model({val:1}),
+          item2 = new Gnd.Model({val:5}),
+          item3 = new Gnd.Model({val:10}),
+          item4 = new Gnd.Model({val:15});
           
-      var collection = new Collection.Collection();
+      var collection = new Gnd.Collection();
       collection.add(item3);
       collection.add(item2);
       collection.add(item4);
@@ -626,12 +626,12 @@ describe('Collections', function(){
     });
     
     it('update items in sorted collection keeps order', function(done){
-      var item1 = new Model.Model({val:1}),
-          item2 = new Model.Model({val:5}),
-          item3 = new Model.Model({val:10}),
-          item4 = new Model.Model({val:15});
+      var item1 = new Gnd.Model({val:1}),
+          item2 = new Gnd.Model({val:5}),
+          item3 = new Gnd.Model({val:10}),
+          item4 = new Gnd.Model({val:15});
           
-      var collection = new ginger.Collection();
+      var collection = new Gnd.Collection();
       
       collection.set('sortByFn', function(item){return item.val});
       

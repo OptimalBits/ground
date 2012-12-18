@@ -15,15 +15,10 @@
   
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="base.ts" />
+/// <reference path="sync/sync.ts" />
 
-
-import Base = module('./base');
-import Util = module('./util');
-import Overload = module('./overload');
-import Storage = module('./storage');
-import Sync = module('./sync/sync');
-import Collection = module('./collection');
+module Gnd {
 
 export enum ModelState {
   INITIAL,
@@ -31,14 +26,14 @@ export enum ModelState {
   CREATED
 }
 
-export interface IModel{
+export interface IModel {
   new (args: {}, bucket: string): Model;
   __bucket: string;
   create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
   all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
 }
 
-export class Model extends Base.Base implements Sync.ISynchronizable
+export class Model extends Base implements Sync.ISynchronizable
 {
   static  __bucket: string;
   private __bucket: string;
@@ -97,7 +92,7 @@ export class Model extends Base.Base implements Sync.ISynchronizable
   //static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
   static create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void
   {
-    Overload.overload({
+    overload({
       'Object Boolean Function': function(args, keepSynced, cb){
         this.fromJSON(args, (err, instance) => {
           if(instance){
@@ -127,7 +122,7 @@ export class Model extends Base.Base implements Sync.ISynchronizable
   
   static findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void)
   {
-    return Overload.overload({
+    return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
         Model.storageQueue.getDoc(keyPath, (err?, doc?: {}) => {
           if(doc){
@@ -218,9 +213,8 @@ export class Model extends Base.Base implements Sync.ISynchronizable
   
   //
   // TODO: Should update and delete be static functions instead? since
-  // we can have several instances of the same model...
+  // we can have several instances of the same model it feels more correct.
   //
-  
   /*
       Updates a model (in its storage) with the given args.
 
@@ -308,12 +302,12 @@ export class Model extends Base.Base implements Sync.ISynchronizable
     (Should we deprecate this in favor of a keyPath based method?)
   */
   static all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void){
-    Overload.overload({
+    overload({
       'Model Array Object Function': function(parent, keyPath, args, cb){
         Model.storageQueue.find(keyPath, {}, {}, (err, docs) => {
           if(docs){
             _.each(docs, function(doc){_.extend(doc, args)});
-            Collection.Collection.create(this, parent, docs, cb);
+            Gnd.Collection.create(this, parent, docs, cb);
           }else{
             cb(err);
           }
@@ -343,4 +337,6 @@ export class Model extends Base.Base implements Sync.ISynchronizable
   {
     model.all(this, args, bucket, cb);
   }
+}
+
 }

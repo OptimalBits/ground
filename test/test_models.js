@@ -1,20 +1,20 @@
-define(['util', 'local', 'socket', 'storage', 'base', 'model', 'sync', 'jquery'],
-  function(Util, Local, Socket, Storage, Base, Model, Sync, $){
+define(['gnd', 'jquery'],
+  function(Gnd, $){
   
 localStorage.clear();
 
-var storageLocal  = new Local.Local();
-var storageSocket = new Socket.Socket(socket);
-var storageQueue  = new Storage.Queue(storageLocal, storageSocket);
+var storageLocal  = new Gnd.Storage.Local();
+var storageSocket = new Gnd.Storage.Socket(socket);
+var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
 
-var syncManager = new Sync.Manager(socket);
+var syncManager = new Gnd.Sync.Manager(socket);
 
-Model.Model.storageQueue = storageQueue;
-Model.Model.syncManager = syncManager;
+Gnd.Model.storageQueue = storageQueue;
+Gnd.Model.syncManager = syncManager;
 
 describe('Model', function(){
   
-  var Animal = Model.Model.extend('animals');
+  var Animal = Gnd.Model.extend('animals');
   var animal = new Animal();
   
   before(function(done){

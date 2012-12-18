@@ -16,6 +16,8 @@ References:
 http://stackoverflow.com/questions/332422/how-do-i-get-the-name-of-an-objects-type-in-javascript
 */
 
+module Gnd {
+
 export function overload(map:{}) {
   return function(...args:any[]) : any {
     
@@ -49,4 +51,6 @@ function type(obj:any){
     typeStr = Object.prototype.toString.call(obj);
     return typeStr.slice(8, typeStr.length - 1);
   }
+}
+
 }

@@ -12,8 +12,7 @@
 /// <reference path="../third/jquery.d.ts" />
 
 
-// we can not import due to a bug in tsc.
-// import _ = module("underscore");
+module Gnd.Util {
 
 export function noop(){};
 
@@ -110,7 +109,8 @@ export function waitTrigger(func, start, end, delay){
  
 // Search Filter. returns true if any of the fields of the 
 // obj includes the search string.
-export function searchFilter(obj, search, fields){
+export function searchFilter(obj: {}, search: string, fields: string []): bool
+{
   if(search){
     var result = false;
     search = search.toLowerCase();
@@ -221,5 +221,32 @@ export var ajax = {
   }
 }
 
+/**
+  A safe emit wrapper for socket.io that handles connection errors.
+*/
+export function safeEmit(socket, ...args:any[]): void
+{
+  var cb = _.last(args);
+   
+  function errorFn(){
+    cb(new Error('Socket disconnected'));
+  };
+  function proxyCb(err, res){
+    socket.removeListener('disconnect', errorFn);
+    if(err){
+      err = new Error(err);
+    }
+    cb(err,res);
+  };
+  
+  args[args.length-1] = proxyCb;
 
+ if(socket.socket.connected){
+    socket.once('disconnect', errorFn);
+    socket.emit.apply(socket, args);
+ }else{
+    errorFn();
+ }
+}
 
+}

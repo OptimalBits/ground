@@ -1,11 +1,11 @@
-define(['overload'], function(Overload){
+define(['gnd'], function(Gnd){
 
 describe('Overload', function(){
   var MyObject = function(){
     this.member = "private";
   };
   
-  MyObject.prototype.process = Overload.overload({
+  MyObject.prototype.process = Gnd.overload({
     'Number Number Number': function(x, y, z){
       return x+y+z;
     },

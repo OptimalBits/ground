@@ -1,7 +1,7 @@
-define(['socket'], function(Storage){
+define(['gnd'], function(Gnd){
 
 describe('Socket.io Storage', function(){  
-  storage = new Storage.Socket(socket);
+  storage = new Gnd.Storage.Socket(socket);
   storageType = "Socket Storage"
   curl(['test/test_storage'])
 });

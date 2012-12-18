@@ -17,7 +17,9 @@
 
 /// <reference path="../third/underscore.browser.d.ts" />
 
-export class Emitter {
+module Gnd {
+
+export class EventEmitter {
   private _listeners;
   private _namespaces;
   
@@ -247,8 +249,9 @@ export class Emitter {
 /**
   Aliases
 */
-Emitter.prototype.addListener = Emitter.prototype.on;
-Emitter.prototype.addObserver = Emitter.prototype.on;
-Emitter.prototype.removeListener = Emitter.prototype.off;
-Emitter.prototype.removeObserver = Emitter.prototype.off;
+EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+EventEmitter.prototype.addObserver = EventEmitter.prototype.on;
+EventEmitter.prototype.removeListener = EventEmitter.prototype.off;
+EventEmitter.prototype.removeObserver = EventEmitter.prototype.off;
 
+}

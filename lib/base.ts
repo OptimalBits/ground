@@ -9,10 +9,8 @@
   get property bindings and reference counting.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
-
-import Event = module("./event");
-import Undo = module("./undo");
+/// <reference path="event.ts" />
+/// <reference path="undo.ts" />
 
 // TODO: we need a portable stack trace.
 /*declare class Error {
@@ -21,13 +19,15 @@ import Undo = module("./undo");
 */
 // Error.prototype.stack = Error.prototype.stack || '';
 
-export class Base extends Event.Emitter{
+module Gnd {
+
+export class Base extends EventEmitter {
   private _refCounter: number = 1;
   private _bindings: any = {};
   private _formatters;
   private _destroyed: bool;
   private _destroyedTrace: string;
-  private _undoMgr: Undo.Manager = new Undo.Manager();
+  private _undoMgr: UndoManager = new UndoManager();
   
   constructor (){
     super();
@@ -232,4 +232,6 @@ export class Base extends Event.Emitter{
   isDestroyed(){
     return this._refCounter === 0;
   }
+}
+
 }

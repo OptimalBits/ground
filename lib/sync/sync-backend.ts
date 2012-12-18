@@ -13,6 +13,8 @@
   models and their IDs.
 */
 
+
+module Gnd.Sync {
 export class SyncHub {
   private pubClient;
   
@@ -67,7 +69,7 @@ export class SyncHub {
         var id = args.keyPath.join(':');
         console.log("MESSAGE:"+channel);
         console.log(msg);
-        console.log("ID:"+id)
+        console.log("ID:"+id);
         switch(channel) 
         {
           case 'update:':
@@ -77,6 +79,7 @@ export class SyncHub {
             sio.in(id).emit('delete:', args.keyPath);
             break;
           case 'add:':
+          console.log("Emitting ADD:"+id)
             sio.in(id).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'remove:':
@@ -121,3 +124,4 @@ export class SyncHub {
   }
 }
 
+}

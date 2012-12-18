@@ -1,4 +1,4 @@
-define(['cache'], function(Cache){
+define(['gnd'], function(Gnd){
 
 describe('Local Cache', function(){
   var cache;
@@ -11,7 +11,7 @@ describe('Local Cache', function(){
   };
 
   before(function() {
-    cache = new Cache.Cache();
+    cache = new Gnd.Cache();
   });
   
   after(function(){

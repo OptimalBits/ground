@@ -7,28 +7,29 @@
   the synchronization module.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
-
-import Storage = module('./storage');
-import Sync = module('./sync/sync-backend');
+/// <reference path="./storage.ts" />
+/// <reference path="./sync/sync-backend.ts" />
 
 /*
   GndServer gndServer = new GndServer(new MongoStorage(...));
 */
-export class Server {
-  public storage: Storage.IStorage;
 
-  constructor(persistentStorage: Storage.IStorage, syncHub: Sync.SyncHub) 
+module Gnd {
+
+export class Server {
+  public storage: Gnd.IStorage;
+
+  constructor(persistentStorage: IStorage, syncHub: Gnd.Sync.SyncHub) 
   {
     this.storage = new ProxyStorage(persistentStorage, syncHub);
   }
 }
 
-class ProxyStorage implements Storage.IStorage {
-  private storage: Storage.IStorage;
+class ProxyStorage implements IStorage {
+  private storage: IStorage;
   private syncHub: Sync.SyncHub;
   
-  constructor(storage: Storage.IStorage, sync: Sync.SyncHub){
+  constructor(storage: IStorage, sync: Sync.SyncHub){
     this.storage = storage;
     this.syncHub = sync;
   }
@@ -116,3 +117,4 @@ class ProxyStorage implements Storage.IStorage {
   }
 }
 
+}

@@ -1,7 +1,7 @@
-define(['event','base'], function(Event, Base){
+define(['gnd'], function(Gnd){
 
 describe('Events', function(){
-  var obj = new Event.Emitter();
+  var obj = new Gnd.EventEmitter();
     
   it('listen to one event', function(done){  
       obj.on('test', function(val){
@@ -131,7 +131,7 @@ describe('Events', function(){
   });
   
   it('destructor cleans all the events', function(){
-    var obj2 = new Base.Base();
+    var obj2 = new Gnd.Base();
     
     var counter = 0;
     obj2.on('flip flop swap swop', function(val){

@@ -24,6 +24,11 @@
                main: 'ginger',
                lib: ''
              },
+             'gnd': {
+                path: 'http://localhost:8080/',
+                main: 'gnd.ts?',
+                lib: ''
+            },
              'util': {
                 path: 'http://localhost:8080/lib',
                 main: 'util.ts?',
@@ -89,6 +94,11 @@
                main: 'model.ts?',
                lib: ''
              },
+             'collection': {
+               path: 'http://localhost:8080/lib',
+               main: 'collection.ts?',
+               lib: ''
+             },
              'sync': {
                path: 'http://localhost:8080/lib/sync',
                main: 'sync.ts?',
@@ -110,16 +120,16 @@
       })
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
-          curl([//'test/test_storage_local',
+          curl(['test/test_storage_local',
                 'test/test_storage_socket',
                 'test/test_overload',
-                'test/test_models',
-            // 'test/test_tasks',
-            // 'test/test_events',
-            // 'test/test_routes',
-            // 'test/test_base',
-            //'test/test_declare',
-                //'test/test_collections',
+            //    'test/test_models',
+                'test/test_collections',
+                'test/test_tasks',
+                'test/test_events',
+                // 'test/test_base',
+                'test/test_routes',            
+                 //'test/test_declare',
                 ], function(Storage){
                   // We need to run this first.
             /*

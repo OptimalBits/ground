@@ -8,9 +8,12 @@
   Minimalistic undo / redo manager.
 */
 
-import Event = module('./event');
+/// <reference path="event.ts" />
 
-export class Manager extends Event.Emitter {
+
+module Gnd {
+
+export class UndoManager extends Gnd.EventEmitter {
   private undones : any[] = [];
   private actions : any[] = [];
   private undoFn : any = null;
@@ -91,3 +94,4 @@ export class Manager extends Event.Emitter {
   }
 }
 
+}

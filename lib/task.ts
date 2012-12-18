@@ -7,17 +7,12 @@
   Task Module. Include classes for Task management including Promises.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="util.ts" />
 
-// we can not import due to a bug in tsc.
-// import _ = module("underscore");
-
-import Util = module("./util");
-
+module Gnd {
 export interface TaskCallback {
   () : void;
 }
-
 
 export interface Task {
   (cb? : TaskCallback) : void;
@@ -136,10 +131,10 @@ export class PromiseQueue {
   }
   
   then(cb:()=>void){
-    Util.asyncForEachSeries(this.promises, function(promise, done){
+    Gnd.Util.asyncForEachSeries(this.promises, function(promise, done){
       promise && promise.then(done);
     }, cb)
   }
 }
 
-
+}

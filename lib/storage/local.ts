@@ -6,11 +6,12 @@
   Storage implementation using HTML5 LocalStorage
 */
 
-import Cache = module('../cache');
-import Storage = module('../storage');
-import Util = module('../util');
+/// <reference path="../storage.ts" />
+/// <reference path="../cache.ts" />
 
-var localCache = new Cache.Cache(1024*1024); // 1Mb
+module Gnd.Storage {
+
+var localCache = new Cache(1024*1024); // 1Mb
 
 function _get(key: string): any {
   var doc = localCache.getItem(key);
@@ -35,7 +36,7 @@ function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
 }
 
-export class Local implements Storage.IStorage {
+export class Local implements IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
     if(!doc._cid){
@@ -173,4 +174,4 @@ export class Local implements Storage.IStorage {
   }
 }
 
-
+}

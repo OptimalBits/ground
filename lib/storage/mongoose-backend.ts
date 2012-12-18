@@ -3,7 +3,7 @@
   MIT Licensed.
 */
 /**
-  Storage implementation using MoongooseJs (MongoDB)
+  Storage implementation using MoongooseJS (MongoDB)
   
   A Note about keyPaths.
   
@@ -17,21 +17,27 @@
   
   Collections are usually expressed in plurar, where id expresses a specific 
   element in the collection.
-  
-*/
-/// <reference path="../../third/underscore.browser.d.ts" />
 
-import Storage = module('../storage');
+*/
+/// <reference path="../storage.ts" />
+
+module Gnd {
+  
+import _ = module('underscore');
 
 declare module "underscore" {
   export function last (array : any[], n? : number) : any;
   export function isEqual (object : any, other : any) : bool;
   export function initial (array : any[], n? : number) : any[];
 }
+  
+export interface GndModel {
+  parent?: ()=>string;
+ // gnd?: { add: (id: string, name: string, itemIds: string[], cb: (err: Error, ids: string[])=>void)=>void}; 
+ add?: any;
+}
 
-import _ = module('underscore');
-
-interface IMongooseModel extends GndModel {
+export interface IMongooseModel extends GndModel {
   new (doc: {}): any;
   update(query:{}, args:{}, cb:(err: Error)=>void);
   findOneAndUpdate(conditions?:{}, update?:{}, cb?: (err: Error, doc:{}) => void);
@@ -42,13 +48,7 @@ interface IMongooseModel extends GndModel {
   remove(query:{}, cb:(err: Error)=>void);
 }
 
-interface GndModel {
-  parent?: ()=>string;
- // gnd?: { add: (id: string, name: string, itemIds: string[], cb: (err: Error, ids: string[])=>void)=>void}; 
- add?: any;
-}
-
-export class Mongoose implements Storage.IStorage {
+export class MongooseStorage implements IStorage {
   private models : any;
   private sync: any;
   
@@ -267,6 +267,4 @@ export class Mongoose implements Storage.IStorage {
   
 }
 
-
-
-
+}

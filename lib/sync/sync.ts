@@ -13,40 +13,10 @@
   models and their IDs.
 */
 
-/// <reference path="../../third/underscore.browser.d.ts" />
+/// <reference path="../base.ts" />
+/// <reference path="../storage/socket.ts" />
 
-import Base = module('../base');
-
-//import Socket = module('../storage/socket');
-
-// -----------8<-----------8<------------8<-------------------
-// import is not working so we copy/paste safeEmit here...
-function safeEmit(socket, ...args:any[]): void
-{
-  var cb = _.last(args);
-   
-  function errorFn(){
-    cb(new Error('Socket disconnected'));
-  };
-  function proxyCb(err, res){
-    socket.removeListener('disconnect', errorFn);
-    if(err){
-      err = new Error(err);
-    }
-    cb(err,res);
-  };
-  
-  args[args.length-1] = proxyCb;
-
- if(socket.socket.connected){
-    socket.once('disconnect', errorFn);
-    socket.emit.apply(socket, args);
- }else{
-    errorFn();
- }
-}
-var Socket = {safeEmit : safeEmit};
-// -----------8<-----------8<------------8<-------------------
+module Gnd.Sync {
 
 /**
   An abstract class representing a synchronizable object.
@@ -58,17 +28,11 @@ export interface ISynchronizable
   emit:(event: string, ...params: any[]) => void;
 };
 
-function keyPathToKey(keyPath: string[]){
-  return keyPath.join(':');
-}
-
-function docKey(doc: ISynchronizable){
-  return keyPathToKey(doc.getKeyPath());
-}
-
-export class Manager extends Base.Base {
+export class Manager extends Base {
   private socket;
-  private docs: { [key: string]: ISynchronizable[];} = {};
+  private docs: { 
+    [key: string]: ISynchronizable[];
+  } = {};
   private connectFn: ()=>void;
   
   constructor(socket)
@@ -86,7 +50,7 @@ export class Manager extends Base.Base {
         
         // TODO: send also the current __rev, if newer in server, 
         // get the latest doc.
-        Socket.safeEmit(socket, 'sync', doc.getKeyPath(), function(err){
+        Gnd.Util.safeEmit(socket, 'sync', doc.getKeyPath(), function(err){
           if(err){
             console.log('Error syncing %s, %s', doc.getKeyPath(), err);
           }else{
@@ -95,7 +59,7 @@ export class Manager extends Base.Base {
         });
         
         // OBSOLETE if done according to new 'sync'
-        Socket.safeEmit(socket, 'resync', doc.getKeyPath(), (err, doc) => {
+        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath(), (err, doc) => {
           if(!err){
             doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=docs.length; i<len; i++){
@@ -166,7 +130,8 @@ export class Manager extends Base.Base {
   /**
     Starts synchronization for a given model.
   */
-  startSync(doc: ISynchronizable)
+  //startSync(doc: ISynchronizable)
+  startSync(doc)
   {
     var 
       key = docKey(doc),
@@ -175,7 +140,7 @@ export class Manager extends Base.Base {
     if(!this.docs[key]){
       this.docs[key] = [doc];
       
-      Socket.safeEmit(this.socket, 'sync', doc.getKeyPath(), function(err){
+      Gnd.Util.safeEmit(this.socket, 'sync', doc.getKeyPath(), function(err){
         console.log('Start synching:'+doc.getKeyPath());
       });
     }else{
@@ -187,7 +152,8 @@ export class Manager extends Base.Base {
   /**
     Ends synchronization for a given model.
   */
-  endSync(doc: ISynchronizable)
+  //endSync(doc: ISynchronizable)
+  endSync(doc)
   {
     if (!doc.isKeptSynced()) return;
 
@@ -200,7 +166,7 @@ export class Manager extends Base.Base {
       docs = _.reject(docs, function(item){return item === doc;});
       if(docs.length===0){
         console.log('Stop synching:'+key);
-        Socket.safeEmit(this.socket, 'unsync', doc.getKeyPath(), function(err){
+        Gnd.Util.safeEmit(this.socket, 'unsync', doc.getKeyPath(), function(err){
           console.log('Stop synching:'+doc.getKeyPath());
         });
         delete this.docs[key];
@@ -209,5 +175,15 @@ export class Manager extends Base.Base {
       }
     }
   }  
+}
+
+function keyPathToKey(keyPath: string[]){
+  return keyPath.join(':');
+}
+
+function docKey(doc: ISynchronizable){
+  return keyPathToKey(doc.getKeyPath());
+}
+
 }
 

@@ -12,40 +12,37 @@
   Events:
   
 */
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="base.ts" />
+/// <reference path="model.ts" />
+/// <reference path="overload.ts" />
 
-import Base = module('./base');
-import Model = module('./model');
-import Util = module('./util');
-import Storage = module('./storage');
-import Overload = module('./overload');
-import Sync = module('./sync/sync');
+module Gnd {
 
-export class Collection extends Base.Base implements Sync.ISynchronizable
+export class Collection extends Base implements Sync.ISynchronizable
 {
-  public items: Model.Model[];
+  public items: Model[];
   
   private _keepSynced: bool = false;
-  private _added: Model.Model[] = [];
-  private _removed: Model.Model[] = [];
+  private _added: Model[] = [];
+  private _removed: Model[] = [];
   private _formatters: any[];
   
-  private updateFn: (model: Model.Model, args) => void;
-  private deleteFn: (model: Model.Model) => void;
+  private updateFn: (model: Model, args) => void;
+  private deleteFn: (model: Model) => void;
   
-  public model: Model.IModel;
-  public parent: Model.Model;
+  public model: IModel;
+  public parent: Model;
   public sortByFn;
   public sortOrder: string = 'asc';
   public filterFn: (obj: {}, search: string, fields: string []) => bool = Util.searchFilter;
   public filterFields: string[];
   public filterData: string;
   
-  constructor(model: Model.IModel, parent: Model.Model, items?: Model.Model[])
+  constructor(model: IModel, parent: Model, items?: Model[])
   {
     super();
     
-    this.updateFn = (model: Model.Model, args) => {
+    this.updateFn = (model: Model, args) => {
       if(this.sortByFn){
         var index = this['indexOf'](model);
         this.items.splice(index, 1);
@@ -82,13 +79,13 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     super.destroy();
   }
   
-  static public create(model: Model.IModel, parent: Model.Model, docs: {}[], cb)
+  static public create(model: IModel, parent: Model, docs: {}[], cb)
   {
     var _items = [];
     
     function createModels(docs, done){
       Util.asyncForEach(docs, function(args, fn){
-        model.create(args, false, function(err, instance?: Model.Model){
+        model.create(args, false, function(err, instance?: Model){
           if(instance){
             _items.push(instance);
           }
@@ -107,7 +104,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
       return collection;
     }
     
-    Overload.overload({
+    overload({
       'Function Model Array Function': function(model, parent, items, cb){
         createModels(items, (err) => {
           if(err){
@@ -139,7 +136,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     });
   }
   
-  static private getItemIds(items: Model.Model[])
+  static private getItemIds(items: Model[])
   {
     return _.map(items, function(item){return item.id()});
   }
@@ -156,7 +153,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     }
     
     var itemIds = Collection.getItemIds(this._removed);
-    Model.Model.storageQueue.removeCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
+    Model.storageQueue.removeCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
       if(!err){
         this._removed = []
         Util.asyncForEach(this.items, (item, cb) => {
@@ -165,7 +162,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
           if((!err)&&(this._added.length > 0)){
             itemIds = Collection.getItemIds(this._added);
             
-            Model.Model.storageQueue.addCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
+            Model.storageQueue.addCmd(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
               if(!err){
                 this._added = [];
               }
@@ -181,7 +178,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     })
   }
   
-  add(items: Model.Model [], opts, cb)
+  add(items: Model [], opts, cb)
   {
     Util.asyncForEach(items, (item, done) => {
       this.addItem(item, (err) => {
@@ -191,12 +188,12 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
     }, cb);
   }
   
-  private persistAddItem(item: Model.Model, cb:(err?: Error) => void): void
+  private persistAddItem(item: Model, cb:(err?: Error) => void): void
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = _.initial(item.getKeyPath());
     
-    Model.Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
+    Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
   }
 
   private addItem(item, opts, cb){
@@ -235,7 +232,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   }
   
   // This function feel a bit hacky
-  private sortedAdd(item: Model.Model): number
+  private sortedAdd(item: Model): number
   {    
     (this.sortOrder == 'desc') && this.items.reverse();
     var i = this['sortedIndex'](item, this.sortByFn);
@@ -279,7 +276,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
        // if(item.isPersisted()){
           if(this._keepSynced && nosync !== true){
             var itemKeyPath = _.initial(item.getKeyPath());
-            Model.Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
+            Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
           }else{
             this._removed.push(itemId);
             done();
@@ -313,12 +310,12 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   {
     this._keepSynced = true;
     
-    Model.Model.syncManager && Model.Model.syncManager.startSync(this);
+    Model.syncManager && Model.syncManager.startSync(this);
     
     this.on('add:', (itemsKeyPath, itemIds) => {
       Util.asyncForEach(itemIds, (itemId: string, done) => {
         if(!this.findById(itemId)){
-          Model.Model.findById([itemsKeyPath, itemId], true, {}, (err: Error, item?: Model.Model): void => {
+          Model.findById([itemsKeyPath, itemId], true, {}, (err: Error, item?: Model): void => {
             if(item){
               this.addItem(item, {nosync: true}, done);
             }
@@ -331,8 +328,8 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
       this.remove(itemId, true, Util.noop);
     });
     
-    if(Model.Model.storageQueue){
-      Model.Model.storageQueue.on('resync:'+this.getKeyPath().join(':'), (items) => {
+    if(Model.storageQueue){
+      Model.storageQueue.on('resync:'+this.getKeyPath().join(':'), (items) => {
         // We have to remove old items, and add new.
       })
     }
@@ -340,7 +337,7 @@ export class Collection extends Base.Base implements Sync.ISynchronizable
   
   private endSync()
   {
-    Model.Model.syncManager && Model.Model.syncManager.endSync(this);
+    Model.syncManager && Model.syncManager.endSync(this);
     this._keepSynced = false;
   }
   
@@ -411,3 +408,5 @@ _.each(methods, function(method) {
     return _[method].apply(_, [this.items].concat(_.toArray(arguments)))
   }
 });
+
+}

@@ -1,10 +1,7 @@
 
 require('require-typescript');
 
-var GndServer = require('../lib/gnd-server.ts');
-var SocketServer = require('../lib/storage/socket-backend.ts');
-var MongooseStorage = require('../lib/storage/mongoose-backend.ts');
-var Sync = require('../lib/sync/sync-backend.ts');
+var Gnd = require('../gnd-server.ts');
 
 var express = require('express'),
     mongoose = require('mongoose'),
@@ -20,7 +17,8 @@ app.use(cabinet(staticDir,
   {
     ignore: ['.git', 'node_modules', '*~', 'examples'],
     typescript: {
-      tmpPath: '/var/tmp'
+      tmpPath: '/var/tmp',
+      out: true,
     }
   },
   function(url){
@@ -30,20 +28,21 @@ app.use(cabinet(staticDir,
     }
   }
 ));
+
 app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   sio.sockets.emit('file_changed:', url);
   console.log(url);
 }));
 app.use(express.bodyParser());
 
-var mongooseStorage = new MongooseStorage.Mongoose(models);
+var mongooseStorage = new Gnd.MongooseStorage(models);
 var pubClient = redis.createClient(6379, "127.0.0.1"),
     subClient = redis.createClient(6379, "127.0.0.1");
 
-var syncHub = new Sync.SyncHub(pubClient, subClient, sio.sockets);
+var syncHub = new Gnd.Sync.SyncHub(pubClient, subClient, sio.sockets);
 
-var gndServer = new GndServer.Server(mongooseStorage, syncHub);
-var socketServer = new SocketServer.SocketBackend(sio.sockets, gndServer);
+var gndServer = new Gnd.Server(mongooseStorage, syncHub);
+var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 
 //
 // Ajax APIs used for some unit tests

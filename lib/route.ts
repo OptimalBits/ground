@@ -8,28 +8,28 @@
   the specified DOM nodes in the hierarchy.
   
 */
-/// <reference path="../third/underscore.browser.d.ts" />
+
+/// <reference path="base.ts" />
+/// <reference path="task.ts" />
+/// <reference path="overload.ts" />
 /// <reference path="../third/jquery.d.ts" />
 
 declare var curl;
 
-import Util = module('./util');
-import TM = module('./task');
-import Base = module('./base');
-import Overload = module('./overload');
+module Gnd.Route {
 
 interface Node {
   $el: JQuery;
   selector: JQuery;
-  select: TM.Task;
-  enter: TM.Task;
-  hide: TM.Task;
-  show: TM.Task;
-  drain: TM.Task;
-  before: TM.Task;
-  after: TM.Task;
-  render: TM.Task;
-  load: TM.Task;
+  select: Gnd.Task;
+  enter: Gnd.Task;
+  hide: Gnd.Task;
+  show: Gnd.Task;
+  drain: Gnd.Task;
+  before: Gnd.Task;
+  after: Gnd.Task;
+  render: Gnd.Task;
+  load: Gnd.Task;
   autoreleasePool: AutoreleasePool;
 }
 
@@ -75,7 +75,7 @@ export function listen(root, cb) {
               req.index = 1;
               req.initNode('body');
               req.notFoundFn.call(req, req);
-              var queue = new TM.TaskQueue();
+              var queue = new Gnd.TaskQueue();
               enqueueNode(queue, req.node())
             }else{
               console.log('Undefined route:'+location.hash);
@@ -158,10 +158,10 @@ function parseParams(expr, component, params){
 
 class AutoreleasePool {
   private drained : bool = false;
-  public pool : Base.Base[] = [];
+  public pool : Base[] = [];
   
-  public autorelease(...objs:Base.Base[]) : void;  
-  public autorelease(objs:Base.Base[]) : void;
+  public autorelease(...objs:Base[]) : void;
+  public autorelease(objs:Base[]) : void;
   
   public autorelease(){
     var pool = this.pool;
@@ -187,7 +187,7 @@ class AutoreleasePool {
 /**
   A Task factory for route actions.
 */
-var wrap = Overload.overload({
+var wrap = Gnd.overload({
   'Function Array Function': function(fn, args, cb) {
     return function(done){
       (function(args){
@@ -205,7 +205,7 @@ var wrap = Overload.overload({
     return wrap(fn, [], cb);
   },
   'Function': function(fn){
-    return wrap(fn, [], Util.noop);
+    return wrap(fn, [], Gnd.Util.noop);
   }
 })
 
@@ -284,7 +284,7 @@ function parseGetArguments(args){
 }
 
 function processMiddlewares(req, middlewares, cb){
-  Util.asyncForEach(middlewares, function(fn, cb){
+  Gnd.Util.asyncForEach(middlewares, function(fn, cb){
     fn(req, cb);
   },cb);
 }
@@ -297,7 +297,7 @@ function exitNodes(queue, nodes, start){
   }
 }
 
-function enqueueNode(queue: TM.TaskQueue, node: Node): void {
+function enqueueNode(queue: Gnd.TaskQueue, node: Node): void {
   queue.append(node.select, 
                node.hide, 
                node.before, 
@@ -321,7 +321,7 @@ class Request {
   public index: number = 0;
   public level: number = 0;
   public params: {} = {};
-  public queue: TM.TaskQueue = new TM.TaskQueue();
+  public queue: Gnd.TaskQueue = new Gnd.TaskQueue();
   public components: string[];
   public startIndex: number;
   public prevNodes: any[];
@@ -479,7 +479,7 @@ class Request {
     //
     // Create a task for entering this subroute
     //
-    var task = function(done?: TM.TaskCallback) : void {
+    var task = function(done?: Gnd.TaskCallback) : void {
       processMiddlewares(self, args.middlewares, function(err){
         var
           node = self.node(),
@@ -569,7 +569,7 @@ class Request {
   }
   
   public render(templateUrl: string, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
-    return Overload.overload({
+    return Gnd.overload({
       "String String Object Function": function(templateUrl, css, locals, cb){
         var fn = _.bind(this.render, this);
         this.node().render = wrap(fn, [templateUrl, css, locals], cb);
@@ -585,7 +585,7 @@ class Request {
         return this.render(templateUrl, undefined, undefined, cb);
       },
       "String Function": function(templateUrl){
-        return this.render(templateUrl, Util.noop);
+        return this.render(templateUrl, Gnd.Util.noop);
       },
     })(arguments)
   }
@@ -613,7 +613,7 @@ class Request {
       locals = undefined;
     }
   
-    cb = cb || Util.noop;
+    cb = cb || Gnd.Util.noop;
   
     var items = ['text!'+templateUrl];
     css && items.push('css!'+css);
@@ -690,14 +690,14 @@ class Request {
 
 Request.prototype.render = 
 
-Request.prototype.load = Overload.overload({
+Request.prototype.load = Gnd.overload({
   "String String Object Function": Request.prototype.load,
   
   "Function": function(cb){
     return this.load([], cb);
   },
   "": function(){
-    return this.load([], Util.noop);
+    return this.load([], Gnd.Util.noop);
   }
 });
 
@@ -720,3 +720,4 @@ var findSel = function(selector, start, nodes){
 }
 */
 
+}

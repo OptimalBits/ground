@@ -6,10 +6,8 @@
   Socket.io server backend.
 */
 
+/// <reference path="../server.ts" />
 /// <reference path="../third/socket.io.d.ts" />
-// import SocketIO = module('../third/socket.io.d');
-
-import Gnd = module('../gnd-server');
 
 function scb(cb){
   return function(){
@@ -20,6 +18,7 @@ function scb(cb){
   }
 }
 
+module Gnd {
 export class SocketBackend {
   constructor(socketManager: any, server: Gnd.Server){
     
@@ -70,4 +69,4 @@ export class SocketBackend {
   }
 }
 
-
+}

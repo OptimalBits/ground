@@ -1,4 +1,6 @@
-define(['base', 'route', 'jquery'], function(base, route, $){
+define(['gnd', 'jquery'], function(Gnd, $){
+
+var route = Gnd.Route;
 
 // Helpers
 var goToUrl = function(url){
@@ -224,9 +226,9 @@ describe('simple routes', function(){
   });
   
   it('autorelease objects after change from one deep route to another deep route', function(done){
-    var test = new base.Base();
-    var foo = new base.Base();
-    var bar = new base.Base();
+    var test = new Gnd.Base();
+    var foo = new Gnd.Base();
+    var bar = new Gnd.Base();
     
     route.stop();
     goToUrl('');
@@ -270,9 +272,9 @@ describe('simple routes', function(){
   });
   
   it('autorelease objects in route that changes a middle component', function(done){
-    var test = new base.Base();
-    var foo = new base.Base();
-    var bar = new base.Base();
+    var test = new Gnd.Base();
+    var foo = new Gnd.Base();
+    var bar = new Gnd.Base();
   
     route.stop();
     goToUrl('');
