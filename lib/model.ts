@@ -232,7 +232,7 @@ export class Model extends Base implements Sync.ISynchronizable
       this.state = ModelState.CREATING;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
-        this._persisted && Model.syncManager.startSync(this);
+        this._keepSynced &&  Model.syncManager && Model.syncManager.startSync(this);
         this.state = ModelState.CREATED;
       });
       Model.storageQueue.createCmd([bucket], args, cb);

@@ -9,18 +9,17 @@ var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
 
 var syncManager = new Gnd.Sync.Manager(socket);
 
-Gnd.Model.storageQueue = storageQueue;
-Gnd.Model.syncManager = syncManager;
-
 describe('Model', function(){
   
   var Animal = Gnd.Model.extend('animals');
   var animal = new Animal();
   
   before(function(done){
+    Gnd.Model.storageQueue = storageQueue;
+    Gnd.Model.syncManager = syncManager;
+    
     storageQueue.init(function(){
-      animal.save(function(){
-      });
+      animal.save();
       storageQueue.once('synced:', function(){
         done();
       })
@@ -76,6 +75,7 @@ describe('Model', function(){
     it('another instance propagates changes', function(done){
       var otherAnimal;
       
+      animal.keepSynced();
       animal.once('changed:', function(){
         expect(animal).to.have.property('legs');
         expect(animal).to.have.property('tail');
@@ -85,10 +85,10 @@ describe('Model', function(){
         done();
       });
 
-      Animal.findById(animal._id, function(err, doc){
+      Animal.findById(animal.id(), function(err, doc){
         expect(err).to.not.be.ok();
         expect(doc).to.have.property('_id');
-        expect(doc._id).to.eql(animal._id);
+        expect(doc.id()).to.eql(animal.id());
         doc.keepSynced();
         doc.set({legs:4, tail:true});
         otherAnimal = doc;
@@ -168,9 +168,10 @@ describe('Model', function(){
     socket.on('connect', storageQueue.syncFn);
     
     before(function(done){
-      animal.save(function(){
-        animal.keepSynced();
-        done()
+      animal.save();
+      animal.keepSynced();
+      storageQueue.once('synced:', function(){
+        done();
       });
     });
   
@@ -181,7 +182,7 @@ describe('Model', function(){
       var otherAnimal;
       animal.off();
       
-      var orgEmit = socket.emit
+      var orgEmit = socket.emit;
       socket.emit = function(){
         socket.socket.disconnect();
       }
@@ -226,7 +227,7 @@ describe('Model', function(){
         });
       });
 
-      tempAnimal.set({legs : 8, name:'spider'});
+      tempAnimal.set({legs : 8, name:'gorilla'});
       tempAnimal.save(function(err){
         expect(err).to.not.be.ok()
         tempAnimal.keepSynced();
@@ -362,7 +363,7 @@ describe('Model', function(){
       
       storageQueue.once('synced:', function(){
         var obj = {legs:7}
-        Util.ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) { 
+        Gnd.Util.ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) { 
           socket.socket.disconnect();
           socket.socket.connect();
         });
@@ -371,7 +372,7 @@ describe('Model', function(){
           Animal.findById(tempAnimal._id, function(err, doc){
             expect(doc.legs).to.be(7);
             // This case will be worked-out later...
-            //expect(tempAnimal.legs).to.be(7);
+            // expect(tempAnimal.legs).to.be(7);
             done();    
           });
         });

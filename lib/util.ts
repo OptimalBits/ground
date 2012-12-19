@@ -231,6 +231,7 @@ export function safeEmit(socket, ...args:any[]): void
   function errorFn(){
     cb(new Error('Socket disconnected'));
   };
+  
   function proxyCb(err, res){
     socket.removeListener('disconnect', errorFn);
     if(err){
@@ -240,13 +241,13 @@ export function safeEmit(socket, ...args:any[]): void
   };
   
   args[args.length-1] = proxyCb;
-
- if(socket.socket.connected){
+  
+  if(socket.socket.connected){
     socket.once('disconnect', errorFn);
     socket.emit.apply(socket, args);
- }else{
+  }else{
     errorFn();
- }
+  }
 }
 
 }

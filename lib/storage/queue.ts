@@ -177,8 +177,8 @@ export class Queue extends Base {
   
   private success(err: Error) {
     this.currentTransfer = null;
-    // for now we treat errors as irreversible.
-    //if(!err){ // || (err.status >= 400 && err.status < 500)){
+    
+    if(!err){ // || (err.status >= 400 && err.status < 500)){
       this.queue.shift();
       
       //
@@ -190,7 +190,7 @@ export class Queue extends Base {
       this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
         Util.nextTick(_.bind(this.synchronize, this));
       });
-    //}
+    }
   }
   
   synchronize(){
@@ -218,7 +218,7 @@ export class Queue extends Base {
                 if(err){
                   done(err);
                 }else{
-                  localStorage.put(keyPath, {_persisted:true}, (err?: Error) => {
+                  localStorage.put(keyPath, {_persisted:true, _id: sid}, (err?: Error) => {
                     var newKeyPath = _.initial(keyPath);
                     newKeyPath.push(sid);
                       localStorage.link(newKeyPath, keyPath, (err?: Error) => {
