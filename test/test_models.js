@@ -3,13 +3,12 @@ define(['gnd', 'jquery'],
   
 localStorage.clear();
 
-var storageLocal  = new Gnd.Storage.Local();
-var storageSocket = new Gnd.Storage.Socket(socket);
-var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
-
-var syncManager = new Gnd.Sync.Manager(socket);
-
 describe('Model', function(){
+  var storageLocal  = new Gnd.Storage.Local();
+  var storageSocket = new Gnd.Storage.Socket(socket);
+  var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
+
+  var syncManager = new Gnd.Sync.Manager(socket);
   
   var Animal = Gnd.Model.extend('animals');
   var animal = new Animal();
@@ -165,9 +164,8 @@ describe('Model', function(){
   describe('Offline', function(){
     var animal = new Animal({tail:true});
     
-    socket.on('connect', storageQueue.syncFn);
-    
     before(function(done){
+      socket.on('connect', storageQueue.syncFn);
       animal.save();
       animal.keepSynced();
       storageQueue.once('synced:', function(){

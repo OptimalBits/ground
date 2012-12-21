@@ -2,37 +2,37 @@ define(['gnd'],
   function(Gnd){
 
 localStorage.clear();
-
-var storageLocal  = new Gnd.Storage.Local();
-var storageSocket = new Gnd.Storage.Socket(socket);
-var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
-
-var syncManager = new Gnd.Sync.Manager(socket);
-
-Gnd.Model.storageQueue = storageQueue;
-Gnd.Model.syncManager = syncManager;
-
-var Animal = Gnd.Model.extend('animals');
-var animal = new Animal();
-
-var Zoo, zoo;
-Zoo = Gnd.Model.extend('zoo');
   
-before(function(done){
-  storageQueue.init(function(){
-    zoo = new Zoo();
-    zoo.keepSynced();
-    
-    animal.save();
-    zoo.save();
-    
-    storageQueue.once('synced:', function(){
-      done();
-    })
-  })
-});
-
 describe('Collections', function(){
+  var storageLocal  = new Gnd.Storage.Local();
+  var storageSocket = new Gnd.Storage.Socket(socket);
+  var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
+
+  var syncManager = new Gnd.Sync.Manager(socket);
+
+  var Animal = Gnd.Model.extend('animals');
+  var animal = new Animal();
+
+  var Zoo, zoo;
+  Zoo = Gnd.Model.extend('zoo');
+  
+  before(function(done){
+    Gnd.Model.storageQueue = storageQueue;
+    Gnd.Model.syncManager = syncManager;
+    
+    storageQueue.init(function(){
+      zoo = new Zoo();
+      zoo.keepSynced();
+    
+      animal.save();
+      zoo.save();
+    
+      storageQueue.once('synced:', function(){
+        done();
+      })
+    })
+  });
+  
   describe('Creation', function(){ 
     it('save to server', function(done){
       var zoo = new Zoo();
@@ -193,6 +193,8 @@ describe('Collections', function(){
   });
   describe('Remove', function(){
     it('remove item from collection', function(done){
+      storageQueue.queue = [];
+      
       Zoo.findById(zoo.id(), function(err, zoo){
         zoo.keepSynced();
         
@@ -232,25 +234,26 @@ describe('Collections', function(){
       });
     });
     
-    it('collection  proxies delete item event', function(done){
+    it('collection proxies delete item event', function(done){
+      
+      storageQueue.queue = [];
+      
       Zoo.findById(zoo.id(), function(err, zoo){
         zoo.keepSynced();
         
         zoo.all(Animal, function(err, animals){
           var otherAnimal;
           
-          animals.add(new Animal({name:"koala"}), function(err){   
-            expect(err).to.not.be.ok();
+          animals.on('removed:', function(item){
+            expect(item).to.be.an(Object);
+            expect(item).to.have.property('_id');
+            expect(item.id()).to.be.eql(otherAnimal.id());
+            animals.release();
+            zoo.release();
+            done();
+          });
           
-            animals.on('removed:', function(item){
-              expect(item).to.be.an(Object);
-              expect(item).to.have.property('_id');
-              expect(item.id()).to.be.eql(otherAnimal.id());
-              animals.release();
-              zoo.release();
-              done();
-            });
-
+          storageQueue.once('synced:', function(){
             Zoo.findById(zoo.id(), function(err, anotherZoo){
               expect(err).to.not.be.ok();
               expect(anotherZoo).to.be.an(Object);
@@ -267,6 +270,10 @@ describe('Collections', function(){
                 });
               });
             });
+          });
+          
+          animals.add(new Animal({name:"koala"}), function(err){   
+            expect(err).to.not.be.ok();
           });
         });
       });
@@ -297,6 +304,12 @@ describe('Collections', function(){
   });
 
   describe('Offline', function(){
+      
+    before(function(done){
+      socket.on('connect', storageQueue.syncFn);
+      done();
+    });
+    
     if('find items are cached', function(done){
       // IMPLEMENT: Items that are "finded" from the server should be
       // cached for offline usage.
@@ -345,7 +358,8 @@ describe('Collections', function(){
                 expect(collection.items.length).to.be(1);
                 expect(animals.items.length).to.be(1);
                 collection.release();
-                socket.socket.reconnect();
+//                socket.socket.reconnect();
+                socket.socket.connect();
               });
             });
           });
@@ -412,7 +426,7 @@ describe('Collections', function(){
             
             socket.disconnect();
             
-            animals.remove(animals.first().cid, function(err){
+            animals.remove(animals.first().id(), function(err){
               expect(err).not.to.be.ok();
               expect(animals.items.length).to.be(0);
 
@@ -547,38 +561,42 @@ describe('Collections', function(){
           animals.add(tiger, function(err){
             expect(err).to.not.be.ok();
             
-            zoo.all(Animal, function(err, onlineAnimals){
-              expect(err).to.not.be.ok();
-              expect(onlineAnimals).to.be.an(Object);
+            storageQueue.once('synced:', function(){
+              zoo.all(Animal, function(err, onlineAnimals){
+                expect(err).to.not.be.ok();
+                expect(onlineAnimals).to.be.an(Object);
               
-              var onlineTiger = onlineAnimals.first();
+                var onlineTiger = onlineAnimals.first();
               
-              expect(onlineTiger).to.be.an(Object);
-              expect(onlineTiger.id()).to.be.equal(tiger.id());
+                expect(onlineTiger).to.be.an(Object);
+                expect(onlineTiger.id()).to.be.equal(tiger.id());
               
-              Gnd.Util.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
-                
-                zoo.all(Animal, function(err, emptyZoo){
-                  expect(err).to.not.be.ok();
-                  expect(emptyZoo).to.be.an(Object);
-                  expect(emptyZoo.items.length).to.be(0);
-                  
-                  emptyZoo.release();
-                  
-                  socket.disconnect();
+                Gnd.Util.ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) { 
+                  // The server has deleted the model, but we do not know it yet.
+                  // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
                   
                   zoo.all(Animal, function(err, emptyZoo){
                     expect(err).to.not.be.ok();
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.items.length).to.be(0);
+                  
+                    emptyZoo.release();
+                  
+                    socket.disconnect();
+                  
+                    zoo.all(Animal, function(err, emptyZoo){
+                      expect(err).to.not.be.ok();
+                      expect(emptyZoo).to.be.an(Object);
+                      expect(emptyZoo.items.length).to.be(0);
                     
-                    Gnd.Util.release(onlineAnimals, emptyZoo);
-                    socket.socket.connect();
-                    socket.once('connect', done);
+                      Gnd.Util.release(onlineAnimals, emptyZoo);
+                      socket.socket.connect();
+                      socket.once('connect', done);
+                    });
                   });
                 });
               });
-            });
+            })
           });
         });
       });      
