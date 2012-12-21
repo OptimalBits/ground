@@ -36,6 +36,10 @@ function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
 }
 
+function isLink(doc){
+  return _.isString(doc);
+}
+
 export class Local implements IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
@@ -49,20 +53,18 @@ export class Local implements IStorage {
   
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
     this.get(keyPath, (err: Error, oldDoc?: any): void => {
-      _.extend(oldDoc, doc);
-      _put(makeKey(keyPath), oldDoc);
-      cb();
+      if(oldDoc){
+        _.extend(oldDoc, doc);
+        _put(makeKey(keyPath), oldDoc);
+      }
+      cb(err);
     })
-  }
-  
-  private isLink(doc){
-    return _.isString(doc);
   }
   
   get(keyPath: string[], cb: (err: Error, doc?: any) => void) {
     var doc = _get(makeKey(keyPath));
     if (doc){
-      if (this.isLink(doc)){
+      if (isLink(doc)){
         this.get(doc.split('@'), cb);
       } else {
         cb(null, doc);
