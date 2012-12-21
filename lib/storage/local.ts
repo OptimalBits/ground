@@ -78,18 +78,10 @@ export class Local implements IStorage {
     localCache.removeItem(makeKey(keyPath));
     cb();
   }
-  
-  /*
-  link(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void): void
-  {
-    _put(makeKey(keyPathLink), makeKey(keyPath));
-    cb();
-  }
-  */
-  
+    
   link(newKeyPath: string[], oldKeyPath: string[], cb: (err?: Error) => void): void
   {
-    // Find all the keypaths with oldKeyPath as subpath, replacing the 
+    // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
     var oldKey = makeKey(oldKeyPath);
     var newKey = makeKey(newKeyPath);
     
@@ -123,6 +115,12 @@ export class Local implements IStorage {
     var oldItemIdsKeys = _get(key) || [];
     
     var itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds);
+    for(var i=0; i<itemIdsKeys.length; i++){
+      var doc = _get(itemIdsKeys[i]);
+      if(isLink(doc)){
+        itemIdsKeys.push(doc);
+      }
+    }
 
     _put(key, _.difference(oldItemIdsKeys, itemIdsKeys));
     cb(null);
@@ -130,14 +128,15 @@ export class Local implements IStorage {
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: {}[]) => void) : void
   {
-    var collection = _get(makeKey(keyPath));
-    var result = [];
-    if(collection){
-      for(var i=0; i<collection.length;i++){
-        result.push(_get(collection[i]));
+    this.get(keyPath, (err, collection?) => {
+      var result = [];
+      if(collection){
+        for(var i=0; i<collection.length;i++){
+          result.push(_get(collection[i]));
+        }
       }
-    }
-    cb(null, result);
+      cb(null, result);
+    });
   }
   
   //
