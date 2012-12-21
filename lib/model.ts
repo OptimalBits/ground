@@ -16,6 +16,9 @@
 */
 
 /// <reference path="base.ts" />
+/// <reference path="collection.ts" />
+/// <reference path="overload.ts" />
+/// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
 
 module Gnd {
@@ -50,8 +53,8 @@ export class Model extends Base implements Sync.ISynchronizable
   
   public state: ModelState = ModelState.INITIAL;
   
-  static syncManager: Sync.Manager;
-  static storageQueue: Storage.Queue;
+  static syncManager: Gnd.Sync.Manager;
+  static storageQueue: Gnd.Storage.Queue;
   
   constructor(args: {}, bucket: string){
     super();
@@ -307,7 +310,7 @@ export class Model extends Base implements Sync.ISynchronizable
         Model.storageQueue.find(keyPath, {}, {}, (err, docs) => {
           if(docs){
             _.each(docs, function(doc){_.extend(doc, args)});
-            Gnd.Collection.create(this, parent, docs, cb);
+            Collection.create(this, parent, docs, cb);
           }else{
             cb(err);
           }
