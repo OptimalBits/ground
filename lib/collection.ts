@@ -42,14 +42,14 @@ export class Collection extends Base implements Sync.ISynchronizable
   {
     super();
     
-    this.updateFn = (model: Model, args) => {
-      if(this.sortByFn){
-        var index = this['indexOf'](model);
-        this.items.splice(index, 1);
-        this.sortedAdd(model);
+    var self = this;
+    this.updateFn = function(args){
+      if(self.sortByFn){
+        var index = self['indexOf'](this);
+        self.items.splice(index, 1);
+        self.sortedAdd(this);
       }
-      // Do we need to do this or the model class takes care of it?
-      this.emit('updated:', model, args);
+      self.emit('updated:', this, args);
     };
   
     this.deleteFn = (itemId) => {
@@ -74,7 +74,7 @@ export class Collection extends Base implements Sync.ISynchronizable
   
   destroy(){
     this._keepSynced && this.endSync();
-    Util.release(this.items);
+    this.deinitItems(this.items);
     this.items = null;
     super.destroy();
   }
@@ -178,13 +178,17 @@ export class Collection extends Base implements Sync.ISynchronizable
     })
   }
   
-  add(items: Model [], opts, cb)
+  add(items: Model[], opts, cb: (err)=>void): void
   {
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
     Util.asyncForEach(items, (item, done) => {
-      this.addItem(item, (err) => {
+      this.addItem(item, opts, (err) => {
         !err && this._keepSynced && !item._keepSynced && item.keepSynced();
         done(err);
-      }, opts);
+      });
     }, cb);
   }
   
@@ -196,9 +200,10 @@ export class Collection extends Base implements Sync.ISynchronizable
     Model.storageQueue.addCmd(keyPath, itemKeyPath, [item.id()], cb);
   }
 
-  private addItem(item, opts, cb){
+  private addItem(item, opts, cb)
+  {
     if(this.findById(item.id())) return cb();
-
+    
     if(this.sortByFn){
       this.sortedAdd(item);
     }else {
@@ -246,7 +251,7 @@ export class Collection extends Base implements Sync.ISynchronizable
     return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
   }
 
-  public remove(itemIds, nosync, cb){
+  public remove(itemIds, opts, cb){
       var 
         item, 
         items = this.items, 
@@ -254,6 +259,11 @@ export class Collection extends Base implements Sync.ISynchronizable
         len;
   
     var keyPath = this.getKeyPath();
+    
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
     
     items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
     len = items.length;
@@ -274,7 +284,7 @@ export class Collection extends Base implements Sync.ISynchronizable
         this.items.splice(index, 1);
         
        // if(item.isPersisted()){
-          if(this._keepSynced && nosync !== true){
+          if(this._keepSynced && opts.nosync !== true){
             var itemKeyPath = _.initial(item.getKeyPath());
             Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
           }else{
@@ -386,11 +396,20 @@ export class Collection extends Base implements Sync.ISynchronizable
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
       item.retain();
-      item.on('changed:', _.bind(this.updateFn, this, item));
-      item.on('deleted:', _.bind(this.deleteFn, this));
+      item.on('changed:', this.updateFn);
+      item.on('deleted:', this.deleteFn);
     }
   }
   
+  private deinitItems(items)
+  {
+    for (var i=0,len=items.length; i<len;i++){
+      var item = items[i];
+      item.off('changed:', this.updateFn);
+      item.off('deleted:', this.deleteFn);
+      item.release();
+    }
+  }
 }
 
 //
