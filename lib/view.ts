@@ -15,7 +15,7 @@
 /// <reference path="../third/jquery.d.ts" />
 
 module Gnd {
-class View extends Base
+export class View extends Base
 {
   public tag: string;
   public classNames: string[];
