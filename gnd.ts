@@ -39,6 +39,8 @@
 
 /// <reference path="./lib/route.ts" />
 
+/// <reference path="./lib/view.ts" />
+
 declare var define;
 declare var exports;
 (function (root, factory) {
