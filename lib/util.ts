@@ -181,20 +181,24 @@ export function asyncForEachSeries(arr, fn, cb){
   iterate();  
 }
 
-export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>{}){
-  function Derived(){
+export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
+  var methods;
+  var d = function Derived(){
     parent.apply(this, arguments);
   }
   
-  function __() { this.constructor = Derived; }
-  __.prototype = parent.prototype;
-  Derived.prototype = new __();
-  
   if(subclass){
-    _.extend(Derived.prototype, subclass(parent.prototype));
+    methods = subclass(parent.prototype);
+    d = methods.constructor;
   }
     
-  return Derived;
+  function __() { this.constructor = d; }
+  __.prototype = parent.prototype;
+  d.prototype = new __();
+  
+  _.extend(d.prototype, methods);
+  
+  return d;
 }
 
 //------------------------------------------------------------------------------
