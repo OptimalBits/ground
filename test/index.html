@@ -120,7 +120,8 @@
       })
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
-          curl(['test/test_storage_local',
+          curl(['test/test_util',
+                'test/test_storage_local',
                 'test/test_storage_socket',
                 'test/test_overload',
                 'test/test_models',
@@ -128,7 +129,7 @@
                 'test/test_tasks',
                 'test/test_events',
                 // 'test/test_base',
-                'test/test_routes',            
+                'test/test_routes',             
                  //'test/test_declare',
                 ], function(Storage){
                   // We need to run this first.

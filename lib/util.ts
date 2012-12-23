@@ -181,6 +181,21 @@ export function asyncForEachSeries(arr, fn, cb){
   iterate();  
 }
 
+export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>{}){
+  function Derived(){
+    parent.apply(this, arguments);
+  }
+  
+  function __() { this.constructor = Derived; }
+  __.prototype = parent.prototype;
+  Derived.prototype = new __();
+  
+  if(subclass){
+    _.extend(Derived.prototype, subclass(parent.prototype));
+  }
+    
+  return Derived;
+}
 
 //------------------------------------------------------------------------------
 //
