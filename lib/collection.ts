@@ -34,9 +34,13 @@ export class Collection extends Base implements Sync.ISynchronizable
   public parent: Model;
   public sortByFn;
   public sortOrder: string = 'asc';
+  public filterByFn: (item: Model) => bool = null;
   public filterFn: (obj: {}, search: string, fields: string []) => bool = Util.searchFilter;
   public filterFields: string[];
   public filterData: string;
+  
+  // Prototypes for underscore imported methods.
+  public filter: (iterator: (item: any)=>bool) => Model[];
   
   constructor(model: IModel, parent: Model, items?: Model[])
   {
@@ -129,16 +133,16 @@ export class Collection extends Base implements Sync.ISynchronizable
     }).apply(this, arguments);
   }
   
+  static private getItemIds(items: Model[])
+  {
+    return _.map(items, function(item){return item.id()});
+  }
+  
   findById(id)
   {
     return this['find']((item) => {
       return item.id() == id
     });
-  }
-  
-  static private getItemIds(items: Model[])
-  {
-    return _.map(items, function(item){return item.id()});
   }
   
   save(cb?: (err: Error) => void): void
@@ -190,6 +194,122 @@ export class Collection extends Base implements Sync.ISynchronizable
         done(err);
       });
     }, cb);
+  }
+  
+  getKeyPath(): string[]
+  {
+    return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
+  }
+
+  remove(itemIds, opts, cb){
+      var 
+        item, 
+        items = this.items, 
+        index, 
+        len;
+  
+    var keyPath = this.getKeyPath();
+    
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
+    
+    items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
+    len = items.length;
+    
+    Util.asyncForEach(itemIds, (itemId, done) => {
+      item = 0;
+      for(index=0; index<len; index++){
+        if(items[index].id() == itemId){
+          item = items[index];
+          break;
+        }
+      }
+  
+      if(item){
+        item.off('changed:', this.updateFn);
+        item.off('deleted:', this.deleteFn);
+        
+        this.items.splice(index, 1);
+        
+        if(this._keepSynced && opts.nosync !== true){
+          var itemKeyPath = _.initial(item.getKeyPath());
+          Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
+        }else{
+          this._removed.push(itemId);
+          done();
+        }
+        this.emit('removed:', item, index);
+        item.release();
+      }else{
+        done();
+      }
+    }, cb);
+  }
+  
+  keepSynced(): void
+  {  
+    this.startSync();
+  
+    this['map']((item) => {
+      item.keepSynced()
+    });
+  }
+  
+  isKeptSynced(): bool
+  {
+    return this._keepSynced;
+  }
+  
+  toggleSortOrder(){
+    this['set']('sortOrder', this.sortOrder == 'asc' ? 'desc' : 'asc');
+  }
+  
+  setFormatters(formatters){
+    this._formatters = formatters;
+    this['each'](function(item){
+      item.format(formatters);
+    });
+  }
+  
+  filtered(result: (err: Error, models?: Model[])=>void){
+    if(this.filterByFn){
+      result(null, this.filter(this.filterByFn));
+    }else{
+      result(null, this.items);
+    }
+  }
+  
+  /*
+  filtered(optionalItem){
+    var items = this.items;
+    if(this.filterFn && this.filterData){
+      var data = this.filterData || '';
+      
+      if(optionalItem){
+        return this.filterFn(optionalItem, data, this.filterFields);
+      }else{
+        var filtered = [], item;
+        for(var i=0, len=items.length;i<len;i++){
+          item = items[i];
+          if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
+            filtered.push(items[i]);
+          }
+        }
+        return filtered;
+      }
+    }else{
+      return optionalItem || items;
+    }
+  }
+  */
+  
+  // DEPRECATED.
+  reverse()
+  {
+    this.items.reverse();
+    return this;
   }
   
   private persistAddItem(item: Model, cb:(err?: Error) => void): void
@@ -245,77 +365,7 @@ export class Collection extends Base implements Sync.ISynchronizable
     (this.sortOrder == 'desc') && this.items.reverse();
     return i;
   }
-  
-  public getKeyPath(): string[]
-  {
-    return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
-  }
-
-  public remove(itemIds, opts, cb){
-      var 
-        item, 
-        items = this.items, 
-        index, 
-        len;
-  
-    var keyPath = this.getKeyPath();
     
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    
-    items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
-    len = items.length;
-    
-    Util.asyncForEach(itemIds, (itemId, done) => {
-      item = 0;
-      for(index=0; index<len; index++){
-        if(items[index].id() == itemId){
-          item = items[index];
-          break;
-        }
-      }
-  
-      if(item){
-        item.off('changed:', this.updateFn);
-        item.off('deleted:', this.deleteFn);
-        
-        this.items.splice(index, 1);
-        
-       // if(item.isPersisted()){
-          if(this._keepSynced && opts.nosync !== true){
-            var itemKeyPath = _.initial(item.getKeyPath());
-            Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
-          }else{
-            this._removed.push(itemId);
-            done();
-          }
-      //  }else{
-      //    done();
-      //  }
-        this.emit('removed:', item, index);
-        item.release();
-      }else{
-        done();
-      }
-    }, cb);
-  }
-  
-  keepSynced(): void
-  {  
-    this.startSync();
-  
-    this['map']((item) => {
-      item.keepSynced()
-    });
-  }
-  
-  isKeptSynced(): bool
-  {
-    return this._keepSynced;
-  }
-  
   private startSync()
   {
     this._keepSynced = true;
@@ -349,45 +399,6 @@ export class Collection extends Base implements Sync.ISynchronizable
   {
     Model.syncManager && Model.syncManager.endSync(this);
     this._keepSynced = false;
-  }
-  
-  toggleSortOrder(){
-    this['set']('sortOrder', this.sortOrder == 'asc' ? 'desc' : 'asc');
-  }
-  
-  setFormatters(formatters){
-    this._formatters = formatters;
-    this['each'](function(item){
-      item.format(formatters);
-    });
-  }
-  
-  filtered(optionalItem){
-    var items = this.items;
-    if(this.filterFn && this.filterData){
-      var data = this.filterData || '';
-      
-      if(optionalItem){
-        return this.filterFn(optionalItem, data, this.filterFields);
-      }else{
-        var filtered = [], item;
-        for(var i=0, len=items.length;i<len;i++){
-          item = items[i];
-          if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
-            filtered.push(items[i]);
-          }
-        }
-        return filtered;
-      }
-    }else{
-      return optionalItem || items;
-    }
-  }
-  
-  reverse()
-  {
-    this.items.reverse();
-    return this;
   }
   
   private initItems(items)
