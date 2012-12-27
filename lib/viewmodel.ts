@@ -182,6 +182,7 @@ class EachBinder implements Binder
       nextSibling = el.nextSibling;
     
     parent.removeChild(el);
+    el.removeAttribute('data-each');
     
     var addNode = (item, nextSibling) => {
       var itemNode = <Element> el.cloneNode(true), id = item.id();
