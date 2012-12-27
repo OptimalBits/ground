@@ -9,11 +9,11 @@
   models.
 */
 
-/// <reference path="../../third/jquery.d.ts" />
-/// <reference path="../../third/underscore.browser.d.ts" />
+/// <reference path="../third/jquery.d.ts" />
+/// <reference path="../third/underscore.browser.d.ts" />
 
-/// <reference path="../base.ts" />
-/// <reference path="../model.ts" />
+/// <reference path="base.ts" />
+/// <reference path="model.ts" />
 
 module Gnd {
 
