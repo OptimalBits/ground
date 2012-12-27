@@ -40,7 +40,12 @@
 /// <reference path="./lib/route.ts" />
 
 /// <reference path="./lib/view.ts" />
+/// <reference path="./lib/viewmodel.ts" />
 
+
+//
+// Adds support for AMD and CommonJs module loaders
+//
 declare var define;
 declare var exports;
 (function (root, factory) {

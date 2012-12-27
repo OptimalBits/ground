@@ -105,6 +105,7 @@ export class Model extends Base implements Sync.ISynchronizable
               Model.storageQueue.once('created:'+id, (id) => {
                 instance.id(id);
                 instance.state = ModelState.CREATED;
+                instance.emit('id', id);
               });
             }else{
               instance.state = ModelState.CREATED;
@@ -321,14 +322,6 @@ export class Model extends Base implements Sync.ISynchronizable
         keyPath.push(bucket);
         this.all(parent, args, cb);
       },
-      /*
-      'String Function': function(bucket, cb){
-        this.all([bucket], {}, cb);
-      },
-      'Object Function': function(args, cb){
-        this.all([this.__bucket], args, cb);
-      },
-      */
       'Model Function': function(parent, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(this.__bucket);

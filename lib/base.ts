@@ -62,7 +62,7 @@ export class Base extends EventEmitter {
   /**
     set - Sets a property and notifies any listeners attached to it if changed.
   */
-  private set(keyOrObj, val, options?) {
+  set(keyOrObj, val, options?) {
     var changed = false, obj, self = this;
   
     if(typeof keyOrObj == 'object'){
