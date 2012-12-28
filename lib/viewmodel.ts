@@ -22,7 +22,7 @@ var dataBindingReqExp = /^data-/;
 export class ViewModel {
   
   private binders: {};
-  private contexts: {}[];
+  private contexts: {}[] = [];
   
   constructor(el: Element, context: {})
   {
@@ -34,14 +34,17 @@ export class ViewModel {
     }
     
     this.pushContext(context);
+    
+    this.bindNode(el);
   }
 
   resolveContext(keyPath: string[]): Base
   {
-    var obj = keyPath[0];
+    var root = keyPath[0], context;
     for(var i=this.contexts.length-1; i >= 0; i--){
-      if(this.contexts[obj]){
-        return this.resolveKeypath(this.contexts[obj], _.rest(keyPath));
+      context = this.contexts[i][root];
+      if(context){
+        return this.resolveKeypath(context, _.rest(keyPath));
       }
     }
   }
@@ -55,16 +58,7 @@ export class ViewModel {
   {
     this.contexts.pop();
   }
-  
-  private resolveKeypath(obj, keyPath): Base
-  {
-    for(var i=0; i<keyPath.length; i++){
-      obj = obj[keyPath[i]];
-      if(!obj) return null;      
-    }
-    return obj;
-  }
-  
+    
   /**
     Binds a node and all of its children recursively.
   */
@@ -77,19 +71,32 @@ export class ViewModel {
           var type = attributes[j].name.replace(dataBindingReqExp, '');
           var value = attributes[j].value;
           if(this.binders[type]){
-            this.binders[type](node, type, this);
+            var binder = new this.binders[type]();
+            binder.bind(node, value, this);
           }
         }
       }
     }
     
     if(node.hasChildNodes()){
-      var children = node.childNodes;
+      // clone children array to avoid side-effects.
+      var children = _.toArray(node.childNodes);
  
       for (var i=0; i<children.length; i++){
-        this.bindNode(<Element> children[i]);
+        if(children[i].nodeType === Node.ELEMENT_NODE){
+          this.bindNode(<Element> children[i]);
+        }
       }
     }
+  }
+  
+  private resolveKeypath(obj, keyPath): Base
+  {
+    for(var i=0; i<keyPath.length; i++){
+      obj = obj[keyPath[i]];
+      if(!obj) return null;      
+    }
+    return obj;
   }
 }
 
@@ -119,14 +126,15 @@ class TwoWayBinder implements Binder
     
     var $node = $(el);
     for(var attr in attrBindings){
-      var model = viewModel.resolveContext(attrBindings[attr]);
-      if(model){
+      var keypath = attrBindings[attr];
+      var model = viewModel.resolveContext(_.initial(keypath));
+      if(model instanceof Gnd.Model){
         var keypath = _.rest(attrBindings[attr]).join('.');
         if(attr === 'text'){
           //setValue($node, model.format(keypath));
           setValue($node, model.get(keypath));
           model.on(keypath, function(){
-//            setValue($node, model.format(keypath));
+          // setValue($node, model.format(keypath));
             setValue($node, model.get(keypath));
           });
     
@@ -148,6 +156,8 @@ class TwoWayBinder implements Binder
             $node.attr(attr, model.get(keypath));
           });
         }
+      }else{
+        console.log("Warning: not found a valid model: "+keypath[0]);
       }
     }
   }
@@ -168,78 +178,87 @@ class EachBinder implements Binder
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var arr = value.trim().split(':'), collection;
+    var 
+      arr = value.trim().split(':'),
+      mappings = this.mappings,
+      parent = el.parentNode,
+      nextSibling = el.nextSibling;
+    
     if(arr.length !== 2){
       console.log("Warning: syntax error in data-each:"+value);
       return;
     }
     
-    var 
-      collection = viewModel.resolveContext(makeKeypathArray(arr[0])),
-      itemContextName = arr[1],
-      mappings = this.mappings,
-      parent = el.parentNode,
-      nextSibling = el.nextSibling;
+    var
+      keyPath = makeKeypathArray(arr[0]),
+      collection = <Gnd.Collection> viewModel.resolveContext(keyPath),
+      itemContextName = arr[1].trim();
     
-    parent.removeChild(el);
-    el.removeAttribute('data-each');
+    if(collection instanceof Gnd.Collection){
+      parent.removeChild(el);
+      el.removeAttribute('data-each');
     
-    var addNode = (item, nextSibling) => {
-      var itemNode = <Element> el.cloneNode(true), id = item.id();
-      itemNode.setAttribute('data-item', id);
+      var addNode = (item, nextSibling) => {
+        var itemNode = <Element> el.cloneNode(true), id = item.id();
+        itemNode.setAttribute('data-item', id);
       
-      mappings[id] = itemNode;
-
-      if(nextSibling){
-        parent.insertBefore(itemNode, nextSibling)
-      }else{
-        parent.appendChild(itemNode);
-      }
-      
-      var context = {};
-      context[itemContextName] = item;
-      
-      viewModel.pushContext(context);
-      viewModel.bindNode(itemNode);
-      viewModel.popContext();
-      
-      item.on('id', (newId) => {
-        delete mappings[id];
-        id = newId;
         mappings[id] = itemNode;
-        itemNode.setAttribute('data-item', newId);
-      });
-    }
-    
-    var removeNode = (id) => {
-      parent.removeChild(mappings[id]);
-      delete mappings[id];
-    }
-    
-    var addNodes = () => {
-      _.each(collection.filtered(), function(item){
-        addNode(item, nextSibling);
-      });
-    }
-    
-    addNodes();
-    
-    collection.on('added:', function(item){
-      addNode(item, nextSibling);
-      // if(this.filtered(item)){}
-    })
-    .on('removed:', function(id){
-      if(mappings[id]){
-        removeNode(id);
+
+        if(nextSibling){
+          parent.insertBefore(itemNode, nextSibling)
+        }else{
+          parent.appendChild(itemNode);
+        }
+      
+        var context = {};
+        context[itemContextName] = item;
+      
+        viewModel.pushContext(context);
+        viewModel.bindNode(itemNode);
+        viewModel.popContext();
+      
+        item.on('id', (newId) => {
+          delete mappings[id];
+          id = newId;
+          mappings[id] = itemNode;
+          itemNode.setAttribute('data-item', newId);
+        });
       }
-      // TODO: Unbind nodes recursively to avoid event and memory leaks.
-    })
-    .on('filterData', function(){
-      for(var id in mappings){
-        removeNode(id);
+      
+      var removeNode = (id) => {
+        parent.removeChild(mappings[id]);
+        delete mappings[id];
       }
+    
+      var addNodes = () => {
+        collection.filtered((err: Error, models?: Model[]) => {
+          _.each(models, function(item){
+            addNode(item, nextSibling);
+          });
+        });
+      }
+    
       addNodes();
-    });
+    
+      collection.on('added:', function(item){
+        addNode(item, nextSibling);
+        // if(this.filtered(item)){}
+      })
+      .on('removed:', function(id){
+        if(mappings[id]){
+          removeNode(id);
+        }
+        // TODO: Unbind nodes recursively to avoid event and memory leaks.
+      })
+      .on('filterData', function(){
+        for(var id in mappings){
+          removeNode(id);
+        }
+        addNodes();
+      });
+    }else{
+      console.log("Warning: not found a valid collection: "+arr[0]);
+    }
   }
   
   unbind(){
