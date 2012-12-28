@@ -1,6 +1,6 @@
 #Introduction
 
-Ground is a lightweight (less than 15Kb) and flexible HTML5 javascript framework that provides 
+Ground is a lightweight (less than 15Kb) and flexible HTML5 javascript/typescript framework that provides 
 the building blocks and the structure to create modern, realtime interactive web applications that 
 are required to work seamlessly both online and offline.
 
@@ -11,17 +11,20 @@ Ground includes also some rather useful features such as a hierarchical routing 
 manager, property bindings, reference counting and automatic synchronization between clients 
 and servers while always maintaining high performance and low memory consumption.
 
+Ground is written in [Typescript](http://www.typescriptlang.org/), and can be used both in javascript
+and typescript projects.
+
 ##Highlights
 
 - Designed and optimized for NodeJS servers.
 - Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
 - Models with property **bindings**, **persistence** and client-server **synchronization**.
 - Complete **offline** support.
+- *Declarative Bindings* for easily connecting views and models.
 - Canvas Views.
-- Views with some common widgets based on jQuery UI.
+- Preloaded with some common views based on jQuery UI.
 - Events.
 - Undo/Redo Manager.
-
 
 ##Philosophy
 
@@ -204,32 +207,33 @@ route.
 Example:
 
 
-
- 
 #Objects
 
-Javascript does not provided Classes, although it provides a similar mechanism called prototypal inheritance, where
-objects just can inherit from other objects.
+Javascript does not provided Classes, although it provides a similar mechanism called
+prototypal inheritance, where objects just can inherit from other objects.
 
-Ground provides a mechanism to simplify standard prototypal inheritance and it also provides a hierarchy of objects
-that will prove quite useful for developing advanced web applications.
+Ground provides a mechanism to simplify standard prototypal inheritance and it also 
+provides a hierarchy of objects that will prove quite useful for developing advanced 
+web applications.
 
 Objects inheriting from other objects are just declared using gnd.Declare:
 
   var myObject = gnd.Declare(Super, [constructor, statics])
   
-The only mandatory parameter is Super, which is the super object that your object derives from. At the top of the 
-object hierarchy in ground lies the object gnd.Base, which provides some basic functionality that the rest of 
-the system expects from all the classes. So at a minimum you should derive from gnd.Base, although usually you 
-will be deriving from more specialized objects such as gnd.Model or gnd.View.
+The only mandatory parameter is Super, which is the super object that your object derives from.
+At the top of the object hierarchy in ground lies the object gnd.Base, which provides some 
+basic functionality that the rest of the system expects from all the classes. So at a 
+minimum you should derive from gnd.Base, although usually you will be deriving from more
+specialized objects such as gnd.Model or gnd.View.
 
-The other parameters are optional, but usually quite relevant. The *constructor* allows you to define a customized 
-constructor for your object. This constructor can have any number of input parameters, although if you are creating
-model objects it is recommended that the first parameter is *args*, which would represent all the serialized 
+The other parameters are optional, but usually quite relevant. The *constructor* allows
+you to define a customized constructor for your object. This constructor can have any
+number of input parameters, although if you are creating model objects it is 
+recommended that the first parameter is *args*, which would represent all the serialized 
 properties of your model. This will make more sense when we explain about the models later on.
 
-The *statics* parameter is an object with all the static functions for this object, i.e. the functions that you 
-can call without needing to instantiate the object.
+The *statics* parameter is an object with all the static functions for this object, i.e. the 
+functions that you can call without needing to instantiate the object.
 
 Lets give some examples:
 
@@ -250,15 +254,14 @@ Lets give some examples:
     // Instantiate
     var myHouse = new House(3, 'white');
 
-If your objects are always inheriting from some object from the gnd.Base hierarchy, you can use the simplifed
-method *extend*:
+If your objects are always inheriting from some object from the gnd.Base hierarchy, you 
+can use the simplifed method *extend*:
 
     // Create a simple object
     var Animal = gnd.Base.extend();
 
-
-Objects derived from gnd.Base are not so much different from a normal javascript object, but we get some useful 
-features such as:
+Objects derived from gnd.Base are not so much different from a normal javascript object, 
+but we get some useful features such as:
 
   - Events
   - Bindings
@@ -280,15 +283,16 @@ Lets give some examples for every feature:
     // stop listening to name property.
     fox.off('name');
 
-If we want we can bind two properties from two different objects, and they will be keep synchronized at all times:
+If we want we can bind two properties from two different objects, and they will be keep 
+synchronized at all times:
 
     var cat = new Animal();
   
     // bind legs property from fox to cat
     cat.bind('legs', fox);
   
-When binding, if the properties are different at the moment of bind, the target object (cat in this case), will get the
-value of the 'legs' property from the fox.
+When binding, if the properties are different at the moment of bind, the target object 
+(cat in this case), will get the value of the 'legs' property from the fox.
 
 It is also possible to bind properties with different names:
 
@@ -303,21 +307,31 @@ It is also possible to bind properties with different names:
     cat.unbind('colour');
   
 
-Finally, the Base class provides reference counting. When a class is instantiated, it will get a reference count of 1. We can call retain to increase the count and release to decrease it. If the count reaches to zero, the class will call to its *destroy* function, which in the base class takes care of removing all the events associated to it. Reference count proves to be an important mechanism in order to avoid memory leaks and dangling event listeners, which could otherwise lead to strange side effects and suboptimal memory usage. So in order to keep the system clean, always call *release* on the objects that are not going to be used any more.
+Finally, the Base class provides reference counting. When a class is instantiated, it 
+will get a reference count of 1. We can call retain to increase the count and release
+to decrease it. If the count reaches to zero, the class will call to its *destroy* 
+function, which in the base class takes care of removing all the events associated to it. 
+Reference count proves to be an important mechanism in order to avoid memory leaks 
+and dangling event listeners, which could otherwise lead to strange side effects and
+suboptimal memory usage. So in order to keep the system clean, always call *release*
+on the objects that are not going to be used any more.
 
 
 ## Models
 
-Models in ground are objects that derive from gnd.Base and that provide functionality for persisting as well as 
-synchronizing data with a remote server. Models usually are a mirror of a some data representation in a server. 
+Models in ground are objects that derive from gnd.Base and that provide functionality
+for persisting as well as synchronizing data with a remote server. Models usually are
+a mirror of a some data representation in a server. 
 
-Ground can take advantage of socket.io, and it provides a [Node](http://nodejs.org) component to simplify 
-persistence and synchronization. The server component is designed to scale easily thanks to [Redis](http://redis.io)
-which is used as a pub sub system between different nodes running the ground server component.
+Ground can take advantage of socket.io, and it provides a [Node](http://nodejs.org)
+component to simplify persistence and synchronization. The server component is designed
+to scale easily thanks to [Redis](http://redis.io) which is used as a pub sub system
+between different nodes running the ground server component.
 
-Besides models there are also ***collections***. A collection is a special object also derived from gnd.Base that 
-keeps a collection of models. By using this class, a collection of models can be kept synchronized against 
-other instances in other remote clients using a central server with ground server component.
+Besides models there are also ***collections***. A collection is a special object
+also derived from gnd.Base that keeps a collection of models. By using this class, 
+a collection of models can be kept synchronized against other instances in other remote
+clients using a central server with ground server component.
 
 Lets provide a few simple examples:
       
@@ -341,7 +355,8 @@ Lets provide a few simple examples:
     });
 
 
-If there is a connection to the server using socket.io, we can also have synchronization support:
+If there is a connection to the server using socket.io, we can also have 
+synchronization support:
 
     // Set a socket for realtime communication with a server.
     gnd.Model.set('socket', socket);
@@ -364,23 +379,28 @@ If there is a connection to the server using socket.io, we can also have synchro
     // Clean up
     fox.release();
 
-In the example above we achieved automatic synchronization between the client and the server, but also with other remote clients that had an instance of Animal with the same ._id as fox and that had enabled synchronization with keepSynced().
+In the example above we achieved automatic synchronization between the client and
+the server, but also with other remote clients that had an instance of Animal with the 
+same ._id as fox and that had enabled synchronization with keepSynced().
 
 ###Serialization
 
-Models are serialized as JSON. The mechanism is quite simple, every model provides a toArgs (aliased to toJSON) which when called 
-provides a lean object suitable for being converted to a JSON string using JSON.stringify. The toArgs function provided in the 
+Models are serialized as JSON. The mechanism is quite simple, every model provides
+a toArgs (aliased to toJSON) which when called provides a lean object suitable for 
+being converted to a JSON string using JSON.stringify. The toArgs function provided in the 
 Model class is useful for most simple cases, it will produce an object following these rules:
 
-Deserialization is performed calling to the static method fromArgs (aliased to fromJSON). It performs the inverse operation as toArgs. 
-Deserializing implies the instantiation of a new Model based on the given arguments. This deserialization can require asynchronouse 
+Deserialization is performed calling to the static method fromArgs (aliased to fromJSON).
+It performs the inverse operation as toArgs. Deserializing implies the instantiation of a 
+new Model based on the given arguments. This deserialization can require asynchronouse 
 operations, and therefore the signature of fromArgs includes a callback: (args, cb).
 
 
 ##Collections
 
-Besides Models we also have Collections, which provides a convenient way to represent an *ordered set* of models. A Collection is 
-able to keep itself synchronized with a server. If elements are added or remove from a collection, all instances of that collection 
+Besides Models we also have Collections, which provides a convenient way to represent an
+*ordered set* of models. A Collection is able to keep itself synchronized with a server. 
+If elements are added or remove from a collection, all instances of that collection 
 can be kept synchronized, including the server backend that persists all the objects.
 
 Usually a collection is instantiated by using the *all* function on a model:
@@ -398,8 +418,6 @@ Usually a collection is instantiated by using the *all* function on a model:
         // item was added to a collection.
       });
     });
-    
-    
 
 Collections *retains* all the items that are part of it. So if we for example add a item to a collection, we can safely 
 (and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed 
@@ -454,6 +472,7 @@ garbage collector can do its job. Also, besides memory, we want to avoid *event 
 some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
 , by default, all the events associated to it are also removed.
 
+
 ##Undo / Redo
 
 ##Offline
@@ -463,7 +482,61 @@ between client and server instances of models and collections. Data required by 
 models are cached so that they are available when working offline, and all data produced while being offline
 gets updated automatically as soon as the application gets connectivity with the server.
 
+
 #Views
+
+
+
+#ViewModel and Declarative Bindings
+
+Ground supports the popular MVVM pattern, as a specialization of the MVC. The controller is replaced by a ViewModel 
+(The model of the view) which provides mechanisms to easily bind model properties to a View. 
+The bindings are expressed in the view as *data* attributes in any valid HTML tag that forms the view. Lets start with
+the following example:
+
+HTML View:
+    <lu>
+      <li>Todo List Header<li/>
+      <li data-each="todos: todo" data-bind="text: todo.description" data-class="active: todo.isActive"><li/>
+      <li>Todo List footer<li/>
+    <lu/>
+    
+This example demonstrates binding a Collection to a list. The bindings will not just populate the list from the 
+collection, but also keep it up-to-date at all times, adding and removing items as necessary.
+
+Nested bindings are supported, so for example it is fully correct to nest collections of collections that behave
+as expected:
+
+    // TODO: Add an example here...
+    
+
+##Available binders
+
+Ground provides a basic set of binders that cover the most common needs, but more binders can be added easily if necessary.
+
+###bind
+
+This binder binds an attribute or the innerHTML of a tag with the given model properties. It accepts the following syntax:
+
+data-bind="attr0: keypath0; attr1: keypath1; ... ;attrn: keypathn"
+
+The attr's are tag attributes. The special attribute *text* is used to represent the inner HTML of the node.
+
+
+###each
+
+The each binder is used to bind collections and sequences.
+
+###show
+
+This binder is used to show or hide an HTML element depending on the value of a property bound to it.
+
+###class
+
+This binder is used to add one or several css classes to an HTML element depending on the given properties.
+
+data-class="className0, className1, ... classNameN: keypath1; className10, className11, ... className1N: keypath2 ..."
+
 
 #Server
 
