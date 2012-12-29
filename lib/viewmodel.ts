@@ -241,8 +241,9 @@ class EachBinder implements Binder
       addNodes();
     
       collection.on('added:', function(item){
-        addNode(item, nextSibling);
-        // if(this.filtered(item)){}
+        if(this.isFiltered(item)){
+          addNode(item, nextSibling);
+        }
       })
       .on('removed:', function(id){
         if(mappings[id]){
@@ -250,7 +251,8 @@ class EachBinder implements Binder
         }
         // TODO: Unbind nodes recursively to avoid event and memory leaks.
       })
-      .on('filterData', function(){
+      .on('filterFn sorted:', function(){
+        // TODO: Only remove items not in filtered collection.
         for(var id in mappings){
           removeNode(id);
         }
