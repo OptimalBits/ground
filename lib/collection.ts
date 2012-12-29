@@ -32,12 +32,9 @@ export class Collection extends Base implements Sync.ISynchronizable
   
   public model: IModel;
   public parent: Model;
-  public sortByFn;
+  public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
-  public filterByFn: (item: Model) => bool = null;
-  public filterFn: (obj: {}, search: string, fields: string []) => bool = Util.searchFilter;
-  public filterFields: string[];
-  public filterData: string;
+  public filterFn: (item: Model) => bool = null;
   
   // Prototypes for underscore imported methods.
   public filter: (iterator: (item: any)=>bool) => Model[];
@@ -273,13 +270,19 @@ export class Collection extends Base implements Sync.ISynchronizable
     });
   }
   
-  filtered(result: (err: Error, models?: Model[])=>void){
-    if(this.filterByFn){
-      result(null, this.filter(this.filterByFn));
+  filtered(result: (err: Error, models?: Model[])=>void)
+  {
+    if(this.filterFn){
+      result(null, this.filter(this.filterFn));
     }else{
       result(null, this.items);
     }
   }
+  
+  isFiltered(item: Model): bool
+  {
+    return this.filterFn ? this.filterFn(item) : true;
+  } 
   
   /*
   filtered(optionalItem){
