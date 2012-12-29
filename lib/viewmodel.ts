@@ -270,9 +270,32 @@ class EachBinder implements Binder
 
 class ShowBinder implements Binder 
 {
+  //
+  // Syntax: data-show="keypath"
+  // Example: data-show="todo.isCompleted"
+  //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
+    var 
+      keypath = makeKeypathArray(value),
+      model = viewModel.resolveContext(_.initial(keypath)),
+      display = el['style'].display;
     
+    function setVisibility(visible){
+      if(visible){
+        el['style'].display = display;
+      }else{
+        el['style'].display = "none";
+      }
+    }
+      
+    if(model instanceof Gnd.Model){
+      var key = _.rest(keypath).join('.');
+      setVisibility(model.get(key));
+      model.on(key, function(value){
+        setVisibility(value);
+      });
+    }
   }
   
   unbind(){};
@@ -280,6 +303,10 @@ class ShowBinder implements Binder
 
 class ClassBinder implements Binder
 {
+  
+  //
+  // Syntax: data-class="className0, className1, ... classNameN: keypath1; className10, className11, ... className1N: keypath2 ..."
+  //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
     
