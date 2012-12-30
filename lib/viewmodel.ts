@@ -295,24 +295,93 @@ class ShowBinder implements Binder
       model.on(key, function(value){
         setVisibility(value);
       });
+    }else{
+      console.log("Warning: not found a valid model: "+value);
     }
   }
   
-  unbind(){};
+  unbind(){
+    // TODO: Implement
+  };
 }
 
 class ClassBinder implements Binder
 {
-  
   //
-  // Syntax: data-class="className0, className1, ... classNameN: keypath1; className10, className11, ... className1N: keypath2 ..."
+  // Syntax: data-class="className0 className1 ... classNameN: keypath1; className10 className11 ... className1N: keypath2 ..."
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
+    var 
+      classMappings = {}, // Maps class sets to keypaths.
+      classSets = value.split(';'),
+      classNames = el['className'] === '' ? [] : el['className'].split(' '),
+      usedClassNameSets = {};
+      
+    for(var i=0; i<classSets.length; i++){
+      var keyVal = classSets[i].split(':');
+      if(keyVal.length === 2){
+        var 
+          classes = keyVal[0].trim().split(' '),
+          keypath = keyVal[1].trim();
+           
+        classMappings[keypath] = [];
+        for(var j=0; j<classes.length; j++){
+          classMappings[keypath].push(classes[j].trim());
+        }
     
+        //
+        // Set classes and start listeners
+        //
+        for(var keypath in classMappings){
+          processMapping(keypath);
+        }
+        
+        function processMapping(keypath){
+          var
+            keypathArray = makeKeypathArray(keypath),
+            model = viewModel.resolveContext(_.initial(keypathArray));
+          
+          if(model instanceof Gnd.Model){
+            // model.retain();
+            
+            var key = _.rest(keypathArray).join('.');
+            if(model.get(key)){
+              usedClassNameSets[keypath] = keypath;
+            }
+            
+            model.on(key, function(value){
+              if(value){
+                usedClassNameSets[keypath] = keypath;
+              }else{
+                delete usedClassNameSets[keypath];
+              }
+              updateClassNames();
+            });
+          }else{
+            console.log("Warning: not found a valid model: "+value);
+          }
+        }
+        
+        function updateClassNames(){
+          var newClassNames = classNames;
+          for(var key in usedClassNameSets){
+            newClassNames = _.union(newClassNames, classMappings[key]);
+          }
+          el['className'] = newClassNames.join(' ');
+        }
+        
+        updateClassNames();
+        
+      }else{
+        console.log("Warning: Syntax error in "+classSets[i]);
+      }
+    }
   }
   
-  unbind(){};
+  unbind(){
+    // TODO: Implement
+  };
 }
 
 // --- Helpers

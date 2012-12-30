@@ -129,7 +129,7 @@ describe('ViewModel', function(){
     });
     
     it('nested collections', function(){
-  
+      // TODO: Implement
     });
   });
   
@@ -149,13 +149,45 @@ describe('ViewModel', function(){
       
       feline.set('visible', true);
       expect(el.style.display).to.be.eql('block');
-    })
+    });
   });
   
   describe('data-class', function(){
     it('adds classes to element', function(){
-    
+      var feline = new Animal({name: 'tiger', useClasses:true});
+      
+      el = document.createElement('div');
+      el.setAttribute('data-class', 'classA classB classC: feline.useClasses');
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(el.className).to.be.eql('classA classB classC');
+      
+      feline.set('useClasses', false);
+      expect(el.className).to.be.eql('');
     })
+    
+    it('several class sets bound to an element', function(){
+      var feline = new Animal({name: 'tiger', a:true, b:false, c:false});
+      
+      el = document.createElement('div');
+      el.setAttribute('data-class', 'classA classB classC: feline.a; classU classV: feline.b; classY classB: feline.c');
+      el.className = 'classU';
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(el.className).to.be.eql('classU classA classB classC');
+      
+      feline.set('a', false);
+      expect(el.className).to.be.eql('classU');
+      
+      feline.set('b', true);
+      expect(el.className).to.be.eql('classU classV');
+      
+      feline.set('c', true);
+      expect(el.className).to.be.eql('classU classV classY classB');
+      
+      feline.set('a', true);
+      expect(el.className).to.be.eql('classU classV classY classB classA classC');
+    });
   });
     
 });
