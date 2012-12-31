@@ -127,8 +127,14 @@ describe('ViewModel', function(){
       expect(el.checked).to.be(false);
       
       el.checked = true;
+      el.setAttribute('checked', 'true');
       fireEvent(el, 'change');
       expect(tiger.selected).to.be(true);
+      
+      el.checked = false;
+      el.setAttribute('checked', 'false');
+      fireEvent(el, 'change');
+      expect(tiger.selected).to.be(false);
       
       // Text input
       el = document.createElement('input');
@@ -143,6 +149,7 @@ describe('ViewModel', function(){
       expect(el.value).to.be('foobar');
       
       el.value = 'quxbaz';
+      el.setAttribute('value', 'quxbaz');
       fireEvent(el, 'change');
       expect(tiger.description).to.be('quxbaz');
     });

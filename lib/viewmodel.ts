@@ -403,10 +403,16 @@ function setAttr(el, attr, value){
 }
 
 function getAttr(el, attr){
-  if(el[attr]){
+  if(el.hasOwnProperty(attr)){
     return el[attr];
   }else{
-    return el.getAttribute(attr);
+    var val = el.getAttribute(attr);
+    switch(val){
+      case 'true': return true;
+      case null:
+      case 'false': return false;
+      default: return val;
+    }
   }
 }
 
