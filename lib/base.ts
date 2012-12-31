@@ -36,6 +36,9 @@ export class Base extends EventEmitter {
     }
   }
   
+  //
+  // TODO: Accept keypath arrays besides strings.
+  //
   private _set(keypath, val, options) {
     var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
   
