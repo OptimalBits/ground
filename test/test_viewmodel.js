@@ -1,4 +1,18 @@
 define(['gnd'], function(Gnd){
+  
+  function fireEvent(element, event){
+    if (document.createEventObject){
+      // dispatch for IE
+      var evt = document.createEventObject();
+      return element.fireEvent('on'+event,evt)
+    }else{
+      // dispatch for firefox + others
+      var evt = document.createEvent("HTMLEvents");
+      evt.initEvent(event, true, true ); // event type,bubbling,cancelable
+      return !element.dispatchEvent(evt);
+    }
+  }
+  
 
 describe('ViewModel', function(){
   var Animal = Gnd.Model.extend('animals');
@@ -68,6 +82,69 @@ describe('ViewModel', function(){
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
       expect(el22.title).to.be.eql('3');      
+    });
+    
+    // This will not work since we cannot listen easily for attr changes...
+    /*
+    it('bind to attributes works in both directions', function(){
+      el = document.createElement('div');
+      el.setAttribute('data-bind', 'text: tiger.name; title: tiger.description ');
+      
+      var tiger = new Animal({
+        name: 'tiger', 
+        description: 'put description here...'
+      });
+      var vm = new Gnd.ViewModel(el, {tiger: tiger});
+      
+      expect(el.innerText).to.be.eql('tiger');
+      expect(el.title).to.be.eql('put description here...');
+      
+      tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
+      expect(el.title).to.be.eql('The tiger (Panthera tigris) is the largest cat species');
+      
+      el.setAttribute('title', 'The tiger is a beautiful feline');
+      expect(tiger.description).to.be.eql('The tiger is a beautiful feline');
+    });
+    */
+    
+    it('bind to input elements works in both directions', function(){
+
+      // checkbox
+      var el = document.createElement('input');
+      el.setAttribute('type', 'checkbox');
+      el.checked = false;
+      el.setAttribute('data-bind', 'checked: tiger.selected');
+      
+      var tiger = new Animal({
+        selected: true,
+        name: 'tiger', 
+        description: 'put description here...'
+      });
+      var vm = new Gnd.ViewModel(el, {tiger: tiger});
+      expect(el.getAttribute('checked')).to.be('true');
+      
+      tiger.set('selected', false);
+      expect(el.checked).to.be(false);
+      
+      el.checked = true;
+      fireEvent(el, 'change');
+      expect(tiger.selected).to.be(true);
+      
+      // Text input
+      el = document.createElement('input');
+      el.setAttribute('type', 'text');
+      el.checked = false;
+      el.setAttribute('data-bind', 'value: tiger.description');
+      
+      var vm2 = new Gnd.ViewModel(el, {tiger: tiger});
+      expect(el.value).to.be('put description here...');
+
+      tiger.set('description', 'foobar');
+      expect(el.value).to.be('foobar');
+      
+      el.value = 'quxbaz';
+      fireEvent(el, 'change');
+      expect(tiger.description).to.be('quxbaz');
     });
   });
   

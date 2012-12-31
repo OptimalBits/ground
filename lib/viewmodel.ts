@@ -9,7 +9,6 @@
   models.
 */
 
-/// <reference path="../third/jquery.d.ts" />
 /// <reference path="../third/underscore.browser.d.ts" />
 
 /// <reference path="base.ts" />
@@ -124,37 +123,28 @@ class TwoWayBinder implements Binder
       }
     }
     
-    var $node = $(el);
     for(var attr in attrBindings){
       var keypath = attrBindings[attr];
       var model = viewModel.resolveContext(_.initial(keypath));
       if(model instanceof Gnd.Model){
         var keypath = _.rest(attrBindings[attr]).join('.');
         if(attr === 'text'){
-          //setValue($node, model.format(keypath));
-          setValue($node, model.get(keypath));
+          setValue(el, model.get(keypath)); // model.format(keypath));
           model.on(keypath, function(){
-          // setValue($node, model.format(keypath));
-            setValue($node, model.get(keypath));
+            setValue(el, model.get(keypath)); // model.format(keypath));
           });
-    
-          $node.change(function(){
-            model.set(keypath, $node.val());
-          });
-          /*
-          $node.keypress(function(e){
-            // if(e.keyCode == 13){
-              $node.blur();
-            // }
-          });
-          */
+          
+          listenChange(el, function(value){
+            setValue(el, value);
+          })
         }else{
-          //$node.attr(attr, model.format(keypath));
-          $node.attr(attr, model.get(keypath));
+          setAttr(el, attr, model.get(keypath)); //model.format(keypath)
           model.on(keypath, function(){
-            //$node.attr(attr, model.format(keypath));
-            $node.attr(attr, model.get(keypath));
+            setAttr(el, attr, model.get(keypath)); //model.format(keypath)
           });
+          listenChange(el, function(value){
+            model.set(keypath, getAttr(el, attr));
+          })
         }
       }else{
         console.log("Warning: not found a valid model: "+keypath[0]);
@@ -302,6 +292,7 @@ class ShowBinder implements Binder
   
   unbind(){
     // TODO: Implement
+    // model.release(), model.off()
   };
 }
 
@@ -317,6 +308,40 @@ class ClassBinder implements Binder
       classSets = value.split(';'),
       classNames = el['className'] === '' ? [] : el['className'].split(' '),
       usedClassNameSets = {};
+      
+    function processMapping(keypath){
+      var
+          keypathArray = makeKeypathArray(keypath),
+          model = viewModel.resolveContext(_.initial(keypathArray));
+          
+      if(model instanceof Gnd.Model){
+        // model.retain();
+          
+        var key = _.rest(keypathArray).join('.');
+        if(model.get(key)){
+          usedClassNameSets[keypath] = keypath;
+        }
+            
+        model.on(key, function(value){
+          if(value){
+            usedClassNameSets[keypath] = keypath;
+          }else{
+            delete usedClassNameSets[keypath];
+          }
+          updateClassNames();
+        });
+      }else{
+        console.log("Warning: not found a valid model: "+value);
+      }
+    }
+    
+    function updateClassNames(){
+      var newClassNames = classNames;
+      for(var key in usedClassNameSets){
+        newClassNames = _.union(newClassNames, classMappings[key]);
+      }
+      el['className'] = newClassNames.join(' ');
+    }
       
     for(var i=0; i<classSets.length; i++){
       var keyVal = classSets[i].split(':');
@@ -336,41 +361,7 @@ class ClassBinder implements Binder
         for(var keypath in classMappings){
           processMapping(keypath);
         }
-        
-        function processMapping(keypath){
-          var
-            keypathArray = makeKeypathArray(keypath),
-            model = viewModel.resolveContext(_.initial(keypathArray));
-          
-          if(model instanceof Gnd.Model){
-            // model.retain();
-            
-            var key = _.rest(keypathArray).join('.');
-            if(model.get(key)){
-              usedClassNameSets[keypath] = keypath;
-            }
-            
-            model.on(key, function(value){
-              if(value){
-                usedClassNameSets[keypath] = keypath;
-              }else{
-                delete usedClassNameSets[keypath];
-              }
-              updateClassNames();
-            });
-          }else{
-            console.log("Warning: not found a valid model: "+value);
-          }
-        }
-        
-        function updateClassNames(){
-          var newClassNames = classNames;
-          for(var key in usedClassNameSets){
-            newClassNames = _.union(newClassNames, classMappings[key]);
-          }
-          el['className'] = newClassNames.join(' ');
-        }
-        
+         
         updateClassNames();
         
       }else{
@@ -381,6 +372,8 @@ class ClassBinder implements Binder
   
   unbind(){
     // TODO: Implement
+    // model.release();
+    // removeListener();
   };
 }
 
@@ -392,16 +385,45 @@ if(!String.prototype.trim) {
   };
 }
 
-function setValue($node, value){
-  if (value && value.hasOwnProperty && value instanceof $){
-    $node.replaceWith(value);
+
+function isElement(object) {
+  return object && object.nodeType == 1
+}
+
+// See: http://www.quirksmode.org/dom/w3c_core.html#attributes
+function setAttr(el, attr, value){
+  if(el.hasOwnProperty(attr)){
+    el[attr] = value;
+  }
+  if(value){
+    el.setAttribute(attr, value);
   }else{
-    if($node.is(':input')){
-      $node.val(value);
+    el.removeAttribute(attr);
+  }
+}
+
+function getAttr(el, attr){
+  if(el[attr]){
+    return el[attr];
+  }else{
+    return el.getAttribute(attr);
+  }
+}
+
+function setValue(node, value){
+  if(isElement(value)){
+    node.parentNode.replaceChild(value, node);
+  }else{
+    if(node.textContent){
+      node.textContent = value;
     }else{
-      $node.text(value);
+      node.innerText = value;
     }
   }
+}
+
+function listenChange(node, cb){
+  node.addEventListener('change', cb);
 }
 
 function makeKeypathArray(keypath: string): string[]
