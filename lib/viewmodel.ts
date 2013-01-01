@@ -141,7 +141,7 @@ class TwoWayBinder implements Binder
             setValue(el, model.get(keypath)); // model.format(keypath));
           });
           
-          listenChange(el, function(value){
+          addEventListener(el, 'change', (value) => {
             setValue(el, value);
           })
         }else{
@@ -149,7 +149,7 @@ class TwoWayBinder implements Binder
           model.on(keypath, function(){
             setAttr(el, attr, model.get(keypath)); //model.format(keypath)
           });
-          listenChange(el, function(value){
+           addEventListener(el, 'change', (value) => {
             model.set(keypath, getAttr(el, attr));
           })
         }
@@ -277,7 +277,7 @@ class ShowBinder implements Binder
       model = viewModel.resolveContext(_.initial(keypath)),
       display = el['style'].display;
     
-    function setVisibility(visible){
+    function setVisibility(visible: bool){
       if(visible){
         el['style'].display = display;
       }else{
@@ -288,7 +288,7 @@ class ShowBinder implements Binder
     if(model instanceof Gnd.Model){
       var key = _.rest(keypath).join('.');
       setVisibility(model.get(key));
-      model.on(key, function(value){
+      model.on(key, (value) => {
         setVisibility(value);
       });
     }else{
@@ -315,7 +315,7 @@ class ClassBinder implements Binder
       classNames = el['className'] === '' ? [] : el['className'].split(' '),
       usedClassNameSets = {};
       
-    function processMapping(keypath){
+    function processMapping(keypath: string){
       var
           keypathArray = makeKeypathArray(keypath),
           model = viewModel.resolveContext(_.initial(keypathArray));
@@ -412,10 +412,10 @@ class EventBinder implements Binder
       if(obj instanceof Gnd.Base){
         var eventKeypath = _.rest(keypath).join('.');
         
-        el.addEventListener(event, (evt) => {
+        addEventListener(el, event, (evt) => {
           var handler = obj.get(eventKeypath);
           if(_.isFunction(handler)){
-            handler(el, evt);
+            handler.call(this, el, evt);
           }else{
             console.log("Warning: the given handler is not a function: "+keypath);
           }
@@ -441,13 +441,12 @@ if(!String.prototype.trim) {
   };
 }
 
-
 function isElement(object) {
   return object && object.nodeType == 1
 }
 
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
-function setAttr(el, attr, value){
+function setAttr(el: Element, attr: string, value: any){
   if(el.hasOwnProperty(attr)){
     el[attr] = value;
   }
@@ -458,7 +457,7 @@ function setAttr(el, attr, value){
   }
 }
 
-function getAttr(el, attr){
+function getAttr(el: Element, attr){
   if(el.hasOwnProperty(attr)){
     return el[attr];
   }else{
@@ -472,6 +471,26 @@ function getAttr(el, attr){
   }
 }
 
+function addEventListener(el: Element, eventName: string, handler: (evt) => void){
+  if(el.addEventListener){
+    // W3C DOM
+    el.addEventListener(eventName, handler);
+  }else if (el['attachEvent']){
+    // IE DOM 6, 7, 8
+    el['attachEvent']("on"+eventName, handler);
+  }
+}
+
+function removeEventListener(el: Element, eventName: string, handler: (evt) => void){
+  if(el.removeEventListener){
+    // W3C DOM
+    el.removeEventListener(eventName, handler);
+  }else if (el['detachEvent']) { 
+    // IE DOM 6, 7, 8
+    el['detachEvent']("on"+eventName, handler);
+  }
+}
+
 function setValue(node, value){
   if(isElement(value)){
     node.parentNode.replaceChild(value, node);
@@ -482,10 +501,6 @@ function setValue(node, value){
       node.innerText = value;
     }
   }
-}
-
-function listenChange(node, cb){
-  node.addEventListener('change', cb);
 }
 
 function makeKeypathArray(keypath: string): string[]
