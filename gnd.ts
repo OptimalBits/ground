@@ -17,7 +17,7 @@
    - jQuery
    - Underscore / LoDash
 
-   (c) 2011-2012 OptimalBits - Licensed as MIT.
+   (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
 
 /// <reference path="./third/underscore.browser.d.ts" />
@@ -41,7 +41,6 @@
 
 /// <reference path="./lib/view.ts" />
 /// <reference path="./lib/viewmodel.ts" />
-
 
 //
 // Adds support for AMD and CommonJs module loaders
