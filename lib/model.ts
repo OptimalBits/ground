@@ -105,7 +105,6 @@ export class Model extends Base implements Sync.ISynchronizable
               Model.storageQueue.once('created:'+id, (id) => {
                 instance.id(id);
                 instance.state = ModelState.CREATED;
-                instance.emit('id', id);
               });
             }else{
               instance.state = ModelState.CREATED;
