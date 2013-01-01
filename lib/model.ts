@@ -179,6 +179,7 @@ export class Model extends Base implements Sync.ISynchronizable
       if(this._keepSynced){
         Model.syncManager && Model.syncManager.startSync(this);
       }
+      this.emit('id', id);
     }
     return this._id || this._cid;
   }

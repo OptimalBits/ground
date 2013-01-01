@@ -247,7 +247,7 @@ describe('ViewModel', function(){
       leopard = new Animal({name: 'leopard', pos:3});
      
       zoo = new Zoo();
-      zoo.animals = new Gnd.Collection(Animal, Zoo, [tiger, lion, leopard]);
+      zoo.animals = new Gnd.Collection(Animal, zoo, [tiger, lion, leopard]);
       
       list = document.createElement('lu');
       listEl = document.createElement('li');
@@ -256,7 +256,7 @@ describe('ViewModel', function(){
       list.appendChild(listEl);
     })
     
-    it('populate a list from a collection', function(){      
+    it('populate a list from collection', function(){      
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
@@ -268,6 +268,19 @@ describe('ViewModel', function(){
       zoo.animals.add(jaguar);
       expect(list.children.length).to.be(4);
       expect(list.children[3].innerText).to.be.eql('jaguar');
+    });
+    
+    it('remove elements from collection', function(){      
+      var vm = new Gnd.ViewModel(list, {zoo: zoo});
+      
+      expect(list.children.length).to.be(3);
+      expect(list.children[0].innerText).to.be.eql('tiger');
+      expect(list.children[1].innerText).to.be.eql('lion');
+      expect(list.children[2].innerText).to.be.eql('leopard');
+      
+      zoo.animals.remove([lion.id(), tiger.id()])
+      expect(list.children.length).to.be(1);
+      expect(list.children[0].innerText).to.be.eql('leopard');
     });
     
     it('update list after filtering', function(){

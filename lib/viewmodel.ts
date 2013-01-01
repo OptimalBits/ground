@@ -241,9 +241,9 @@ class EachBinder implements Binder
           addNode(item, nextSibling);
         }
       })
-      .on('removed:', function(id){
-        if(mappings[id]){
-          removeNode(id);
+      .on('removed:', function(item){
+        if(mappings[item.id()]){
+          removeNode(item.id());
         }
         // TODO: Unbind nodes recursively to avoid event and memory leaks.
       })
