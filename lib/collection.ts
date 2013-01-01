@@ -58,7 +58,7 @@ export class Collection extends Base implements Sync.ISynchronizable
     };
   
     this.items = items || [];
-    this.items && this.initItems(items);
+    this.initItems(this.items);
 
     this.model = model;
     this.parent = parent;
@@ -199,24 +199,22 @@ export class Collection extends Base implements Sync.ISynchronizable
   }
 
   remove(itemIds, opts, cb){
-      var 
-        item, 
-        items = this.items, 
-        index, 
-        len;
-  
-    var keyPath = this.getKeyPath();
+    var 
+      item, 
+      items, 
+      len, 
+      keyPath = this.getKeyPath();
     
     if(_.isFunction(opts)){
       cb = opts;
       opts = {};
     }
     
-    items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
-    len = items.length;
+    //items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
+    items = this.items;
     
     Util.asyncForEach(itemIds, (itemId, done) => {
-      item = 0;
+      var index, item, len = items.length;
       for(index=0; index<len; index++){
         if(items[index].id() == itemId){
           item = items[index];
@@ -225,12 +223,12 @@ export class Collection extends Base implements Sync.ISynchronizable
       }
   
       if(item){
+        items.splice(index, 1);
+        
         item.off('changed:', this.updateFn);
         item.off('deleted:', this.deleteFn);
         
-        this.items.splice(index, 1);
-        
-        if(this._keepSynced && opts.nosync !== true){
+        if(this._keepSynced && (!opts || !opts.nosync)){
           var itemKeyPath = _.initial(item.getKeyPath());
           Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
         }else{
