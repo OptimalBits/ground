@@ -285,7 +285,7 @@ class ShowBinder implements Binder
       }
     }
       
-    if(model instanceof Gnd.Model){
+    if(model instanceof Gnd.Base){
       var key = _.rest(keypath).join('.');
       setVisibility(model.get(key));
       model.on(key, (value) => {
@@ -320,7 +320,7 @@ class ClassBinder implements Binder
           keypathArray = makeKeypathArray(keypath),
           model = viewModel.resolveContext(_.initial(keypathArray));
           
-      if(model instanceof Gnd.Model){
+      if(model instanceof Gnd.Base){
         // model.retain();
           
         var key = _.rest(keypathArray).join('.');
