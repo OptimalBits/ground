@@ -415,7 +415,7 @@ class EventBinder implements Binder
         addEventListener(el, event, (evt) => {
           var handler = obj.get(eventKeypath);
           if(_.isFunction(handler)){
-            handler.call(this, el, evt);
+            handler.call(obj, el, evt);
           }else{
             console.log("Warning: the given handler is not a function: "+keypath);
           }
