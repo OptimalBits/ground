@@ -247,7 +247,7 @@ class EachBinder implements Binder
         }
         // TODO: Unbind nodes recursively to avoid event and memory leaks.
       })
-      .on('filterFn sorted:', function(){
+      .on('filterFn sorted: updated:', function(){
         // TODO: Only remove items not in filtered collection.
         for(var id in mappings){
           removeNode(id);
