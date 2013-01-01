@@ -32,25 +32,30 @@ module Gnd.Storage {
   data in a local storage, and synchronize with the remote
   storage as soon as it is available.
 */
-export class Queue extends Base {
+export class Queue extends Base
+{
   private savedQueue: {};
   private queue: Command[];
   private createList = {};
   private syncFn: ()=>void;
   private currentTransfer = null;
   private localStorage: IStorage;
-  private remoteStorage: IStorage;
+  private remoteStorage: IStorage = null;
+  private useRemote: bool;
 
-  constructor(local: IStorage, remote: IStorage){
+  constructor(local: IStorage, remote?: IStorage)
+  {
     super();
   
     this.localStorage = local;
     this.remoteStorage = remote;
-        
+    
+    this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
   }
   
-  init(cb:(err?: Error) => void){
+  init(cb:(err?: Error) => void)
+  {
     this.localStorage.all(['meta', 'storageQueue'], (err, queue) => {
       if(!err){
         this.queue = queue || [];
@@ -59,67 +64,48 @@ export class Queue extends Base {
     });
   }
   
-  /* 
+  /*
     We need to have this listener somewhere...
     init(socket){
       socket.removeListener('connect', this.syncFn);
       socket.on('connect', this.syncFn);
       }
   */
-  getDoc(keyPath: string[], cb){
+  
+  getDoc(keyPath: string[], cb)
+  {
+    this.localStorage.get(keyPath, (err?, doc?) => {
+      if(doc){            
+        doc['_id'] = _.last(keyPath);
+      }
+      cb(err, doc);
+    });
+    
+    this.useRemote &&
     this.remoteStorage.get(keyPath, (err?, doc?) => {
-      if(err){
-        this.localStorage.get(keyPath, (err?, doc?) => {
-          if(doc){            
-            doc['_id'] = _.last(keyPath);
-          }
-          cb(err, doc);
-        });
-      }else{
+      if(!err){
         doc['_persisted'] = true;
-        // Shoudlnt we need to cache here to local?
-        cb(err, doc);
+        this.emit('resync:'+Queue.makeKey(keyPath), doc);
+        this.localStorage.put(keyPath, doc, ()=>{});
       }
     });
-  }
-  
-  private static makeKey(keyPath: string[]){
-    return keyPath.join(':');
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
     this.localStorage.find(keyPath, query, options, cb);
+    
+    this.useRemote && 
     this.remoteStorage.find(keyPath, query, options, (err?, result?) => {
       if(!err){
         this.emit('resync:'+Queue.makeKey(keyPath), result);
+        // TODO: We need to update the local cache with this data from the server
       }
     });
   }
-  
-  /*
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
+    
+  createCmd(keyPath: string[], args:{}, cb)
   {
-    this.remoteStorage.find(keyPath, query, options, (err?, doc?) => {
-      if(err){
-        this.localStorage.find(keyPath, query, options, cb);
-      }else{
-        cb(err, doc);
-      }
-    });
-  }
-  */
-  private add(cmd: Command, cb:(err: Error)=>void){
-    this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, (err) => {
-      if(!err){
-        this.queue.push(cmd);
-        this.synchronize();
-      }
-      cb(err);
-    });
-  }
-  
-  createCmd(keyPath: string[], args:{}, cb){
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
         args['cid'] = cid;
@@ -130,7 +116,8 @@ export class Queue extends Base {
     });
   }
   
-  updateCmd(keyPath: string[], args:{}, cb){
+  updateCmd(keyPath: string[], args:{}, cb)
+  {
     //OPTIMIZATION?: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
     this.localStorage.put(keyPath, args, (err?) => {
       if(!err){
@@ -141,7 +128,8 @@ export class Queue extends Base {
     });
   }
   
-  deleteCmd(keyPath: string[], cb){
+  deleteCmd(keyPath: string[], cb)
+  {
     this.localStorage.del(keyPath, (err?) => {
       if(!err){
         this.add({cmd:'delete', keyPath: keyPath}, cb);
@@ -151,7 +139,8 @@ export class Queue extends Base {
     });
   }
   
-  addCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb){
+  addCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  {
     this.localStorage.add(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
         this.add({
@@ -163,7 +152,8 @@ export class Queue extends Base {
     });
   }
   
-  removeCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb){
+  removeCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  {
     this.localStorage.remove(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
         this.add({
@@ -175,25 +165,8 @@ export class Queue extends Base {
     });
   }
   
-  private success(err: Error) {
-    this.currentTransfer = null;
-    
-    if(!err){ // || (err.status >= 400 && err.status < 500)){
-      this.queue.shift();
-      
-      //
-      // Note: since we cannot have an atomic operation for updating the server and the
-      // execution queue, the same command could be executed 2 or more times in 
-      // some hazardous scenarios (if the browser crashes after updating the server
-      // and before the local storage). revisions should fix this problem.
-      //
-      this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
-        Util.nextTick(_.bind(this.synchronize, this));
-      });
-    }
-  }
-  
-  synchronize(){
+  synchronize()
+  {
     var done = _.bind(this.success, this);
     
     if (!this.currentTransfer){
@@ -253,7 +226,42 @@ export class Queue extends Base {
     }
   }
   
-  private updateQueueIds(oldId, newId){ 
+  private add(cmd: Command, cb:(err?: Error)=>void)
+  {
+    if(this.useRemote){
+      this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, (err) => {
+        if(!err){
+          this.queue.push(cmd);
+          this.synchronize();
+        }
+        cb(err);
+      });
+    }else{
+      cb();
+    }
+  }
+  
+  private success(err: Error)
+  {
+    this.currentTransfer = null;
+    
+    if(!err){ // || (err.status >= 400 && err.status < 500)){
+      this.queue.shift();
+      
+      //
+      // Note: since we cannot have an atomic operation for updating the server and the
+      // execution queue, the same command could be executed 2 or more times in 
+      // some hazardous scenarios (if the browser crashes after updating the server
+      // and before the local storage). revisions should fix this problem.
+      //
+      this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
+        Util.nextTick(_.bind(this.synchronize, this));
+      });
+    }
+  }
+  
+  private updateQueueIds(oldId, newId)
+  { 
     _.each(this.queue, (cmd: Command) => {
       updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
@@ -261,6 +269,11 @@ export class Queue extends Base {
     });
     
     // TODO: Serialize after updating Ids
+  }
+  
+  private static makeKey(keyPath: string[])
+  {
+    return keyPath.join(':');
   }
 }
 
