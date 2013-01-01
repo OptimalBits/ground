@@ -537,6 +537,12 @@ This binder is used to add one or several css classes to an HTML element dependi
 
 data-class="className0, className1, ... classNameN: keypath1; className10, className11, ... className1N: keypath2 ..."
 
+###event
+
+This binder attaches a event to a given element. This binder is particularly useful combined with the *each* binder, since it will bind events
+to nodes that are added and removed dynamically.
+
+
 
 #Server
 

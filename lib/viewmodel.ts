@@ -14,6 +14,8 @@
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 
+// TODO: Refactor and implement unbind on the Binder classes.
+
 module Gnd {
 
 var dataBindingReqExp = /^data-/;
@@ -29,7 +31,8 @@ export class ViewModel {
       bind: TwoWayBinder,
       each: EachBinder,
       show: ShowBinder,
-      class: ClassBinder
+      class: ClassBinder,
+      event: EventBinder
     }
     
     this.pushContext(context);
@@ -112,8 +115,10 @@ class TwoWayBinder implements Binder
 {
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var attributes = value.trim().split(';');
-    var attrBindings = {};
+    var 
+      attributes = value.trim().split(';'),
+      attrBindings = {};
+      
     for(var i=0; i<attributes.length; i++){
       var attrKeyPath = attributes[i].trim().split(':');
       if(attrKeyPath.length===2){
@@ -124,9 +129,11 @@ class TwoWayBinder implements Binder
     }
     
     for(var attr in attrBindings){
-      var keypath = attrBindings[attr];
-      var model = viewModel.resolveContext(_.initial(keypath));
-      if(model instanceof Gnd.Model){
+      var 
+        keypath = attrBindings[attr],
+        model = viewModel.resolveContext(_.initial(keypath));
+      
+      if(model instanceof Gnd.Base){
         var keypath = _.rest(attrBindings[attr]).join('.');
         if(attr === 'text'){
           setValue(el, model.get(keypath)); // model.format(keypath));
@@ -168,11 +175,7 @@ class EachBinder implements Binder
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var 
-      arr = value.trim().split(':'),
-      mappings = this.mappings,
-      parent = el.parentNode,
-      nextSibling = el.nextSibling;
+    var arr = value.trim().split(':');
     
     if(arr.length !== 2){
       console.log("Warning: syntax error in data-each:"+value);
@@ -180,6 +183,9 @@ class EachBinder implements Binder
     }
     
     var
+      mappings = this.mappings,
+      parent = el.parentNode,
+      nextSibling = el.nextSibling,
       keyPath = makeKeypathArray(arr[0]),
       collection = <Gnd.Collection> viewModel.resolveContext(keyPath),
       itemContextName = arr[1].trim();
@@ -375,6 +381,56 @@ class ClassBinder implements Binder
     // model.release();
     // removeListener();
   };
+}
+
+class EventBinder implements Binder
+{
+  //
+  // Syntax: data-event="eventName1: keypath1; eventName2: keypath2; eventName3: keypath3"
+  //
+  bind(el: Element, value: string, viewModel: ViewModel)
+  {
+    // NOTE: this piece of parsing code is the same as in the TwoWayBinder...
+    var 
+      events = value.trim().split(';'),
+      eventBindings = {};
+      
+    for(var i=0; i<events.length; i++){
+      var eventKeyPath = events[i].trim().split(':');
+      if(eventKeyPath.length===2){
+        eventBindings[eventKeyPath[0].trim()] = makeKeypathArray(eventKeyPath[1]);
+      }else{
+        console.log("Warning: syntax error in data-bind:"+value);
+      }
+    }
+    
+    for(var event in eventBindings){
+      var 
+        keypath = eventBindings[event],
+        obj = viewModel.resolveContext(_.initial(keypath));
+      
+      if(obj instanceof Gnd.Base){
+        var eventKeypath = _.rest(keypath).join('.');
+        
+        el.addEventListener(event, (evt) => {
+          var handler = obj.get(eventKeypath);
+          if(_.isFunction(handler)){
+            handler(el, evt);
+          }else{
+            console.log("Warning: the given handler is not a function: "+keypath);
+          }
+        });
+      }else{
+        console.log("Warning: not found an object instance of Gnd.Base: "+keypath[0]);
+      }
+    }
+  }
+ 
+  unbind(){
+    // TODO: Implement
+    // model.release();
+    // removeListener();
+  }
 }
 
 // --- Helpers
