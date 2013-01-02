@@ -46,6 +46,11 @@ var Gnd;
         }
         Util.nextTick = nextTick;
         ; ;
+        function trim() {
+            return this.replace(/^\s+|\s+$/g, '');
+        }
+        Util.trim = trim;
+        ; ;
         function asyncDebounce(fn) {
             var delayedFunc = null, executing = null;
             return function debounced() {
@@ -2996,9 +3001,9 @@ var Gnd;
     var ShowBinder = (function () {
         function ShowBinder() { }
         ShowBinder.prototype.bind = function (el, value, viewModel) {
-            var keypath = makeKeypathArray(value), model = viewModel.resolveContext(_.initial(keypath)), display = el['style'].display;
+            var _value = value.replace('!', ''), negate = _value === value ? false : true, keypath = makeKeypathArray(_value), model = viewModel.resolveContext(_.initial(keypath)), display = el['style'].display;
             function setVisibility(visible) {
-                if(visible) {
+                if(negate ? !visible : visible) {
                     el['style'].display = display;
                 } else {
                     el['style'].display = "none";
@@ -3025,14 +3030,15 @@ var Gnd;
             }, classSets = value.split(';'), classNames = el['className'] === '' ? [] : el['className'].split(' '), usedClassNameSets = {
             };
             function processMapping(keypath) {
-                var keypathArray = makeKeypathArray(keypath), model = viewModel.resolveContext(_.initial(keypathArray));
+                var _keypath = keypath.replace('!', ''), negate = _keypath === keypath ? false : true, keypathArray = makeKeypathArray(_keypath), model = viewModel.resolveContext(_.initial(keypathArray));
                 if(model instanceof Gnd.Base) {
                     var key = _.rest(keypathArray).join('.');
-                    if(model.get(key)) {
+                    var addClasses = negate ? !model.get(key) : model.get(key);
+                    if(addClasses) {
                         usedClassNameSets[keypath] = keypath;
                     }
                     model.on(key, function (value) {
-                        if(value) {
+                        if(negate ? !value : value) {
                             usedClassNameSets[keypath] = keypath;
                         } else {
                             delete usedClassNameSets[keypath];
@@ -3106,9 +3112,7 @@ var Gnd;
         return EventBinder;
     })();    
     if(!String.prototype.trim) {
-        String.prototype.trim = function () {
-            return this.replace(/^\s+|\s+$/g, '');
-        };
+        String.prototype.trim = Gnd.Util.trim;
     }
     function isElement(object) {
         return object && object.nodeType == 1;
