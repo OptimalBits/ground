@@ -1768,7 +1768,7 @@ var Gnd;
             cb = cb || function (err) {
             };
             if(this.state == ModelState.INITIAL) {
-                this.state = ModelState.CREATING;
+                args['state'] = this.state = ModelState.CREATING;
                 Model.storageQueue.once('created:' + id, function (id) {
                     _this.id(id);
                     _this._keepSynced && Model.syncManager && Model.syncManager.startSync(_this);
