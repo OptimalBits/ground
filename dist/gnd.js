@@ -1701,6 +1701,15 @@ var Gnd;
                 }
             }).apply(this, arguments);
         }
+        Model.removeById = function removeById(keypathOrId, cb) {
+            var keypath = _.isArray(keypathOrId) ? keypathOrId : [
+                this.__bucket, 
+                keypathOrId
+            ];
+            Model.storageQueue.deleteCmd(keypath, function (err) {
+                cb(err);
+            });
+        }
         Model.fromJSON = function fromJSON(args, cb) {
             cb(null, new this(args));
         }
@@ -1779,10 +1788,7 @@ var Gnd;
             var _this = this;
             cb = cb || function (err) {
             };
-            Model.storageQueue.deleteCmd([
-                this.__bucket, 
-                this.id()
-            ], function (err) {
+            Model.removeById(this.getKeyPath(), function (err) {
                 Model.syncManager && Model.syncManager.endSync(_this);
                 _this.emit('deleted:', _this.id());
                 cb(err);
@@ -1870,6 +1876,7 @@ var Gnd;
             this._removed = [];
             this.sortOrder = 'asc';
             this.filterFn = null;
+            this.count = 0;
             var self = this;
             this.updateFn = function (args) {
                 if(self.sortByFn) {
@@ -1919,6 +1926,7 @@ var Gnd;
                 if(parent && parent.isKeptSynced()) {
                     collection.keepSynced();
                 }
+                collection.count = items.length;
                 return collection;
             }
             Gnd.overload({
@@ -2017,13 +2025,12 @@ var Gnd;
         };
         Collection.prototype.remove = function (itemIds, opts, cb) {
             var _this = this;
-            var item, items, len, keyPath = this.getKeyPath();
+            var items = this.items, keyPath = this.getKeyPath();
             if(_.isFunction(opts)) {
                 cb = opts;
                 opts = {
                 };
             }
-            items = this.items;
             Gnd.Util.asyncForEach(itemIds, function (itemId, done) {
                 var index, item, len = items.length;
                 for(index = 0; index < len; index++) {
@@ -2036,20 +2043,20 @@ var Gnd;
                     items.splice(index, 1);
                     item.off('changed:', _this.updateFn);
                     item.off('deleted:', _this.deleteFn);
+                    _this.set('count', items.length);
+                    _this.emit('removed:', item, index);
+                    item.release();
                     if(_this._keepSynced && (!opts || !opts.nosync)) {
                         var itemKeyPath = _.initial(item.getKeyPath());
                         Gnd.Model.storageQueue.removeCmd(keyPath, itemKeyPath, [
                             item.id()
                         ], done);
+                        return;
                     } else {
                         _this._removed.push(itemId);
-                        done();
                     }
-                    _this.emit('removed:', item, index);
-                    item.release();
-                } else {
-                    done();
                 }
+                done();
             }, cb);
         };
         Collection.prototype.keepSynced = function () {
@@ -2102,6 +2109,7 @@ var Gnd;
                 this.items.push(item);
             }
             this.initItems(item);
+            this.set('count', this.items.length);
             this.emit('added:', item);
             if(this.isKeptSynced()) {
                 if(!opts || (opts.nosync !== true)) {
