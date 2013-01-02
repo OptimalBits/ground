@@ -247,7 +247,7 @@ export class Model extends Base implements Sync.ISynchronizable
     cb = cb || (err: Error)=>{};
     
     if(this.state == ModelState.INITIAL){
-      this.state = ModelState.CREATING;
+      args['state'] = this.state = ModelState.CREATING;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
         this._keepSynced &&  Model.syncManager && Model.syncManager.startSync(this);
