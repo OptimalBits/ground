@@ -42,6 +42,7 @@ describe('Collections', function(){
         zoo.all(Animal, function(err, animals){
           expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
+          expect(animals.count).to.be(0);
           animals.release();
           done();
         });
@@ -65,8 +66,8 @@ describe('Collections', function(){
                 expect(err).to.not.be.ok();
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
-                expect(collection.items.length).to.be(1);
-                expect(animals.items.length).to.be(1);
+                expect(collection.count).to.be(1);
+                expect(animals.count).to.be(1);
                 doc.release();
                 collection.release();
                 animals.release();
@@ -87,7 +88,7 @@ describe('Collections', function(){
           animals.on('added:', function(instance){
             expect(instance).to.have.property('name');
             expect(instance.name).to.be.eql('fox');
-            expect(animals.items.length).to.be(2);
+            expect(animals.count).to.be(2);
             expect(animals.find(function(item){ return item.name==='tiger'})).to.be.an(Object);
 
             animals.release();
@@ -343,8 +344,8 @@ describe('Collections', function(){
                   expect(err).to.be(null);
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
-                  expect(animals.items.length).to.be(1);
-                  expect(collection.items.length).to.be(1);
+                  expect(animals.count).to.be(1);
+                  expect(collection.count).to.be(1);
                   Gnd.Util.release(sameZoo, collection, animals);
                   done();
                 });
@@ -355,8 +356,8 @@ describe('Collections', function(){
                 expect(err).to.not.be.ok();
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
-                expect(collection.items.length).to.be(1);
-                expect(animals.items.length).to.be(1);
+                expect(collection.count).to.be(1);
+                expect(animals.count).to.be(1);
                 collection.release();
 //                socket.socket.reconnect();
                 socket.socket.connect();
@@ -386,8 +387,8 @@ describe('Collections', function(){
                   expect(err).to.be(null);
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
-                  expect(collection.items.length).to.be(1);
-                  expect(animals.items.length).to.be(1);
+                  expect(collection.count).to.be(1);
+                  expect(animals.count).to.be(1);
                   doc.release();
                   collection.release();
                   animals.release();
@@ -399,8 +400,8 @@ describe('Collections', function(){
                 expect(err).to.be(null);
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
-                expect(collection.items.length).to.be(1);
-                expect(animals.items.length).to.be(1);
+                expect(collection.count).to.be(1);
+                expect(animals.count).to.be(1);
                 collection.release();
                 socket.socket.connect();
               });
@@ -422,13 +423,13 @@ describe('Collections', function(){
           
           animals.add(new Animal({name:"lion"}), function(err){
             expect(err).not.to.be.ok();
-            expect(animals.items.length).to.be(1);
+            expect(animals.count).to.be(1);
             
             socket.disconnect();
             
             animals.remove(animals.first().id(), function(err){
               expect(err).not.to.be.ok();
-              expect(animals.items.length).to.be(0);
+              expect(animals.count).to.be(0);
 
               Zoo.findById(zoo.id(), function(err, sameZoo){
                 expect(err).to.not.be.ok();
@@ -439,12 +440,12 @@ describe('Collections', function(){
                     expect(err).not.to.be.ok();
                     expect(collection).to.be.an(Object);
                     expect(collection.items).to.be.an(Array);
-                    expect(collection.items.length).to.be(0);
+                    expect(collection.count).to.be(0);
                     
                     // This fails because animals gets an add: event from the server
                     // which is a mirror of the add: event created by animals just before
                     // disconnecting...
-                    //expect(animals.items.length).to.be(0);
+                    //expect(animals.count).to.be(0);
                     sameZoo.release();
                     collection.release();
                     animals.release();
@@ -456,7 +457,7 @@ describe('Collections', function(){
                   expect(err).not.to.be.ok();
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
-                  expect(collection.items.length).to.be(0);
+                  expect(collection.count).to.be(0);
                   socket.socket.connect();
                 });
               });
@@ -578,7 +579,7 @@ describe('Collections', function(){
                   zoo.all(Animal, function(err, emptyZoo){
                     expect(err).to.not.be.ok();
                     expect(emptyZoo).to.be.an(Object);
-                    expect(emptyZoo.items.length).to.be(0);
+                    expect(emptyZoo.count).to.be(0);
                   
                     emptyZoo.release();
                   
@@ -587,7 +588,7 @@ describe('Collections', function(){
                     zoo.all(Animal, function(err, emptyZoo){
                       expect(err).to.not.be.ok();
                       expect(emptyZoo).to.be.an(Object);
-                      expect(emptyZoo.items.length).to.be(0);
+                      expect(emptyZoo.count).to.be(0);
                     
                       Gnd.Util.release(onlineAnimals, emptyZoo);
                       socket.socket.connect();

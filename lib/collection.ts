@@ -35,6 +35,7 @@ export class Collection extends Base implements Sync.ISynchronizable
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   public filterFn: (item: Model) => bool = null;
+  public count: number = 0;
   
   // Prototypes for underscore imported methods.
   public filter: (iterator: (item: any)=>bool) => Model[];
@@ -102,6 +103,7 @@ export class Collection extends Base implements Sync.ISynchronizable
       if(parent && parent.isKeptSynced()){
         collection.keepSynced()
       }
+      collection.count = items.length;
       return collection;
     }
     
@@ -200,18 +202,13 @@ export class Collection extends Base implements Sync.ISynchronizable
 
   remove(itemIds, opts, cb){
     var 
-      item, 
-      items, 
-      len, 
+      items = this.items,
       keyPath = this.getKeyPath();
     
     if(_.isFunction(opts)){
       cb = opts;
       opts = {};
     }
-    
-    //items = _.isArray(itemIds) && itemIds.length > 1 ? _.clone(items) : items; 
-    items = this.items;
     
     Util.asyncForEach(itemIds, (itemId, done) => {
       var index, item, len = items.length;
@@ -228,18 +225,19 @@ export class Collection extends Base implements Sync.ISynchronizable
         item.off('changed:', this.updateFn);
         item.off('deleted:', this.deleteFn);
         
+        this.set('count', items.length);
+        this.emit('removed:', item, index);
+        item.release();
+        
         if(this._keepSynced && (!opts || !opts.nosync)){
           var itemKeyPath = _.initial(item.getKeyPath());
           Model.storageQueue.removeCmd(keyPath, itemKeyPath, [item.id()], done);
+          return;
         }else{
           this._removed.push(itemId);
-          done();
         }
-        this.emit('removed:', item, index);
-        item.release();
-      }else{
-        done();
       }
+      done();
     }, cb);
   }
   
@@ -333,6 +331,7 @@ export class Collection extends Base implements Sync.ISynchronizable
 
     this.initItems(item);
     
+    this.set('count', this.items.length);
     this.emit('added:', item);
     
     if(this.isKeptSynced()){
