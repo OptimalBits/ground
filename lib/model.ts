@@ -152,6 +152,20 @@ export class Model extends Base implements Sync.ISynchronizable
     }).apply(this, arguments);
   }
   
+  /**
+    Removes a model from the storage. 
+    
+    Note: If there are instances of the removed model, they will not be destructed
+    by calling this method.
+  */
+  static removeById(keypathOrId, cb?: (err?: Error) => void){
+    var keypath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
+
+    Model.storageQueue.deleteCmd(keypath, (err: Error) => {
+      cb(err);
+    });
+  }
+  
   static fromJSON(args, cb){
     cb(null, new this(args));
   }
@@ -216,7 +230,7 @@ export class Model extends Base implements Sync.ISynchronizable
   }
   
   //
-  // TODO: Should update and delete be static functions instead? since
+  // TODO: Should update be a static method instead? since
   // we can have several instances of the same model it feels more correct.
   //
   /*
@@ -249,16 +263,19 @@ export class Model extends Base implements Sync.ISynchronizable
       });
     }
   }
-  
-  delete(cb?: (err: Error) => void)
+
+  //
+  // TODO: rename to remove
+  //
+  delete(cb?: (err?: Error) => void)
   {
-    cb = cb || (err: Error)=>{};
+    cb = cb || (err?: Error)=>{};
     
-    Model.storageQueue.deleteCmd([this.__bucket, this.id()], (err: Error)=>{
+    Model.removeById(this.getKeyPath(), (err?)=> {
       Model.syncManager && Model.syncManager.endSync(this);
       this.emit('deleted:', this.id());
       cb(err);
-    });
+    })    
   }
     
   keepSynced()
