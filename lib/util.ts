@@ -48,7 +48,11 @@ export function release(objs){
 export function nextTick(fn){
   setTimeout(fn, 0);
 };
-  
+
+export function trim(){
+  return this.replace(/^\s+|\s+$/g,'');
+};
+
 // TODO: Add an optional timeout parameter.
 export function asyncDebounce(fn) {
   var delayedFunc = null, executing = null;
