@@ -172,6 +172,23 @@ describe('ViewModel', function(){
       feline.set('visible', true);
       expect(el.style.display).to.be.eql('block');
     });
+    
+    it('changes visibility style using negation', function(){
+      var feline = new Animal({name: 'tiger', notVisible:false});
+      
+      el = document.createElement('div');
+      el.setAttribute('data-show', '!feline.notVisible');
+      el.style.display = 'block';
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(el.style.display).to.be.eql('block');
+      
+      feline.set('notVisible', true);
+      expect(el.style.display).to.be.eql('none');
+      
+      feline.set('notVisible', false);
+      expect(el.style.display).to.be.eql('block');
+    });
   });
   
   describe('data-class', function(){
@@ -186,7 +203,20 @@ describe('ViewModel', function(){
       
       feline.set('useClasses', false);
       expect(el.className).to.be.eql('');
-    })
+    });
+    
+    it('use negation for adding classes to element', function(){
+      var feline = new Animal({name: 'tiger', notUseClasses:false});
+      
+      el = document.createElement('div');
+      el.setAttribute('data-class', 'classA classB classC: !feline.notUseClasses');
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(el.className).to.be.eql('classA classB classC');
+      
+      feline.set('notUseClasses', true);
+      expect(el.className).to.be.eql('');
+    });
     
     it('several class sets bound to an element', function(){
       var feline = new Animal({name: 'tiger', a:true, b:false, c:false});

@@ -267,18 +267,20 @@ class EachBinder implements Binder
 class ShowBinder implements Binder 
 {
   //
-  // Syntax: data-show="keypath"
+  // Syntax: data-show="[!]keypath"
   // Example: data-show="todo.isCompleted"
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var 
-      keypath = makeKeypathArray(value),
+    var
+      _value = value.replace('!', ''),
+      negate = _value === value ? false : true,
+      keypath = makeKeypathArray(_value),
       model = viewModel.resolveContext(_.initial(keypath)),
       display = el['style'].display;
     
     function setVisibility(visible: bool){
-      if(visible){
+      if(negate ? !visible : visible){
         el['style'].display = display;
       }else{
         el['style'].display = "none";
@@ -305,7 +307,7 @@ class ShowBinder implements Binder
 class ClassBinder implements Binder
 {
   //
-  // Syntax: data-class="className0 className1 ... classNameN: keypath1; className10 className11 ... className1N: keypath2 ..."
+  // Syntax: data-class="className0 className1 ... classNameN: [!]keypath1; className10 className11 ... className1N: [!]keypath2 ..."
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
@@ -316,20 +318,23 @@ class ClassBinder implements Binder
       usedClassNameSets = {};
       
     function processMapping(keypath: string){
-      var
-          keypathArray = makeKeypathArray(keypath),
-          model = viewModel.resolveContext(_.initial(keypathArray));
-          
+      var 
+        _keypath = keypath.replace('!', ''),
+        negate = _keypath === keypath ? false : true,
+        keypathArray = makeKeypathArray(_keypath),
+        model = viewModel.resolveContext(_.initial(keypathArray));
+        
       if(model instanceof Gnd.Base){
         // model.retain();
           
         var key = _.rest(keypathArray).join('.');
-        if(model.get(key)){
+        var addClasses = negate ? !model.get(key) : model.get(key);
+        if(addClasses){
           usedClassNameSets[keypath] = keypath;
         }
-            
+        
         model.on(key, function(value){
-          if(value){
+          if(negate ? !value: value){
             usedClassNameSets[keypath] = keypath;
           }else{
             delete usedClassNameSets[keypath];
@@ -436,9 +441,7 @@ class EventBinder implements Binder
 // --- Helpers
 
 if(!String.prototype.trim) {
-  String.prototype.trim = function () {
-    return this.replace(/^\s+|\s+$/g,'');
-  };
+  String.prototype.trim = Gnd.Util.trim;
 }
 
 function isElement(object) {
