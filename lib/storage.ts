@@ -49,7 +49,7 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
   get(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
   del(keyPath: string[], cb: (err?: Error) => void): void;
-  link?(keyPathLink: string[], keyPath: string[], cb: (err?: Error) => void): void;
+  link?(keyPath: string[], targetKeyPath: string[], cb: (err?: Error) => void): void;
 }
 
 //
