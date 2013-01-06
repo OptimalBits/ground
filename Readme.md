@@ -489,26 +489,46 @@ gets updated automatically as soon as the application gets connectivity with the
 
 #ViewModel and Declarative Bindings
 
-Ground supports the popular MVVM pattern, as a specialization of the MVC. The controller is replaced by a ViewModel 
-(The model of the view) which provides mechanisms to easily bind model properties to a View. 
-The bindings are expressed in the view as *data* attributes in any valid HTML tag that forms the view. Lets start with
-the following example:
+Ground supports the popular MVVM pattern, as a specialization of the MVC. This
+pattern implies that the controller is replaced by a ViewModel
+(The model of the view), which provides mechanisms for easily binding model properties to a View (in this case just some HTML portion). 
+
+The bindings are expressed in the view as *data* attributes in any valid HTML tag that forms the view. With this pattern, the view still stays free of 
+application logic, but the view can react when the underlying model is modified in some way.
+
+Lets start with a simple dynamic list example:
 
 HTML View:
-    <lu>
+
+    <lu id="myTodoList">
       <li>Todo List Header<li/>
       <li data-each="todos: todo" data-bind="text: todo.description" data-class="active: todo.isActive"><li/>
       <li>Todo List footer<li/>
     <lu/>
     
-This example demonstrates binding a Collection to a list. The bindings will not just populate the list from the 
-collection, but also keep it up-to-date at all times, adding and removing items as necessary.
+Javascript:
 
-Nested bindings are supported, so for example it is fully correct to nest collections of collections that behave
-as expected:
+    var todos = new Collection([
+      {description:"Prepare Food", active: true},
+      {description:"Clean the house", active: false},
+      {description:"Go to a meeting", active: true},
+    ]);
+
+    var viewModel = 
+      new ViewModel(document.getElementById('myTodoList'), {todos: collection});
+
+This example demonstrates binding a Collection to a list. The bindings will not just populate the list from the 
+collection, but also keep it up-to-date at all times, adding and removing items as necessary. For example, if the filter function in the model is updated,
+the HTML list will just show the filtered nodes, or if some item that is part
+of the list is updated, the list will also display the changes automatically.
+
+Nested bindings are also supported, so it is possible to nest collections of collections that behave as expected:
 
     // TODO: Add an example here...
-    
+
+The ViewModel class accepts in its constructor customized data binders, but
+out fo the box it provides the most common ones: *bind*, *each*, *show*, *class* and *event*.
+
 
 ##Available binders
 
@@ -518,29 +538,65 @@ Ground provides a basic set of binders that cover the most common needs, but mor
 
 This binder binds an attribute or the innerHTML of a tag with the given model properties. It accepts the following syntax:
 
-data-bind="attr0: keypath0; attr1: keypath1; ... ;attrn: keypathn"
+    data-bind="attr0: keypath0; attr1: keypath1; ... ;attrn: keypathn"
 
 The attr's are tag attributes. The special attribute *text* is used to represent the inner HTML of the node.
 
+Examples: 
+
+    <img data-bind="src: myimage.src; alt: myimage.desc"></img>
+    <h1 data-bind="text: obj.title"></h1>
 
 ###each
 
-The each binder is used to bind collections and sequences.
+The each binder is used to bind collections and sequences. Its syntax is as
+follows:
+
+    data-each="keypath: alias"
+
+The HTML node where data-each is placed will be repeated as many times as elements in the bound collection. The node is allowed to have any other binders,
+also it may have subnodes with binders as well, and even the data-each binder, allowing as much nesting as necessary.
+
 
 ###show
 
-This binder is used to show or hide an HTML element depending on the value of a property bound to it.
+This binder is used to show or hide an HTML element depending on the value of a property bound to it:
+
+    data-show="[!]keypath"
+    
+It supports negating the keypath value (using the optional exclamation character), and by that it becomes in practice a *data-hide* binder.
+
 
 ###class
 
 This binder is used to add one or several css classes to an HTML element depending on the given properties.
 
-data-class="className0, className1, ... classNameN: keypath1; className10, className11, ... className1N: keypath2 ..."
+    data-class="className0, className1, ... classNameN: [!]keypath1; className10, className11, ... className1N: [!]keypath2 ..."
+
+An arbitrary set of classes can therefore be associated to a boolean value in the specified keypath. The keypath can be negated in a similar way to the show binder.
+
 
 ###event
 
 This binder attaches a event to a given element. This binder is particularly useful combined with the *each* binder, since it will bind events
 to nodes that are added and removed dynamically.
+
+    data-event="eventName1: keypath1; eventName2: keypath2; ... "
+
+The events that can be bound to keypaths are any standard DOM events, such as
+*change*, *click*, *keyup*, etc
+
+#DOM
+
+Ground encourages to avoid interacting with the DOM as much as possible. Using complex queries to create behaviour in a web application often leads to code of poor quality and innecessary complexity. Still, there are situations where it is unavoidable to access to the DOM, for example when attaching a root element to a ViewModel or defining entry elements in a hierarchical route. 
+
+Instead of leaving the DOM manipulation to a heavy weight library such as jQuery, Ground provides a minimal set of efficient and cross browser utilities to fullfill most of the required needs.
+
+##Selection
+
+##Attributes
+
+##Events
 
 
 
@@ -559,9 +615,19 @@ The server is designed to work with [Mongoose](http://mongoosejs.com) as databas
 
 #Utilities
 
+
+
 #Demos
 
-#Reference
+Take a look at some demos created with Ground that demonstrate some of its highlights:
+
+* [Hierarchical Routing](http://gnd.io/demos/route)
+* [Realtime multi user chat](http://gnd.io/demos/chat)
+* [Dynamic lists](http://gnd.io/demos/list)
+* [TodoMVC](http://gnd.io/demos/todoMVC)
+
+
+#[Reference](http://gnd.io/api)
 
 
 
