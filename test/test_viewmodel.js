@@ -24,7 +24,7 @@ describe('ViewModel', function(){
     
     it('bind a property to text', function(){
       el = document.createElement('div');
-      el.setAttribute('data-bind', 'text: feline.name');
+      Gnd.setAttr(el, 'data-bind', 'text: feline.name');
       
       var feline = new Animal({name: 'tiger'});
       var vm = new Gnd.ViewModel(el, {feline: feline});
@@ -38,7 +38,7 @@ describe('ViewModel', function(){
 
     it('bind to several attributes', function(){
       el = document.createElement('div');
-      el.setAttribute('data-bind', 'text: tiger.name; title: tiger.description ');
+      Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
         name: 'tiger', 
@@ -69,9 +69,9 @@ describe('ViewModel', function(){
       el1.appendChild(el21);
       el1.appendChild(el22);
       
-      el20.setAttribute('data-bind', 'text: tiger.name; title: lion.desc');
-      el21.setAttribute('data-bind', 'text: leopard.name; title: tiger.desc');
-      el22.setAttribute('data-bind', 'text: lion.name; title: leopard.desc');
+      Gnd.setAttr(el20, 'data-bind', 'text: tiger.name; title: lion.desc');
+      Gnd.setAttr(el21, 'data-bind', 'text: leopard.name; title: tiger.desc');
+      Gnd.setAttr(el22, 'data-bind', 'text: lion.name; title: leopard.desc');
       
       var vm = new Gnd.ViewModel(el0, {tiger: tiger, lion: lion, leopard: leopard});
       
@@ -108,7 +108,6 @@ describe('ViewModel', function(){
     */
     
     it('bind to input elements works in both directions', function(){
-
       // checkbox
       var el = document.createElement('input');
       el.setAttribute('type', 'checkbox');
@@ -120,6 +119,7 @@ describe('ViewModel', function(){
         name: 'tiger', 
         description: 'put description here...'
       });
+      
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
       expect(el.getAttribute('checked')).to.be('true');
       
@@ -152,6 +152,53 @@ describe('ViewModel', function(){
       el.setAttribute('value', 'quxbaz');
       fireEvent(el, 'change');
       expect(tiger.description).to.be('quxbaz');
+    });
+    
+    it('unbind elements', function(){
+      var tiger = new Animal({name: 'tiger', desc:'1'});
+      var lion = new Animal({name: 'lion', desc: '2'});
+      var leopard = new Animal({name: 'leopard', desc: '3'});
+      
+      var el0 = document.createElement('div');
+      var el1 = document.createElement('div');
+      var el20 = document.createElement('div');
+      var el21 = document.createElement('div');
+      var el22 = document.createElement('div');
+      
+      el0.appendChild(el1);
+      el1.appendChild(el20);
+      el1.appendChild(el21);
+      el1.appendChild(el22);
+      
+      el20.setAttribute('data-bind', 'text: tiger.name; title: lion.desc');
+      el21.setAttribute('data-bind', 'text: leopard.name; title: tiger.desc');
+      el22.setAttribute('data-bind', 'text: lion.name; title: leopard.desc');
+      
+      var vm = new Gnd.ViewModel(el0, {tiger: tiger, lion: lion, leopard: leopard});
+      
+      expect(el20.innerText).to.be.eql('tiger');
+      expect(el21.innerText).to.be.eql('leopard');
+      expect(el22.innerText).to.be.eql('lion');
+      
+      expect(el20.title).to.be.eql('2');
+      expect(el21.title).to.be.eql('1');
+      expect(el22.title).to.be.eql('3'); 
+    
+      vm.unbind();
+      
+      tiger.set('name', 'no listen');
+      leopard.set('name', 'no listen');
+      lion.set('name', 'no listen');
+      
+      expect(el20.innerText).to.be.eql('tiger');
+      expect(el21.innerText).to.be.eql('leopard');
+      expect(el22.innerText).to.be.eql('lion');
+      
+      expect(el20.title).to.be.eql('2');
+      expect(el21.title).to.be.eql('1');
+      expect(el22.title).to.be.eql('3'); 
+      
+      // Also test input elements
     });
   });
    
@@ -298,6 +345,8 @@ describe('ViewModel', function(){
       zoo.animals.add(jaguar);
       expect(list.children.length).to.be(4);
       expect(list.children[3].innerText).to.be.eql('jaguar');
+      
+      vm.unbind();
     });
     
     it('remove elements from collection', function(){      
@@ -311,6 +360,8 @@ describe('ViewModel', function(){
       zoo.animals.remove([lion.id(), tiger.id()])
       expect(list.children.length).to.be(1);
       expect(list.children[0].innerText).to.be.eql('leopard');
+      
+      vm.unbind();
     });
     
     it('update list after filtering', function(){
@@ -323,6 +374,8 @@ describe('ViewModel', function(){
       expect(list.children.length).to.be(2);
       expect(list.children[0].innerText).to.be.eql('lion');
       expect(list.children[1].innerText).to.be.eql('leopard');
+      
+      vm.unbind();
     });
     
     it('update list after sort', function(){
@@ -336,6 +389,8 @@ describe('ViewModel', function(){
       expect(list.children[2].innerText).to.be.eql('tiger');
       expect(list.children[1].innerText).to.be.eql('lion');
       expect(list.children[0].innerText).to.be.eql('leopard');
+      
+      vm.unbind();
     });
     
     it('nested collections', function(){
