@@ -137,7 +137,8 @@ export class Base extends EventEmitter {
     unbind - Removes a binding.
 
   */
-  unbind(key){
+  unbind(key)
+  {
     var bindings = this._bindings
     if( (bindings!=null) && (bindings[key]) ){
       var binding = bindings[key]
@@ -146,7 +147,9 @@ export class Base extends EventEmitter {
       delete bindings[key]
     }
   }
-  format(property, fn){
+  
+  format(property, fn?): any
+  {
     if(arguments.length==1){
       if(_.isObject(property)){
         if(!this._formatters){
@@ -169,6 +172,7 @@ export class Base extends EventEmitter {
       this._formatters[property] = fn;
     }
   }
+  
   /**
     Begins an undo operation over setting a given key to a value.
   */
