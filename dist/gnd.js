@@ -2819,10 +2819,89 @@ var Gnd;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
+    function $$(selector, context) {
+        var el = context || document;
+        switch(selector[0]) {
+            case '#': {
+                return el.getElementById(selector.slice(1));
+
+            }
+            case '.': {
+                return el.getElementsByClassName(selector.slice(1));
+
+            }
+        }
+        return el.getElementsByTagName(selector);
+    }
+    Gnd.$$ = $$;
+    function isElement(object) {
+        return object && object.nodeType === Node.ELEMENT_NODE;
+    }
+    Gnd.isElement = isElement;
+    function addEventListener(el, eventName, handler) {
+        if(el.addEventListener) {
+            el.addEventListener(eventName, handler);
+        } else {
+            if(el['attachEvent']) {
+                el['attachEvent']("on" + eventName, handler);
+            }
+        }
+    }
+    Gnd.addEventListener = addEventListener;
+    function removeEventListener(el, eventName, handler) {
+        if(el.removeEventListener) {
+            el.removeEventListener(eventName, handler);
+        } else {
+            if(el['detachEvent']) {
+                el['detachEvent']("on" + eventName, handler);
+            }
+        }
+    }
+    Gnd.removeEventListener = removeEventListener;
+    function setAttr(el, attr, value) {
+        if(el.hasOwnProperty(attr)) {
+            el[attr] = value;
+        }
+        if(value) {
+            el.setAttribute(attr, value);
+        } else {
+            el.removeAttribute(attr);
+        }
+    }
+    Gnd.setAttr = setAttr;
+    function getAttr(el, attr) {
+        if(el.hasOwnProperty(attr)) {
+            return el[attr];
+        } else {
+            var val = el.getAttribute(attr);
+            switch(val) {
+                case 'true': {
+                    return true;
+
+                }
+                case null:
+                case 'false': {
+                    return false;
+
+                }
+                default: {
+                    return val;
+
+                }
+            }
+        }
+    }
+    Gnd.getAttr = getAttr;
+})(Gnd || (Gnd = {}));
+var Gnd;
+(function (Gnd) {
     var dataBindingReqExp = /^data-/;
-    var ViewModel = (function () {
-        function ViewModel(el, context) {
+    var ViewModel = (function (_super) {
+        __extends(ViewModel, _super);
+        function ViewModel(el, context, binders) {
+                _super.call(this);
             this.contexts = [];
+            this.boundBinders = [];
             this.binders = {
                 bind: TwoWayBinder,
                 each: EachBinder,
@@ -2830,9 +2909,20 @@ var Gnd;
                 class: ClassBinder,
                 event: EventBinder
             };
+            _.extend(this.binders, binders);
             this.pushContext(context);
-            this.bindNode(el);
+            this.boundBinders = this.bindNode(el);
         }
+        ViewModel.prototype.destroy = function () {
+            this.unbind();
+            _super.prototype.destroy.call(this);
+        };
+        ViewModel.prototype.unbind = function (bindings) {
+            _.each(bindings || this.boundBinders, function (binder) {
+                binder.unbind();
+            });
+            !bindings && (this.boundBinders = []);
+        };
         ViewModel.prototype.resolveContext = function (keyPath) {
             var root = keyPath[0], context;
             for(var i = this.contexts.length - 1; i >= 0; i--) {
@@ -2849,6 +2939,7 @@ var Gnd;
             this.contexts.pop();
         };
         ViewModel.prototype.bindNode = function (node) {
+            var binders = [];
             if(node.attributes) {
                 var attributes = node.attributes;
                 for(var j = 0; j < attributes.length; j++) {
@@ -2858,6 +2949,7 @@ var Gnd;
                         if(this.binders[type]) {
                             var binder = new this.binders[type]();
                             binder.bind(node, value, this);
+                            binders.push(binder);
                         }
                     }
                 }
@@ -2865,11 +2957,12 @@ var Gnd;
             if(node.hasChildNodes()) {
                 var children = _.toArray(node.childNodes);
                 for(var i = 0; i < children.length; i++) {
-                    if(children[i].nodeType === Node.ELEMENT_NODE) {
-                        this.bindNode(children[i]);
+                    if(Gnd.isElement(children[i])) {
+                        binders.push.apply(binders, this.bindNode(children[i]));
                     }
                 }
             }
+            return binders;
         };
         ViewModel.prototype.resolveKeypath = function (obj, keyPath) {
             for(var i = 0; i < keyPath.length; i++) {
@@ -2881,48 +2974,63 @@ var Gnd;
             return obj;
         };
         return ViewModel;
-    })();
+    })(Gnd.Base);
     Gnd.ViewModel = ViewModel;    
     var TwoWayBinder = (function () {
-        function TwoWayBinder() { }
-        TwoWayBinder.prototype.bind = function (el, value, viewModel) {
-            var attributes = value.trim().split(';'), attrBindings = {
-            };
-            for(var i = 0; i < attributes.length; i++) {
-                var attrKeyPath = attributes[i].trim().split(':');
-                if(attrKeyPath.length === 2) {
-                    attrBindings[attrKeyPath[0].trim()] = makeKeypathArray(attrKeyPath[1]);
-                } else {
-                    console.log("Warning: syntax error in data-bind:" + value);
-                }
+        function TwoWayBinder() {
+            this.bindings = [];
+        }
+        TwoWayBinder.re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
+        TwoWayBinder.prototype.parse = function (value) {
+            var attrBindings = {
+            }, match;
+            while(match = TwoWayBinder.re.exec(value)) {
+                attrBindings[match[3]] = makeKeypathArray(match[4]);
             }
+            return attrBindings;
+        };
+        TwoWayBinder.prototype.bind = function (el, value, viewModel) {
+            var attrBindings = this.parse(value);
+            this.el = el;
             for(var attr in attrBindings) {
-                var keypath = attrBindings[attr], model = viewModel.resolveContext(_.initial(keypath));
-                if(model instanceof Gnd.Base) {
-                    var keypath = _.rest(attrBindings[attr]).join('.');
+                var obj = viewModel.resolveContext(_.initial(attrBindings[attr]));
+                if(obj instanceof Gnd.Base) {
+                    var keypath = _.rest(attrBindings[attr]).join('.'), modelListener, elemListener = null;
                     if(attr === 'text') {
-                        setValue(el, model.get(keypath));
-                        model.on(keypath, function () {
-                            setValue(el, model.get(keypath));
-                        });
-                        addEventListener(el, 'change', function (value) {
-                            setValue(el, value);
-                        });
+                        setText(el, obj.format(keypath));
+                        modelListener = function () {
+                            setText(el, obj.format(keypath));
+                        };
                     } else {
-                        setAttr(el, attr, model.get(keypath));
-                        model.on(keypath, function () {
-                            setAttr(el, attr, model.get(keypath));
-                        });
-                        addEventListener(el, 'change', function (value) {
-                            model.set(keypath, getAttr(el, attr));
-                        });
+                        Gnd.setAttr(el, attr, obj.format(keypath));
+                        modelListener = function () {
+                            Gnd.setAttr(el, attr, obj.format(keypath));
+                        };
+                        elemListener = function (value) {
+                            obj.set(keypath, Gnd.getAttr(el, attr));
+                        };
                     }
+                    obj.retain();
+                    obj.on(keypath, modelListener);
+                    Gnd.addEventListener(el, 'change', elemListener);
+                    this.bindings.push([
+                        obj, 
+                        keypath, 
+                        modelListener, 
+                        elemListener
+                    ]);
                 } else {
                     console.log("Warning: not found a valid model: " + keypath[0]);
                 }
             }
         };
         TwoWayBinder.prototype.unbind = function () {
+            var _this = this;
+            _.each(this.bindings, function (item) {
+                item[0].off(item[1], item[2]);
+                item[0].release();
+                item[3] && Gnd.removeEventListener(_this.el, 'change', item[3]);
+            });
         };
         return TwoWayBinder;
     })();    
@@ -2933,18 +3041,24 @@ var Gnd;
             };
         }
         EachBinder.prototype.bind = function (el, value, viewModel) {
+            var _this = this;
             var arr = value.trim().split(':');
             if(arr.length !== 2) {
                 console.log("Warning: syntax error in data-each:" + value);
                 return;
             }
-            var mappings = this.mappings, parent = el.parentNode, nextSibling = el.nextSibling, keyPath = makeKeypathArray(arr[0]), collection = viewModel.resolveContext(keyPath), itemContextName = arr[1].trim();
+            var mappings = this.mappings, nextSibling = el.nextSibling, keyPath = makeKeypathArray(arr[0]), collection = viewModel.resolveContext(keyPath), itemContextName = arr[1].trim();
+            var parent = this.parent = el.parentNode;
+            this.viewModel = viewModel;
             if(collection instanceof Gnd.Collection) {
+                this.collection = collection;
                 parent.removeChild(el);
                 el.removeAttribute('data-each');
+                el.removeAttribute('id');
                 var addNode = function (item, nextSibling) {
-                    var itemNode = el.cloneNode(true), id = item.id();
-                    itemNode.setAttribute('data-item', id);
+                    var itemNode = el.cloneNode(true), id = item.id(), modelListener = function (newId) {
+delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'data-item', newId);                    };
+                    Gnd.setAttr(itemNode, 'data-item', id);
                     mappings[id] = itemNode;
                     if(nextSibling) {
                         parent.insertBefore(itemNode, nextSibling);
@@ -2955,18 +3069,10 @@ var Gnd;
                     };
                     context[itemContextName] = item;
                     viewModel.pushContext(context);
-                    viewModel.bindNode(itemNode);
+                    itemNode['gnd-bindings'] = viewModel.bindNode(itemNode);
                     viewModel.popContext();
-                    item.on('id', function (newId) {
-                        delete mappings[id];
-                        id = newId;
-                        mappings[id] = itemNode;
-                        itemNode.setAttribute('data-item', newId);
-                    });
-                };
-                var removeNode = function (id) {
-                    parent.removeChild(mappings[id]);
-                    delete mappings[id];
+                    item.on('id', modelListener);
+                    itemNode['gnd-obj'] = item;
                 };
                 var addNodes = function () {
                     collection.filtered(function (err, models) {
@@ -2975,31 +3081,51 @@ var Gnd;
                         });
                     });
                 };
-                addNodes();
-                collection.on('added:', function (item) {
-                    if(this.isFiltered(item)) {
+                var refresh = function () {
+                    _this.removeNodes();
+                    addNodes();
+                };
+                refresh();
+                this.addedListener = function (item) {
+                    if(collection.isFiltered(item)) {
                         addNode(item, nextSibling);
                     }
-                }).on('removed:', function (item) {
+                };
+                this.removedListener = function (item) {
                     if(mappings[item.id()]) {
-                        removeNode(item.id());
+                        _this.removeNode(item.id());
                     }
-                }).on('filterFn sorted: updated:', function () {
-                    for(var id in mappings) {
-                        removeNode(id);
-                    }
-                    addNodes();
-                });
+                };
+                this.updatedListener = refresh;
+                collection.on('added:', this.addedListener).on('removed:', this.removedListener).on('filterFn sorted: updated:', this.updatedListener);
             } else {
                 console.log("Warning: not found a valid collection: " + arr[0]);
             }
         };
         EachBinder.prototype.unbind = function () {
+            this.collection.off('added:', this.addedListener);
+            this.collection.off('removed:', this.removedListener);
+            this.collection.off('filterFn sorted: updated:', this.updatedListener);
+            this.removeNodes();
+        };
+        EachBinder.prototype.removeNode = function (id) {
+            var node = this.mappings[id];
+            this.viewModel.unbind(node['gnd-bindings']);
+            node['gnd-obj'].release();
+            this.parent.removeChild(node);
+            delete this.mappings[id];
+        };
+        EachBinder.prototype.removeNodes = function () {
+            for(var id in this.mappings) {
+                this.removeNode(id);
+            }
         };
         return EachBinder;
     })();    
     var ShowBinder = (function () {
-        function ShowBinder() { }
+        function ShowBinder() {
+            this.bindings = [];
+        }
         ShowBinder.prototype.bind = function (el, value, viewModel) {
             var _value = value.replace('!', ''), negate = _value === value ? false : true, keypath = makeKeypathArray(_value), model = viewModel.resolveContext(_.initial(keypath)), display = el['style'].display;
             function setVisibility(visible) {
@@ -3010,45 +3136,63 @@ var Gnd;
                 }
             }
             if(model instanceof Gnd.Base) {
-                var key = _.rest(keypath).join('.');
+                model.retain();
+                var key = _.rest(keypath).join('.'), modelListener = function (value) {
+setVisibility(value);                };
                 setVisibility(model.get(key));
-                model.on(key, function (value) {
-                    setVisibility(value);
-                });
+                model.on(key, modelListener);
+                this.bindings.push([
+                    model, 
+                    key, 
+                    modelListener
+                ]);
             } else {
                 console.log("Warning: not found a valid model: " + value);
             }
         };
         ShowBinder.prototype.unbind = function () {
+            _.each(this.bindings, function (item) {
+                item[0].off(item[1], item[2]);
+                item[0].release();
+            });
         };
         return ShowBinder;
     })();    
     var ClassBinder = (function () {
-        function ClassBinder() { }
+        function ClassBinder() {
+            this.bindings = [];
+        }
         ClassBinder.prototype.bind = function (el, value, viewModel) {
+            var _this = this;
             var classMappings = {
             }, classSets = value.split(';'), classNames = el['className'] === '' ? [] : el['className'].split(' '), usedClassNameSets = {
             };
-            function processMapping(keypath) {
+            var processMapping = function (keypath) {
                 var _keypath = keypath.replace('!', ''), negate = _keypath === keypath ? false : true, keypathArray = makeKeypathArray(_keypath), model = viewModel.resolveContext(_.initial(keypathArray));
                 if(model instanceof Gnd.Base) {
-                    var key = _.rest(keypathArray).join('.');
-                    var addClasses = negate ? !model.get(key) : model.get(key);
+                    model.retain();
+                    var key = _.rest(keypathArray).join('.'), addClasses = negate ? !model.get(key) : model.get(key), modelListener;
                     if(addClasses) {
                         usedClassNameSets[keypath] = keypath;
                     }
-                    model.on(key, function (value) {
+                    modelListener = function (value) {
                         if(negate ? !value : value) {
                             usedClassNameSets[keypath] = keypath;
                         } else {
                             delete usedClassNameSets[keypath];
                         }
                         updateClassNames();
-                    });
+                    };
+                    model.on(key, modelListener);
+                    _this.bindings.push([
+                        model, 
+                        key, 
+                        modelListener
+                    ]);
                 } else {
                     console.log("Warning: not found a valid model: " + value);
                 }
-            }
+            };
             function updateClassNames() {
                 var newClassNames = classNames;
                 for(var key in usedClassNameSets) {
@@ -3074,107 +3218,76 @@ var Gnd;
             }
         };
         ClassBinder.prototype.unbind = function () {
+            _.each(this.bindings, function (item) {
+                item[0].off(item[1], item[2]);
+                item[0].release();
+            });
         };
         return ClassBinder;
     })();    
     var EventBinder = (function () {
-        function EventBinder() { }
-        EventBinder.prototype.bind = function (el, value, viewModel) {
-            var events = value.trim().split(';'), eventBindings = {
-            };
-            for(var i = 0; i < events.length; i++) {
-                var eventKeyPath = events[i].trim().split(':');
-                if(eventKeyPath.length === 2) {
-                    eventBindings[eventKeyPath[0].trim()] = makeKeypathArray(eventKeyPath[1]);
-                } else {
-                    console.log("Warning: syntax error in data-bind:" + value);
-                }
+        function EventBinder() {
+            this.bindings = [];
+        }
+        EventBinder.re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
+        EventBinder.prototype.parse = function (value) {
+            var eventBindings = {
+            }, match;
+            while(match = TwoWayBinder.re.exec(value)) {
+                eventBindings[match[3]] = makeKeypathArray(match[4]);
             }
-            for(var event in eventBindings) {
-                var keypath = eventBindings[event], obj = viewModel.resolveContext(_.initial(keypath));
+            return eventBindings;
+        };
+        EventBinder.prototype.bind = function (el, value, viewModel) {
+            var _this = this;
+            var eventBindings = this.parse(value);
+            this.el = el;
+            var addEvent = function (eventName) {
+                var keypath = eventBindings[eventName], obj = viewModel.resolveContext(_.initial(keypath));
                 if(obj instanceof Gnd.Base) {
-                    var eventKeypath = _.rest(keypath).join('.');
-                    addEventListener(el, event, function (evt) {
-                        var handler = obj.get(eventKeypath);
-                        if(_.isFunction(handler)) {
+                    var eventKeypath = _.rest(keypath).join('.'), handler = obj.get(eventKeypath);
+                    obj.retain();
+                    if(_.isFunction(handler)) {
+                        var elementListener = function (evt) {
                             handler.call(obj, el, evt);
-                        } else {
-                            console.log("Warning: the given handler is not a function: " + keypath);
-                        }
-                    });
+                        };
+                        Gnd.addEventListener(el, eventName, elementListener);
+                        _this.bindings.push([
+                            obj, 
+                            eventName, 
+                            elementListener
+                        ]);
+                    } else {
+                        console.log("Warning: the given handler is not a function: " + keypath);
+                    }
                 } else {
                     console.log("Warning: not found an object instance of Gnd.Base: " + keypath[0]);
                 }
+            };
+            for(var eventName in eventBindings) {
+                addEvent(eventName);
             }
         };
         EventBinder.prototype.unbind = function () {
+            var _this = this;
+            _.each(this.bindings, function (item) {
+                item[0].release();
+                Gnd.removeEventListener(_this.el, item[1], item[2]);
+            });
         };
         return EventBinder;
     })();    
     if(!String.prototype.trim) {
         String.prototype.trim = Gnd.Util.trim;
     }
-    function isElement(object) {
-        return object && object.nodeType == 1;
-    }
-    function setAttr(el, attr, value) {
-        if(el.hasOwnProperty(attr)) {
-            el[attr] = value;
-        }
-        if(value) {
-            el.setAttribute(attr, value);
-        } else {
-            el.removeAttribute(attr);
-        }
-    }
-    function getAttr(el, attr) {
-        if(el.hasOwnProperty(attr)) {
-            return el[attr];
-        } else {
-            var val = el.getAttribute(attr);
-            switch(val) {
-                case 'true': {
-                    return true;
-
-                }
-                case null:
-                case 'false': {
-                    return false;
-
-                }
-                default: {
-                    return val;
-
-                }
-            }
-        }
-    }
-    function addEventListener(el, eventName, handler) {
-        if(el.addEventListener) {
-            el.addEventListener(eventName, handler);
-        } else {
-            if(el['attachEvent']) {
-                el['attachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    function removeEventListener(el, eventName, handler) {
-        if(el.removeEventListener) {
-            el.removeEventListener(eventName, handler);
-        } else {
-            if(el['detachEvent']) {
-                el['detachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    function setValue(node, value) {
-        if(isElement(value)) {
+    function setText(node, value) {
+        if(Gnd.isElement(value)) {
             node.parentNode.replaceChild(value, node);
         } else {
             if(node.textContent) {
                 node.textContent = value;
             } else {
-                node.innerText = value;
+                node['innerText'] = value;
             }
         }
     }
