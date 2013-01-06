@@ -2,20 +2,16 @@
    Ground Web Framework v0.1.0
 
    Features:
-   - Highly Modular design.
-   - Builds on top of proven libraries such as jQuery and underscore.
-   - Hierarchical routing system.
+   - Lightweight, High Performance and Modular design.
+   - Hierarchical Routing System.
    - Property bindings.
-   - Models with persistence and clients/servers synchronization.
-   - Global and Local Events.
+   - Models and Collections with persistence and automatic client / server synchronization.
+   - Declarative Bindings.
    - Undo/Redo Manager.
-   - Keyboard handling.
-   - Set of views for common web "widgets".
    - Canvas View.
   
    Dependencies:
-   - jQuery
-   - Underscore / LoDash
+   - LoDash
 
    (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
