@@ -2642,7 +2642,7 @@ args: undefined            }, i = 0, len = args.length;
             Request.prototype.render = function (templateUrl, css, locals, cb) {
                 return Gnd.overload({
                     "String String Object Function": function (templateUrl, css, locals, cb) {
-                        var fn = _.bind(this.render, this);
+                        var fn = _.bind(this._render, this);
                         this.node().render = wrap(fn, [
                             templateUrl, 
                             css, 
@@ -2651,20 +2651,26 @@ args: undefined            }, i = 0, len = args.length;
                         return this;
                     },
                     "String String Function": function (templateUrl, css, cb) {
-                        return this.render(templateUrl, css, undefined, cb);
+                        return this.render(templateUrl, css, {
+                        }, cb);
                     },
                     "String Object Function": function (templateUrl, locals, cb) {
-                        return this.render(templateUrl, undefined, locals, cb);
+                        return this.render(templateUrl, "", locals, cb);
                     },
                     "String Function": function (templateUrl, cb) {
-                        return this.render(templateUrl, undefined, undefined, cb);
+                        return this.render(templateUrl, "", {
+                        }, cb);
                     },
-                    "String Function": function (templateUrl) {
+                    "String": function (templateUrl) {
                         return this.render(templateUrl, Gnd.Util.noop);
                     }
-                })(arguments);
+                }).apply(this, arguments);
             };
             Request.prototype.load = function (urls, cb) {
+                if(_.isFunction(urls)) {
+                    cb = urls;
+                    urls = null;
+                }
                 var fn = _.bind(this._load, this);
                 this.node().load = wrap(fn, [
                     urls
@@ -2749,7 +2755,11 @@ args: undefined            }, i = 0, len = args.length;
                     var args = arguments;
                     var objs = [];
                     for(i = 0 , len = args.length; i < len; i++) {
-                        objs.push(JSON.parse(arguments[i]));
+                        try  {
+                            objs.push(JSON.parse(arguments[i]));
+                        } catch (e) {
+                            console.log("Error parsing data: " + e.name + "::" + e.message);
+                        }
                     }
                     objs = objs.length === 1 ? objs[0] : objs;
                     self.data = objs;
@@ -2758,15 +2768,6 @@ args: undefined            }, i = 0, len = args.length;
             };
             return Request;
         })();        
-        Request.prototype.render = Request.prototype.load = Gnd.overload({
-            "String String Object Function": Request.prototype.load,
-            "Function": function (cb) {
-                return this.load([], cb);
-            },
-            "": function () {
-                return this.load([], Gnd.Util.noop);
-            }
-        });
     })(Gnd.Route || (Gnd.Route = {}));
     var Route = Gnd.Route;
 })(Gnd || (Gnd = {}));
@@ -2838,6 +2839,16 @@ var Gnd;
         return object && object.nodeType === Node.ELEMENT_NODE;
     }
     Gnd.isElement = isElement;
+    function makeElement(html) {
+        var container = document.createElement("p");
+        var fragment = document.createDocumentFragment();
+        container.innerHTML = html;
+        while(container = container.firstChild) {
+            fragment.appendChild(container);
+        }
+        return fragment;
+    }
+    Gnd.makeElement = makeElement;
     function addEventListener(el, eventName, handler) {
         if(el.addEventListener) {
             el.addEventListener(eventName, handler);
