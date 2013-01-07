@@ -187,7 +187,7 @@ class AutoreleasePool {
 /**
   A Task factory for route actions.
 */
-var wrap = Gnd.overload({
+var wrap = overload({
   'Function Array Function': function(fn, args, cb) {
     return function(done){
       (function(args){
@@ -568,29 +568,38 @@ class Request {
     return this;
   }
   
+  public render(templateUrl: string): Request;
+  public render(templateUrl: string, cb: (err?: Error)=>void): Request;
+  public render(templateUrl: string, locals: {}, cb: (err?: Error)=>void): Request;
+  public render(templateUrl: string, css: string, cb: (err?: Error)=>void): Request;
   public render(templateUrl: string, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
-    return Gnd.overload({
+    return overload({
       "String String Object Function": function(templateUrl, css, locals, cb){
-        var fn = _.bind(this.render, this);
+        var fn = _.bind(this._render, this);
         this.node().render = wrap(fn, [templateUrl, css, locals], cb);
         return this;
       },
       "String String Function": function(templateUrl, css, cb){
-        return this.render(templateUrl, css, undefined, cb);
+        return this.render(templateUrl, css, {}, cb);
       },
       "String Object Function": function(templateUrl, locals, cb){
-        return this.render(templateUrl, undefined, locals, cb);
+        return this.render(templateUrl, "", locals, cb);
       },
       "String Function": function(templateUrl, cb){
-        return this.render(templateUrl, undefined, undefined, cb);
+        return this.render(templateUrl, "", {}, cb);
       },
-      "String Function": function(templateUrl){
+      "String": function(templateUrl){
         return this.render(templateUrl, Gnd.Util.noop);
       },
-    })(arguments)
+    }).apply(this, arguments);
   }
 
-  public load(urls?, cb?): Request {
+  public load(urls?, cb?): Request 
+  {
+    if(_.isFunction(urls)){
+      cb = urls;
+      urls = null;
+    }
     var fn = _.bind(this._load, this);
     this.node().load = wrap(fn,[urls], cb);
     return this;
@@ -679,7 +688,11 @@ class Request {
       var args = arguments;
       var objs = [];
       for(i=0, len=args.length;i<len;i++){
-        objs.push(JSON.parse(arguments[i]));
+        try{
+          objs.push(JSON.parse(arguments[i]));
+        }catch(e){
+          console.log("Error parsing data: "+e.name+"::"+e.message);
+        }
       }
       objs = objs.length===1?objs[0]:objs;
       self.data = objs;
@@ -687,37 +700,5 @@ class Request {
     });
   }
 }
-
-Request.prototype.render = 
-
-Request.prototype.load = Gnd.overload({
-  "String String Object Function": Request.prototype.load,
-  
-  "Function": function(cb){
-    return this.load([], cb);
-  },
-  "": function(){
-    return this.load([], Gnd.Util.noop);
-  }
-});
-
-/*
-Request.prototype.resourceRoute = function(resource){
-  var base = this._currentSubPath();
-  var components = resource.split('/');
-  return base+'/'+components[components.length-1].split('.')[0];
-}
-//
-// Utils
-//
-var findSel = function(selector, start, nodes){
-  for(var i=start,len=nodes.length;i<len;i++){
-    if(selector === nodes[i].selector){
-      return true;
-    }
-  }
-  return false;
-}
-*/
 
 }

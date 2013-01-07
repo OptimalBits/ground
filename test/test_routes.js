@@ -225,6 +225,33 @@ describe('simple routes', function(){
     goToUrl('/test/foo/bar');
   });
   
+  it('load json data within route', function(done){
+    route.stop();
+    goToUrl('');
+    route.listen(function(req){
+      req.get(function(){
+        req.load('fixtures/route_data.json', function(){
+          expect(req).to.have.property('data');
+          expect(req.data.foo).to.be.eql('bar');
+          done();
+        });
+      });
+    });
+  });
+  
+  it('render template', function(done){
+    route.stop();
+    goToUrl('');
+    route.listen(function(req){
+      req.get(function(){
+        req.render('fixtures/test1.tmpl', function(){
+          done();
+        })
+      });
+    });
+  });
+  
+  
   it('autorelease objects after change from one deep route to another deep route', function(done){
     var test = new Gnd.Base();
     var foo = new Gnd.Base();
