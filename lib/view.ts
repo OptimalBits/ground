@@ -5,56 +5,42 @@
 /**
   View Class
   
-  This class represents a View in a MVC architecture.
-  
-  Events:
-    
+  This class represents a View in the MVC architecture.  
 */
 
 /// <reference path="base.ts" />
-/// <reference path="../third/jquery.d.ts" />
+/// <reference path="dom.ts" />
 
 module Gnd {
+  
 export class View extends Base
 {
-  public tag: string;
-  public classNames: string[];
-  public $el: JQuery;
-  public $parent: JQuery;
-  public css: {};
+  public el: DocumentFragment;
+  public parent: View;
+  public children: View[] = [];
+  public root: Element;
   
-  constructor(classNames: string[], css?: {} = {}, tag?: string = 'div')
+  constructor(parent?: View)
   {
     super();
-    this.classNames = classNames;
-    this.css = css;
-    this.tag = tag;
-    
-    this.$el = $(this.tag);
-    this.$el.css(this.css);
-  }
-
-  render($parent)
-  {
-    this.$parent = $parent || this.$parent;
-    this.$parent && this.$el && this.$el.detach().appendTo(this.$parent);
-    return this.$el;
+    this.el = makeElement('<div>');
+    this.parent = parent;
+    parent && parent.children.push(this);
   }
   
-  refresh()
+  render()
   {
-    this.$parent && this.render(this.$parent);
+    var target = this.parent || this.root || document.body;
+    target.appendChild(this.el);
+    for(var i=0; i<this.children.length; i++){
+      this.children[i].render();
+    }
   }
   
   clean()
   {
-    this.$el.detach();
-  }
-  
-  remove()
-  {
-    this.$el.remove()
-    this.$el = null;
+    var parent = this.el.parentNode;
+    parent && parent.removeChild(this.el);
   }
   
   disable(disable)
@@ -64,17 +50,17 @@ export class View extends Base
   
   hide(duration, easing, callback)
   {
-    this.$el.hide(arguments)
+    // TODO: Implement
   }
   
   show(duration, easing, callback) 
   {
-    this.$el.show(arguments)
+    // TODO: Implement
   }
   
   destroy()
   {
-    this.remove();
+    this.clean();
     super.destroy();
   }
 }

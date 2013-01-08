@@ -2373,8 +2373,11 @@ url = location.hash.replace(/^#!?/, '');
             'Function Function': function (fn, cb) {
                 return wrap(fn, [], cb);
             },
+            'Function Array': function (fn, args) {
+                return wrap(fn, args, Gnd.Util.noop);
+            },
             'Function': function (fn) {
-                return wrap(fn, [], Gnd.Util.noop);
+                return wrap(fn, []);
             }
         });
         var decomposeUrl = function (url) {
@@ -2773,53 +2776,6 @@ args: undefined            }, i = 0, len = args.length;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
-    var View = (function (_super) {
-        __extends(View, _super);
-        function View(classNames, css, tag) {
-            if (typeof css === "undefined") { css = {
-            }; }
-            if (typeof tag === "undefined") { tag = 'div'; }
-                _super.call(this);
-            this.classNames = classNames;
-            this.css = css;
-            this.tag = tag;
-            this.$el = $(this.tag);
-            this.$el.css(this.css);
-        }
-        View.prototype.render = function ($parent) {
-            this.$parent = $parent || this.$parent;
-            this.$parent && this.$el && this.$el.detach().appendTo(this.$parent);
-            return this.$el;
-        };
-        View.prototype.refresh = function () {
-            this.$parent && this.render(this.$parent);
-        };
-        View.prototype.clean = function () {
-            this.$el.detach();
-        };
-        View.prototype.remove = function () {
-            this.$el.remove();
-            this.$el = null;
-        };
-        View.prototype.disable = function (disable) {
-            console.log(this + " does not implement disable");
-        };
-        View.prototype.hide = function (duration, easing, callback) {
-            this.$el.hide(arguments);
-        };
-        View.prototype.show = function (duration, easing, callback) {
-            this.$el.show(arguments);
-        };
-        View.prototype.destroy = function () {
-            this.remove();
-            _super.prototype.destroy.call(this);
-        };
-        return View;
-    })(Gnd.Base);
-    Gnd.View = View;    
-})(Gnd || (Gnd = {}));
-var Gnd;
-(function (Gnd) {
     function $$(selector, context) {
         var el = context || document;
         switch(selector[0]) {
@@ -2903,6 +2859,43 @@ var Gnd;
         }
     }
     Gnd.getAttr = getAttr;
+})(Gnd || (Gnd = {}));
+var Gnd;
+(function (Gnd) {
+    var View = (function (_super) {
+        __extends(View, _super);
+        function View(parent) {
+                _super.call(this);
+            this.children = [];
+            this.el = Gnd.makeElement('<div>');
+            this.parent = parent;
+            parent && parent.children.push(this);
+        }
+        View.prototype.render = function () {
+            var target = this.parent || this.root || document.body;
+            target.appendChild(this.el);
+            for(var i = 0; i < this.children.length; i++) {
+                this.children[i].render();
+            }
+        };
+        View.prototype.clean = function () {
+            var parent = this.el.parentNode;
+            parent && parent.removeChild(this.el);
+        };
+        View.prototype.disable = function (disable) {
+            console.log(this + " does not implement disable");
+        };
+        View.prototype.hide = function (duration, easing, callback) {
+        };
+        View.prototype.show = function (duration, easing, callback) {
+        };
+        View.prototype.destroy = function () {
+            this.clean();
+            _super.prototype.destroy.call(this);
+        };
+        return View;
+    })(Gnd.Base);
+    Gnd.View = View;    
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
