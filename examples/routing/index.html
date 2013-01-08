@@ -29,24 +29,24 @@
           
           req.get('','#main',function() {
         
-            req.load('data/fauna.json',function(){});
+            req.load('data/fauna.json');
             req.render('templates/fauna.tmpl')
-            req.enter('fadeIn', 'fast',function(){});
+            req.enter('fadeIn', 'fast');
         
             // Family
             req.get(':family', '#family', function() { // ':family' is a parameter
               req
-                .load('data/families/' + req.params['family'] + '.json',function(){})
+                .load('data/families/' + req.params['family'] + '.json')
                 .render('templates/family.tmpl')
-                .enter('slideDown', 'slow',function(){})
-                .exit('slideUp', 'slow',function(){});
+                .enter('slideDown', 'slow')
+                .exit('slideUp', 'slow');
        
               // Animal
               req.get(':animal', '#animal', function() { // ':animal' is a parameter
-                req.load('data/families/' + req.params['family'] + '/' +req.params['animal'] + '.json',function(){})
+                req.load('data/families/' + req.params['family'] + '/' +req.params['animal'] + '.json')
                   .render('templates/animal.tmpl')
-                  .enter('fadeIn', 'slow',function(){})
-                  .exit('fadeOut', 'slow',function(){});
+                  .enter('fadeIn', 'slow')
+                  .exit('fadeOut', 'slow');
               });
             });
           })
