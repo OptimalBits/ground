@@ -6,68 +6,57 @@
   <link rel="stylesheet" type="text/css" href="styles.css"> 
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
       packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
+        'ground': {
+          path: 'http://192.168.2.2:8080/dist/',
+          main: 'gnd',
           lib: ''
         },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
+      },
+      paths : {
+        jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+        underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
       }
     };
   </script>
   
   <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
   <script>
-    curl(['ginger', 'ginger/route', 'underscore'], function(ginger, route, _){
-		
-      route(function(req) {
-        // Use Underscores micro-templates
-        req.use('template', _.template);
-
-
-        // Define the route hierachy
-        req.get(function() {
-          req
-            .load('data/fauna.json')
-            .render('templates/fauna.tmpl')
-            .enter('fadeIn', 'fast');
-
-          // Family
-          req.get(':family', '#family', function() { // ':family' is a parameter
-            req
-              .load('data/families/' + req.params['family'] + '.json')
-              .render('templates/family.tmpl')
-              .enter('slideDown', 'slow')
-              .exit('slideUp', 'slow');
-       
-            // Animal
-            req.get(':animal', '#animal', function() { // ':animal' is a parameter
+    curl(['jquery', 'underscore'], function($,_){
+      curl(['ground'], function(gnd){
+        Gnd.Route.listen(function(req) {
+          req.use('template', _.template);
+          req.get('','#main',function() {
+        
+            req.load('data/fauna.json',function(){});
+            req.render('templates/fauna.tmpl')
+            req.enter('fadeIn', 'fast',function(){});
+        
+            // Family
+            req.get(':family', '#family', function() { // ':family' is a parameter
               req
-                .load('data/families/' + req.params['family'] + '/' +
-                  req.params['animal'] + '.json')
-                .render('templates/animal.tmpl')
-                .enter('fadeIn', 'slow')
-                .exit('fadeOut', 'slow');
+                .load('data/families/' + req.params['family'] + '.json',function(){})
+                .render('templates/family.tmpl')
+                .enter('slideDown', 'slow',function(){})
+                .exit('slideUp', 'slow',function(){});
+       
+              // Animal
+              req.get(':animal', '#animal', function() { // ':animal' is a parameter
+                req.load('data/families/' + req.params['family'] + '/' +req.params['animal'] + '.json',function(){})
+                  .render('templates/animal.tmpl')
+                  .enter('fadeIn', 'slow',function(){})
+                  .exit('fadeOut', 'slow',function(){});
+              });
             });
-          });
-        });
-      });
-    });
+          })
+        })
+      })
+    })
   </script>
 </head>
 <body>
+  <h1>Routing example</h1>
+  <p>This example demonstrates how Ground's hierarchical routing works</p>
+  <div id="main"></div>
 </body>
 </html>
