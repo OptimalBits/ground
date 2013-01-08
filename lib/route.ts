@@ -638,7 +638,7 @@ class Request {
       var args;
       if(_.isString(locals)){
         args[locals] = self.data;
-      }else if(_.isObject(locals) && && !_.isEmpty(locals)){
+      }else if(_.isObject(locals) && !_.isEmpty(locals)){
         args = locals;
       }else if(_.isObject(self.data)){
         args = self.data;
