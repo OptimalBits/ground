@@ -204,8 +204,11 @@ var wrap = overload({
   'Function Function': function(fn, cb){
     return wrap(fn, [], cb);
   },
+  'Function Array': function(fn, args){
+    return wrap(fn, args, Util.noop);
+  },
   'Function': function(fn){
-    return wrap(fn, [], Gnd.Util.noop);
+    return wrap(fn, []);
   }
 })
 
