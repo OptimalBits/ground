@@ -391,6 +391,59 @@ describe('ViewModel', function(){
       
       vm.unbind();
     });
+    it('multiple sorting on a collection', function(){
+      var vm = new Gnd.ViewModel(list, {zoo: zoo});
+      
+      zoo.animals.set('sortByFn', function(item){
+        return 3 - item.pos;
+      })
+      
+      expect(list.children.length).to.be(3);
+      expect(list.children[2].innerText).to.be.eql('tiger');
+      expect(list.children[1].innerText).to.be.eql('lion');
+      expect(list.children[0].innerText).to.be.eql('leopard');
+      
+      zoo.animals.set('sortByFn', function(item){
+        return item.pos;
+      })
+      expect(list.children[0].innerText).to.be.eql('tiger');
+      expect(list.children[1].innerText).to.be.eql('lion');
+      expect(list.children[2].innerText).to.be.eql('leopard');
+      vm.unbind();
+    });
+    it('multiple filtering on a collection',function() {
+      var vm = new Gnd.ViewModel(list, {zoo: zoo});
+      expect(list.children.length).to.be(3);
+      zoo.animals.set('filterFn',function(item) {
+        return (item.name === 'lion') || (item.name === 'leopard');
+      });
+      expect(list.children.length).to.be(2);
+      expect(list.children[0].innerText).to.be.eql('lion');
+      expect(list.children[1].innerText).to.be.eql('leopard');
+      zoo.animals.set('filterFn',function(item) {
+        return (item.name === 'lion');
+      });
+      expect(list.children.length).to.be(1);
+      expect(list.children[0].innerText).to.be.eql('lion');
+      zoo.animals.set('filterFn',function(item) {
+        return (item.name === '');
+      });
+      expect(list.children.length).to.be(0);
+      vm.unbind();
+    });
+    
+    it('Remove filter from a collection',function() {
+      var vm = new Gnd.ViewModel(list, {zoo: zoo});
+      expect(list.children.length).to.be(3);
+      zoo.animals.set('filterFn',function(item) {
+        return (item.name === 'lion') || (item.name === 'leopard');
+      });
+      expect(list.children.length).to.be(2);
+      expect(list.children[0].innerText).to.be.eql('lion');
+      expect(list.children[1].innerText).to.be.eql('leopard');
+      zoo.animals.set('filterFn',null);
+      vm.unbind();
+    })
   });
   describe('data-each with nested nodes', function(){
     var tiger, lion, leopard, zoo, list, listEl,listNestedEl;
