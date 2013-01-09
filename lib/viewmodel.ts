@@ -260,6 +260,8 @@ class EachBinder implements Binder
             setAttr(itemNode, 'data-item', newId);
           };
         
+        item.retain();
+        
         setAttr(itemNode, 'data-item', id);
         mappings[id] = itemNode;
 
