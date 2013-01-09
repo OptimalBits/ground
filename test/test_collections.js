@@ -643,7 +643,27 @@ describe('Collections', function(){
             
       done();
     });
-    
+    it('sort collection multiple times', function(done){
+      var Parent = Gnd.Model.extend('itemparent');
+      var parent = new Parent();
+      var Item = Gnd.Model.extend('item');
+      
+      var item1 = new Item({ val : 1, val2 : 5 , val3 : 10 } ),
+          item2 = new Item({ val : 5, val2 : 4 , val3 : 11}),
+          item3 = new Item({ val : 10, val2 : 3 , val3 : 12 }),
+          item4 = new Item({ val : 15, val2 : 2 , val3 : 13 });
+      
+      parent.itemcollection = new Gnd.Collection(Item,parent, [item1,item2,item3,item4]);
+      
+      parent.itemcollection.set('filterByFn', function(item){return item.val = 10});
+      parent.itemcollection.set('filterByFn', function(item){return item.val = 15});
+      parent.itemcollection.set('filterByFn', function(item){return item.val});
+      
+      for(var i=0,len=collection.items.length;i<len-1;i++){
+        expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
+      }
+      done();
+    });
     it('update items in sorted collection keeps order', function(done){
       var item1 = new Gnd.Model({val:1}),
           item2 = new Gnd.Model({val:5}),
