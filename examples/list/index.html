@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Routing Example</title>
+  <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+  <script type="text/javascript">
+    curl = {
+      packages: {
+        'ground': {
+          path: 'http://192.168.2.2:8080/dist/',
+          main: 'gnd',
+          lib: ''
+        },
+      },
+      paths : {
+        jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+        underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+      }
+    };
+  </script>
+  
+  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+  <script src="http://code.jquery.com/jquery-latest.js"></script>
+  <script src="bootstrap/js/bootstrap.js"></script>
+  <script>
+    curl(['underscore'], function(_){
+      curl(['ground'], function(Gnd){
+        var Library = Gnd.Model.extend('library');
+        var library = new Library();
+        var Movie = Gnd.Model.extend('movies');
+        
+        var moviesData = [{ title : 'Django Unchained',
+                            genre : 'Action'},
+                          { title : 'The Hobbit: An Unexpected Journey ',
+                            genre : 'Adventures'},
+                          { title : 'Pitch Perfect',
+                            genre : 'Comedy'},
+                          { title : 'Les Misérables',
+                            genre : 'Drama'},
+                          { title : 'John Dies at the End ',
+                            genre : 'Horror',
+                            title : 'Cloud Atlas',
+                            genre : 'Sci-Fi'}];
+        var movies = [];
+        
+        _.each(moviesData , function(data){
+          movies.push(new Gnd.Model(data));
+        })
+                            
+        library.movies = new Gnd.Collection(Movie, library, movies);
+
+        var viewModel = new Gnd.ViewModel(document.getElementById('myLibrary'), {list: library});
+        
+        $('.showAction').click(function(){
+          library.movies.set('filterFn', function(item){
+            return item.genre == 'Action';
+          })
+        })
+        $('.showAll').click(function(){
+          library.movies.set('filterFn',function(item){
+            return true;
+          });
+        })
+        $('.sortTitle').click(function(){
+          library.movies.set('sortByFn',function(item){
+            return item.title;
+          })
+        })
+      })
+    })
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <h1>List example</h1>
+      <p>This example shows a custom ground view</p>
+      <div id="main">
+        <button class="sortTitle btn">Sort by title</button><button class="showAll btn">Show All</button><button class="showAction btn">Show Action</button>
+        <table id="myLibrary" class="table table-condensed">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Genre</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-each="list.movies : movie">
+              <td data-bind="text: movie.title"></td>
+              <td data-bind="text: movie.genre"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
