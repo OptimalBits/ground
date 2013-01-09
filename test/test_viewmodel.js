@@ -314,7 +314,6 @@ describe('ViewModel', function(){
       fireEvent(el, 'click');
     });
   });
-  
   describe('data-each', function(){
     var tiger, lion, leopard, zoo, list, listEl;
     
@@ -392,12 +391,41 @@ describe('ViewModel', function(){
       
       vm.unbind();
     });
-    
-    it('nested collections', function(){
-      // TODO: Implement
-    });
   });
-    
+  describe('data-each with nested nodes', function(){
+    var tiger, lion, leopard, zoo, list, listEl,listNestedEl;
+    beforeEach(function(){
+      tiger = new Animal({name: 'tiger', pos:1});
+      lion = new Animal({name: 'lion', pos:2});
+      leopard = new Animal({name: 'leopard', pos:3});
+     
+      zoo = new Zoo();
+      zoo.animals = new Gnd.Collection(Animal, zoo, [tiger, lion, leopard]);
+      
+      list = document.createElement('lu');
+      listEl = document.createElement('li');
+      listNestedEl = document.createElement('span')
+      listEl.setAttribute('data-each', 'zoo.animals: animal');
+      listNestedEl.setAttribute('data-bind', 'text: animal.name');
+      listEl.appendChild(listNestedEl)
+      list.appendChild(listEl);
+    })
+    it('populate a list from collection', function(){
+      var vm = new Gnd.ViewModel(list, {zoo: zoo});
+      
+      expect(list.children.length).to.be(3);
+      expect(list.children[0].children[0].innerText).to.be.eql('tiger');
+      expect(list.children[1].children[0].innerText).to.be.eql('lion');
+      expect(list.children[2].children[0].innerText).to.be.eql('leopard');
+      
+      var jaguar = new Animal({name: 'jaguar'});
+      zoo.animals.add(jaguar);
+      expect(list.children.length).to.be(4);
+      expect(list.children[3].children[0].innerText).to.be.eql('jaguar');
+      
+      vm.unbind();
+    })
+  });
 });
 
 });
