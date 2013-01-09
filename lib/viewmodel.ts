@@ -188,7 +188,7 @@ class TwoWayBinder implements Binder
         
         this.bindings.push([obj, keypath, modelListener, elemListener]);
       }else{
-        console.log("Warning: not found a valid model: "+keypath[0]);
+        console.log("Warning: not found a valid model: "+attrBindings[attr][0]);
       }
     }
   }
