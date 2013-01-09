@@ -2711,7 +2711,7 @@ args: undefined            }, i = 0, len = args.length;
                     if(_.isString(locals)) {
                         args[locals] = self.data;
                     } else {
-                        if(_.isObject(locals)) {
+                        if(_.isObject(locals) && !_.isEmpty(locals)) {
                             args = locals;
                         } else {
                             if(_.isObject(self.data)) {
@@ -3024,7 +3024,7 @@ var Gnd;
                         elemListener
                     ]);
                 } else {
-                    console.log("Warning: not found a valid model: " + keypath[0]);
+                    console.log("Warning: not found a valid model: " + attrBindings[attr][0]);
                 }
             }
         };
@@ -3062,6 +3062,7 @@ var Gnd;
                 var addNode = function (item, nextSibling) {
                     var itemNode = el.cloneNode(true), id = item.id(), modelListener = function (newId) {
 delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'data-item', newId);                    };
+                    item.retain();
                     Gnd.setAttr(itemNode, 'data-item', id);
                     mappings[id] = itemNode;
                     if(nextSibling) {
