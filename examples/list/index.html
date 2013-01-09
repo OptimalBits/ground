@@ -41,7 +41,9 @@
                           { title : 'John Dies at the End ',
                             genre : 'Horror',
                             title : 'Cloud Atlas',
-                            genre : 'Sci-Fi'}];
+                            genre : 'Sci-Fi'},
+                          { title : 'The Dark Knight Rises',
+                            genre :  'Action'}];
         var movies = [];
         
         _.each(moviesData , function(data){
@@ -66,6 +68,17 @@
           library.movies.set('sortByFn',function(item){
             return item.title;
           })
+          if(library.movies.sortOrder == 'desc') {
+            library.movies.sortOrder = 'asc';
+          } else {
+            library.movies.sortOrder = 'desc';
+          }
+        })
+        $('.inputSearch').keyup(function(){
+          var input = this;
+          library.movies.set('filterFn', function(item){
+            return item.title.search(input.value) >= 0
+          })
         })
       })
     })
@@ -77,18 +90,23 @@
       <h1>List example</h1>
       <p>This example shows a custom ground view</p>
       <div id="main">
+        <div>
+          <input class="inputSearch" type="text" placeholder="Search movies"></input>
+        </div>
         <button class="sortTitle btn">Sort by title</button><button class="showAll btn">Show All</button><button class="showAction btn">Show Action</button>
         <table id="myLibrary" class="table table-condensed">
           <thead>
             <tr>
               <th>Title</th>
               <th>Genre</th>
+              <!--<th>Action</th>!-->
             </tr>
           </thead>
           <tbody>
             <tr data-each="list.movies : movie">
-              <td data-bind="text: movie.title"></td>
-              <td data-bind="text: movie.genre"></td>
+              <td><span data-bind="text: movie.title"></span></td>
+              <td><span data-bind="text: movie.genre"></span></td>
+              <!--<td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-bind="text: movie._id"></i></td>!-->
             </tr>
           </tbody>
         </table>
