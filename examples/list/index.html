@@ -29,7 +29,7 @@
         var Library = Gnd.Model.extend('library');
         var library = new Library();
         var Movie = Gnd.Model.extend('movies');
-        
+
         var moviesData = [{ title : 'Django Unchained',
                             genre : 'Action'},
                           { title : 'The Hobbit: An Unexpected Journey ',
@@ -41,13 +41,20 @@
                           { title : 'John Dies at the End ',
                             genre : 'Horror',
                             title : 'Cloud Atlas',
-                            genre : 'Sci-Fi'}];
+                            genre : 'Sci-Fi'},
+                          { title : 'The Dark Knight Rises',
+                            genre :  'Action'}];
         var movies = [];
         
         _.each(moviesData , function(data){
-          movies.push(new Gnd.Model(data));
+          movies.push(new Movie(_.extend(data, { remove : function(){
+                  library.movies.remove(this.id());
+                }
+              })
+            )
+          );
         })
-                            
+                          
         library.movies = new Gnd.Collection(Movie, library, movies);
 
         var viewModel = new Gnd.ViewModel(document.getElementById('myLibrary'), {list: library});
@@ -66,6 +73,22 @@
           library.movies.set('sortByFn',function(item){
             return item.title;
           })
+          if(library.movies.sortOrder == 'desc') {
+            library.movies.sortOrder = 'asc';
+          } else {
+            library.movies.sortOrder = 'desc';
+          }
+        })
+        $('.inputSearch').keyup(function(){
+          var input = this;
+          library.movies.set('filterFn', function(item){
+            return item.title.search(input.value) >= 0
+          })
+        })
+        $('.addNew').click(function(){
+          var movie = new Movie({title:$('#name').val(),genre:$('#genre').val(),remove:function(){library.movies.remove(this.id())}})
+          $('#name,#genre').val('');
+          library.movies.add(movie)
         })
       })
     })
@@ -77,18 +100,28 @@
       <h1>List example</h1>
       <p>This example shows a custom ground view</p>
       <div id="main">
+        <div>
+          <input class="inputSearch" type="text" placeholder="Search movies"></input>
+        </div>
         <button class="sortTitle btn">Sort by title</button><button class="showAll btn">Show All</button><button class="showAction btn">Show Action</button>
-        <table id="myLibrary" class="table table-condensed">
+        <table id="myLibrary" class="table table-condensed" style="margin-top: 16px;">
           <thead>
             <tr>
               <th>Title</th>
               <th>Genre</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <tr data-each="list.movies : movie">
-              <td data-bind="text: movie.title"></td>
-              <td data-bind="text: movie.genre"></td>
+              <td><span data-bind="text: movie.title"></span></td>
+              <td><span data-bind="text: movie.genre"></span></td>
+              <td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-event="click: movie.remove"></i></td>
+            </tr>
+            <tr>
+              <td><input type="text" id="name" placeholder="Name"></input></td>
+              <td><input type="text" id="genre" placeholder="Genre"></input></td>
+              <td><button class="addNew btn">Add</button></td>
             </tr>
           </tbody>
         </table>
