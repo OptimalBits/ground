@@ -26,10 +26,7 @@
   <script>
     curl(['underscore'], function(_){
       curl(['ground'], function(Gnd){
-        var Library = Gnd.Model.extend('library');
-        var library = new Library();
-        var Movie = Gnd.Model.extend('movies');
-
+        // Custom data to add in the list
         var moviesData = [{ title : 'Django Unchained',
                             genre : 'Action'},
                           { title : 'The Hobbit: An Unexpected Journey ',
@@ -44,52 +41,69 @@
                             genre : 'Sci-Fi'},
                           { title : 'The Dark Knight Rises',
                             genre :  'Action'}];
-        var movies = [];
+        // Models                 
+        var Library = Gnd.Model.extend('library');
+        var Movie = Gnd.Model.extend('movies');
         
+        // add custom handlers to the library
+        var library = new Library({
+          filterByActionHandler : function( node , evt ){
+            this.movies.set('filterFn', function(item){
+              return item.genre == 'Action';
+            })
+          },
+          showAllHandler : function( node , evt ){
+            library.movies.set('filterFn',function(item){
+              return true;
+            });
+          },
+          sortTitleHandler : function( node , evt ){
+            library.movies.set('sortByFn',function(item){
+              return item.title;
+            })
+            if(library.movies.sortOrder == 'desc') {
+              library.movies.sortOrder = 'asc';
+            } else {
+              library.movies.sortOrder = 'desc';
+            }
+          },
+          inputSearchHandler : function( node , evt ){
+            library.movies.set('filterFn', function(item){
+              return item.title.search( node.value ) >= 0
+            })
+          },
+          addMovieHandler : function( node , evt ){
+            var name = Gnd.$$('#name')
+            var genre = Gnd.$$('#genre')
+            var movie = new Movie( { 
+              title:name.value,
+              genre:genre.value,
+              remove:function(){
+                library.movies.remove(this.id())
+              }
+            })
+            library.movies.add(movie)
+            name.value = '';
+            genre.value = '';
+          }
+        });
+        
+        // Create all model movies with a custom handler
+        var movies = [];
         _.each(moviesData , function(data){
-          movies.push(new Movie(_.extend(data, { remove : function(){
+          movies.push(new Movie(_.extend(data, { removeHandler : function(){
                   library.movies.remove(this.id());
                 }
               })
             )
           );
         })
-                          
-        library.movies = new Gnd.Collection(Movie, library, movies);
 
-        var viewModel = new Gnd.ViewModel(document.getElementById('myLibrary'), {list: library});
+        // Create and add the collection to the library
+        library.movies = new Gnd.Collection(Movie, library, movies);
         
-        $('.showAction').click(function(){
-          library.movies.set('filterFn', function(item){
-            return item.genre == 'Action';
-          })
-        })
-        $('.showAll').click(function(){
-          library.movies.set('filterFn',function(item){
-            return true;
-          });
-        })
-        $('.sortTitle').click(function(){
-          library.movies.set('sortByFn',function(item){
-            return item.title;
-          })
-          if(library.movies.sortOrder == 'desc') {
-            library.movies.sortOrder = 'asc';
-          } else {
-            library.movies.sortOrder = 'desc';
-          }
-        })
-        $('.inputSearch').keyup(function(){
-          var input = this;
-          library.movies.set('filterFn', function(item){
-            return item.title.search(input.value) >= 0
-          })
-        })
-        $('.addNew').click(function(){
-          var movie = new Movie({title:$('#name').val(),genre:$('#genre').val(),remove:function(){library.movies.remove(this.id())}})
-          $('#name,#genre').val('');
-          library.movies.add(movie)
-        })
+        // bind the collection to the HMTL
+        var viewModel = new Gnd.ViewModel(document.getElementById('myLibrary'), {list: library});
       })
     })
   </script>
@@ -99,12 +113,12 @@
     <div class="row">
       <h1>List example</h1>
       <p>This example shows a custom ground view</p>
-      <div id="main">
+      <div id="myLibrary">
         <div>
-          <input class="inputSearch" type="text" placeholder="Search movies"></input>
+          <input data-event="keyup: list.inputSearchHandler" class="inputSearch" type="text" placeholder="Search movies"></input>
         </div>
-        <button class="sortTitle btn">Sort by title</button><button class="showAll btn">Show All</button><button class="showAction btn">Show Action</button>
-        <table id="myLibrary" class="table table-condensed" style="margin-top: 16px;">
+        <button data-event="click: list.sortTitleHandler" class="sortTitle btn">Sort by title</button><button data-event="click: list.showAllHandler" class="showAll btn">Show All</button><button data-event="click: list.filterByActionHandler" class="showAction btn">Show Action</button>
+        <table class="table table-condensed" style="margin-top: 16px;">
           <thead>
             <tr>
               <th>Title</th>
@@ -116,12 +130,12 @@
             <tr data-each="list.movies : movie">
               <td><span data-bind="text: movie.title"></span></td>
               <td><span data-bind="text: movie.genre"></span></td>
-              <td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-event="click: movie.remove"></i></td>
+              <td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-event="click: movie.removeHandler"></i></td>
             </tr>
             <tr>
               <td><input type="text" id="name" placeholder="Name"></input></td>
               <td><input type="text" id="genre" placeholder="Genre"></input></td>
-              <td><button class="addNew btn">Add</button></td>
+              <td><button data-event="click: list.addMovieHandler" class="addNew btn">Add</button></td>
             </tr>
           </tbody>
         </table>
