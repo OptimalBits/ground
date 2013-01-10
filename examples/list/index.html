@@ -29,7 +29,7 @@
         var Library = Gnd.Model.extend('library');
         var library = new Library();
         var Movie = Gnd.Model.extend('movies');
-        
+
         var moviesData = [{ title : 'Django Unchained',
                             genre : 'Action'},
                           { title : 'The Hobbit: An Unexpected Journey ',
@@ -47,9 +47,14 @@
         var movies = [];
         
         _.each(moviesData , function(data){
-          movies.push(new Gnd.Model(data));
+          movies.push(new Movie(_.extend(data, { remove : function(){
+                  library.movies.remove(this.id());
+                }
+              })
+            )
+          );
         })
-                            
+                          
         library.movies = new Gnd.Collection(Movie, library, movies);
 
         var viewModel = new Gnd.ViewModel(document.getElementById('myLibrary'), {list: library});
@@ -80,6 +85,11 @@
             return item.title.search(input.value) >= 0
           })
         })
+        $('.addNew').click(function(){
+          var movie = new Movie({title:$('#name').val(),genre:$('#genre').val(),remove:function(){library.movies.remove(this.id())}})
+          $('#name,#genre').val('');
+          library.movies.add(movie)
+        })
       })
     })
   </script>
@@ -94,19 +104,24 @@
           <input class="inputSearch" type="text" placeholder="Search movies"></input>
         </div>
         <button class="sortTitle btn">Sort by title</button><button class="showAll btn">Show All</button><button class="showAction btn">Show Action</button>
-        <table id="myLibrary" class="table table-condensed">
+        <table id="myLibrary" class="table table-condensed" style="margin-top: 16px;">
           <thead>
             <tr>
               <th>Title</th>
               <th>Genre</th>
-              <!--<th>Action</th>!-->
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <tr data-each="list.movies : movie">
               <td><span data-bind="text: movie.title"></span></td>
               <td><span data-bind="text: movie.genre"></span></td>
-              <!--<td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-bind="text: movie._id"></i></td>!-->
+              <td><i style="margin-left: 16px;cursor:pointer;" class="icon-remove" data-event="click: movie.remove"></i></td>
+            </tr>
+            <tr>
+              <td><input type="text" id="name" placeholder="Name"></input></td>
+              <td><input type="text" id="genre" placeholder="Genre"></input></td>
+              <td><button class="addNew btn">Add</button></td>
             </tr>
           </tbody>
         </table>
