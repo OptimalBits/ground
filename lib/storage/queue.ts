@@ -77,17 +77,17 @@ export class Queue extends Base
     this.localStorage.get(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
+        cb(err, doc);
       }
-      cb(err, doc);
-    });
-    
-    this.useRemote &&
-    this.remoteStorage.get(keyPath, (err?, doc?) => {
-      if(!err){
-        doc['_persisted'] = true;
-        this.emit('resync:'+Queue.makeKey(keyPath), doc);
-        this.localStorage.put(keyPath, doc, ()=>{});
-      }
+      this.useRemote &&
+      this.remoteStorage.get(keyPath, (err?, serverDoc?) => {
+        if(!err){
+          serverDoc['_persisted'] = true;
+          this.emit('resync:'+Queue.makeKey(keyPath), serverDoc);
+          this.localStorage.put(keyPath, serverDoc, ()=>{});
+        }
+        !doc && cb(err, serverDoc);
+      });
     });
   }
   
