@@ -80,27 +80,31 @@ export class Queue extends Base
         cb(err, doc);
       }
       this.useRemote &&
-      this.remoteStorage.get(keyPath, (err?, serverDoc?) => {
+      this.remoteStorage.get(keyPath, (err?, docRemote?) => {
         if(!err){
-          serverDoc['_persisted'] = true;
-          this.emit('resync:'+Queue.makeKey(keyPath), serverDoc);
-          this.localStorage.put(keyPath, serverDoc, ()=>{});
+          docRemote['_persisted'] = true;
+          this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
+          this.localStorage.put(keyPath, docRemote, ()=>{});
         }
-        !doc && cb(err, serverDoc);
+        !doc && cb(err, docRemote);
       });
     });
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
-    this.localStorage.find(keyPath, query, options, cb);
-    
-    this.useRemote && 
-    this.remoteStorage.find(keyPath, query, options, (err?, result?) => {
-      if(!err){
-        this.emit('resync:'+Queue.makeKey(keyPath), result);
-        // TODO: We need to update the local cache with this data from the server
+    this.localStorage.find(keyPath, query, options, (err, result) => {
+      if(result){
+        cb(err, result);
       }
+      this.useRemote && 
+      this.remoteStorage.find(keyPath, query, options, (err?, resultRemote?) => {
+        if(!err){
+          this.emit('resync:'+Queue.makeKey(keyPath), resultRemote);
+          // TODO: We need to update the local cache with this data from the server
+        }
+        !result && cb(err, resultRemote);
+      });
     });
   }
     
