@@ -4,105 +4,126 @@
   <meta charset="utf-8">
   <title>Chat Example</title>
   <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="../socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
       packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
+        'ground': {
+          path: '../dist/',
+          main: 'gnd',
           lib: ''
         },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
+      },
+      paths : {
+        jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+        underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
       }
     };
   </script>
-  
   <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+
   <script>
+    curl(['jquery', 'underscore'], function($,_){
+      curl(['ground'], function(gnd) {
 
-    curl(['ginger', 'ginger/route'], function(ginger, route) {
-
-      route(function(req) {
+        Gnd.Route.listen(function(req) {
           // Route to room
-          req.get(':roomid', function() {
-            console.log(req.params['roomid']);
-            
-            enterRoom(req.params['roomid']);
+          req.get('', 'body', function() {
+            req.get(':roomid', function() {
+              enterRoom(req.params['roomid']);
+            });
           });
-      });
+        });
 
-      function enterRoom(roomId) {
+        function enterRoom(roomId) {
+          // Connect to backend
+          var socket = io.connect();
 
-        // Connect to backend
-        var socket = io.connect('http://localhost:8080');
-        socket.on('connect', function() {
-          // Declare models
-          var Message = ginger.Declare(ginger.Model),
-              Chat = ginger.Declare(ginger.Model);
+          socket.on('connect', function() {
+            var storageLocal  = new Gnd.Storage.Local();
+            var storageSocket = new Gnd.Storage.Socket(socket);
 
-          console.log('connected')
+            var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
+            var syncManager = new Gnd.Sync.Manager(socket);
 
-          // Setup models
-          ginger.Model.set('socket', socket);
-          Message.bucket('messages');
-          Message.use('socket');
-          Chat.bucket('Chat');
+            Gnd.Model.storageQueue = storageQueue;
+            Gnd.Model.syncManager = syncManager;
 
-          // Find the Chat room
-          Chat.findById(roomId, function(err, chat) {
-            chat.keepSynced();
+            var Message = Gnd.Model.extend('messages'),
+            Chat = Gnd.Model.extend('Chat');
 
-            // Get the messages
-            chat.all(Message, function(err, messages){
-              messages.keepSynced();
-             
-              // Create a table for the chat messages an bind it to the model
-              var history = new ginger.Views.Table(messages, {
-                fields:['text'],
-                css:{width:'600px'},
-              });
-              history.render($('#history'));
-              
-              $('#submit').click(function() {
-                var msg = new Message({text : $('#msgbox').val()}); 
-                messages.add(
-                  msg,
-                  function(err){
-                    console.log(err); 
+            // Find the Chat room
+            Chat.findById(roomId, function(err, chat) {
+              chat.keepSynced();
+
+              // Get the messages
+              chat.all(Message, function(err, messages){
+                messages.keepSynced();
+
+                // Create a message instance for the ViewModel
+                var currentMsg = new Message({text: ''});
+
+                function sendMessage() { 
+                  var newMsg = new Message({text : currentMsg.get('text')}); 
+                  messages.add(
+                    newMsg,
+                    function(err){
+                      if(err) console.log(err); 
+                    }
+                  );
+
+                  // Clear current message text
+                  currentMsg.set('text', '');
+
+                  // Set focus to inputbox
+                  Gnd.Util.nextTick(function() {
+                    document.getElementById('msgbox').focus();
+                  });
+                };
+
+                // Create event handlers
+                chat.onSubmit = sendMessage;
+                chat.onKeyPress = function(el, ev) {
+                  if(ev.which === 13) {
+                    el.blur(); // to make sure that the ViewModel is updated
+                    sendMessage();
+                    console.log('key');
+                  }
+                }
+
+                // Create a ViewModel and bind it to the dom
+                var viewModel = new Gnd.ViewModel(
+                  document.getElementById('chatroom'),
+                  {
+                    messages: messages,
+                    currentMsg: currentMsg,
+                    chat: chat
                   }
                 );
-              }); 
-
-              $('#msgbox').keypress(function(e) {
-                if(e.which == 13) {
-                  jQuery('#submit').focus().click();
-                }
               });
-            });
-          }); 
-        });
-      };
+            }); 
+          });
+        };
+      });
     });
   </script>
 </head>
 <body>
   <div id="chatroom">
-    <div id="history"></div>
-    <input id="msgbox" type="text"></input>
-    <input id="submit" type="submit"></input>
+    <table id="history" class="table table-condensed">
+      <thead>
+        <tr>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-each="messages : message">
+          <td><span data-bind="text: message.text"></span></td>
+        </tr>
+      </tbody>
+    </table>
+    <input id="msgbox" type="text" data-bind="value: currentMsg.text"  data-event="keypress: chat.onKeyPress"></input>
+    <input id="submit" type="submit" data-event="click: chat.onSubmit"></input>
   </div>
 </body>
 </html>

@@ -4,28 +4,19 @@
   <meta charset="utf-8">
   <title>Chat Example</title>
   <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="../socket.io/socket.io.js"></script>
   <script type="text/javascript">
     curl = {
-      baseUrl: 'http://localhost:8080/routing/',
       packages: {
-        'ginger': {
-          path: 'http://localhost:8080/',
-          main: 'ginger',
+        'ground': {
+          path: '../dist/',
+          main: 'gnd',
           lib: ''
         },
-        'jquery': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-          main: 'jquery.min'
-        },
-        'jqueryui': {
-          path: 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/',
-          main: 'jquery-ui.min'
-        },
-        'underscore':{
-          path:'https://raw.github.com/amdjs/underscore/master/',
-          main:'underscore-min'
-        },
+      },
+      paths : {
+        jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+        underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
       }
     };
   </script>
@@ -33,37 +24,48 @@
   <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
   <script>
 
-    curl(['ginger'], function(ginger){
-      var socket = io.connect('http://localhost:8080');
-      socket.on('connect', function(){
-        
-        ginger.Model.set('socket', socket);
+    localStorage.clear();
+    curl(['jquery', 'underscore'], function($,_){
+      curl(['ground'], function(gnd){
+        var socket = io.connect();
+        socket.once('connect', function(){
+          var storageLocal  = new Gnd.Storage.Local();
+          var storageSocket = new Gnd.Storage.Socket(socket);
 
-//        var Message = ginger.Declare(ginger.Model);
-//        Message.bucket('messages');
-//        Message.use('socket');
+          var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
 
-        var Chat = ginger.Declare(ginger.Model);
-        Chat.bucket('Chat');
+          var syncManager = new Gnd.Sync.Manager(socket);
 
-        $('#submit').click(function() {
-          chat = new Chat();
-          chat.keepSynced();
-          
-          chat.save(function(err){
-            var url = 'http://localhost:8080/chat/room.html#/' + chat._id;
+          Gnd.Model.storageQueue = storageQueue;
+          Gnd.Model.syncManager = syncManager;
 
-            console.log(err);
+          var Chat = Gnd.Model.extend('Chat');
 
-            $('#link').append('<li><a href="' + url + '" target="_blank">' + url + '</a></li>');
+          storageQueue.init(function(){
+            var chat = new Chat();
+            chat.keepSynced();
+          })
+          $('#submit').click(function() {
+            chat = new Chat();
+            chat.keepSynced();
+
+            chat.save(function(err){
+              storageQueue.once('created:'+chat.id(), function(sid){
+                // get an absolute url to the room
+                var url = window.location.protocol + '//' +
+                  window.location.host + '/chat/room.html#/' + chat.id();
+
+                $('#link').append('<li><a href="' + url + '" target="_blank">' + url + '</a></li>');
+              });
+            });
           });
-        });
-      }); 
+        }); 
+      });
     });
   </script>
 </head>
 <body>
-  <input id="submit" type="submit" value="Create new Room"></input>
+  <input id="submit" type="submit" value="Create new Chat Room"></input>
   <ul id="link"></ul>
 </body>
 </html>
