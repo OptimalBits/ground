@@ -16,7 +16,7 @@ var express = require('express'),
 app.use(express.static(staticDir));
 app.use(express.static(__dirname));
 
-// mongoose Schemas
+// Setup a mongo DB. This is used by the chat example
 var Message = new Schema({
   text : {type: String}
 });
@@ -28,7 +28,7 @@ var Chat = new Schema({
 Chat.statics.add = function(id, setName, itemIds, cb){
   var update = {$addToSet: {}};
   update.$addToSet[setName] = {$each:itemIds};
-  this.update({id:id}, update, cb);
+  this.update({_id:id}, update, cb);
 };
 
 var models = {
