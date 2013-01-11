@@ -49,6 +49,7 @@ export class Queue extends Base
   
     this.localStorage = local;
     this.remoteStorage = remote;
+    this.queue = [];
     
     this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
