@@ -94,14 +94,38 @@ export class Queue extends Base
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
-    this.localStorage.find(keyPath, query, options, cb);
-    
-    this.useRemote && 
-    this.remoteStorage.find(keyPath, query, options, (err?, result?) => {
-      if(!err){
-        this.emit('resync:'+Queue.makeKey(keyPath), result);
-        // TODO: We need to update the local cache with this data from the server
+    this.localStorage.find(keyPath, query, options, (err?, result?) => {
+      if(result && result.length > 0){
+        cb(err, result);
       }
+    
+      this.useRemote && 
+      this.remoteStorage.find(keyPath, query, options, (err?, serverResult?) => {
+        function noop() {};
+        var itemKeyPath = [_.last(keyPath)];
+        var keys = [];
+        
+        if(!err){
+          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
+          // TODO: We need to update the local cache with this data from the server
+
+          // Add the elements in the collection to local cache
+          for(var i=0; i<serverResult.length; i++) {
+            var doc = serverResult[i];
+            var id = doc._id;
+            doc._cid = id;
+            doc._persisted = true;
+            // var elemKeyPath = itemKeyPath.concat(id);
+            // this.localStorage.put(elemKeyPath, doc, noop);
+            this.localStorage.create(itemKeyPath, doc, noop);
+            keys.push(id);
+          }
+
+          // Add the collection keys to the keyPath
+          this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
+        }
+        if(!result || result.length === 0) cb(err, serverResult);
+      });
     });
   }
     
@@ -189,13 +213,14 @@ export class Queue extends Base
           case 'create':
             (function(cid, args){
               remoteStorage.create(keyPath, args, function(err?, sid?){
+                var localKeyPath = keyPath.concat(cid);
                 if(err){
                   done(err);
                 }else{
-                  localStorage.put(keyPath, {_persisted:true, _id: sid}, (err?: Error) => {
-                    var newKeyPath = _.initial(keyPath);
+                  localStorage.put(localKeyPath, {_persisted:true, _id: sid}, (err?: Error) => {
+                    var newKeyPath = _.initial(localKeyPath);
                     newKeyPath.push(sid);
-                      localStorage.link(newKeyPath, keyPath, (err?: Error) => {
+                      localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
                       this.updateQueueIds(cid, sid); // needed?
                       this.emit('created:'+cid, sid);
                       done();
