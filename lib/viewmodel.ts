@@ -184,7 +184,7 @@ class TwoWayBinder implements Binder
         }
         obj.retain();
         obj.on(keypath, modelListener);
-        addEventListener(el, 'change', elemListener);
+        $$on(el, 'change', elemListener);
         
         this.bindings.push([obj, keypath, modelListener, elemListener]);
       }else{
@@ -197,7 +197,7 @@ class TwoWayBinder implements Binder
     _.each(this.bindings, (item) => {
       item[0].off(item[1], item[2]);
       item[0].release();
-      item[3] && removeEventListener(this.el, 'change', item[3]);
+      item[3] && $$off(this.el, 'change', item[3]);
     });
   }
 }
@@ -359,24 +359,23 @@ class ShowBinder implements Binder
       _value = value.replace('!', ''),
       negate = _value === value ? false : true,
       keypath = makeKeypathArray(_value),
-      model = viewModel.resolveContext(_.initial(keypath)),
-      display = el['style'].display;
-    
-    function setVisibility(visible: bool){
-      if(negate ? !visible : visible){
-        el['style'].display = display;
-      }else{
-        el['style'].display = "none";
-      }
-    }
+      model = viewModel.resolveContext(_.initial(keypath));
       
     if(model instanceof Base){
       model.retain();
       
+      function setVisibility(visible: bool){
+        if(negate ? !visible : visible){
+          show(el);
+        }else{
+          hide(el);
+        }
+      }
+      
       var key = 
         _.rest(keypath).join('.'),
-        modelListener = (value) => {
-          setVisibility(value);
+        modelListener = (visible) => {
+          setVisibility(visible);
         };
       
       setVisibility(model.get(key));
@@ -532,7 +531,7 @@ class EventBinder implements Binder
             handler.call(obj, el, evt);
           }
           
-          addEventListener(el, eventName, elementListener);
+          $$on(el, eventName, elementListener);
           
           this.bindings.push([obj, eventName, elementListener]);
         }else{
@@ -551,7 +550,7 @@ class EventBinder implements Binder
   unbind(){
     _.each(this.bindings, (item) => {
       item[0].release();
-      removeEventListener(this.el, item[1], item[2]);
+      $$off(this.el, item[1], item[2]);
     });
   }
 }

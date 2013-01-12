@@ -1,19 +1,5 @@
 define(['gnd'], function(Gnd){
   
-  function fireEvent(element, event){
-    if (document.createEventObject){
-      // dispatch for IE
-      var evt = document.createEventObject();
-      return element.fireEvent('on'+event,evt)
-    }else{
-      // dispatch for firefox + others
-      var evt = document.createEvent("HTMLEvents");
-      evt.initEvent(event, true, true ); // event type,bubbling,cancelable
-      return !element.dispatchEvent(evt);
-    }
-  }
-  
-
 describe('ViewModel', function(){
   var Animal = Gnd.Model.extend('animals');
   var Zoo = Gnd.Model.extend('zoo');
@@ -128,12 +114,12 @@ describe('ViewModel', function(){
       
       el.checked = true;
       el.setAttribute('checked', 'true');
-      fireEvent(el, 'change');
+      Gnd.fireEvent(el, 'change');
       expect(tiger.selected).to.be(true);
       
       el.checked = false;
       el.setAttribute('checked', 'false');
-      fireEvent(el, 'change');
+      Gnd.fireEvent(el, 'change');
       expect(tiger.selected).to.be(false);
       
       // Text input
@@ -150,7 +136,7 @@ describe('ViewModel', function(){
       
       el.value = 'quxbaz';
       el.setAttribute('value', 'quxbaz');
-      fireEvent(el, 'change');
+      Gnd.fireEvent(el, 'change');
       expect(tiger.description).to.be('quxbaz');
     });
     
@@ -299,7 +285,7 @@ describe('ViewModel', function(){
       obj.handleClick = function(node, evt){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
-        fireEvent(el, 'change');
+        Gnd.fireEvent(el, 'change');
       }
       
       obj.handleChange = function(node, evt){
@@ -311,7 +297,7 @@ describe('ViewModel', function(){
       
       var vm = new Gnd.ViewModel(el, {obj: obj});
       
-      fireEvent(el, 'click');
+      Gnd.fireEvent(el, 'click');
     });
   });
   describe('data-each', function(){

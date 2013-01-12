@@ -12,15 +12,17 @@
 /// <reference path="base.ts" />
 /// <reference path="task.ts" />
 /// <reference path="overload.ts" />
-/// <reference path="../third/jquery.d.ts" />
+/// <reference path="dom.ts" />
+
+/// <reference path="../third/underscore.browser.d.ts" />
 
 declare var curl;
 
 module Gnd.Route {
 
 interface Node {
-  $el: JQuery;
-  selector: JQuery;
+  el: Element;
+  selector: string;
   select: Gnd.Task;
   enter: Gnd.Task;
   hide: Gnd.Task;
@@ -117,11 +119,9 @@ export function redirect(url) {
   // but if we just cancel the previous execution this tree may not be there...
   location.hash = url;
   if ('onhashchange' in window) {
-    $(window).trigger('onhashchange');
+    fireEvent(window, 'onhashchange');
   }
 }
-
-
 
 /**
   Parses A query string and returns an object with key, value pairs.
@@ -212,30 +212,6 @@ var wrap = overload({
   }
 })
 
-/*
-function wrap(fn: (done: ()=>void)=>void, cb?: (done?: TM.TaskCallback)=>void): TM.Task;
-function wrap(fn: (done: ()=>void)=>void, args?: any[], cb?: (done?: TM.TaskCallback)=>void): TM.Task {
-  if(_.isFunction(args)){
-    cb = <(done?: TM.TaskCallback)=>void> args;
-    args = [];
-  }
-  cb = _.isFunction(cb) ? cb : Util.noop;
-  
-  return function(done?: TM.TaskCallback): void{    
-    (function(args){
-      args = args || [];
-      args.push(function(){
-        cb(done);
-        if(cb.length === 0){
-          done();
-        }
-      });
-      fn.apply(null, args);
-    })(_.clone(args));
-  }
-}
-*/
-
 //
 // Decompose URL into components and query object.
 //
@@ -295,7 +271,7 @@ function processMiddlewares(req, middlewares, cb){
 function exitNodes(queue, nodes, start){
   for(var i=nodes.length-1;i>=start;i--){
     var node = nodes[i];
-    node.$el || queue.append(node.select);
+    node.el || queue.append(node.select);
     queue.append(node.exit || node.hide, node.drain, node.leave);
   }
 }
@@ -313,7 +289,7 @@ function enqueueNode(queue: Gnd.TaskQueue, node: Node): void {
 class Request {
   
   private wantsRedirect: bool;
-  private $el: JQuery; // This may be obsolete...
+  private el: HTMLElement;
   private notFoundFn;
   private isNotFound: bool;
   private template: (tmpl: string, args:{}) => void;
@@ -394,23 +370,23 @@ class Request {
   }
   
   // TODO: Generate error if selector returns empty set or more than one DOM node!
-  private initNode(selector, node : Node){
+  private initNode(selector: string, node : Node){
     var self = this;
   
     (function(node: Node){
       node.select = wrap(function(done):void{
-        node.$el = self.$el = $(selector);
+        node.el = self.el = $$(selector);
         done();
       });
       node.selector = selector;
    
       node.hide = wrap(function(done):void{
-        node.$el.hide();
+        node.el && hide(node.el);
         done();
       });
    
       node.show = wrap(function(done):void{
-        node.$el.show();
+        node.el && show(node.el);
         done();
       });
      
@@ -520,9 +496,9 @@ class Request {
   public nextComponent(){
     return this.components[this.index];
   }
-
+  
   public redirect(url, params){
-    url = params ? url+'?'+$.param(params) : url;
+    url = params ? url+'?'+serialize(params) : url;
     this.queue.wait(function(){
       redirect(url);
     })
@@ -646,22 +622,28 @@ class Request {
         args = {};
       }
       var html = self.template ? self.template(templ, args) : templ;
-      self.$el.html(html);
-      waitForImages(self.$el, cb);
+      self.el.innerHTML = html;
+      waitForImages(self.el, cb);
     }
   
-    function waitForImages($el, cb) {
-      var $imgs = $('img', $el),
-            len = $imgs.length,
+    function waitForImages(el, cb) {
+      var images = $$$('img', el),
+            len = images.length,
         counter = 0;
 
-      if(len>0){
-        $imgs.one('load', function(){
-          counter++;
-          if(counter===len){
-            cb();
-          }
-        });
+      if(len>0){        
+        for(var i=0; i<len; i++){
+          (function(el){
+            var loadEvent = function(evt){
+              $$off(el, 'load', loadEvent);
+              counter++;
+              if(counter===len){
+                cb();
+              }
+            }
+            $$on(el, 'load', loadEvent);
+          })(images[0]);
+        }
       }else{
         cb();
       }

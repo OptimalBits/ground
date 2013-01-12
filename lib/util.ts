@@ -9,7 +9,6 @@
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
-/// <reference path="../third/jquery.d.ts" />
 
 
 module Gnd.Util {
@@ -203,45 +202,6 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
   _.extend(d.prototype, methods);
   
   return d;
-}
-
-//------------------------------------------------------------------------------
-//
-// Ajax (DEPRECATED)
-// 
-//------------------------------------------------------------------------------
-
-var ajaxBase = function(method, url, obj, cb){
-  cb = _.isFunction(obj) ? obj : cb;
-  obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
-  return {
-    type:method,
-    url:url,
-    data:obj,
-    contentType:'application/json',
-    dataType:'json',
-    success:function(data, textStatus, jqXHR){
-      cb(null, data)
-    },
-    error:function(jqXHR, status, errorThrown){
-      cb(jqXHR)
-    }
-  }
-}
-
-export var ajax = {
-  get:function(url, obj, cb){
-    return $.ajax(ajaxBase('GET', url, obj, cb))
-  },
-  put:function(url, obj, cb){
-    return $.ajax(ajaxBase('PUT', url, obj, cb));
-  },
-  post:function(url, obj, cb){
-    return $.ajax(ajaxBase('POST', url, obj, cb));
-  },
-  del:function(url, obj, cb){
-    return $.ajax(ajaxBase('DELETE', url, obj, cb));
-  }
 }
 
 /**

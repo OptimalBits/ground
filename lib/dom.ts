@@ -10,7 +10,9 @@
   https://github.com/honza/140medley
 */
 
-module Gnd {
+module Gnd
+{
+  
 /*
  * DOM selector
  *
@@ -21,14 +23,21 @@ module Gnd {
  *
  * http://jsperf.com/simple-jquery-selector-vs-140medley/2
  */
-export function $$(selector: string, context?: Element): Element
+
+export function $$(selector: string, context?: Element): HTMLElement
 {
   var el = context || document;
   switch(selector[0]){
     case '#': return el.getElementById(selector.slice(1));
     case '.': return el.getElementsByClassName(selector.slice(1));
   }
-  return el.getElementsByTagName(selector);
+  return el.getElementsByTagName(selector)[0];
+}
+
+export function $$$(tagName: string, context?: Element): NodeList
+{
+  var el = context || document;
+  return el.getElementsByTagName(tagName);
 }
 
 export function isElement(object) {
@@ -66,7 +75,8 @@ export function makeElement(html: string): DocumentFragment
 /**
   DOM Events
 */
-export function addEventListener(el: Element, eventName: string, handler: (evt) => void){
+
+export function $$on(el: Element, eventName: string, handler: (evt) => void){
   if(el.addEventListener){
     // W3C DOM
     el.addEventListener(eventName, handler);
@@ -76,7 +86,7 @@ export function addEventListener(el: Element, eventName: string, handler: (evt) 
   }
 }
 
-export function removeEventListener(el: Element, eventName: string, handler: (evt) => void){
+export function $$off(el: Element, eventName: string, handler: (evt) => void){
   if(el.removeEventListener){
     // W3C DOM
     el.removeEventListener(eventName, handler);
@@ -85,6 +95,20 @@ export function removeEventListener(el: Element, eventName: string, handler: (ev
     el['detachEvent']("on"+eventName, handler);
   }
 }
+
+export function fireEvent(element, event){
+  if (document.createEventObject){
+    // dispatch for IE
+    var evt = document.createEventObject();
+    return element.fireEvent('on'+event,evt)
+  }else{
+    // dispatch for firefox + others
+    var msEvent = document.createEvent("HTMLEvents");
+    msEvent.initEvent(event, true, true ); // event type,bubbling,cancelable
+    return !element.dispatchEvent(msEvent);
+  }
+}
+  
 
 /**
   DOM Attributes.
@@ -115,5 +139,108 @@ export function getAttr(el: Element, attr){
     }
   }
 }
+
+/**
+  Show / Hide
+  
+*/
+
+export function show(el: Element)
+{
+  el['style'].display = getAttr(el, 'data-display') || 'block';
+}
+
+export function hide(el: Element)
+{
+  setAttr(el, 'data-display', el['style'].display);
+  el['style'].display = "none";
+  
+}
+
+//
+// Serialize object to be used as query string.
+// Ref: http://stackoverflow.com/questions/1714786/querystring-encoding-of-a-javascript-object
+//
+export function serialize(obj) {
+  var str = [];
+  for(var p in obj)
+     str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+  return str.join("&");
+}
+
+//------------------------------------------------------------------------------
+//
+// Ajax
+// 
+//------------------------------------------------------------------------------
+
+module Gnd.Ajax
+{ 
+  export interface AjaxCallback
+  {
+    (err?: Error, doc?:{}): void;
+  }
+  
+  export function get(url: string, obj: {}, cb: AjaxCallback)
+  {
+    base('GET', url, obj, cb);
+  }
+  export function put(url: string, obj: {}, cb: AjaxCallback)
+  {
+    base('PUT', url, obj, cb);
+  }
+  export function post(url: string, obj: {}, cb: AjaxCallback)
+  {
+    base('POST', url, obj, cb);
+  }
+  export function del(url: string, obj: {}, cb: AjaxCallback)
+  {
+    base('DEL', url, obj, cb);
+  }
+  
+  /*
+   * Get cross browser xhr object
+   *
+   *
+   *            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+   *                    Version 2, December 2004
+   *
+   * Copyright (C) 2011 Jed Schmidt <http://jed.is>
+   * More: https://gist.github.com/993585
+   *
+  */
+  function getXhr(): XMLHttpRequest
+  {
+    for(var i=0; i<4; i++){
+      try{        
+        return i ? 
+          new ActiveXObject([, "Msxml2", "Msxml3", "Microsoft"][i] + ".XMLHTTP")               
+          : new XMLHttpRequest;
+      }
+      catch(e){
+          // ignore when it fails.
+      }
+    }
+  }
+  
+  function base(method: string, url: string, obj: {}, cb: AjaxCallback)
+  {
+    var xhr = getXhr();
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          cb(null, JSON.stringify(xhr.responseText || {}));
+        } else {
+          cb(new Error("Ajax Error: "+xhr.responseText));
+        }
+      } else {
+          // still not ready
+      }
+    }
+    
+    xhr.open('GET', url);
+    xhr.send(JSON.stringify(obj));
+  }
+} // Ajax
 
 } // Gnd
