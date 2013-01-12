@@ -85,7 +85,13 @@ export class Queue extends Base
         if(!err){
           serverDoc['_persisted'] = true;
           this.emit('resync:'+Queue.makeKey(keyPath), serverDoc);
-          this.localStorage.put(keyPath, serverDoc, ()=>{});
+          this.localStorage.put(keyPath, serverDoc, (err?) => {
+            if(err) { //not in local cache
+              var collectionKeyPath = _.initial(keyPath);
+              serverDoc['_cid'] = serverDoc['_id'];
+              this.localStorage.create(collectionKeyPath, serverDoc, ()=>{});
+            }
+          });
         }
         !doc && cb(err, serverDoc);
       });
@@ -113,12 +119,15 @@ export class Queue extends Base
           for(var i=0; i<serverResult.length; i++) {
             var doc = serverResult[i];
             var id = doc._id;
-            doc._cid = id;
             doc._persisted = true;
-            // var elemKeyPath = itemKeyPath.concat(id);
-            // this.localStorage.put(elemKeyPath, doc, noop);
-            this.localStorage.create(itemKeyPath, doc, noop);
-            keys.push(id);
+            var elemKeyPath = itemKeyPath.concat(id);
+            this.localStorage.put(elemKeyPath, doc, (err?) => {
+              if(err) { //not in local cache
+                doc._cid = id;
+                this.localStorage.create(itemKeyPath, doc, noop);
+                keys.push(id);
+              }
+            });
           }
 
           // Add the collection keys to the keyPath
