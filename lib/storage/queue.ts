@@ -84,7 +84,6 @@ export class Queue extends Base
       this.remoteStorage.get(keyPath, (err?, serverDoc?) => {
         if(!err){
           serverDoc['_persisted'] = true;
-          this.emit('resync:'+Queue.makeKey(keyPath), serverDoc);
           this.localStorage.put(keyPath, serverDoc, (err?) => {
             if(err) { //not in local cache
               var collectionKeyPath = _.initial(keyPath);
@@ -92,6 +91,7 @@ export class Queue extends Base
               this.localStorage.create(collectionKeyPath, serverDoc, ()=>{});
             }
           });
+          this.emit('resync:'+Queue.makeKey(keyPath), serverDoc);
         }
         !doc && cb(err, serverDoc);
       });
@@ -112,9 +112,6 @@ export class Queue extends Base
         var keys = [];
         
         if(!err){
-          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
-          // TODO: We need to update the local cache with this data from the server
-
           // Add the elements in the collection to local cache
           for(var i=0; i<serverResult.length; i++) {
             var doc = serverResult[i];
@@ -129,9 +126,10 @@ export class Queue extends Base
               }
             });
           }
-
           // Add the collection keys to the keyPath
           this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
+
+          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
         }
         if(!result || result.length === 0) cb(err, serverResult);
       });
