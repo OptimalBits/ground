@@ -46,8 +46,7 @@ export class Local implements IStorage {
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
-    keyPath.push(doc._cid);
-    _put(makeKey(keyPath), doc);
+    _put(makeKey(keyPath.concat(doc._cid)), doc);
     cb(null, doc._cid);
   }
   

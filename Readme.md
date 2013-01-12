@@ -39,7 +39,7 @@ Ground depends on the following external libraries: Curl, jQuery, Socket.io and 
 provided some optional views that depend on jQuery UI.
 
 Ground itself is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
-not work without a module loader. While it should work with any AMD compatible loader, although we recomend Curl since it
+not work without a module loader. While it should work with any AMD compatible loader, although we recommend Curl since it
 is already a required dependency.
 
 ##Install
@@ -201,7 +201,7 @@ Ground uses a reference counting based mechanism to avoid memory and event leaks
 mechanism requires the user to manually call *release*. Usually, when entering a new
 route, several objects are created and it can be difficult to keep track when to release
 them. For this reason the route system provides autorelease pools where you can put all 
-the created objects and the the pools will be released automatically when leaving the
+the created objects and the pools will be released automatically when leaving the
 route.
 
 Example:
@@ -255,7 +255,7 @@ Lets give some examples:
     var myHouse = new House(3, 'white');
 
 If your objects are always inheriting from some object from the gnd.Base hierarchy, you 
-can use the simplifed method *extend*:
+can use the simplified method *extend*:
 
     // Create a simple object
     var Animal = gnd.Base.extend();
@@ -423,7 +423,7 @@ Collections *retains* all the items that are part of it. So if we for example ad
 (and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed 
 from it later or if the collection is destroyed.
 
-Oftem times a collection is a *subcollection*, i.e., it is a collection part of some other model. For example:
+Often times a collection is a *subcollection*, i.e., it is a collection part of some other model. For example:
 
     // find a zoo
     Zoo.findById(zooId, function(err, parisZoo){
@@ -460,7 +460,7 @@ counter, its called retain because it expresses that the object that called it "
 It is equivalent to sharing the ownership of the retained object. It also means that the object that called
 *retain* is now responsible of calling *release* when it is not needed anymore.
  
-Everytime *release* is called, the reference counter is decremented, and when it reaches zero, the object is
+Every time *release* is called, the reference counter is decremented, and when it reaches zero, the object is
 destroyed by calling the method *destroy*, which is also part of the Base class, although it is quite often
 overrided to perform customized clean ups for your classes.
 
@@ -603,12 +603,12 @@ Instead of leaving the DOM manipulation to a heavy weight library such as jQuery
 #Server
 
 Ground provides a server component for [Node](http://nodejs.org) that is necessary for some of the functionality
-provided by models, such as automatic synchonization. 
+provided by models, such as automatic synchronization. 
 
 The server can be spawned multiple times in the same machine or in a cluster of machines in order to provide 
 scalability, but you will still need a load balancer in front of the nodes. The communication between nodes is
-achieved using the excelent pub/sub functionality in [Redis](http://redis.io), so this is a required component
-as wel.
+achieved using the excellent pub/sub functionality in [Redis](http://redis.io), so this is a required component
+as well.
 
 The server is designed to work with [Mongoose](http://mongoosejs.com) as database ORM. 
 
