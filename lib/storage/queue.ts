@@ -84,8 +84,14 @@ export class Queue extends Base
       this.remoteStorage.get(keyPath, (err?, docRemote?) => {
         if(!err){
           docRemote['_persisted'] = true;
+          this.localStorage.put(keyPath, docRemote, (err?) => {
+            if(err) { //not in local cache
+              var collectionKeyPath = _.initial(keyPath);
+              docRemote['_cid'] = docRemote['_id'];
+              this.localStorage.create(collectionKeyPath, docRemote, ()=>{});
+            }
+          });
           this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
-          this.localStorage.put(keyPath, docRemote, ()=>{});
         }
         !doc && cb(err, docRemote);
       });
@@ -100,31 +106,32 @@ export class Queue extends Base
       }
     
       this.useRemote && 
-      this.remoteStorage.find(keyPath, query, options, (err?, serverResult?) => {
+      this.remoteStorage.find(keyPath, query, options, (err?, resultRemote?) => {
         function noop() {};
         var itemKeyPath = [_.last(keyPath)];
         var keys = [];
         
         if(!err){
-          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
-          // TODO: We need to update the local cache with this data from the server
-
           // Add the elements in the collection to local cache
-          for(var i=0; i<serverResult.length; i++) {
-            var doc = serverResult[i];
+          for(var i=0; i<resultRemote.length; i++) {
+            var doc = resultRemote[i];
             var id = doc._id;
-            doc._cid = id;
             doc._persisted = true;
-            // var elemKeyPath = itemKeyPath.concat(id);
-            // this.localStorage.put(elemKeyPath, doc, noop);
-            this.localStorage.create(itemKeyPath, doc, noop);
-            keys.push(id);
+            var elemKeyPath = itemKeyPath.concat(id);
+            this.localStorage.put(elemKeyPath, doc, (err?) => {
+              if(err) { //not in local cache
+                doc._cid = id;
+                this.localStorage.create(itemKeyPath, doc, noop);
+                keys.push(id);
+              }
+            });
           }
-
           // Add the collection keys to the keyPath
           this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
+
+          this.emit('resync:'+Queue.makeKey(keyPath), resultRemote);
         }
-        if(!result || result.length === 0) cb(err, serverResult);
+        if(!result || result.length === 0) cb(err, resultRemote);
       });
     });
   }

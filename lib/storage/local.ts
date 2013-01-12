@@ -53,6 +53,7 @@ export class Local implements IStorage {
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
     this.get(keyPath, (err: Error, oldDoc?: any): void => {
       if(oldDoc){
+        keyPath = _.initial(keyPath).concat(oldDoc._cid); //Adapt keyPath to link target
         _.extend(oldDoc, doc);
         _put(makeKey(keyPath), oldDoc);
       }
