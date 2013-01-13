@@ -35,7 +35,7 @@ routing system or only relaying on socket.io for communication instead of AJAX.
 
 ##Dependencies
 
-Ground depends on the following external libraries: Curl, jQuery, Socket.io and Underscore or LoDash. There are also
+Ground depends on the following external libraries: Curl, Socket.io and Underscore or LoDash. There are also
 provided some optional views that depend on jQuery UI.
 
 Ground itself is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
