@@ -4,7 +4,7 @@
   This Object spawns a cache mechanism on top of the Local Storage.
   
   It acts as a middle layer between the local storage and the user.
-  Every key written includes a timestamp that is later used for 
+  Every value written includes a timestamp that is later used for 
   the LRU replacement policy.
   
   The API mimics local storage API so that it is as interchangeble
@@ -15,8 +15,8 @@
   Impl. Notes:
   The Cache keeps a map object for quick translation of given
   key to special key+timestamp in the local storage.
-  This cache is converted to an array and sorted when room
-  is needed. This conversion is a candidate for optimization.
+  Additionally an index is used to keep track of the order of the
+  elements in the cache
 */
 
 /// <reference path="base.ts" />
@@ -136,7 +136,7 @@ export class Cache extends Base {
     this.populate();
   }
   /**
-    Iterate thru the cached keys.
+    Iterate through the cached keys.
   */
   each(cb){
     var result;
@@ -149,11 +149,33 @@ export class Cache extends Base {
   getKeys(): string[]{
     return _.keys(this.map);
   }
+
+  private serialize(time, value): string {
+    return time + '|' + value;
+  }
+
+  private deserialize(str:string): {time:number; value:string;} {
+    var i;
+    if(_.isString(str)) {
+      i = str.indexOf('|'); // first occurrence
+      if(i > -1) {
+        return {
+          time: +str.slice(0,i),
+          value: str.slice(i+1)
+        };
+      }
+    }
+    return {
+      time: -1,
+      value: undefined
+    };
+  }
   
   getItem(key){
-    var old = this.map[key], value;
+    var old = this.map[key], tVal, value;
     if(old){
-      value = ls[this.key(key, old.time)];
+      tVal = this.deserialize(ls[key]);
+      value = tVal.value;
       value && this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
@@ -172,14 +194,9 @@ export class Cache extends Base {
     if(this.makeRoom(requested)){
       this.size += requested;
     
-      ls[this.key(key, time)] = value;
+      ls[key] = this.serialize(time, value);
 
       if(old){
-        // Avoid removing the set item
-        if(old.time !== time){ 
-          this.remove(key, old.time);
-        }
-
         idx = old.idx;
         this.index.touch(idx);
       }else{
@@ -187,7 +204,6 @@ export class Cache extends Base {
         idx = this.index.addKey(key);
       }
       this.map[key] = {
-        time: time,
         size: value.length,
         idx: idx
       };
@@ -197,7 +213,7 @@ export class Cache extends Base {
   removeItem(key){
     var item = this.map[key];
     if (item){
-      this.remove(key, item.time);
+      this.remove(key);
       this.size -= item.size;
       delete this.map[key];
       this.length--;
@@ -218,48 +234,40 @@ export class Cache extends Base {
     this.maxSize = size;
   }
   
-  private key(key, timestamp){
-    return key+'|'+timestamp;
-  }
-  
-  private remove(key, timestamp){
-    var key = this.key(key,timestamp);
+  private remove(key){
     delete ls[key];
   }
   
   private populate(){
     var that = this;
-    var i, len, key, s, k, size;
+    var i, len, key, s, k, tVal, size, list = [];
     this.size = 0;
     this.map = {};
     this.index = new Index();
     for (i=0, len=ls.length;i<len;i++){
       key = ls.key(i);
-      if (key.indexOf('|') != -1){
-        //TODO: length is the strlen here. check if ok
-        size = ls[key].length;
+      tVal = this.deserialize(ls[key]);
+      if(tVal.value) {
+        size = tVal.value.length;
+        list.push({
+          time: tVal.time,
+          key: key
+        });  
 
-        s = key.split('|');
-        // avoid possible duplicated keys due to previous error
-        k = s[0];
-        if(!this.map[k] || this.map[k].time < s[1]){
-          this.map[k] = {time : s[1], size : size}
-        }
+        this.map[key] = {
+          size: size
+        };
         this.size += size;
       }
     }
 
     // sort keys by timestamp (old->new)
-    var list = _.map(this.map, function(item, key) {
-      return {time:item.time, key:key}
-    });
     var sorted = _.sortBy(list, function(item){
       return item.time;
     });
     // add keys to index
     _.each(sorted, function(elem) {
       var idx = that.index.addKey(elem.key);
-      // TODO: better way in ts?
       that.map[elem.key].idx = idx;
     });
 
