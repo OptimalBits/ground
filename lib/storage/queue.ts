@@ -42,6 +42,11 @@ export class Queue extends Base
   private localStorage: IStorage;
   private remoteStorage: IStorage = null;
   private useRemote: bool;
+  
+  public static makeKey(keyPath: string[])
+  {
+    return keyPath.join(':');
+  }
 
   constructor(local: IStorage, remote?: IStorage)
   {
@@ -106,9 +111,6 @@ export class Queue extends Base
         var keys = [];
         
         if(!err){
-          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
-          // TODO: We need to update the local cache with this data from the server
-
           // Add the elements in the collection to local cache
           for(var i=0; i<serverResult.length; i++) {
             var doc = serverResult[i];
@@ -123,6 +125,8 @@ export class Queue extends Base
 
           // Add the collection keys to the keyPath
           this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
+          
+          this.emit('resync:'+Queue.makeKey(keyPath), serverResult);
         }
         if(!result || result.length === 0) cb(err, serverResult);
       });
@@ -143,7 +147,6 @@ export class Queue extends Base
   
   updateCmd(keyPath: string[], args:{}, cb)
   {
-    //OPTIMIZATION?: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
     this.localStorage.put(keyPath, args, (err?) => {
       if(!err){
         this.add({cmd:'update', keyPath: keyPath, args: args}, cb);
@@ -295,11 +298,6 @@ export class Queue extends Base
     });
     
     // TODO: Serialize after updating Ids
-  }
-  
-  private static makeKey(keyPath: string[])
-  {
-    return keyPath.join(':');
   }
 }
 
