@@ -7,7 +7,7 @@ describe('Local Cache', function(){
     'foo' : 'payload1',
     'bar' : 'payload2',
     'baz' : 'payload3',
-    'qux' : 'payload4',       
+    'qux' : 'payload4',
   };
 
   before(function() {
@@ -30,8 +30,8 @@ describe('Local Cache', function(){
     });
   });
   
-  describe('Add items', function(){  
-    it('One item', function(){ 
+  describe('Add items', function(){
+    it('One item', function(){
       var value1 = 'value1', key1 = 'key1';
       cache.setItem(key1, value1);
             
