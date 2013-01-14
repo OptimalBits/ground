@@ -4,68 +4,169 @@
   <meta charset="utf-8">
   <title>Chat Example</title>
   <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
-  <script src="../socket.io/socket.io.js"></script>
-  <script type="text/javascript">
-    curl = {
-      packages: {
-        'ground': {
-          path: '../dist/',
-          main: 'gnd',
-          lib: ''
-        },
+</head>
+<script src="../socket.io/socket.io.js"></script>
+<script type="text/javascript">
+  curl = {
+    packages: {
+      'ground': {
+        path: '../dist/',
+        main: 'gnd',
+        lib: ''
       },
-      paths : {
-        jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
-        underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
-      }
-    };
-  </script>
-  
-  <script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
-  <script>
+    },
+    paths : {
+      jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
+      underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+    }
+  };
+</script>
 
-    localStorage.clear();
-    curl(['jquery', 'underscore'], function($,_){
-      curl(['ground'], function(gnd){
-        var socket = io.connect();
-        socket.once('connect', function(){
-          var storageLocal  = new Gnd.Storage.Local();
-          var storageSocket = new Gnd.Storage.Socket(socket);
+<script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
 
-          var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
+<!-- Templates -->
+<script type="text/template" id="main-template">
+  <div id="main">
+    <input id="submit" type="submit" value="Create new Chat Room"></input>
+    <ul id="link"></ul>
+  </div>
+</script>
+<script type="text/template" id="chatroom-template">
+  <div id="chatroom">
+    <table id="history" class="table table-condensed">
+      <thead>
+        <tr>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-each="messages : message">
+          <td><span data-bind="text: message.text"></span></td>
+        </tr>
+      </tbody>
+    </table>
+    <input id="msgbox" type="text" data-bind="value: currentMsg.text"  data-event="keypress: chat.onKeyPress"></input>
+    <input id="submit" type="submit" data-event="click: chat.onSubmit"></input>
+  </div>
+</script>
 
-          var syncManager = new Gnd.Sync.Manager(socket);
+<script>
+  curl(['underscore'], function(_){
+    curl(['ground'], function(gnd){
 
-          Gnd.Model.storageQueue = storageQueue;
-          Gnd.Model.syncManager = syncManager;
+      // Setup
+      var socket = io.connect();
+      socket.once('connect', function(){
+        var storageLocal  = new Gnd.Storage.Local();
+        var storageSocket = new Gnd.Storage.Socket(socket);
+        var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
+        var syncManager = new Gnd.Sync.Manager(socket);
+        Gnd.Model.storageQueue = storageQueue;
+        Gnd.Model.syncManager = syncManager;
 
-          var Chat = Gnd.Model.extend('Chat');
+        var Chat = Gnd.Model.extend('Chat');
+        var Message = Gnd.Model.extend('messages');
 
-          storageQueue.init(function(){
-            var chat = new Chat();
-            chat.keepSynced();
-          })
-          $('#submit').click(function() {
+        // Routing
+        Gnd.Route.listen(function(req) {
+          req.get(function() {
+            req.get('main', 'body', function() {
+              renderTemplate('main-template');
+              enterMain();
+            });
+            req.get('room', 'body', function() {
+              renderTemplate('chatroom-template');
+              req.get(':roomid', '#chatroom', function() {
+                enterRoom(req.params['roomid']);
+              });
+            });
+          });
+        });
+
+        // Helper function to render templates
+        function renderTemplate(tmplName) {
+          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
+          Gnd.$$('body').innerHTML = template();
+        }
+
+        // Enter the main UI
+        function enterMain() {
+          Gnd.$$on(Gnd.$$('#submit'), 'click', function() {
             chat = new Chat();
             chat.keepSynced();
 
             chat.save(function(err){
+              // wait until the chat room was created on the server
               storageQueue.once('created:'+chat.id(), function(sid){
                 // get an absolute url to the room
                 var url = window.location.protocol + '//' +
-                  window.location.host + '/chat/room.html#/' + chat.id();
+                  window.location.host + '/chat/#/room/' + chat.id();
 
-                $('#link').append('<li><a href="' + url + '" target="_blank">' + url + '</a></li>');
+                Gnd.$$('#link').innerHTML += '<li><a href="' + url + '" target="_blank">' + url + '</a></li>';
               });
             });
           });
-        }); 
-      });
+        }
+
+        // Enter the chat room
+        function enterRoom(roomId) {
+          // Find the Chat room
+          Chat.findById(roomId, function(err, chat) {
+            chat.keepSynced();
+
+            // Get the messages
+            chat.all(Message, function(err, messages){
+              messages.keepSynced();
+
+              // Create a message instance for the ViewModel
+              var currentMsg = new Message({text: ''});
+
+              function sendMessage() { 
+                var newMsg = new Message({text : currentMsg.get('text')}); 
+                messages.add(
+                  newMsg,
+                  function(err){
+                    if(err) console.log(err); 
+                  }
+                );
+
+                // Clear current message text
+                currentMsg.set('text', '');
+
+                // Set focus to inputbox
+                Gnd.Util.nextTick(function() {
+                  Gnd.$$('#msgbox').focus();
+                });
+              };
+
+              // Create event handlers
+              chat.onSubmit = sendMessage;
+              chat.onKeyPress = function(el, ev) {
+                if(ev.which === 13) {
+                  el.blur(); // to make sure that the ViewModel is updated
+                  sendMessage();
+                }
+              }
+
+              // Create a ViewModel and bind it to the dom
+              var viewModel = new Gnd.ViewModel(
+                Gnd.$$('#chatroom'),
+                {
+                  messages: messages,
+                  currentMsg: currentMsg,
+                  chat: chat
+                }
+              );
+            });
+          }); 
+        }
+      }); 
     });
-  </script>
+  });
+</script>
+  
+
 </head>
-<body>
-  <input id="submit" type="submit" value="Create new Chat Room"></input>
-  <ul id="link"></ul>
-</body>
+  <body>
+  </body>
 </html>
