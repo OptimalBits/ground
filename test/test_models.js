@@ -162,17 +162,22 @@ describe('Model', function(){
   });
   */
   describe('Offline', function(){
-    var animal = new Animal({tail:true});
+    var animal;
     
-    before(function(done){
+    before(function(){
       socket.on('connect', storageQueue.syncFn);
-      animal.save();
-      animal.keepSynced();
+    });
+    
+    beforeEach(function(done){
+      storageQueue.clear();
       storageQueue.once('synced:', function(){
         done();
       });
+      animal = new Animal({tail:true});
+      animal.save();
+      animal.keepSynced();
     });
-  
+      
     //
     // Simulate a disconnect in the middle of an emit.
     //
@@ -200,7 +205,10 @@ describe('Model', function(){
           expect(doc.legs).to.be(3);
           socket.emit = orgEmit;
           socket.socket.connect(function(){
-            done();  
+            storageQueue.once('synced:', function(){
+              expect(storageQueue.isEmpty()).to.be(true);
+              done();
+            });
           });
         });
       });
@@ -221,6 +229,7 @@ describe('Model', function(){
           expect(tempAnimal2._id).to.be(doc._id);
           expect(err).to.not.be.ok();
           expect(doc.legs).to.be(8);
+          expect(storageQueue.isEmpty()).to.be(true);
           done();
         });
       });
@@ -367,11 +376,13 @@ describe('Model', function(){
         });
         
         storageQueue.once('synced:', function(){
-          Animal.findById(tempAnimal._id, function(err, doc){
-            expect(doc.legs).to.be(7);
+          Animal.findById(tempAnimal.id(), function(err, doc){
+            doc.on('changed:', function(){
+              expect(doc.legs).to.be(7);
+              done();
+            })
             // This case will be worked-out later...
             // expect(tempAnimal.legs).to.be(7);
-            done();    
           });
         });
       });

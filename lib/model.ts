@@ -44,6 +44,11 @@ export class Model extends Base implements Sync.ISynchronizable
   private __rev: number = 0;
   
   private _persisted: bool = false;
+  
+  // Dirty could be an array of modified fields
+  // that way we can only synchronize whats needed. Furthermore,
+  // when receiving a resync event we could check if there is a 
+  // conflict or not.
   private _dirty: bool = true;
   
   private _keepSynced: bool = false;
@@ -67,6 +72,20 @@ export class Model extends Base implements Sync.ISynchronizable
     this.on('changed:', () => {
       this._dirty = true;
     });
+    
+    var listenToResync = () => {
+      Model.storageQueue &&
+      Model.storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
+        // NOTE: If the model is "dirty", we could have a conflict
+        this.set(doc, {nosync: true});
+      });
+    }
+    
+    if(this.isPersisted()){
+      listenToResync();
+    }else{
+      this.once('id', listenToResync);
+    }
   }
   
   static extend(bucket: string){
@@ -161,7 +180,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static removeById(keypathOrId, cb?: (err?: Error) => void){
     var keypath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
 
-    Model.storageQueue.deleteCmd(keypath, (err: Error) => {
+    Model.storageQueue.del(keypath, (err: Error) => {
       cb(err);
     });
   }
@@ -250,12 +269,11 @@ export class Model extends Base implements Sync.ISynchronizable
       args['state'] = this.state = ModelState.CREATING;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
-        this._keepSynced &&  Model.syncManager && Model.syncManager.startSync(this);
         this.state = ModelState.CREATED;
       });
-      Model.storageQueue.createCmd([bucket], args, cb);
+      Model.storageQueue.create([bucket], args, cb);
     }else{
-      Model.storageQueue.updateCmd([bucket, id], args, (err)=>{
+      Model.storageQueue.put([bucket, id], args, (err)=>{
         if(!err){
           this.emit('updated:', this, args);
         }
@@ -283,13 +301,19 @@ export class Model extends Base implements Sync.ISynchronizable
     if(this._keepSynced) return;
   
     this._keepSynced = true;
-  
-    if (this.isPersisted()){
+    
+    var startSync = () => {
       Model.syncManager && Model.syncManager.startSync(this);
     }
   
+    if (this.isPersisted()){
+      startSync();
+    }else{
+      this.once('id', startSync);
+    }
+  
     this.on('changed:', (doc, options) => {
-      if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))){
+      if(!options || ((options.nosync != true) && !_.isEqual(doc, options.doc))){
         this.update(doc);
       }
     });

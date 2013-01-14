@@ -40,6 +40,26 @@ function isLink(doc){
   return _.isString(doc);
 }
 
+interface KeyValue {
+  key: string;
+  value: any;
+}
+
+var InvalidKeyError = new Error('Invalid Key');
+
+function traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
+{
+  var value = _get(key);
+  if (value){
+    fn && fn(key);
+    if (isLink(value)){
+      return traverseLinks(value);
+    } else {
+      return {key: key, value: value};
+    }
+  }
+}
+
 export class Local implements IStorage {
   
   create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
@@ -50,32 +70,33 @@ export class Local implements IStorage {
     cb(null, doc._cid);
   }
   
-  put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
-    this.get(keyPath, (err: Error, oldDoc?: any): void => {
-      if(oldDoc){
-        keyPath = _.initial(keyPath).concat(oldDoc._cid); //Adapt keyPath to link target
-        _.extend(oldDoc, doc);
-        _put(makeKey(keyPath), oldDoc);
-      }
-      cb(err);
-    })
+  get(keyPath: string[], cb: (err: Error, doc?: any) => void) {
+    var keyValue = traverseLinks(makeKey(keyPath));
+    if(keyValue){
+      cb(null, keyValue.value);
+    }else {
+      cb(InvalidKeyError);  
+    } 
   }
   
-  get(keyPath: string[], cb: (err: Error, doc?: any) => void) {
-    var doc = _get(makeKey(keyPath));
-    if (doc){
-      if (isLink(doc)){
-        this.get(doc.split('@'), cb);
-      } else {
-        cb(null, doc);
-      }
-    } else {
-      cb(new Error('No local object available'));  
+  put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
+    var 
+      key = makeKey(keyPath),
+      keyValue = traverseLinks(makeKey(keyPath));
+      
+    if(keyValue){
+      _.extend(keyValue.value, doc);
+      _put(keyValue.key, keyValue.value);
+      cb();
+    }else{
+      cb(InvalidKeyError);  
     }
   }
-  
+    
   del(keyPath: string[], cb: (err?: Error) => void) {
-    localCache.removeItem(makeKey(keyPath));
+    traverseLinks(makeKey(keyPath), (key)=>{
+      localCache.removeItem(makeKey(keyPath));
+    });
     cb();
   }
     
@@ -100,30 +121,38 @@ export class Local implements IStorage {
   //
   // ISetStorage
   //  
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void{
-    var key = makeKey(keyPath);
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err?: Error) => void): void{
+    var
+      key = makeKey(keyPath),
+      itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
+      keyValue = traverseLinks(key),
+      oldItemIdsKeys = keyValue ? keyValue.value || [] : [];
     
-    var itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds);
-    var oldItemIdsKeys = _get(key) || [];
-    
+    //
+    // TODO: we could potentially mix in the same item just pointed by
+    // different links...      
     _put(key, _.union(oldItemIdsKeys, itemIdsKeys));
-    cb(null);
+    cb();
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void) {
-    var key = makeKey(keyPath);
-    var oldItemIdsKeys = _get(key) || [];
-    
-    var itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds);
-    for(var i=0; i<itemIdsKeys.length; i++){
-      var doc = _get(itemIdsKeys[i]);
-      if(isLink(doc)){
-        itemIdsKeys.push(doc);
-      }
-    }
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err?: Error) => void) {
+    var 
+      key = makeKey(keyPath),
+      itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
+      keyValue = traverseLinks(key);
 
-    _put(key, _.difference(oldItemIdsKeys, itemIdsKeys));
-    cb(null);
+    if(keyValue){
+      for(var i=0; i<itemIdsKeys.length; i++){          
+        traverseLinks(itemIdsKeys[i], (itemKey)=>{
+          itemIdsKeys.push(itemKey);
+        });
+      }
+      
+      _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys));
+      cb();
+    }else{
+      cb(InvalidKeyError);
+    }
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: {}[]) => void) : void
@@ -132,7 +161,10 @@ export class Local implements IStorage {
       var result = [];
       if(collection){
         for(var i=0; i<collection.length;i++){
-          result.push(_get(collection[i]));
+          var keyValue = traverseLinks(collection[i]);
+          if(keyValue){
+            result.push(keyValue.value);
+          }
         }
       }
       cb(null, result);

@@ -5,9 +5,11 @@
 /**
   Synchronization
   
-  This class represents a Model in a MVC architecture.
-  The model supports persistent storage, offline and
-  automatic client<->server synchronization.
+  This class handles automatic synchronization of objects between
+  the server and the clients. 
+  
+  Any object fullfilling the ISynchronizable interface can be added to
+  this class to get automatic synchronization support.
   
   The Manager keeps a data structure with all the instantiated
   models and their IDs.
@@ -45,7 +47,7 @@ export class Manager extends Base {
       var socket = this.socket;
       
       // Call re-sync for all models in this manager...
-      _.each(this.docs, (docs, id) => {
+      _.each(this.docs, (docs: Sync.ISynchronizable[], id: string) => {
         var doc = docs[0];
         
         // TODO: send also the current __rev, if newer in server, 
@@ -63,7 +65,7 @@ export class Manager extends Base {
           if(!err){
             doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=docs.length; i<len; i++){
-              docs[i].set(doc, {sync:'false'});
+              docs[i].set(doc, {nosync: true});
               docs[i].id(id);
             }
             // TODO: we probably should update locally...
@@ -76,13 +78,13 @@ export class Manager extends Base {
     }
     
     //
-    // Listeners
+    // Socket Listeners
     //
     socket.on('update:', (keyPath, args) => {
       var key = keyPathToKey(keyPath);
       
-      _.each(this.docs[key], function(doc){
-        doc.set(args, {sync:false});
+      _.each(this.docs[key], function(doc: Base){
+        doc.set(args, {nosync: true});
       });
     });
       
@@ -92,15 +94,7 @@ export class Manager extends Base {
         doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
       });
     });
-    
-    function notifyObservers(observers, message, itemsKeyPath, itemIds){
-      if(observers){
-        for(var i=0; i<observers.length; i++){
-          observers[i].emit(message, itemsKeyPath, itemIds);
-        }
-      }
-    }
-    
+        
     socket.on('add:', (keyPath, itemsKeyPath, itemIds) => {
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'add:', itemsKeyPath, itemIds);
@@ -130,8 +124,7 @@ export class Manager extends Base {
   /**
     Starts synchronization for a given model.
   */
-  //startSync(doc: ISynchronizable)
-  startSync(doc)
+  startSync(doc: Sync.ISynchronizable)
   {
     var 
       key = docKey(doc),
@@ -152,8 +145,7 @@ export class Manager extends Base {
   /**
     Ends synchronization for a given model.
   */
-  //endSync(doc: ISynchronizable)
-  endSync(doc)
+  endSync(doc: Sync.ISynchronizable)
   {
     if (!doc.isKeptSynced()) return;
 
@@ -175,6 +167,14 @@ export class Manager extends Base {
       }
     }
   }  
+}
+
+function notifyObservers(observers, message, itemsKeyPath, itemIds){
+  if(observers){
+    for(var i=0; i<observers.length; i++){
+      observers[i].emit(message, itemsKeyPath, itemIds);
+    }
+  }
 }
 
 function keyPathToKey(keyPath: string[]){

@@ -32,7 +32,7 @@ module Gnd.Storage {
   data in a local storage, and synchronize with the remote
   storage as soon as it is available.
 */
-export class Queue extends Base
+export class Queue extends Base implements IStorage
 {
   private savedQueue: {};
   private queue: Command[];
@@ -106,7 +106,7 @@ export class Queue extends Base
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
   {
     this.localStorage.find(keyPath, query, options, (err?, result?) => {
-      if(result && result.length > 0){
+      if(result){
         cb(err, result);
       }
     
@@ -135,50 +135,50 @@ export class Queue extends Base
           this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
           this.emit('resync:'+Queue.makeKey(keyPath), resultRemote);
         }
-        if(!result || result.length === 0) cb(err, resultRemote);
+        !result && cb(err, resultRemote);
       });
     });
   }
     
-  createCmd(keyPath: string[], args:{}, cb)
+  create(keyPath: string[], args:{}, cb)
   {
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
         args['cid'] = cid;
-        this.add({cmd:'create', keyPath: keyPath, args: args}, cb);
+        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, cb);
       }else{
         cb(err);
       }
     });
   }
   
-  updateCmd(keyPath: string[], args:{}, cb)
+  put(keyPath: string[], args:{}, cb)
   {
     this.localStorage.put(keyPath, args, (err?) => {
       if(!err){
-        this.add({cmd:'update', keyPath: keyPath, args: args}, cb);
+        this.addCmd({cmd:'update', keyPath: keyPath, args: args}, cb);
       }else{
         cb(err);
       }
     });
   }
   
-  deleteCmd(keyPath: string[], cb)
+  del(keyPath: string[], cb)
   {
     this.localStorage.del(keyPath, (err?) => {
       if(!err){
-        this.add({cmd:'delete', keyPath: keyPath}, cb);
+        this.addCmd({cmd:'delete', keyPath: keyPath}, cb);
       }else{
         cb(err);
       }
     });
   }
   
-  addCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
   {
     this.localStorage.add(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
-        this.add({
+        this.addCmd({
           cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
         }, cb);
       }else{
@@ -187,17 +187,32 @@ export class Queue extends Base
     });
   }
   
-  removeCmd(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
   {
     this.localStorage.remove(keyPath, itemsKeyPath, itemIds, (err) => {
       if(!err){
-        this.add({
+        this.addCmd({
           cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
         }, cb);
       }else{
         cb(err);
       }
     });
+  }
+  
+  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  {
+    // TODO: Implement
+  }
+  
+  extract(keyPath: string[], index:number, cb: (err: Error, doc?:{}) => void)
+  {
+    // TODO: Implement
+  }
+  
+  all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void
+  {
+    // TODO: Implement
   }
   
   synchronize()
@@ -230,9 +245,9 @@ export class Queue extends Base
                   localStorage.put(localKeyPath, {_persisted:true, _id: sid}, (err?: Error) => {
                     var newKeyPath = _.initial(localKeyPath);
                     newKeyPath.push(sid);
-                      localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
-                      this.updateQueueIds(cid, sid); // needed?
+                    localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
                       this.emit('created:'+cid, sid);
+                      this.updateQueueIds(cid, sid);
                       done();
                     });
                   });
@@ -262,7 +277,17 @@ export class Queue extends Base
     }
   }
   
-  private add(cmd: Command, cb:(err?: Error)=>void)
+  public isEmpty(){
+    return !this.queue.length;
+  }
+  
+  public clear(cb?: (err?: Error) => void)
+  {
+    this.queue = [];
+    this.localStorage.del(['meta', 'storageQueue'], cb || Util.noop);
+  }
+    
+  private addCmd(cmd: Command, cb:(err?: Error)=>void)
   {
     if(this.useRemote){
       this.localStorage.insert(['meta', 'storageQueue'], -1, cmd, (err) => {
