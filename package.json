@@ -8,7 +8,7 @@
     , "socket.io": "0.9.10"
   },
   "devDependencies": {
-      "mocha": "~1.0.3"
+      "mocha": "*"
     , "expect.js": "*"
     , "should": "~0.5.1"
     , "express": "2.5.11"
