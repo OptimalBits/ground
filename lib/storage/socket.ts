@@ -25,6 +25,7 @@ export class Socket implements IStorage {
   
   put(keyPath: string[], doc: any, cb: (err?: Error) => void): void
   {
+    delete doc['_id'];
     Gnd.Util.safeEmit(this.socket, 'put', keyPath, doc, cb);
   }
   
