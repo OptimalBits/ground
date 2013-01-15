@@ -254,7 +254,7 @@ class EachBinder implements Binder
           itemNode = <Element> el.cloneNode(true), 
           id = item.id(),
           modelListener = (newId) => {
-            if(id !== newId){ // This check is necessary to avoid side-effects.
+            if(!(newId in mappings)){ // This check is necessary to avoid side-effects.
               delete mappings[id];
               mappings[newId] = itemNode;
               setAttr(itemNode, 'data-item', newId);
