@@ -213,6 +213,7 @@ class EachBinder implements Binder
   private addedListener: (item: Model)=>void;
   private removedListener: (item: Model)=>void;
   private updatedListener: ()=>void;
+  private modelListener: (id: string)=>void;
   
   //
   //  Syntax: data-each="collection: itemContextName"
@@ -252,14 +253,14 @@ class EachBinder implements Binder
       var addNode = (item, nextSibling) => {
         var 
           itemNode = <Element> el.cloneNode(true), 
-          id = item.id(),
-          modelListener = (newId) => {
-            delete mappings[id];
-            id = newId;
-            mappings[id] = itemNode;
-            setAttr(itemNode, 'data-item', newId);
-          };
-        
+          id = item.id();
+
+        this.modelListener = (newId) => {
+          delete mappings[id];
+          mappings[newId] = itemNode;
+          setAttr(itemNode, 'data-item', newId);
+        };
+    
         item.retain();
         
         setAttr(itemNode, 'data-item', id);
@@ -278,7 +279,7 @@ class EachBinder implements Binder
         itemNode['gnd-bindings'] = viewModel.bindNode(itemNode);
         viewModel.popContext();
       
-        item.on('id', modelListener);
+        item.on('id', this.modelListener);
         itemNode['gnd-obj'] = item;
       }
       
@@ -330,9 +331,14 @@ class EachBinder implements Binder
   
   private removeNode(id: string)
   {
-    var node = this.mappings[id];
+    var 
+      node = this.mappings[id],
+      item = node['gnd-obj'];
+    
     this.viewModel.unbind(node['gnd-bindings']);
-    node['gnd-obj'].release();
+    item.off('id', this.modelListener);
+    item.release();
+    
     this.parent.removeChild(node);
     delete this.mappings[id];
   }
