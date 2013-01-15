@@ -2,9 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Chat Example</title>
+  <title>Room Example</title>
   <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
-</head>
 <script src="../socket.io/socket.io.js"></script>
 <script type="text/javascript">
   curl = {
@@ -13,22 +12,28 @@
         path: '../dist/',
         main: 'gnd',
         lib: ''
-      },
+      }
     },
     paths : {
-      jquery : 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min',
-      underscore : 'https://raw.github.com/amdjs/underscore/master/underscore-min'
+      underscore : '../third/underscore.js'
     }
   };
 </script>
 
-<script src="https://raw.github.com/cujojs/curl/master/dist/curl-kitchen-sink/curl.js"></script>
+<script src="../third/curl.js"></script>
 
 <!-- Templates -->
 <script type="text/template" id="main-template">
   <div id="main">
-    <input id="submit" type="submit" value="Create new Chat Room"></input>
-    <ul id="link"></ul>
+    <label>Room Name: <input id="roomname" type="text" data-bind="value: newRoom.name"  data-event="keypress: chat.onKeyPress"></input></label>
+    <input id="submit" type="submit" value="Create new Chat Room" data-event="click: chat.onNewRoom"></input>
+    <ul id="link">
+      <li data-each="rooms: room">
+        <a data-bind="attr: { href: room.url, title: room.name }" target="_blank">
+          <span data-bind="text: room.name"></span>
+        </a>
+      </li>
+    </ul>
   </div>
 </script>
 <script type="text/template" id="chatroom-template">
@@ -45,8 +50,8 @@
         </tr>
       </tbody>
     </table>
-    <input id="msgbox" type="text" data-bind="value: currentMsg.text"  data-event="keypress: chat.onKeyPress"></input>
-    <input id="submit" type="submit" data-event="click: chat.onSubmit"></input>
+    <input id="msgbox" type="text" data-bind="value: currentMsg.text"  data-event="keypress: room.onKeyPress"></input>
+    <input id="submit" type="submit" data-event="click: room.onSubmit"></input>
   </div>
 </script>
 
@@ -65,6 +70,7 @@
         Gnd.Model.syncManager = syncManager;
 
         var Chat = Gnd.Model.extend('Chat');
+        var Room = Gnd.Model.extend('rooms');
         var Message = Gnd.Model.extend('messages');
 
         // Routing
@@ -91,31 +97,78 @@
 
         // Enter the main UI
         function enterMain() {
-          Gnd.$$on(Gnd.$$('#submit'), 'click', function() {
-            chat = new Chat();
+
+          //TODO: Replace when global root has been implemented
+          var chatId = '50f521d9d7f4f1b1b32ea4ef';
+
+          //Get Chat model
+          Chat.findById(chatId, function(err, chat) {
             chat.keepSynced();
 
-            chat.save(function(err){
-              // wait until the chat room was created on the server
-              storageQueue.once('created:'+chat.id(), function(sid){
-                // get an absolute url to the room
-                var url = window.location.protocol + '//' +
-                  window.location.host + '/chat/#/room/' + chat.id();
+            // Create a room instance for the ViewModel
+            var vmRoom = new Room({name: ''});
+            
+            // Get the rooms
+            chat.all(Room, function(err, rooms){
+              rooms.keepSynced();
 
-                Gnd.$$('#link').innerHTML += '<li><a href="' + url + '" target="_blank">' + url + '</a></li>';
-              });
+              function onNewRoom() {
+                var newRoom = new Room({name: vmRoom.get('name')});
+                // Wait until we have a server id
+                newRoom.on('id', function(id){
+                  // construct the url
+                  // Gnd.Util.nextTick(function() {
+                    newRoom.set('url', '#/room/' + id);
+                  // });
+                });
+                
+
+                // add the new room
+                rooms.add(
+                  newRoom,
+                  function(err){
+                    if(err) console.log(err); 
+                  }
+                );
+
+                newRoom.release();
+
+                // Focus on inputbox
+                Gnd.Util.nextTick(function() {
+                  Gnd.$$('#roomname').focus();
+                });
+              }
+
+              chat.onNewRoom = onNewRoom;
+              chat.onKeyPress = function(el, ev) {
+                if(ev.which === 13) {
+                  el.blur(); // to make sure that the ViewModel is updated
+                  onNewRoom();
+                }
+              }
+
+              // Create a ViewModel and bind it to the dom
+              var viewModel = new Gnd.ViewModel(
+                Gnd.$$('#main'),
+                {
+                  newRoom: vmRoom,
+                  rooms: rooms,
+                  chat: chat
+                }
+              );
             });
+
           });
         }
 
         // Enter the chat room
         function enterRoom(roomId) {
-          // Find the Chat room
-          Chat.findById(roomId, function(err, chat) {
-            chat.keepSynced();
+          // Find the Room room
+          Room.findById(roomId, function(err, room) {
+            room.keepSynced();
 
             // Get the messages
-            chat.all(Message, function(err, messages){
+            room.all(Message, function(err, messages){
               messages.keepSynced();
 
               // Create a message instance for the ViewModel
@@ -129,6 +182,7 @@
                     if(err) console.log(err); 
                   }
                 );
+                newMsg.release();
 
                 // Clear current message text
                 currentMsg.set('text', '');
@@ -140,8 +194,8 @@
               };
 
               // Create event handlers
-              chat.onSubmit = sendMessage;
-              chat.onKeyPress = function(el, ev) {
+              room.onSubmit = sendMessage;
+              room.onKeyPress = function(el, ev) {
                 if(ev.which === 13) {
                   el.blur(); // to make sure that the ViewModel is updated
                   sendMessage();
@@ -154,7 +208,7 @@
                 {
                   messages: messages,
                   currentMsg: currentMsg,
-                  chat: chat
+                  room: room
                 }
               );
             });
