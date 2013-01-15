@@ -117,9 +117,7 @@
                 // Wait until we have a server id
                 newRoom.on('id', function(id){
                   // construct the url
-                  // Gnd.Util.nextTick(function() {
-                    newRoom.set('url', '#/room/' + id);
-                  // });
+                  newRoom.set('url', '#/room/' + id);
                 });
                 
 
