@@ -12,10 +12,18 @@ var express = require('express'),
     cabinet = require('cabinet'),
     Server = require('../server'),
     staticDir = __dirname + '/../';
+    
+app.use(cabinet(staticDir+'node_modules/mocha', {
+  ignore: ['.git', 'node_modules', '*~', 'examples']
+}));
+
+app.use(cabinet(staticDir+'node_modules/expect.js', {
+  ignore: ['.git', 'node_modules', '*~', 'examples']
+}));
 
 app.use(cabinet(staticDir, 
   {
-    ignore: ['.git', 'node_modules', '*~', 'examples'],
+    ignore: ['.git', 'node_modules', '*~', 'examples', '*.js'],
     typescript: {
       tmpPath: '/var/tmp',
       out: true,
@@ -28,11 +36,13 @@ app.use(cabinet(staticDir,
     }
   }
 ));
-
 app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   sio.sockets.emit('file_changed:', url);
   console.log(url);
 }));
+
+
+
 app.use(express.bodyParser());
 
 var mongooseStorage = new Gnd.MongooseStorage(models);
@@ -48,6 +58,8 @@ var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 // Ajax APIs used for some unit tests
 //
 app.put('/animals/:id', function(req, res){
+  console.log("Updating animals:");
+  console.log(req.body);
   models.animals.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
     res.send(204)
