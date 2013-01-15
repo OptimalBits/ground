@@ -382,7 +382,15 @@ export class Collection extends Base implements Sync.ISynchronizable
   {
     this._keepSynced = true;
     
-    Model.syncManager && Model.syncManager.startSync(this);
+    if(this.parent && Model.syncManager){
+      if(this.parent.isPersisted()){
+        Model.syncManager.startSync(this);
+      }else{
+        this.parent.on('id', () => {
+          Model.syncManager.startSync(this);
+        });
+      }
+    }
     
     this.on('add:', (itemsKeyPath, itemIds) => {
       Util.asyncForEach(itemIds, (itemId: string, done) => {

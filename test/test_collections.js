@@ -684,7 +684,7 @@ describe('Collections', function(){
           item3 = new Animal({name:'lion', pos:2}),
           item4 = new Animal({name:'panther', pos:8});
           
-      var sortedZoo = new Zoo();
+      var sortedZoo = new Zoo();  
       
       sortedZoo.save(function(err){
         expect(err).to.not.be.ok();
@@ -701,7 +701,7 @@ describe('Collections', function(){
             item2.release()
             item4.release()
             item1.release()
-            item3.release()        
+            item3.release()
             
             for(var i=0,len=animals.items.length;i<len-1;i++){
               expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
@@ -716,13 +716,15 @@ describe('Collections', function(){
               done();
             });
             
-            sortedZoo.all(Animal, function(err, otherAnimals){
-              var item5 = new Animal({name:'cheetah', pos:10});
-              otherAnimals.add(item5, function(err){
-                expect(err).to.be(null);
-                item5.release();
-                otherAnimals.release();
-              }); 
+            storageQueue.once('synced:', function(){
+              sortedZoo.all(Animal, function(err, otherAnimals){
+                var item5 = new Animal({name:'cheetah', pos:10});
+                otherAnimals.add(item5, function(err){
+                  expect(err).to.not.be.ok();
+                  item5.release();
+                  otherAnimals.release();
+                }); 
+              })
             })
           }); 
         });
