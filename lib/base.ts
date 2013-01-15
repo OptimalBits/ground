@@ -65,7 +65,8 @@ export class Base extends EventEmitter {
   /**
     set - Sets a property and notifies any listeners attached to it if changed.
   */
-  set(keyOrObj, val, options?) {
+  set(keyOrObj, val?: any, options?: {})
+  {
     var changed = false, obj, self = this;
   
     if(typeof keyOrObj == 'object'){
@@ -234,6 +235,12 @@ export class Base extends EventEmitter {
       throw new Error(msg);
     }
     return this;
+  }
+  
+  autorelease(){
+    Util.nextTick(()=>{
+      this.release();
+    });
   }
   
   isDestroyed(){
