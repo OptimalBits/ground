@@ -241,6 +241,7 @@ export class Base extends EventEmitter {
     Util.nextTick(()=>{
       this.release();
     });
+    return this;
   }
   
   isDestroyed(){
