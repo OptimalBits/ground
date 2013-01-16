@@ -70,7 +70,7 @@ export class Local implements IStorage {
     cb(null, doc._cid);
   }
   
-  get(keyPath: string[], cb: (err: Error, doc?: any) => void) {
+  fetch(keyPath: string[], cb: (err: Error, doc?: any) => void) {
     var keyValue = traverseLinks(makeKey(keyPath));
     if(keyValue){
       cb(null, keyValue.value);
@@ -117,11 +117,10 @@ export class Local implements IStorage {
     cb();  
   }
   
-  
   //
   // ISetStorage
   //  
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err?: Error) => void): void{
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void): void{
     var
       key = makeKey(keyPath),
       itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
@@ -135,20 +134,21 @@ export class Local implements IStorage {
     cb();
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err?: Error) => void) {
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void) {
     var 
       key = makeKey(keyPath),
       itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
       keyValue = traverseLinks(key);
 
     if(keyValue){
+      var moreKeysToDelete = [];
       for(var i=0; i<itemIdsKeys.length; i++){          
         traverseLinks(itemIdsKeys[i], (itemKey)=>{
-          itemIdsKeys.push(itemKey);
+          moreKeysToDelete.push(itemKey);
         });
       }
       
-      _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys));
+      _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys, moreKeysToDelete));
       cb();
     }else{
       cb(InvalidKeyError);
@@ -157,7 +157,7 @@ export class Local implements IStorage {
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: {}[]) => void) : void
   {
-    this.get(keyPath, (err, collection?) => {
+    this.fetch(keyPath, (err, collection?) => {
       var result = [];
       if(collection){
         for(var i=0; i<collection.length;i++){
