@@ -7,7 +7,7 @@ describe(storageType, function(){
     storage.create(['documents'], {foo:'bar'}, function(err, key){
       expect(err).to.not.be.ok();
       expect(err).to.not.be.a('string');
-      storage.get(['documents', key], function(err, doc){
+      storage.fetch(['documents', key], function(err, doc){
         expect(err).to.not.be.ok();
         expect(doc.foo).to.be.equal('bar');
         key1 = key;
@@ -19,7 +19,7 @@ describe(storageType, function(){
   it('modifies a simple document', function(done){
     storage.put(['documents', key1], {baz:'qux'}, function(err, key){
       expect(err).to.not.be.ok();
-      storage.get(['documents', key1], function(err, doc){
+      storage.fetch(['documents', key1], function(err, doc){
         expect(err).to.not.be.ok();
         expect(doc.foo).to.be.equal('bar');
         expect(doc.baz).to.be.equal('qux');
@@ -32,7 +32,7 @@ describe(storageType, function(){
     if(storage.link){
       storage.link(['linked_document'], ['documents', key1], function(err){
         expect(err).to.not.be.ok();
-        storage.get(['linked_document'], function(err, doc){
+        storage.fetch(['linked_document'], function(err, doc){
           expect(err).to.not.be.ok();
           expect(doc.foo).to.be.equal('bar');
           expect(doc.baz).to.be.equal('qux');
@@ -47,7 +47,7 @@ describe(storageType, function(){
   it('deletes a simple document', function(done){
     storage.del(['documents', key1], function(err){
       expect(err).to.not.be.ok();
-      storage.get(['documents', key1], function(err, doc){
+      storage.fetch(['documents', key1], function(err, doc){
         expect(err).to.be.ok();
         expect(doc).to.not.be.ok();
         done();
@@ -75,7 +75,7 @@ describe(storageType, function(){
                 id4 = id;
                 expect(err).to.not.be.ok();
                 expect(id4).to.be.ok();
-                storage.add(['zoo', zooId, 'animals'], ['animals'], [id1, id2, id3, id4], function(err){
+                storage.add(['zoo', zooId, 'animals'], ['animals'], [id1, id2, id3, id4], {}, function(err){
                   expect(err).to.not.be.ok();
                   storage.find(['zoo', zooId, 'animals'], {}, {}, function(err, items){
                     expect(err).to.not.be.ok();
@@ -90,17 +90,17 @@ describe(storageType, function(){
                   });
                 });
               });
-            })
-          })
-        })
-      })
+            });
+          });
+        });
+      });
     });
     
     it('remove and add a few items to a set', function(done){
-      storage.remove(['zoo', zooId, 'animals'], ['animals'], [id2, id4], function(err){
+      storage.remove(['zoo', zooId, 'animals'], ['animals'], [id2, id4], {}, function(err){
         storage.create(['animals'], {legs:1}, function(err, id){
           expect(err).to.not.be.ok();
-          storage.add(['zoo', zooId, 'animals'], ['animals'], [id], function(err){
+          storage.add(['zoo', zooId, 'animals'], ['animals'], [id], {}, function(err){
             storage.find(['zoo', zooId, 'animals'], {}, {}, function(err, items){
               expect(err).to.not.be.ok();
               expect(items).to.be.an(Array);
