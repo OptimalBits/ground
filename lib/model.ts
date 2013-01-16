@@ -78,6 +78,7 @@ export class Model extends Base implements Sync.ISynchronizable
       Model.storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
         // NOTE: If the model is "dirty", we could have a conflict
         this.set(doc, {nosync: true});
+        this.emit('resynced:');
       });
     }
     
