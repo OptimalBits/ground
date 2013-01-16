@@ -15,7 +15,7 @@ module Gnd {
   
 export class View extends Base
 {
-  public el: DocumentFragment;
+  public el: HTMLElement;
   public parent: View;
   public children: View[] = [];
   public root: Element;
@@ -23,7 +23,7 @@ export class View extends Base
   constructor(parent?: View)
   {
     super();
-    this.el = makeElement('<div>');
+    this.el = document.createElement('div');
     this.parent = parent;
     parent && parent.children.push(this);
   }
@@ -50,12 +50,12 @@ export class View extends Base
   
   hide(duration, easing, callback)
   {
-    // TODO: Implement
+    hide(this.el);
   }
   
   show(duration, easing, callback) 
   {
-    // TODO: Implement
+    show(this.el);
   }
   
   destroy()
