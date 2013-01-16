@@ -29,7 +29,7 @@ export class Socket implements IStorage {
     Gnd.Util.safeEmit(this.socket, 'put', keyPath, doc, cb);
   }
   
-  get(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
+  fetch(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
   {
     Gnd.Util.safeEmit(this.socket, 'get', keyPath, cb);
   }
@@ -39,12 +39,12 @@ export class Socket implements IStorage {
     Gnd.Util.safeEmit(this.socket, 'del', keyPath, cb);
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
   {
     Gnd.Util.safeEmit(this.socket, 'add', keyPath, itemsKeyPath, itemIds, cb);
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
   {
     Gnd.Util.safeEmit(this.socket, 'remove', keyPath, itemsKeyPath, itemIds, cb);
   }
