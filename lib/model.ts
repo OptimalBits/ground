@@ -33,6 +33,7 @@ export interface IModel {
   new (args: {}, bucket: string): Model;
   __bucket: string;
   create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
+  findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
 }
 
@@ -112,8 +113,9 @@ export class Model extends Base implements Sync.ISynchronizable
     return __;
   }
 
-  //static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
-  static create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void
+  static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
+  static create(args: {}, keepSynced: bool, cb: (err?: Error, instance?: Model) => void): void;
+  static create(args: {}, keepSynced?: bool, cb?: (err?: Error, instance?: Model) => void): void
   {
     overload({
       'Object Boolean Function': function(args, keepSynced, cb){
@@ -147,7 +149,7 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
-        Model.storageQueue.getDoc(keyPath, (err?, doc?: {}) => {
+        Model.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
           if(doc){
             _.extend(doc, args);
             this.create(doc, keepSynced, cb);
@@ -209,9 +211,6 @@ export class Model extends Base implements Sync.ISynchronizable
     if(id){
       this._cid = this._id = id;
       this._persisted = true;
-      if(this._keepSynced){
-        Model.syncManager && Model.syncManager.startSync(this);
-      }
       this.emit('id', id);
     }
     return this._id || this._cid;
@@ -263,7 +262,7 @@ export class Model extends Base implements Sync.ISynchronizable
     var 
       bucket = this.__bucket,
       id = this.id();
-      
+    
     cb = cb || (err: Error)=>{};
     
     if(this.state == ModelState.INITIAL){
@@ -350,7 +349,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void){
     overload({
       'Model Array Object Function': function(parent, keyPath, args, cb){
-        Model.storageQueue.find(keyPath, {}, {}, (err, docs) => {
+        Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
           if(docs){
             _.each(docs, function(doc){_.extend(doc, args)});
             Collection.create(this, parent, docs, cb);
