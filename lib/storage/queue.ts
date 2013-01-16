@@ -78,15 +78,15 @@ export class Queue extends Base implements IStorage
       }
   */
   
-  getDoc(keyPath: string[], cb)
+  fetch(keyPath: string[], cb)
   {
-    this.localStorage.get(keyPath, (err?, doc?) => {
+    this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
         cb(err, doc);
       }
       this.useRemote &&
-      this.remoteStorage.get(keyPath, (err?, docRemote?) => {
+      this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
         if(!err){
           docRemote['_persisted'] = true;
           this.localStorage.put(keyPath, docRemote, (err?) => {
@@ -103,7 +103,59 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void
+  private updateLocalCollection(keyPath: string[], 
+                                query: {}, 
+                                options: {},
+                                remote: any[], cb: (err?:Error) => void)
+  {
+    var 
+      storage = this.localStorage,
+      itemKeyPath = [_.last(keyPath)];
+    
+    storage.find(keyPath, query, options, (err?:Error, old?: {}[]) => {
+      if(!err){
+        // We assume here that _cid is the key used in the local collection... (may be wrong in some cases).
+        var toRemove = _.difference(_.pluck(old, '_cid'), _.pluck(remote,'_id'));
+        storage.remove(keyPath, itemKeyPath, toRemove, {}, (err?) => {
+            if(!err){
+            var keys = [];
+            Util.asyncForEach(remote, (doc, done) => {
+              var 
+                id = doc._id,
+                elemKeyPath = itemKeyPath.concat(id);
+          
+              doc._persisted = true;
+        
+              storage.put(elemKeyPath, doc, (err?) => {
+                if(err) { //not in local cache
+                  doc._cid = id;
+                  storage.create(itemKeyPath, doc, (err?)=>{
+                    done(err);
+                  });
+                  keys.push(id);
+                }else{
+                  done();
+                }
+              });
+            }, (err) => {
+              if(!err){
+                // Add the new collection keys to the keyPath
+                storage.add(keyPath, itemKeyPath, keys, {}, cb);
+              }else{
+                cb(err);
+              }
+            }); 
+          }else{
+            cb(err);
+          }
+        });
+      }else{
+        storage.add(keyPath, itemKeyPath, _.pluck(remote, '_id'), {}, cb);
+      }
+    });
+  }
+  
+  find(keyPath: string[], query: {}, options: {}, cb: (err?: Error, result?: any[]) => void): void
   {
     this.localStorage.find(keyPath, query, options, (err?, result?) => {
       if(result){
@@ -111,31 +163,13 @@ export class Queue extends Base implements IStorage
       }
     
       this.useRemote && 
-      this.remoteStorage.find(keyPath, query, options, (err?, resultRemote?) => {
-        function noop() {};
-        var itemKeyPath = [_.last(keyPath)];
-        var keys = [];
-        
+      this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
         if(!err){
-          // Add the elements in the collection to local cache
-          for(var i=0; i<resultRemote.length; i++) {
-            var doc = resultRemote[i];
-            var id = doc._id;
-            doc._persisted = true;
-            var elemKeyPath = itemKeyPath.concat(id);
-            this.localStorage.put(elemKeyPath, doc, (err?) => {
-              if(err) { //not in local cache
-                doc._cid = id;
-                this.localStorage.create(itemKeyPath, doc, noop);
-                keys.push(id);
-              }
-            });
-          }
-          // Add the collection keys to the keyPath
-          this.localStorage.add(keyPath, itemKeyPath, keys, noop); 
-          this.emit('resync:'+Queue.makeKey(keyPath), resultRemote);
+          this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
+            result && this.emit('resync:'+Queue.makeKey(keyPath), remote);
+          });
         }
-        !result && cb(err, resultRemote);
+        !result && cb(err, remote);
       });
     });
   }
@@ -176,7 +210,7 @@ export class Queue extends Base implements IStorage
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
   {
-    this.localStorage.add(keyPath, itemsKeyPath, itemIds, (err) => {
+    this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}, (err) => {
       if(!err){
         this.addCmd({
           cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
@@ -189,7 +223,7 @@ export class Queue extends Base implements IStorage
   
   remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
   {
-    this.localStorage.remove(keyPath, itemsKeyPath, itemIds, (err) => {
+    this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}, (err) => {
       if(!err){
         this.addCmd({
           cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
@@ -263,10 +297,10 @@ export class Queue extends Base implements IStorage
             remoteStorage.del(keyPath, done);
             break;
           case 'add':
-            remoteStorage.add(keyPath, itemsKeyPath, itemIds, done);
+            remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
           case 'remove':
-            remoteStorage.remove(keyPath, itemsKeyPath, itemIds, done);
+            remoteStorage.remove(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
         }
       } else {        
