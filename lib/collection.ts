@@ -242,7 +242,7 @@ export class Collection extends Base implements Sync.ISynchronizable
         this.emit('removed:', item, index);
         item.release();
         
-        if(this._keepSynced && (!opts || !opts.nosync)){
+        if(this.isKeptSynced() && (!opts || !opts.nosync)){
           var itemKeyPath = _.initial(item.getKeyPath());
           Model.storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
           return;
@@ -395,7 +395,7 @@ export class Collection extends Base implements Sync.ISynchronizable
     this.on('add:', (itemsKeyPath, itemIds) => {
       Util.asyncForEach(itemIds, (itemId: string, done) => {
         if(!this.findById(itemId)){
-          Model.findById([itemsKeyPath, itemId], true, {}, (err: Error, item?: Model): void => {
+          this.model.findById(itemsKeyPath.concat(itemId), true, {}, (err: Error, item?: Model): void => {
             if(item){
               this.addItem(item, {nosync: true}, done);
             }
@@ -410,23 +410,25 @@ export class Collection extends Base implements Sync.ISynchronizable
   }
   
   private resync(items: any[]){
-    var itemsToRemove = [];
-        
+    var 
+      itemsToRemove = [],
+      itemsToAdd = items.slice(0);
+      
     this['each'](function(item){
-      var id = item.id();
+      var id = item.id(), shouldRemove = true;
       for(var i=0; i<items.length; i++){
         if(id == items[i]._id){
           item.set(items[i]);
-          items.splice(i, 1);
+          shouldRemove = false;
           break;
         }
-        itemsToRemove.push(item.id());
       }
+      shouldRemove && itemsToRemove.push(id);
     });
     
     this.remove(itemsToRemove, {nosync: true}, (err) => {
       if(!err){
-        Collection.createModels(this.model, items, (err, models) => {
+        Collection.createModels(this.model, itemsToAdd, (err, models) => {
           if(!err){
             this.add(models, {nosync: true}, (err) => {
               this.emit('resynced:');
