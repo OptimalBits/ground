@@ -47,7 +47,7 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   
   create(keyPath: string[], doc: {}, cb: (err: Error, key?: string) => void): void;
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
-  get(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
+  fetch(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
   del(keyPath: string[], cb: (err?: Error) => void): void;
   link?(keyPath: string[], targetKeyPath: string[], cb: (err?: Error) => void): void;
 }
@@ -56,9 +56,9 @@ export interface IStorage extends ISetStorage, ISeqStorage {
 //  Set / Collection Storage (unordered)
 //
 export interface ISetStorage {
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void;
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void;
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result: any[]) => void): void;
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
+  find(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void): void;
 }
 
 //
