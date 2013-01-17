@@ -346,27 +346,44 @@ export class Model extends Base implements Sync.ISynchronizable
     the given model class.
     (Should we deprecate this in favor of a keyPath based method?)
   */
-  static all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void){
-    overload({
-      'Model Array Object Function': function(parent, keyPath, args, cb){
-        Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
-          if(docs){
-            _.each(docs, function(doc){_.extend(doc, args)});
+  // static all(args: {}//, bucket: string, cb:(err?: Error, items?: Model[]) => void);
+
+  static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, items?: Model[]) => void);
+  static all(parent: Model, cb:(err?: Error, items?: Model[]) => void);
+  static all(cb:(err?: Error, items?: Model[]) => void);
+  static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, items?: Model[]) => void){
+    function allInstances(parent, keyPath, args, cb){
+      Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
+        if(docs){
+          _.each(docs, function(doc){_.extend(doc, args)});
+          if(parent){
             Collection.create(this, parent, docs, cb);
           }else{
-            cb(err);
+            Collection.create(this, docs, cb);
           }
-        });
+        }else{
+          cb(err);
+        }
+      });
+    }
+    overload({
+      'Model Array Object Function': function(parent, keyPath, args, cb){
+        allInstances(parent, keyPath, args, cb);
       },
       'Model Object String Function': function(parent, args, bucket, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(bucket);
-        this.all(parent, args, cb);
+        allInstances(parent, keyPath, args, cb);
       },
       'Model Function': function(parent, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(this.__bucket);
-        this.all(parent, keyPath, {}, cb);
+        allInstances(parent, keyPath, {}, cb);
+      },
+      'Function': function(cb){
+        //TODO: rewrite to call master all function
+        var keyPath = [this.__bucket];
+        allInstances(undefined, keyPath, {}, cb);
       }
     }).apply(this, arguments);
   }
