@@ -109,27 +109,26 @@ export class Collection extends Base implements Sync.ISynchronizable
     });
   }
   
-  static public create(model: IModel, parent: Model, docs: {}[], cb)
+  static public create(model: IModel, parent: Model, items: Model[]): Collection;
+  static public create(model: IModel, parent: Model, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
+  static public create(model: IModel, parent: Model, docs: {}[], cb?): any
   {
-
-    function createCollection(model, parent, items){
-      var collection = new Collection(model, parent, items);
-      Util.release(items);
-        
-      if(parent && parent.isKeptSynced()){
-        collection.keepSynced()
-      }
-      collection.count = items.length;
-      return collection;
-    }
-    
-    overload({
+    return overload({
+      'Function Model Array': function(model, parent, models){
+        var collection = new Collection(model, parent, models);
+        Util.release(models);
+        if(parent && parent.isKeptSynced()){
+          collection.keepSynced()
+        }
+        collection.count = models.length;
+        return collection;
+      },
       'Function Model Array Function': function(model, parent, items, cb){
         this.createModels(model, items, (err, models) => {
           if(err){
-            cb(err, null)
+            cb(err)
           }else{
-            cb(err, createCollection(model, parent, models));
+            cb(err, this.create(model, parent, models));
           }
         });
       },
