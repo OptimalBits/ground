@@ -38,14 +38,17 @@
 </script>
 <script type="text/template" id="chatroom-template">
   <div id="chatroom">
+    <h1 data-bind="text: room.name"></h1>
     <table id="history" class="table table-condensed">
       <thead>
         <tr>
+          <!-- <th>Time</th> -->
           <th>Message</th>
         </tr>
       </thead>
       <tbody>
         <tr data-each="messages : message">
+          <!-- <td><span data-bind="text: message.ts"></span></td> -->
           <td><span data-bind="text: message.text"></span></td>
         </tr>
       </tbody>
@@ -57,7 +60,7 @@
 
 <script>
   curl(['underscore'], function(_){
-    curl(['ground'], function(gnd){
+    curl(['ground'], function(Gnd){
 
       // Setup
       var socket = io.connect();
@@ -69,9 +72,15 @@
         Gnd.Model.storageQueue = storageQueue;
         Gnd.Model.syncManager = syncManager;
 
-        var Chat = Gnd.Model.extend('Chat');
+        var Chat = Gnd.Model.extend('chats');
         var Room = Gnd.Model.extend('rooms');
         var Message = Gnd.Model.extend('messages');
+        
+        // Helper function to render templates
+        function renderTemplate(tmplName) {
+          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
+          Gnd.$$('body').innerHTML = template();
+        }
 
         // Routing
         Gnd.Route.listen(function(req) {
@@ -89,20 +98,33 @@
           });
         });
 
-        // Helper function to render templates
-        function renderTemplate(tmplName) {
-          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
-          Gnd.$$('body').innerHTML = template();
+        // get the chat instance from cache or server or create a new one
+        function getChat(cb) {
+          Chat.allModels(function(err, chats) {
+            if(chats.length > 0){
+              // cache hit
+              cb(chats[0]);
+            }else{
+              // wait for a resync from server
+              storageQueue.on('resync:chats', function(chats) {
+                if(chats.length > 0){
+                  Chat.findById(chats[0]._cid, function(err, chat) {
+                    cb(chat);
+                  });
+                }else{
+                  // no chat on server either => create new
+                  var chat = new Chat();
+                  chat.save();
+                  cb(chat);
+                }
+              });
+            }
+          });
         }
 
         // Enter the main UI
         function enterMain() {
-
-          //TODO: Replace when global root has been implemented
-          var chatId = '50f521d9d7f4f1b1b32ea4ef';
-
-          //Get Chat model
-          Chat.findById(chatId, function(err, chat) {
+          getChat(function(chat){
             chat.keepSynced();
 
             // Create a room instance for the ViewModel
@@ -112,14 +134,13 @@
             chat.all(Room, function(err, rooms){
               rooms.keepSynced();
 
-              function onNewRoom() {
-                var newRoom = new Room({name: vmRoom.get('name')});
-                // Wait until we have a server id
-                newRoom.on('id', function(id){
-                  // construct the url
-                  newRoom.set('url', '#/room/' + id);
-                });
-                
+              rooms.set('sortByFn',function(item){
+                return item.ts;
+              })
+              rooms.sortOrder = 'asc';
+
+              function createNewRoom() {
+                var newRoom = new Room({name: vmRoom.get('name'), ts: Date.now()});
 
                 // add the new room
                 rooms.add(
@@ -129,19 +150,25 @@
                   }
                 );
 
-                newRoom.release();
+                // Wait until we have a server id
+                newRoom.on('id', function(id){
+                  // construct the url
+                  newRoom.set('url', '#/room/' + id);
+                  newRoom.release();
+                });
 
+                vmRoom.set('name', '');
                 // Focus on inputbox
                 Gnd.Util.nextTick(function() {
                   Gnd.$$('#roomname').focus();
                 });
               }
 
-              chat.onNewRoom = onNewRoom;
+              chat.onNewRoom = createNewRoom;
               chat.onKeyPress = function(el, ev) {
                 if(ev.which === 13) {
                   el.blur(); // to make sure that the ViewModel is updated
-                  onNewRoom();
+                  createNewRoom();
                 }
               }
 
@@ -173,7 +200,8 @@
               var currentMsg = new Message({text: ''});
 
               function sendMessage() { 
-                var newMsg = new Message({text : currentMsg.get('text')}); 
+                var newMsg = new Message({text : currentMsg.get('text'), ts: Date.now()}); 
+                console.log(newMsg.get('ts'));
                 messages.add(
                   newMsg,
                   function(err){

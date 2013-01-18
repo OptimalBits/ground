@@ -18,16 +18,21 @@ app.use(express.static(__dirname));
 
 // Setup a mongo DB. This is used by the chat example
 var Message = new Schema({
-  text : {type: String}
+  _cid: {type: String},
+  text: {type: String},
+  ts: {type: Number}
 });
 
 var Room = new Schema({
+  _cid: {type: String},
   name : {type: String},
   url: {type: String},
+  ts: {type: Number},
   messages :  [{type: Schema.ObjectId, ref: 'Message'}]
 });
 
 var Chat = new Schema({
+  _cid: {type: String},
   rooms :  [{type: Schema.ObjectId, ref: 'Room'}]
 });
 
@@ -40,7 +45,7 @@ Chat.statics.add = Room.statics.add = function(id, setName, itemIds, cb){
 var models = {
   messages: mongoose.model('Message', Message),
   rooms: mongoose.model('Room', Room),
-  Chat: mongoose.model('Chat', Chat)
+  chats: mongoose.model('Chat', Chat)
 };
 
 // Setup mongodb

@@ -181,37 +181,6 @@ executing = fn;fn.apply(context, args);                };
             return d;
         }
         Util.extend = extend;
-        var ajaxBase = function (method, url, obj, cb) {
-            cb = _.isFunction(obj) ? obj : cb;
-            obj = _.isFunction(obj) ? undefined : JSON.stringify(obj);
-            return {
-                type: method,
-                url: url,
-                data: obj,
-                contentType: 'application/json',
-                dataType: 'json',
-                success: function (data, textStatus, jqXHR) {
-                    cb(null, data);
-                },
-                error: function (jqXHR, status, errorThrown) {
-                    cb(jqXHR);
-                }
-            };
-        };
-        Util.ajax = {
-            get: function (url, obj, cb) {
-                return $.ajax(ajaxBase('GET', url, obj, cb));
-            },
-            put: function (url, obj, cb) {
-                return $.ajax(ajaxBase('PUT', url, obj, cb));
-            },
-            post: function (url, obj, cb) {
-                return $.ajax(ajaxBase('POST', url, obj, cb));
-            },
-            del: function (url, obj, cb) {
-                return $.ajax(ajaxBase('DELETE', url, obj, cb));
-            }
-        };
         function safeEmit(socket) {
             var args = [];
             for (var _i = 0; _i < (arguments.length - 1); _i++) {
@@ -832,6 +801,13 @@ var Gnd;
             }
             return this;
         };
+        Base.prototype.autorelease = function () {
+            var _this = this;
+            Gnd.Util.nextTick(function () {
+                _this.release();
+            });
+            return this;
+        };
         Base.prototype.isDestroyed = function () {
             return this._refCounter === 0;
         };
@@ -931,10 +907,30 @@ var Gnd;
         Cache.prototype.getKeys = function () {
             return _.keys(this.map);
         };
+        Cache.prototype.serialize = function (time, value) {
+            return time + '|' + value;
+        };
+        Cache.prototype.deserialize = function (str) {
+            var i;
+            if(_.isString(str)) {
+                i = str.indexOf('|');
+                if(i > -1) {
+                    return {
+                        time: +str.slice(0, i),
+                        value: str.slice(i + 1)
+                    };
+                }
+            }
+            return {
+                time: -1,
+                value: undefined
+            };
+        };
         Cache.prototype.getItem = function (key) {
-            var old = this.map[key], value;
+            var old = this.map[key], tVal, value;
             if(old) {
-                value = ls[this.key(key, old.time)];
+                tVal = this.deserialize(ls[key]);
+                value = tVal.value;
                 value && this.setItem(key, value);
             }
             return value;
@@ -950,11 +946,8 @@ var Gnd;
             }
             if(this.makeRoom(requested)) {
                 this.size += requested;
-                ls[this.key(key, time)] = value;
+                ls[key] = this.serialize(time, value);
                 if(old) {
-                    if(old.time !== time) {
-                        this.remove(key, old.time);
-                    }
                     idx = old.idx;
                     this.index.touch(idx);
                 } else {
@@ -962,7 +955,6 @@ var Gnd;
                     idx = this.index.addKey(key);
                 }
                 this.map[key] = {
-                    time: time,
                     size: value.length,
                     idx: idx
                 };
@@ -971,7 +963,7 @@ var Gnd;
         Cache.prototype.removeItem = function (key) {
             var item = this.map[key];
             if(item) {
-                this.remove(key, item.time);
+                this.remove(key);
                 this.size -= item.size;
                 delete this.map[key];
                 this.length--;
@@ -988,41 +980,31 @@ var Gnd;
         Cache.prototype.setMaxSize = function (size) {
             this.maxSize = size;
         };
-        Cache.prototype.key = function (key, timestamp) {
-            return key + '|' + timestamp;
-        };
-        Cache.prototype.remove = function (key, timestamp) {
-            var key = this.key(key, timestamp);
+        Cache.prototype.remove = function (key) {
             delete ls[key];
         };
         Cache.prototype.populate = function () {
             var that = this;
-            var i, len, key, s, k, size;
+            var i, len, key, s, k, tVal, size, list = [];
             this.size = 0;
             this.map = {
             };
             this.index = new Index();
             for(i = 0 , len = ls.length; i < len; i++) {
                 key = ls.key(i);
-                if(key.indexOf('|') != -1) {
-                    size = ls[key].length;
-                    s = key.split('|');
-                    k = s[0];
-                    if(!this.map[k] || this.map[k].time < s[1]) {
-                        this.map[k] = {
-                            time: s[1],
-                            size: size
-                        };
-                    }
+                tVal = this.deserialize(ls[key]);
+                if(tVal.value) {
+                    size = tVal.value.length;
+                    list.push({
+                        time: tVal.time,
+                        key: key
+                    });
+                    this.map[key] = {
+                        size: size
+                    };
                     this.size += size;
                 }
             }
-            var list = _.map(this.map, function (item, key) {
-                return {
-                    time: item.time,
-                    key: key
-                };
-            });
             var sorted = _.sortBy(list, function (item) {
                 return item.time;
             });
@@ -1075,8 +1057,12 @@ var Gnd;
                 this.remoteStorage = null;
                 this.localStorage = local;
                 this.remoteStorage = remote;
+                this.queue = [];
                 this.useRemote = !!this.remoteStorage;
                 this.syncFn = _.bind(this.synchronize, this);
+            }
+            Queue.makeKey = function makeKey(keyPath) {
+                return keyPath.join(':');
             }
             Queue.prototype.init = function (cb) {
                 var _this = this;
@@ -1090,38 +1076,94 @@ var Gnd;
                     cb(err);
                 });
             };
-            Queue.prototype.getDoc = function (keyPath, cb) {
+            Queue.prototype.fetch = function (keyPath, cb) {
                 var _this = this;
-                this.localStorage.get(keyPath, function (err, doc) {
+                this.localStorage.fetch(keyPath, function (err, doc) {
                     if(doc) {
                         doc['_id'] = _.last(keyPath);
+                        cb(err, doc);
                     }
-                    cb(err, doc);
+                    _this.useRemote && _this.remoteStorage.fetch(keyPath, function (err, docRemote) {
+                        if(!err) {
+                            docRemote['_persisted'] = true;
+                            _this.localStorage.put(keyPath, docRemote, function (err) {
+                                if(err) {
+                                    var collectionKeyPath = _.initial(keyPath);
+                                    docRemote['_cid'] = docRemote['_id'];
+                                    _this.localStorage.create(collectionKeyPath, docRemote, function () {
+                                    });
+                                }
+                            });
+                            _this.emit('resync:' + Queue.makeKey(keyPath), docRemote);
+                        }
+                        !doc && cb(err, docRemote);
+                    });
                 });
-                this.useRemote && this.remoteStorage.get(keyPath, function (err, doc) {
+            };
+            Queue.prototype.updateLocalCollection = function (keyPath, query, options, remote, cb) {
+                var storage = this.localStorage, itemKeyPath = [
+_.last(keyPath)                ];
+                storage.find(keyPath, query, options, function (err, old) {
                     if(!err) {
-                        doc['_persisted'] = true;
-                        _this.emit('resync:' + Queue.makeKey(keyPath), doc);
-                        _this.localStorage.put(keyPath, doc, function () {
+                        var toRemove = _.difference(_.pluck(old, '_cid'), _.pluck(remote, '_id'));
+                        storage.remove(keyPath, itemKeyPath, toRemove, {
+                        }, function (err) {
+                            if(!err) {
+                                var keys = [];
+                                Gnd.Util.asyncForEach(remote, function (doc, done) {
+                                    var id = doc._id, elemKeyPath = itemKeyPath.concat(id);
+                                    doc._persisted = true;
+                                    storage.put(elemKeyPath, doc, function (err) {
+                                        if(err) {
+                                            doc._cid = id;
+                                            storage.create(itemKeyPath, doc, function (err) {
+                                                done(err);
+                                            });
+                                            keys.push(id);
+                                        } else {
+                                            done();
+                                        }
+                                    });
+                                }, function (err) {
+                                    if(!err) {
+                                        storage.add(keyPath, itemKeyPath, keys, {
+                                        }, cb);
+                                    } else {
+                                        cb(err);
+                                    }
+                                });
+                            } else {
+                                cb(err);
+                            }
                         });
+                    } else {
+                        storage.add(keyPath, itemKeyPath, _.pluck(remote, '_id'), {
+                        }, cb);
                     }
                 });
             };
             Queue.prototype.find = function (keyPath, query, options, cb) {
                 var _this = this;
-                this.localStorage.find(keyPath, query, options, cb);
-                this.useRemote && this.remoteStorage.find(keyPath, query, options, function (err, result) {
-                    if(!err) {
-                        _this.emit('resync:' + Queue.makeKey(keyPath), result);
+                this.localStorage.find(keyPath, query, options, function (err, result) {
+                    if(result) {
+                        cb(err, result);
                     }
+                    _this.useRemote && _this.remoteStorage.find(keyPath, query, options, function (err, remote) {
+                        if(!err) {
+                            _this.updateLocalCollection(keyPath, query, options, remote, function (err) {
+                                result && _this.emit('resync:' + Queue.makeKey(keyPath), remote);
+                            });
+                        }
+                        !result && cb(err, remote);
+                    });
                 });
             };
-            Queue.prototype.createCmd = function (keyPath, args, cb) {
+            Queue.prototype.create = function (keyPath, args, cb) {
                 var _this = this;
                 this.localStorage.create(keyPath, args, function (err, cid) {
                     if(!err) {
                         args['cid'] = cid;
-                        _this.add({
+                        _this.addCmd({
                             cmd: 'create',
                             keyPath: keyPath,
                             args: args
@@ -1131,11 +1173,11 @@ var Gnd;
                     }
                 });
             };
-            Queue.prototype.updateCmd = function (keyPath, args, cb) {
+            Queue.prototype.put = function (keyPath, args, cb) {
                 var _this = this;
                 this.localStorage.put(keyPath, args, function (err) {
                     if(!err) {
-                        _this.add({
+                        _this.addCmd({
                             cmd: 'update',
                             keyPath: keyPath,
                             args: args
@@ -1145,11 +1187,11 @@ var Gnd;
                     }
                 });
             };
-            Queue.prototype.deleteCmd = function (keyPath, cb) {
+            Queue.prototype.del = function (keyPath, cb) {
                 var _this = this;
                 this.localStorage.del(keyPath, function (err) {
                     if(!err) {
-                        _this.add({
+                        _this.addCmd({
                             cmd: 'delete',
                             keyPath: keyPath
                         }, cb);
@@ -1158,11 +1200,12 @@ var Gnd;
                     }
                 });
             };
-            Queue.prototype.addCmd = function (keyPath, itemsKeyPath, itemIds, cb) {
+            Queue.prototype.add = function (keyPath, itemsKeyPath, itemIds, cb) {
                 var _this = this;
-                this.localStorage.add(keyPath, itemsKeyPath, itemIds, function (err) {
+                this.localStorage.add(keyPath, itemsKeyPath, itemIds, {
+                }, function (err) {
                     if(!err) {
-                        _this.add({
+                        _this.addCmd({
                             cmd: 'add',
                             keyPath: keyPath,
                             itemsKeyPath: itemsKeyPath,
@@ -1173,11 +1216,12 @@ var Gnd;
                     }
                 });
             };
-            Queue.prototype.removeCmd = function (keyPath, itemsKeyPath, itemIds, cb) {
+            Queue.prototype.remove = function (keyPath, itemsKeyPath, itemIds, cb) {
                 var _this = this;
-                this.localStorage.remove(keyPath, itemsKeyPath, itemIds, function (err) {
+                this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {
+                }, function (err) {
                     if(!err) {
-                        _this.add({
+                        _this.addCmd({
                             cmd: 'remove',
                             keyPath: keyPath,
                             itemsKeyPath: itemsKeyPath,
@@ -1187,6 +1231,12 @@ var Gnd;
                         cb(err);
                     }
                 });
+            };
+            Queue.prototype.insert = function (keyPath, index, doc, cb) {
+            };
+            Queue.prototype.extract = function (keyPath, index, cb) {
+            };
+            Queue.prototype.all = function (keyPath, cb) {
             };
             Queue.prototype.synchronize = function () {
                 var _this = this;
@@ -1198,18 +1248,19 @@ var Gnd;
                             case 'create': {
                                 (function (cid, args) {
                                     remoteStorage.create(keyPath, args, function (err, sid) {
+                                        var localKeyPath = keyPath.concat(cid);
                                         if(err) {
                                             done(err);
                                         } else {
-                                            localStorage.put(keyPath, {
+                                            localStorage.put(localKeyPath, {
                                                 _persisted: true,
                                                 _id: sid
                                             }, function (err) {
-                                                var newKeyPath = _.initial(keyPath);
+                                                var newKeyPath = _.initial(localKeyPath);
                                                 newKeyPath.push(sid);
-                                                localStorage.link(newKeyPath, keyPath, function (err) {
-                                                    _this.updateQueueIds(cid, sid);
+                                                localStorage.link(newKeyPath, localKeyPath, function (err) {
                                                     _this.emit('created:' + cid, sid);
+                                                    _this.updateQueueIds(cid, sid);
                                                     done();
                                                 });
                                             });
@@ -1230,12 +1281,14 @@ var Gnd;
 
                             }
                             case 'add': {
-                                remoteStorage.add(keyPath, itemsKeyPath, itemIds, done);
+                                remoteStorage.add(keyPath, itemsKeyPath, itemIds, {
+                                }, done);
                                 break;
 
                             }
                             case 'remove': {
-                                remoteStorage.remove(keyPath, itemsKeyPath, itemIds, done);
+                                remoteStorage.remove(keyPath, itemsKeyPath, itemIds, {
+                                }, done);
                                 break;
 
                             }
@@ -1247,7 +1300,17 @@ var Gnd;
                     console.log('busy with ', this.currentTransfer);
                 }
             };
-            Queue.prototype.add = function (cmd, cb) {
+            Queue.prototype.isEmpty = function () {
+                return !this.queue.length;
+            };
+            Queue.prototype.clear = function (cb) {
+                this.queue = [];
+                this.localStorage.del([
+                    'meta', 
+                    'storageQueue'
+                ], cb || Gnd.Util.noop);
+            };
+            Queue.prototype.addCmd = function (cmd, cb) {
                 var _this = this;
                 if(this.useRemote) {
                     this.localStorage.insert([
@@ -1284,9 +1347,6 @@ var Gnd;
                     cmd.itemIds && updateIds(cmd.itemIds, oldId, newId);
                 });
             };
-            Queue.makeKey = function makeKey(keyPath) {
-                return keyPath.join(':');
-            }
             return Queue;
         })(Gnd.Base);
         Storage.Queue = Queue;        
@@ -1322,39 +1382,75 @@ var Gnd;
         function isLink(doc) {
             return _.isString(doc);
         }
+        function isCollectionLink(doc) {
+            return doc[0] === '/' && doc[doc.length - 1] === '/';
+        }
+        function createCollectionLink(collection) {
+            var link = '/^' + collection + '@[^@]+$/';
+            _put(collection, link);
+        }
+        var InvalidKeyError = new Error('Invalid Key');
+        function traverseLinks(key, fn) {
+            var value = _get(key);
+            if(value) {
+                fn && fn(key);
+                if(isLink(value)) {
+                    if(isCollectionLink(value)) {
+                        var regex = new RegExp(value.slice(1, value.length - 1));
+                        var allKeys = localCache.getKeys();
+                        var keys = _.filter(allKeys, function (key) {
+                            if(key.match(regex)) {
+                                var value = _get(key);
+                                return !isLink(value);
+                            }
+                            return false;
+                        });
+                        return {
+                            key: key,
+                            value: keys
+                        };
+                    } else {
+                        return traverseLinks(value);
+                    }
+                } else {
+                    return {
+                        key: key,
+                        value: value
+                    };
+                }
+            }
+        }
         var Local = (function () {
             function Local() { }
             Local.prototype.create = function (keyPath, doc, cb) {
                 if(!doc._cid) {
                     doc._cid = Gnd.Util.uuid();
                 }
-                keyPath.push(doc._cid);
-                _put(makeKey(keyPath), doc);
+                _put(makeKey(keyPath.concat(doc._cid)), doc);
                 cb(null, doc._cid);
             };
-            Local.prototype.put = function (keyPath, doc, cb) {
-                this.get(keyPath, function (err, oldDoc) {
-                    if(oldDoc) {
-                        _.extend(oldDoc, doc);
-                        _put(makeKey(keyPath), oldDoc);
-                    }
-                    cb(err);
-                });
-            };
-            Local.prototype.get = function (keyPath, cb) {
-                var doc = _get(makeKey(keyPath));
-                if(doc) {
-                    if(isLink(doc)) {
-                        this.get(doc.split('@'), cb);
-                    } else {
-                        cb(null, doc);
-                    }
+            Local.prototype.fetch = function (keyPath, cb) {
+                var keyValue = traverseLinks(makeKey(keyPath));
+                if(keyValue) {
+                    cb(null, keyValue.value);
                 } else {
-                    cb(new Error('No local object available'));
+                    cb(InvalidKeyError);
+                }
+            };
+            Local.prototype.put = function (keyPath, doc, cb) {
+                var key = makeKey(keyPath), keyValue = traverseLinks(makeKey(keyPath));
+                if(keyValue) {
+                    _.extend(keyValue.value, doc);
+                    _put(keyValue.key, keyValue.value);
+                    cb();
+                } else {
+                    cb(InvalidKeyError);
                 }
             };
             Local.prototype.del = function (keyPath, cb) {
-                localCache.removeItem(makeKey(keyPath));
+                traverseLinks(makeKey(keyPath), function (key) {
+                    localCache.removeItem(makeKey(keyPath));
+                });
                 cb();
             };
             Local.prototype.link = function (newKeyPath, oldKeyPath, cb) {
@@ -1369,32 +1465,42 @@ var Gnd;
                 }
                 cb();
             };
-            Local.prototype.add = function (keyPath, itemsKeyPath, itemIds, cb) {
-                var key = makeKey(keyPath);
-                var itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds);
-                var oldItemIdsKeys = _get(key) || [];
-                _put(key, _.union(oldItemIdsKeys, itemIdsKeys));
-                cb(null);
-            };
-            Local.prototype.remove = function (keyPath, itemsKeyPath, itemIds, cb) {
-                var key = makeKey(keyPath);
-                var oldItemIdsKeys = _get(key) || [];
-                var itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds);
-                for(var i = 0; i < itemIdsKeys.length; i++) {
-                    var doc = _get(itemIdsKeys[i]);
-                    if(isLink(doc)) {
-                        itemIdsKeys.push(doc);
-                    }
+            Local.prototype.add = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
+                var key = makeKey(keyPath), itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds), keyValue = traverseLinks(key), oldItemIdsKeys = keyValue ? keyValue.value || [] : [];
+                if(keyPath.length === 1 && itemsKeyPath.length === 1) {
+                    createCollectionLink(keyPath[0]);
+                    return cb();
                 }
-                _put(key, _.difference(oldItemIdsKeys, itemIdsKeys));
-                cb(null);
+                _put(key, _.union(oldItemIdsKeys, itemIdsKeys));
+                cb();
+            };
+            Local.prototype.remove = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
+                var key = makeKey(keyPath), itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds), keyValue = traverseLinks(key);
+                if(itemIds.length === 0) {
+                    return cb();
+                }
+                if(keyValue) {
+                    var moreKeysToDelete = [];
+                    for(var i = 0; i < itemIdsKeys.length; i++) {
+                        traverseLinks(itemIdsKeys[i], function (itemKey) {
+                            moreKeysToDelete.push(itemKey);
+                        });
+                    }
+                    _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys, moreKeysToDelete));
+                    cb();
+                } else {
+                    cb(InvalidKeyError);
+                }
             };
             Local.prototype.find = function (keyPath, query, options, cb) {
-                this.get(keyPath, function (err, collection) {
+                this.fetch(keyPath, function (err, collection) {
                     var result = [];
                     if(collection) {
                         for(var i = 0; i < collection.length; i++) {
-                            result.push(_get(collection[i]));
+                            var keyValue = traverseLinks(collection[i]);
+                            if(keyValue) {
+                                result.push(keyValue.value);
+                            }
                         }
                     }
                     cb(null, result);
@@ -1439,18 +1545,19 @@ var Gnd;
                 Gnd.Util.safeEmit(this.socket, 'create', keyPath, doc, cb);
             };
             Socket.prototype.put = function (keyPath, doc, cb) {
+                delete doc['_id'];
                 Gnd.Util.safeEmit(this.socket, 'put', keyPath, doc, cb);
             };
-            Socket.prototype.get = function (keyPath, cb) {
+            Socket.prototype.fetch = function (keyPath, cb) {
                 Gnd.Util.safeEmit(this.socket, 'get', keyPath, cb);
             };
             Socket.prototype.del = function (keyPath, cb) {
                 Gnd.Util.safeEmit(this.socket, 'del', keyPath, cb);
             };
-            Socket.prototype.add = function (keyPath, itemsKeyPath, itemIds, cb) {
+            Socket.prototype.add = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
                 Gnd.Util.safeEmit(this.socket, 'add', keyPath, itemsKeyPath, itemIds, cb);
             };
-            Socket.prototype.remove = function (keyPath, itemsKeyPath, itemIds, cb) {
+            Socket.prototype.remove = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
                 Gnd.Util.safeEmit(this.socket, 'remove', keyPath, itemsKeyPath, itemIds, cb);
             };
             Socket.prototype.find = function (keyPath, query, options, cb) {
@@ -1499,7 +1606,7 @@ var Gnd;
                                 doc && (delete doc.cid);
                                 for(var i = 0, len = docs.length; i < len; i++) {
                                     docs[i].set(doc, {
-                                        sync: 'false'
+                                        nosync: true
                                     });
                                     docs[i].id(id);
                                 }
@@ -1513,7 +1620,7 @@ var Gnd;
                     var key = keyPathToKey(keyPath);
                     _.each(_this.docs[key], function (doc) {
                         doc.set(args, {
-                            sync: false
+                            nosync: true
                         });
                     });
                 });
@@ -1523,13 +1630,6 @@ var Gnd;
                         doc.emit('deleted:', keyPath);
                     });
                 });
-function notifyObservers(observers, message, itemsKeyPath, itemIds) {
-                    if(observers) {
-                        for(var i = 0; i < observers.length; i++) {
-                            observers[i].emit(message, itemsKeyPath, itemIds);
-                        }
-                    }
-                }
                 socket.on('add:', function (keyPath, itemsKeyPath, itemIds) {
                     var key = keyPathToKey(keyPath);
                     notifyObservers(_this.docs[key], 'add:', itemsKeyPath, itemIds);
@@ -1585,6 +1685,13 @@ function notifyObservers(observers, message, itemsKeyPath, itemIds) {
             return Manager;
         })(Gnd.Base);
         Sync.Manager = Manager;        
+        function notifyObservers(observers, message, itemsKeyPath, itemIds) {
+            if(observers) {
+                for(var i = 0; i < observers.length; i++) {
+                    observers[i].emit(message, itemsKeyPath, itemIds);
+                }
+            }
+        }
         function keyPathToKey(keyPath) {
             return keyPath.join(':');
         }
@@ -1622,6 +1729,19 @@ var Gnd;
             this.on('changed:', function () {
                 _this._dirty = true;
             });
+            var listenToResync = function () {
+                Model.storageQueue && Model.storageQueue.on('resync:' + Gnd.Storage.Queue.makeKey(_this.getKeyPath()), function (doc) {
+                    _this.set(doc, {
+                        nosync: true
+                    });
+                    _this.emit('resynced:');
+                });
+            };
+            if(this.isPersisted()) {
+                listenToResync();
+            } else {
+                this.once('id', listenToResync);
+            }
         }
         Model.__bucket = "";
         Model.syncManager = null;
@@ -1640,6 +1760,8 @@ var Gnd;
                 create: this.create,
                 findById: this.findById,
                 all: this.all,
+                allModels: this.allModels,
+                createModels: this.createModels,
                 fromJSON: this.fromJSON,
                 fromArgs: this.fromArgs
             });
@@ -1677,7 +1799,7 @@ var Gnd;
             var _this = this;
             return Gnd.overload({
                 'Array Boolean Object Function': function (keyPath, keepSynced, args, cb) {
-                    Model.storageQueue.getDoc(keyPath, function (err, doc) {
+                    Model.storageQueue.fetch(keyPath, function (err, doc) {
                         if(doc) {
                             _.extend(doc, args);
                             _this.create(doc, keepSynced, cb);
@@ -1711,7 +1833,7 @@ var Gnd;
                 this.__bucket, 
                 keypathOrId
             ];
-            Model.storageQueue.deleteCmd(keypath, function (err) {
+            Model.storageQueue.del(keypath, function (err) {
                 cb(err);
             });
         }
@@ -1732,9 +1854,6 @@ var Gnd;
             if(id) {
                 this._cid = this._id = id;
                 this._persisted = true;
-                if(this._keepSynced) {
-                    Model.syncManager && Model.syncManager.startSync(this);
-                }
                 this.emit('id', id);
             }
             return this._id || this._cid;
@@ -1771,14 +1890,13 @@ var Gnd;
                 args['state'] = this.state = ModelState.CREATING;
                 Model.storageQueue.once('created:' + id, function (id) {
                     _this.id(id);
-                    _this._keepSynced && Model.syncManager && Model.syncManager.startSync(_this);
                     _this.state = ModelState.CREATED;
                 });
-                Model.storageQueue.createCmd([
+                Model.storageQueue.create([
                     bucket
                 ], args, cb);
             } else {
-                Model.storageQueue.updateCmd([
+                Model.storageQueue.put([
                     bucket, 
                     id
                 ], args, function (err) {
@@ -1805,11 +1923,16 @@ var Gnd;
                 return;
             }
             this._keepSynced = true;
+            var startSync = function () {
+                Model.syncManager && Model.syncManager.startSync(_this);
+            };
             if(this.isPersisted()) {
-                Model.syncManager && Model.syncManager.startSync(this);
+                startSync();
+            } else {
+                this.once('id', startSync);
             }
             this.on('changed:', function (doc, options) {
-                if(!options || ((options.sync != 'false') && !_.isEqual(doc, options.doc))) {
+                if(!options || ((options.nosync != true) && !_.isEqual(doc, options.doc))) {
                     _this.update(doc);
                 }
             });
@@ -1832,32 +1955,63 @@ var Gnd;
             }
             return args;
         };
+        Model.createModels = function createModels(docs, done) {
+            var _this = this;
+            var models = [];
+            Gnd.Util.asyncForEach(docs, function (args, fn) {
+                _this.create(args, function (err, instance) {
+                    if(instance) {
+                        models.push(instance);
+                    }
+                    fn(err);
+                });
+            }, function (err) {
+                done(err, models);
+            });
+        }
+        Model.allModels = function allModels(cb) {
+            var _this = this;
+            Model.storageQueue.find([
+                this.__bucket
+            ], {
+            }, {
+            }, function (err, docs) {
+                if(docs) {
+                    _this.createModels(docs, cb);
+                } else {
+                    cb(err);
+                }
+            });
+        }
         Model.all = function all(parent, args, bucket, cb) {
             var _this = this;
+            function allInstances(parent, keyPath, args, cb) {
+                Model.storageQueue.find(keyPath, {
+                }, {
+                }, function (err, docs) {
+                    if(docs) {
+                        _.each(docs, function (doc) {
+                            _.extend(doc, args);
+                        });
+                        Gnd.Collection.create(_this, parent, docs, cb);
+                    } else {
+                        cb(err);
+                    }
+                });
+            }
             Gnd.overload({
                 'Model Array Object Function': function (parent, keyPath, args, cb) {
-                    Model.storageQueue.find(keyPath, {
-                    }, {
-                    }, function (err, docs) {
-                        if(docs) {
-                            _.each(docs, function (doc) {
-                                _.extend(doc, args);
-                            });
-                            Gnd.Collection.create(_this, parent, docs, cb);
-                        } else {
-                            cb(err);
-                        }
-                    });
+                    allInstances(parent, keyPath, args, cb);
                 },
                 'Model Object String Function': function (parent, args, bucket, cb) {
                     var keyPath = parent.getKeyPath();
                     keyPath.push(bucket);
-                    this.all(parent, args, cb);
+                    allInstances(parent, keyPath, args, cb);
                 },
                 'Model Function': function (parent, cb) {
                     var keyPath = parent.getKeyPath();
                     keyPath.push(this.__bucket);
-                    this.all(parent, keyPath, {
+                    allInstances(parent, keyPath, {
                     }, cb);
                 }
             }).apply(this, arguments);
@@ -1906,6 +2060,17 @@ var Gnd;
                 (_this.sortOrder == 'desc') && _this.items.reverse();
                 _this.emit('sorted:', _this.items, oldItems);
             });
+            if(parent) {
+                if(parent.isPersisted()) {
+                    this.listenToResync();
+                } else {
+                    parent.once('id', function () {
+                        _this.listenToResync();
+                    });
+                }
+            } else {
+                this.listenToResync();
+            }
         }
         Collection.prototype.destroy = function () {
             this._keepSynced && this.endSync();
@@ -1914,44 +2079,28 @@ var Gnd;
             _super.prototype.destroy.call(this);
         };
         Collection.create = function create(model, parent, docs, cb) {
-            var _items = [];
-            function createModels(docs, done) {
-                Gnd.Util.asyncForEach(docs, function (args, fn) {
-                    model.create(args, false, function (err, instance) {
-                        if(instance) {
-                            _items.push(instance);
-                        }
-                        fn(err);
-                    });
-                }, done);
-            }
-            function createCollection(model, parent, items) {
-                var collection = new Collection(model, parent, items);
-                Gnd.Util.release(items);
-                if(parent && parent.isKeptSynced()) {
-                    collection.keepSynced();
-                }
-                collection.count = items.length;
-                return collection;
-            }
-            Gnd.overload({
+            var _this = this;
+            return Gnd.overload({
+                'Function Model Array': function (model, parent, models) {
+                    var collection = new Collection(model, parent, models);
+                    Gnd.Util.release(models);
+                    if(parent && parent.isKeptSynced()) {
+                        collection.keepSynced();
+                    }
+                    collection.count = models.length;
+                    return collection;
+                },
                 'Function Model Array Function': function (model, parent, items, cb) {
-                    createModels(items, function (err) {
+                    model.createModels(items, function (err, models) {
                         if(err) {
-                            cb(err, null);
+                            cb(err);
                         } else {
-                            cb(err, createCollection(model, parent, _items));
+                            cb(err, _this.create(model, parent, models));
                         }
                     });
                 },
                 'Function Array Function': function (model, items, cb) {
-                    createModels(items, function (err) {
-                        if(err) {
-                            cb(err, null);
-                        } else {
-                            cb(err, createCollection(model, undefined, _items));
-                        }
-                    });
+                    this.create(model, undefined, items, cb);
                 },
                 'Function Model Function': function (model, parent, cb) {
                     this.create(model, parent, [], cb);
@@ -1970,11 +2119,7 @@ var Gnd;
         };
         Collection.prototype.save = function (cb) {
             var _this = this;
-            var keyPath = [
-                this.parent.bucket(), 
-                this.parent.id(), 
-                this.model.__bucket
-            ];
+            var keyPath = this.getKeyPath();
             var itemsKeyPath = [];
             if(this._removed.length) {
                 itemsKeyPath = _.initial(this._removed[0].getKeyPath());
@@ -1984,7 +2129,7 @@ var Gnd;
                 }
             }
             var itemIds = Collection.getItemIds(this._removed);
-            Gnd.Model.storageQueue.removeCmd(keyPath, itemsKeyPath, itemIds, function (err) {
+            Gnd.Model.storageQueue.remove(keyPath, itemsKeyPath, itemIds, function (err) {
                 if(!err) {
                     _this._removed = [];
                     Gnd.Util.asyncForEach(_this.items, function (item, cb) {
@@ -1992,7 +2137,7 @@ var Gnd;
                     }, function (err) {
                         if((!err) && (_this._added.length > 0)) {
                             itemIds = Collection.getItemIds(_this._added);
-                            Gnd.Model.storageQueue.addCmd(keyPath, itemsKeyPath, itemIds, function (err) {
+                            Gnd.Model.storageQueue.add(keyPath, itemsKeyPath, itemIds, function (err) {
                                 if(!err) {
                                     _this._added = [];
                                 }
@@ -2019,12 +2164,17 @@ var Gnd;
                     !err && _this._keepSynced && !item._keepSynced && item.keepSynced();
                     done(err);
                 });
-            }, cb);
+            }, cb || Gnd.Util.noop);
         };
         Collection.prototype.getKeyPath = function () {
+            if(this.parent) {
+                return [
+                    this.parent.bucket(), 
+                    this.parent.id(), 
+                    this.model.__bucket
+                ];
+            }
             return [
-                this.parent.bucket(), 
-                this.parent.id(), 
                 this.model.__bucket
             ];
         };
@@ -2051,9 +2201,9 @@ var Gnd;
                     _this.set('count', items.length);
                     _this.emit('removed:', item, index);
                     item.release();
-                    if(_this._keepSynced && (!opts || !opts.nosync)) {
+                    if(_this.isKeptSynced() && (!opts || !opts.nosync)) {
                         var itemKeyPath = _.initial(item.getKeyPath());
-                        Gnd.Model.storageQueue.removeCmd(keyPath, itemKeyPath, [
+                        Gnd.Model.storageQueue.remove(keyPath, itemKeyPath, [
                             item.id()
                         ], done);
                         return;
@@ -2096,10 +2246,10 @@ var Gnd;
             this.items.reverse();
             return this;
         };
-        Collection.prototype.persistAddItem = function (item, cb) {
+        Collection.prototype.addPersistedItem = function (item, cb) {
             var keyPath = this.getKeyPath();
             var itemKeyPath = _.initial(item.getKeyPath());
-            Gnd.Model.storageQueue.addCmd(keyPath, itemKeyPath, [
+            Gnd.Model.storageQueue.add(keyPath, itemKeyPath, [
                 item.id()
             ], cb);
         };
@@ -2119,14 +2269,13 @@ var Gnd;
             if(this.isKeptSynced()) {
                 if(!opts || (opts.nosync !== true)) {
                     if(item.isPersisted()) {
-                        this.persistAddItem(item, cb);
+                        this.addPersistedItem(item, cb);
                     } else {
                         item.save(function (err) {
                             if(!err) {
-                                _this.persistAddItem(item, cb);
-                            } else {
-                                cb();
+                                _this.addPersistedItem(item, Gnd.Util.noop);
                             }
+                            cb(err);
                         });
                     }
                 } else {
@@ -2147,14 +2296,19 @@ var Gnd;
         Collection.prototype.startSync = function () {
             var _this = this;
             this._keepSynced = true;
-            Gnd.Model.syncManager && Gnd.Model.syncManager.startSync(this);
+            if(this.parent && Gnd.Model.syncManager) {
+                if(this.parent.isPersisted()) {
+                    Gnd.Model.syncManager.startSync(this);
+                } else {
+                    this.parent.on('id', function () {
+                        Gnd.Model.syncManager.startSync(_this);
+                    });
+                }
+            }
             this.on('add:', function (itemsKeyPath, itemIds) {
                 Gnd.Util.asyncForEach(itemIds, function (itemId, done) {
                     if(!_this.findById(itemId)) {
-                        Gnd.Model.findById([
-                            itemsKeyPath, 
-                            itemId
-                        ], true, {
+                        _this.model.findById(itemsKeyPath.concat(itemId), true, {
                         }, function (err, item) {
                             if(item) {
                                 _this.addItem(item, {
@@ -2168,10 +2322,44 @@ var Gnd;
             this.on('remove:', function (itemsKeyPath, itemId) {
                 _this.remove(itemId, true, Gnd.Util.noop);
             });
-            if(Gnd.Model.storageQueue) {
-                Gnd.Model.storageQueue.on('resync:' + this.getKeyPath().join(':'), function (items) {
-                });
-            }
+        };
+        Collection.prototype.resync = function (items) {
+            var _this = this;
+            var itemsToRemove = [], itemsToAdd = items.slice(0);
+            this['each'](function (item) {
+                var id = item.id(), shouldRemove = true;
+                for(var i = 0; i < items.length; i++) {
+                    if(id == items[i]._id) {
+                        item.set(items[i]);
+                        shouldRemove = false;
+                        break;
+                    }
+                }
+                shouldRemove && itemsToRemove.push(id);
+            });
+            this.remove(itemsToRemove, {
+                nosync: true
+            }, function (err) {
+                if(!err) {
+                    (_this.model).createModels(itemsToAdd, function (err, models) {
+                        if(!err) {
+                            _this.add(models, {
+                                nosync: true
+                            }, function (err) {
+                                _this.emit('resynced:');
+                            });
+                        }
+                    });
+                }
+            });
+        };
+        Collection.prototype.listenToResync = function () {
+            var _this = this;
+            var key = Gnd.Storage.Queue.makeKey(this.getKeyPath());
+            this.resyncFn = function (items) {
+                _this.resync(items);
+            };
+            Gnd.Model.storageQueue && Gnd.Model.storageQueue.on('resync:' + key, this.resyncFn);
         };
         Collection.prototype.endSync = function () {
             Gnd.Model.syncManager && Gnd.Model.syncManager.endSync(this);
@@ -2189,6 +2377,8 @@ var Gnd;
             }
         };
         Collection.prototype.deinitItems = function (items) {
+            var key = Gnd.Storage.Queue.makeKey(this.getKeyPath());
+            Gnd.Model.storageQueue && Gnd.Model.storageQueue.off('resync:' + key, this.resyncFn);
             for(var i = 0, len = items.length; i < len; i++) {
                 var item = items[i];
                 item.off('changed:', this.updateFn);
@@ -2240,6 +2430,176 @@ var Gnd;
             ].concat(_.toArray(arguments)));
         };
     });
+})(Gnd || (Gnd = {}));
+var Gnd;
+(function (Gnd) {
+    function $$(selector, context) {
+        var el = context || document;
+        switch(selector[0]) {
+            case '#': {
+                return el.getElementById(selector.slice(1));
+
+            }
+            case '.': {
+                return el.getElementsByClassName(selector.slice(1));
+
+            }
+        }
+        return el.getElementsByTagName(selector)[0];
+    }
+    Gnd.$$ = $$;
+    function $$$(tagName, context) {
+        var el = context || document;
+        return el.getElementsByTagName(tagName);
+    }
+    Gnd.$$$ = $$$;
+    function isElement(object) {
+        return object && object.nodeType === Node.ELEMENT_NODE;
+    }
+    Gnd.isElement = isElement;
+    function makeElement(html) {
+        var container = document.createElement("p");
+        var fragment = document.createDocumentFragment();
+        container.innerHTML = html;
+        while(container = container.firstChild) {
+            fragment.appendChild(container);
+        }
+        return fragment;
+    }
+    Gnd.makeElement = makeElement;
+    function $$on(el, eventName, handler) {
+        if(el.addEventListener) {
+            el.addEventListener(eventName, handler);
+        } else {
+            if(el['attachEvent']) {
+                el['attachEvent']("on" + eventName, handler);
+            }
+        }
+    }
+    Gnd.$$on = $$on;
+    function $$off(el, eventName, handler) {
+        if(el.removeEventListener) {
+            el.removeEventListener(eventName, handler);
+        } else {
+            if(el['detachEvent']) {
+                el['detachEvent']("on" + eventName, handler);
+            }
+        }
+    }
+    Gnd.$$off = $$off;
+    function fireEvent(element, event) {
+        if(document.createEventObject) {
+            var evt = document.createEventObject();
+            return element.fireEvent('on' + event, evt);
+        } else {
+            var msEvent = document.createEvent("HTMLEvents");
+            msEvent.initEvent(event, true, true);
+            return !element.dispatchEvent(msEvent);
+        }
+    }
+    Gnd.fireEvent = fireEvent;
+    function setAttr(el, attr, value) {
+        if(el.hasOwnProperty(attr)) {
+            el[attr] = value;
+        }
+        if(value) {
+            el.setAttribute(attr, value);
+        } else {
+            el.removeAttribute(attr);
+        }
+    }
+    Gnd.setAttr = setAttr;
+    function getAttr(el, attr) {
+        if(el.hasOwnProperty(attr)) {
+            return el[attr];
+        } else {
+            var val = el.getAttribute(attr);
+            switch(val) {
+                case 'true': {
+                    return true;
+
+                }
+                case null:
+                case 'false': {
+                    return false;
+
+                }
+                default: {
+                    return val;
+
+                }
+            }
+        }
+    }
+    Gnd.getAttr = getAttr;
+    function show(el) {
+        el['style'].display = getAttr(el, 'data-display') || 'block';
+    }
+    Gnd.show = show;
+    function hide(el) {
+        setAttr(el, 'data-display', el['style'].display);
+        el['style'].display = "none";
+    }
+    Gnd.hide = hide;
+    function serialize(obj) {
+        var str = [];
+        for(var p in obj) {
+            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+        }
+        return str.join("&");
+    }
+    Gnd.serialize = serialize;
+    var Gnd;
+    (function (Gnd) {
+        (function (Ajax) {
+            function get(url, obj, cb) {
+                base('GET', url, obj, cb);
+            }
+            Ajax.get = get;
+            function put(url, obj, cb) {
+                base('PUT', url, obj, cb);
+            }
+            Ajax.put = put;
+            function post(url, obj, cb) {
+                base('POST', url, obj, cb);
+            }
+            Ajax.post = post;
+            function del(url, obj, cb) {
+                base('DEL', url, obj, cb);
+            }
+            Ajax.del = del;
+            function getXhr() {
+                for(var i = 0; i < 4; i++) {
+                    try  {
+                        return i ? new ActiveXObject([
+                            , 
+                            "Msxml2", 
+                            "Msxml3", 
+                            "Microsoft"
+                        ][i] + ".XMLHTTP") : new XMLHttpRequest();
+                    } catch (e) {
+                    }
+                }
+            }
+            function base(method, url, obj, cb) {
+                var xhr = getXhr();
+                xhr.onreadystatechange = function () {
+                    if(xhr.readyState === 4) {
+                        if(xhr.status === 200) {
+                            cb(null, JSON.stringify(xhr.responseText || {
+                            }));
+                        } else {
+                            cb(new Error("Ajax Error: " + xhr.responseText));
+                        }
+                    } else {
+                    }
+                };
+                xhr.open('GET', url);
+                xhr.send(JSON.stringify(obj));
+            }
+        })(Gnd.Ajax || (Gnd.Ajax = {}));
+        var Ajax = Gnd.Ajax;
+    })(Gnd || (Gnd = {}));
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
@@ -2305,7 +2665,7 @@ url = location.hash.replace(/^#!?/, '');
         function redirect(url) {
             location.hash = url;
             if('onhashchange' in window) {
-                $(window).trigger('onhashchange');
+                Gnd.fireEvent(window, 'onhashchange');
             }
         }
         Route.redirect = redirect;
@@ -2433,7 +2793,7 @@ args: undefined            }, i = 0, len = args.length;
         function exitNodes(queue, nodes, start) {
             for(var i = nodes.length - 1; i >= start; i--) {
                 var node = nodes[i];
-                node.$el || queue.append(node.select);
+                node.el || queue.append(node.select);
                 queue.append(node.exit || node.hide, node.drain, node.leave);
             }
         }
@@ -2501,16 +2861,16 @@ args: undefined            }, i = 0, len = args.length;
                 var self = this;
                 (function (node) {
                     node.select = wrap(function (done) {
-                        node.$el = self.$el = $(selector);
+                        node.el = self.el = Gnd.$$(selector);
                         done();
                     });
                     node.selector = selector;
                     node.hide = wrap(function (done) {
-                        node.$el.hide();
+                        node.el && Gnd.hide(node.el);
                         done();
                     });
                     node.show = wrap(function (done) {
-                        node.$el.show();
+                        node.el && Gnd.show(node.el);
                         done();
                     });
                     node.drain = wrap(function (cb) {
@@ -2588,7 +2948,7 @@ args: undefined            }, i = 0, len = args.length;
                 return this.components[this.index];
             };
             Request.prototype.redirect = function (url, params) {
-                url = params ? url + '?' + $.param(params) : url;
+                url = params ? url + '?' + Gnd.serialize(params) : url;
                 this.queue.wait(function () {
                     redirect(url);
                 });
@@ -2723,18 +3083,24 @@ args: undefined            }, i = 0, len = args.length;
                         }
                     }
                     var html = self.template ? self.template(templ, args) : templ;
-                    self.$el.html(html);
-                    waitForImages(self.$el, cb);
+                    self.el.innerHTML = html;
+                    waitForImages(self.el, cb);
                 }
-                function waitForImages($el, cb) {
-                    var $imgs = $('img', $el), len = $imgs.length, counter = 0;
+                function waitForImages(el, cb) {
+                    var images = Gnd.$$$('img', el), len = images.length, counter = 0;
                     if(len > 0) {
-                        $imgs.one('load', function () {
-                            counter++;
-                            if(counter === len) {
-                                cb();
-                            }
-                        });
+                        for(var i = 0; i < len; i++) {
+                            (function (el) {
+                                var loadEvent = function (evt) {
+                                    Gnd.$$off(el, 'load', loadEvent);
+                                    counter++;
+                                    if(counter === len) {
+                                        cb();
+                                    }
+                                };
+                                Gnd.$$on(el, 'load', loadEvent);
+                            })(images[0]);
+                        }
                     } else {
                         cb();
                     }
@@ -2776,98 +3142,12 @@ args: undefined            }, i = 0, len = args.length;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
-    function $$(selector, context) {
-        var el = context || document;
-        switch(selector[0]) {
-            case '#': {
-                return el.getElementById(selector.slice(1));
-
-            }
-            case '.': {
-                return el.getElementsByClassName(selector.slice(1));
-
-            }
-        }
-        return el.getElementsByTagName(selector);
-    }
-    Gnd.$$ = $$;
-    function isElement(object) {
-        return object && object.nodeType === Node.ELEMENT_NODE;
-    }
-    Gnd.isElement = isElement;
-    function makeElement(html) {
-        var container = document.createElement("p");
-        var fragment = document.createDocumentFragment();
-        container.innerHTML = html;
-        while(container = container.firstChild) {
-            fragment.appendChild(container);
-        }
-        return fragment;
-    }
-    Gnd.makeElement = makeElement;
-    function addEventListener(el, eventName, handler) {
-        if(el.addEventListener) {
-            el.addEventListener(eventName, handler);
-        } else {
-            if(el['attachEvent']) {
-                el['attachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    Gnd.addEventListener = addEventListener;
-    function removeEventListener(el, eventName, handler) {
-        if(el.removeEventListener) {
-            el.removeEventListener(eventName, handler);
-        } else {
-            if(el['detachEvent']) {
-                el['detachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    Gnd.removeEventListener = removeEventListener;
-    function setAttr(el, attr, value) {
-        if(el.hasOwnProperty(attr)) {
-            el[attr] = value;
-        }
-        if(value) {
-            el.setAttribute(attr, value);
-        } else {
-            el.removeAttribute(attr);
-        }
-    }
-    Gnd.setAttr = setAttr;
-    function getAttr(el, attr) {
-        if(el.hasOwnProperty(attr)) {
-            return el[attr];
-        } else {
-            var val = el.getAttribute(attr);
-            switch(val) {
-                case 'true': {
-                    return true;
-
-                }
-                case null:
-                case 'false': {
-                    return false;
-
-                }
-                default: {
-                    return val;
-
-                }
-            }
-        }
-    }
-    Gnd.getAttr = getAttr;
-})(Gnd || (Gnd = {}));
-var Gnd;
-(function (Gnd) {
     var View = (function (_super) {
         __extends(View, _super);
         function View(parent) {
                 _super.call(this);
             this.children = [];
-            this.el = Gnd.makeElement('<div>');
+            this.el = document.createElement('div');
             this.parent = parent;
             parent && parent.children.push(this);
         }
@@ -2886,8 +3166,10 @@ var Gnd;
             console.log(this + " does not implement disable");
         };
         View.prototype.hide = function (duration, easing, callback) {
+            Gnd.hide(this.el);
         };
         View.prototype.show = function (duration, easing, callback) {
+            Gnd.show(this.el);
         };
         View.prototype.destroy = function () {
             this.clean();
@@ -3016,7 +3298,7 @@ var Gnd;
                     }
                     obj.retain();
                     obj.on(keypath, modelListener);
-                    Gnd.addEventListener(el, 'change', elemListener);
+                    Gnd.$$on(el, 'change', elemListener);
                     this.bindings.push([
                         obj, 
                         keypath, 
@@ -3033,7 +3315,7 @@ var Gnd;
             _.each(this.bindings, function (item) {
                 item[0].off(item[1], item[2]);
                 item[0].release();
-                item[3] && Gnd.removeEventListener(_this.el, 'change', item[3]);
+                item[3] && Gnd.$$off(_this.el, 'change', item[3]);
             });
         };
         return TwoWayBinder;
@@ -3061,7 +3343,8 @@ var Gnd;
                 el.removeAttribute('id');
                 var addNode = function (item, nextSibling) {
                     var itemNode = el.cloneNode(true), id = item.id(), modelListener = function (newId) {
-delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'data-item', newId);                    };
+if(!(newId in mappings)) {
+delete mappings[id];mappings[newId] = itemNode;Gnd.setAttr(itemNode, 'data-item', newId);                        }                    };
                     item.retain();
                     Gnd.setAttr(itemNode, 'data-item', id);
                     mappings[id] = itemNode;
@@ -3078,6 +3361,7 @@ delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'da
                     viewModel.popContext();
                     item.on('id', modelListener);
                     itemNode['gnd-obj'] = item;
+                    itemNode['gnd-listener'] = modelListener;
                 };
                 var addNodes = function () {
                     collection.filtered(function (err, models) {
@@ -3114,9 +3398,10 @@ delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'da
             this.removeNodes();
         };
         EachBinder.prototype.removeNode = function (id) {
-            var node = this.mappings[id];
+            var node = this.mappings[id], item = node['gnd-obj'];
             this.viewModel.unbind(node['gnd-bindings']);
-            node['gnd-obj'].release();
+            item.off('id', node['gnd-listener']);
+            item.release();
             this.parent.removeChild(node);
             delete this.mappings[id];
         };
@@ -3132,18 +3417,18 @@ delete mappings[id];id = newId;mappings[id] = itemNode;Gnd.setAttr(itemNode, 'da
             this.bindings = [];
         }
         ShowBinder.prototype.bind = function (el, value, viewModel) {
-            var _value = value.replace('!', ''), negate = _value === value ? false : true, keypath = makeKeypathArray(_value), model = viewModel.resolveContext(_.initial(keypath)), display = el['style'].display;
-            function setVisibility(visible) {
-                if(negate ? !visible : visible) {
-                    el['style'].display = display;
-                } else {
-                    el['style'].display = "none";
-                }
-            }
+            var _value = value.replace('!', ''), negate = _value === value ? false : true, keypath = makeKeypathArray(_value), model = viewModel.resolveContext(_.initial(keypath));
             if(model instanceof Gnd.Base) {
                 model.retain();
-                var key = _.rest(keypath).join('.'), modelListener = function (value) {
-setVisibility(value);                };
+                function setVisibility(visible) {
+                    if(negate ? !visible : visible) {
+                        Gnd.show(el);
+                    } else {
+                        Gnd.hide(el);
+                    }
+                }
+                var key = _.rest(keypath).join('.'), modelListener = function (visible) {
+setVisibility(visible);                };
                 setVisibility(model.get(key));
                 model.on(key, modelListener);
                 this.bindings.push([
@@ -3256,7 +3541,7 @@ setVisibility(value);                };
                         var elementListener = function (evt) {
                             handler.call(obj, el, evt);
                         };
-                        Gnd.addEventListener(el, eventName, elementListener);
+                        Gnd.$$on(el, eventName, elementListener);
                         _this.bindings.push([
                             obj, 
                             eventName, 
@@ -3277,7 +3562,7 @@ setVisibility(value);                };
             var _this = this;
             _.each(this.bindings, function (item) {
                 item[0].release();
-                Gnd.removeEventListener(_this.el, item[1], item[2]);
+                Gnd.$$off(_this.el, item[1], item[2]);
             });
         };
         return EventBinder;
@@ -3317,3 +3602,4 @@ setVisibility(value);                };
 })(this, function () {
     return Gnd;
 }));
+//@ sourceMappingURL=gnd.js.map
