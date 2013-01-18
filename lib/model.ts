@@ -23,12 +23,6 @@
 
 module Gnd {
 
-export enum ModelState {
-  INITIAL,
-  CREATING,
-  CREATED
-}
-
 export interface IModel {
   new (args: {}, bucket: string): Model;
   __bucket: string;
@@ -57,7 +51,8 @@ export class Model extends Base implements Sync.ISynchronizable
   private _cid: string;
   private _id: string;
   
-  public state: ModelState = ModelState.INITIAL;
+  public _initial: bool = true;
+  
   
   static syncManager: Gnd.Sync.Manager;
   static storageQueue: Gnd.Storage.Queue;
@@ -75,7 +70,6 @@ export class Model extends Base implements Sync.ISynchronizable
     });
     
     var listenToResync = () => {
-      Model.storageQueue &&
       Model.storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
         // NOTE: If the model is "dirty", we could have a conflict
         this.set(doc, {nosync: true});
@@ -83,10 +77,12 @@ export class Model extends Base implements Sync.ISynchronizable
       });
     }
     
-    if(this.isPersisted()){
-      listenToResync();
-    }else{
-      this.once('id', listenToResync);
+    if(Model.storageQueue){
+      if(this.isPersisted()){
+        listenToResync();
+      }else{
+        this.once('id', listenToResync);
+      }
     }
   }
   
@@ -126,10 +122,7 @@ export class Model extends Base implements Sync.ISynchronizable
               var id = instance.id();
               Model.storageQueue.once('created:'+id, (id) => {
                 instance.id(id);
-                instance.state = ModelState.CREATED;
               });
-            }else{
-              instance.state = ModelState.CREATED;
             }
             instance.init(() => {
               cb(null, instance);
@@ -209,7 +202,7 @@ export class Model extends Base implements Sync.ISynchronizable
   id(id?: string): string 
   {
     if(id){
-      this._cid = this._id = id;
+      this._id = id;
       this._persisted = true;
       this.emit('id', id);
     }
@@ -233,7 +226,7 @@ export class Model extends Base implements Sync.ISynchronizable
   
   isPersisted(): bool
   {
-    return this._persisted || (this.state >= ModelState.CREATED);
+    return this._persisted;// || (this._state >= ModelState.CREATED);
   }
   
   bucket(): string
@@ -259,19 +252,21 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   update(args: {}, cb?: (err: Error) => void)
   {
-    var 
+    var
       bucket = this.__bucket,
       id = this.id();
     
-    cb = cb || (err: Error)=>{};
+    cb = cb || (err?: Error)=>{};
     
-    if(this.state == ModelState.INITIAL){
-      args['state'] = this.state = ModelState.CREATING;
+    if(this._initial){
+      args['_initial'] = this._initial = false;
       Model.storageQueue.once('created:'+id, (id) => {
         this.id(id);
-        this.state = ModelState.CREATED;
       });
-      Model.storageQueue.create([bucket], args, cb);
+      Model.storageQueue.create([bucket], args, (err?, id?) => {
+        // this._cid ? id ?
+        cb(err);
+      });
     }else{
       Model.storageQueue.put([bucket, id], args, (err)=>{
         if(!err){
