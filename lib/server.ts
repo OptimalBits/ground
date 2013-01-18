@@ -49,9 +49,9 @@ class ProxyStorage implements IStorage {
     });
   }
 
-  get(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
+  fetch(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
   {
-    this.storage.get(keyPath, cb);
+    this.storage.fetch(keyPath, cb);
   }
 
   del(keyPath: string[], cb: (err?: Error) => void): void
@@ -64,9 +64,9 @@ class ProxyStorage implements IStorage {
     })
   }
 
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
   {
-    this.storage.add(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
+    this.storage.add(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
       if(!err){
         this.syncHub && this.syncHub.add(keyPath, itemsKeyPath, itemIds);
       }
@@ -74,9 +74,9 @@ class ProxyStorage implements IStorage {
     })
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
   {
-    this.storage.remove(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
+    this.storage.remove(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
       if(!err){
         this.syncHub && this.syncHub.remove(keyPath, itemsKeyPath, itemIds);
       }

@@ -33,7 +33,7 @@ export class SocketBackend {
       });
     
       socket.on('get', function(keyPath: string[], cb: (err?: string, doc?: {}) => void){
-        server.storage.get(keyPath, scb(cb));
+        server.storage.fetch(keyPath, scb(cb));
       });
     
       socket.on('del', function(keyPath: string[], cb: (err?: string) => void){
@@ -42,11 +42,12 @@ export class SocketBackend {
     
       // Collections / Sets
       socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
-        server.storage.add(keyPath, itemsKeyPath, itemIds, scb(cb));
+        console.log(arguments);
+        server.storage.add(keyPath, itemsKeyPath, itemIds, {}, scb(cb));
       });
     
       socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
-        server.storage.remove(keyPath, itemsKeyPath, itemIds, scb(cb));
+        server.storage.remove(keyPath, itemsKeyPath, itemIds, {}, scb(cb));
       });
 
       socket.on('find', function(keyPath: string[], query: {}, options: {}, cb: (err: string, result: {}[]) => void){

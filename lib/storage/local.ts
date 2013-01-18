@@ -36,8 +36,17 @@ function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
 }
 
-function isLink(doc){
+function isLink(doc): bool {
   return _.isString(doc);
+}
+
+function isCollectionLink(doc): bool {
+  return doc[0] === '/' && doc[doc.length-1] === '/';
+
+}
+function createCollectionLink(collection): void {
+  var link = '/^' + collection + '@[^@]+$/';
+  _put(collection, link);
 }
 
 interface KeyValue {
@@ -53,7 +62,27 @@ function traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
   if (value){
     fn && fn(key);
     if (isLink(value)){
-      return traverseLinks(value);
+      if (isCollectionLink(value)){
+        var regex = new RegExp(value.slice(1, value.length-1));
+        var allKeys = localCache.getKeys();
+        // get the keys matching our regex but only those that aren't links
+        var keys = _.filter(allKeys, (key)=>{
+          if(key.match(regex)){
+            var value = _get(key);
+            return !isLink(value);
+          }
+          return false;
+        });
+        return {
+          key: key,
+          value: _.reduce(keys, function(memo, key){
+              memo[key] = 'insync';
+              return memo;
+          }, {})
+        }
+      } else {
+        return traverseLinks(value);
+      }
     } else {
       return {key: key, value: value};
     }
@@ -129,6 +158,11 @@ export class Local implements IStorage {
       keyValue = traverseLinks(key),
       oldItemIdsKeys = keyValue ? keyValue.value || {} : {},
       newIdKeys = {};
+
+    if(keyPath.length === 1 && itemsKeyPath.length === 1){
+      createCollectionLink(keyPath[0]);
+      return cb();
+    }
     
     key = keyValue ? keyValue.key : key;
     _.each(itemIdsKeys, (id)=>{
@@ -144,6 +178,8 @@ export class Local implements IStorage {
       key = makeKey(keyPath),
       itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
       keyValue = traverseLinks(key);
+
+    if(itemIds.length === 0) return cb(); // do nothing
 
     if(keyValue){
       var keysToDelete = keyValue.value;

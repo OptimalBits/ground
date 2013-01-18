@@ -9,6 +9,7 @@
   get property bindings and reference counting.
 */
 
+/// <reference path="util.ts" />
 /// <reference path="event.ts" />
 /// <reference path="undo.ts" />
 
@@ -149,6 +150,31 @@ export class Base extends EventEmitter {
     }
   }
   
+  // format(property, fn?): any
+  // {
+  //   if(arguments.length==1){
+  //     if(_.isObject(property)){
+  //       if(!this._formatters){
+  //         this._formatters = {};
+  //       }
+  //       _.extend(this._formatters, property);
+  //     } else if((this._formatters)&&(property in this._formatters)){
+  //       var val = this.get(property);
+  //       if(_.isFunction(val)){
+  //         val = val.call(this);
+  //       }
+  //       return this._formatters[property].call(this, val);
+  //     }else{
+  //       return this.get(property);
+  //     }
+  //   }else{
+  //     if(!this._formatters){
+  //       this._formatters = {};
+  //     }
+  //     this._formatters[property] = fn;
+  //   }
+  // }
+
   format(property, fn?): any
   {
     if(arguments.length==1){

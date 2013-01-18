@@ -39,7 +39,7 @@ export class Model extends Base implements Sync.ISynchronizable
   private __rev: number = 0;
   
   private _persisted: bool = false;
-  
+
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
   // when receiving a resync event we could check if there is a 
@@ -102,6 +102,8 @@ export class Model extends Base implements Sync.ISynchronizable
       create: this.create,
       findById: this.findById,
       all: this.all,
+      allModels: this.allModels,
+      createModels: this.createModels,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
@@ -336,35 +338,69 @@ export class Model extends Base implements Sync.ISynchronizable
     return args
   }
   
+  
+  static createModels(docs, done){
+    var models = [];
+    
+    Util.asyncForEach(docs, (args, fn)=>{
+      this.create(args, function(err, instance?: Model){
+        if(instance){
+          models.push(instance);
+        }
+        fn(err);
+      });
+    }, (err) => {
+      done(err, models);
+    });
+  }
+  
+  static allModels(cb:(err?: Error, models?: Model[]) => void) {
+    Model.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
+      if(docs){
+        this.createModels(docs, cb);
+      }else{
+        cb(err);
+      }
+    });
+  }
+
   /**
     Returns all the instances of collection determined by a parent model and
     the given model class.
     (Should we deprecate this in favor of a keyPath based method?)
   */
-  static all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void){
+  // static all(args: {}//, bucket: string, cb:(err?: Error, items?: Model[]) => void);
+
+  static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, collection?: Collection) => void);
+  static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
+  static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
+    function allInstances(parent, keyPath, args, cb){
+      Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
+        if(docs){
+          _.each(docs, function(doc){_.extend(doc, args)});
+          Collection.create(this, parent, docs, cb);
+        }else{
+          cb(err);
+        }
+      });
+    }
     overload({
       'Model Array Object Function': function(parent, keyPath, args, cb){
-        Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
-          if(docs){
-            _.each(docs, function(doc){_.extend(doc, args)});
-            Collection.create(this, parent, docs, cb);
-          }else{
-            cb(err);
-          }
-        });
+        allInstances(parent, keyPath, args, cb);
       },
       'Model Object String Function': function(parent, args, bucket, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(bucket);
-        this.all(parent, args, cb);
+        allInstances(parent, keyPath, args, cb);
       },
       'Model Function': function(parent, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(this.__bucket);
-        this.all(parent, keyPath, {}, cb);
+        allInstances(parent, keyPath, {}, cb);
       }
     }).apply(this, arguments);
   }
+
   public all(model: IModel, args, bucket, cb)
   {
     model.all(this, args, bucket, cb);

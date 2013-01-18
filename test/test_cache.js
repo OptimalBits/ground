@@ -7,7 +7,7 @@ describe('Local Cache', function(){
     'foo' : 'payload1',
     'bar' : 'payload2',
     'baz' : 'payload3',
-    'qux' : 'payload4',        
+    'qux' : 'payload4',
   };
 
   before(function() {
@@ -30,8 +30,8 @@ describe('Local Cache', function(){
     });
   });
   
-  describe('Add items', function(){  
-    it('One item', function(){ 
+  describe('Add items', function(){
+    it('One item', function(){
       var value1 = 'value1', key1 = 'key1';
       cache.setItem(key1, value1);
             
@@ -56,6 +56,43 @@ describe('Local Cache', function(){
       expect(cache.length).to.be(numItems);
       cache.clear();
     });
+
+    it('handles values containing the "|" character', function(){
+      cache.setMaxSize(50);
+
+      cache.setItem(1, 'abc|123');
+      cache.setItem(2, '|123');
+      cache.setItem(3, '|||');
+      cache.setItem(4, '|');
+      expect(cache.length).to.be.equal(4);
+
+      expect(cache.getItem(1)).to.be.equal('abc|123');
+      expect(cache.getItem(2)).to.be.equal('|123');
+      expect(cache.getItem(3)).to.be.equal('|||');
+      expect(cache.getItem(4)).to.be.equal('|');
+
+      cache.clear();
+      expect(localStorage.length).to.be.equal(0);
+    });
+    
+    // Easy to implement but would cost additional JSON parsing and serialization
+    // it('handles any kind of object', function(){
+    //   cache.setMaxSize(50);
+
+    //   cache.setItem(1, 1);
+    //   cache.setItem(2, 'a');
+    //   cache.setItem(3, {x:1,y:2});
+    //   cache.setItem(4, [1,2,3]);
+    //   expect(cache.length).to.be.equal(4);
+
+    //   expect(cache.getItem(1)).to.be.equal(1);
+    //   expect(cache.getItem(2)).to.be.equal('a');
+    //   expect(cache.getItem(3)).to.be.equal({x:1,y:3});
+    //   expect(cache.getItem(4)).to.be.equal([1,2,4]);
+
+    //   cache.clear();
+    //   expect(localStorage.length).to.be.equal(0);
+    // });
   });
   
   describe('Remove items', function(){
@@ -226,6 +263,26 @@ describe('Local Cache', function(){
 
       cache.clear();
       expect(localStorage.length).to.be.equal(0);
+    });
+  });
+
+  describe('Mulitple caches', function(){
+    it('cache populates correctly', function(){
+      cache.setMaxSize(10);
+
+      cache.setItem(1, '1');
+      cache.setItem(2, '11');
+      cache.setItem(3, '111');
+      expect(cache.length).to.be.equal(3);
+
+      var c2 = new Gnd.Cache();
+      expect(c2.length).to.be.equal(3);
+      expect(c2.getItem(1)).to.be.equal('1');
+      expect(c2.getItem(2)).to.be.equal('11');
+      expect(c2.getItem(3)).to.be.equal('111');
+
+      cache.clear();
+      expect(cache.length).to.be(0);
     });
   });
 });
