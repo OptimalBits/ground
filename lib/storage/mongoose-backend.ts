@@ -28,6 +28,7 @@ import _ = module('underscore');
 declare module "underscore" {
   export function last (array : any[], n? : number) : any;
   export function isEqual (object : any, other : any) : bool;
+  export function isFunction (object : any) : bool;
   export function initial (array : any[], n? : number) : any[];
 }
   
@@ -44,6 +45,7 @@ export interface IMongooseModel extends GndModel {
   findOneAndUpdate(conditions?:{}, update?:{}, options?:{}, cb?: (err: Error, doc:{}) => void);
   findByIdAndUpdate(id: string, update?:{}, cb?: (err: Error, doc:{}) => void);
   findById(id:string, cb:(err: Error, doc?: any)=>void):any;
+  find():any;
   findById(id: string): any;
   remove(query:{}, cb:(err: Error)=>void);
 }
@@ -94,7 +96,7 @@ export class MongooseStorage implements IStorage {
       });
   */
   
-  get(keyPath: string[], cb: (err: Error, doc?: any) => void): void
+  fetch(keyPath: string[], cb: (err: Error, doc?: any) => void): void
   {
    this.getModel(keyPath, function(Model){
       Model.findById(_.last(keyPath), (err, doc?) => {
@@ -114,8 +116,10 @@ export class MongooseStorage implements IStorage {
     }, cb);
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err?: Error) => void): void
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:{}, cb: (err?: Error) => void): void;
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any, cb: any): void
   {
+    if(_.isFunction(opts)) cb = opts;
     this.getModel(itemsKeyPath, (Set) => {
       if(Set && Set.parent){
         var doc = {};
@@ -125,6 +129,7 @@ export class MongooseStorage implements IStorage {
             // TODO: Only notify for really added items
             // this.sync.add(id, collection, itemIds);
           }
+
           cb(err);
         });
       }else{
@@ -132,7 +137,7 @@ export class MongooseStorage implements IStorage {
           var id = keyPath[keyPath.length-2];
           if(Model.add){
             var setName = _.last(keyPath);
-            Model.add(id, setName, itemIds, function(err, ids){
+            Model.add(id, setName, itemIds, (err, ids)=>{
               if(!err){
                 // Use FindAndModify to get added items
                 //sync.add(id, setName, ids);
@@ -147,8 +152,10 @@ export class MongooseStorage implements IStorage {
     }, cb);
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: Error) => void): void
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any, cb: any): void
   {
+    if(_.isFunction(opts)) cb = opts;
     this.getModel(itemsKeyPath, (Set) => {
       if(Set && Set.parent){
         
@@ -170,24 +177,45 @@ export class MongooseStorage implements IStorage {
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
   {
-    this.getModel(_.initial(keyPath, 2), function(Model){
-      var setName = _.last(keyPath);
-      var id = keyPath[keyPath.length-2];
-      
-      var query = query || {fields:null, cond:null, options:null};
-      
-      Model
-        .findById(id)
-        .select(setName)
-        .populate(setName, query.fields, query.cond, query.options)
-        .exec(function(err, doc){
-          if(err){
-            cb(err);
-          }else{
-            cb(null, doc && doc[setName]);
-          }
-        });
+    this.getModel(keyPath, (Model)=>{
+      if(keyPath.length === 1){
+        return this.findAll(Model, cb);
+      }else{
+        var id = keyPath[keyPath.length-2];
+        var setName = _.last(keyPath);
+        return this.findById(Model, id, setName, query, options, cb);
+      }
     }, cb);
+  }
+
+  private findAll(Model: IMongooseModel, cb: (err: Error, result?: any[]) => void): void
+  {
+    Model
+      .find()
+      .exec(function(err, doc){
+        if(err){
+          cb(err);
+        }else{
+          cb(null, doc);
+        }
+      });
+  }
+
+  private findById(Model: IMongooseModel, id: string, setName: string, query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
+  {
+    var query = query || {fields:null, cond:null, options:null};
+    
+    Model
+      .findById(id)
+      .select(setName)
+      .populate(setName, query.fields, query.cond, query.options)
+      .exec(function(err, doc){
+        if(err){
+          cb(err);
+        }else{
+          cb(null, doc && doc[setName]);
+        }
+      });
   }
   
   insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)

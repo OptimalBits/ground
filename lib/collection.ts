@@ -94,24 +94,11 @@ export class Collection extends Base implements Sync.ISynchronizable
     super.destroy();
   }
   
-  static private createModels(model: IModel, docs, done){
-    var models = [];
-    
-    Util.asyncForEach(docs, function(args, fn){
-      model.create(args, false, function(err, instance?: Model){
-        if(instance){
-          models.push(instance);
-        }
-        fn(err);
-      });
-    }, (err) => {
-      done(err, models);
-    });
-  }
-  
   static public create(model: IModel, parent: Model, items: Model[]): Collection;
   static public create(model: IModel, parent: Model, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
-  static public create(model: IModel, parent: Model, docs: {}[], cb?): any
+  static public create(model: IModel, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
+
+  static public create(model?: IModel, parent?: Model, docs?: {}[], cb?): any
   {
     return overload({
       'Function Model Array': function(model, parent, models){
@@ -124,7 +111,7 @@ export class Collection extends Base implements Sync.ISynchronizable
         return collection;
       },
       'Function Model Array Function': function(model, parent, items, cb){
-        this.createModels(model, items, (err, models) => {
+        model.createModels(items, (err?: Error, models?: Model[])=>{
           if(err){
             cb(err)
           }else{
@@ -139,7 +126,7 @@ export class Collection extends Base implements Sync.ISynchronizable
         this.create(model, parent, [], cb);
       }
     }).apply(this, arguments);
-  }
+  } 
   
   static private getItemIds(items: Model[])
   {
@@ -164,9 +151,6 @@ export class Collection extends Base implements Sync.ISynchronizable
       itemsKeyPath = _.initial(this._added[0].getKeyPath());
     }
     var itemIds = Collection.getItemIds(this._removed);
-    if(itemIds.length === 0){
-      return cb();
-    }
     Model.storageQueue.remove(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
       if(!err){
         this._removed = []
@@ -427,7 +411,8 @@ export class Collection extends Base implements Sync.ISynchronizable
     
     this.remove(itemsToRemove, {nosync: true}, (err) => {
       if(!err){
-        Collection.createModels(this.model, itemsToAdd, (err, models) => {
+        //TODO: Is there a better way?
+        (<any>this.model).createModels(itemsToAdd, (err, models) => {
           if(!err){
             this.add(models, {nosync: true}, (err) => {
               this.emit('resynced:');

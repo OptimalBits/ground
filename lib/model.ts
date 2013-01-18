@@ -106,6 +106,8 @@ export class Model extends Base implements Sync.ISynchronizable
       create: this.create,
       findById: this.findById,
       all: this.all,
+      allModels: this.allModels,
+      createModels: this.createModels,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
@@ -341,6 +343,22 @@ export class Model extends Base implements Sync.ISynchronizable
     return args
   }
   
+  
+  static createModels(docs, done){
+    var models = [];
+    
+    Util.asyncForEach(docs, (args, fn)=>{
+      this.create(args, function(err, instance?: Model){
+        if(instance){
+          models.push(instance);
+        }
+        fn(err);
+      });
+    }, (err) => {
+      done(err, models);
+    });
+  }
+  
   /**
     Returns all the instances of collection determined by a parent model and
     the given model class.
@@ -348,19 +366,14 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   // static all(args: {}//, bucket: string, cb:(err?: Error, items?: Model[]) => void);
 
-  static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, items?: Model[]) => void);
-  static all(parent: Model, cb:(err?: Error, items?: Model[]) => void);
-  static all(cb:(err?: Error, items?: Model[]) => void);
-  static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, items?: Model[]) => void){
+  static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, collection?: Collection) => void);
+  static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
+  static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
     function allInstances(parent, keyPath, args, cb){
       Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
         if(docs){
           _.each(docs, function(doc){_.extend(doc, args)});
-          if(parent){
-            Collection.create(this, parent, docs, cb);
-          }else{
-            Collection.create(this, docs, cb);
-          }
+          Collection.create(this, parent, docs, cb);
         }else{
           cb(err);
         }
@@ -379,14 +392,20 @@ export class Model extends Base implements Sync.ISynchronizable
         var keyPath = parent.getKeyPath();
         keyPath.push(this.__bucket);
         allInstances(parent, keyPath, {}, cb);
-      },
-      'Function': function(cb){
-        //TODO: rewrite to call master all function
-        var keyPath = [this.__bucket];
-        allInstances(undefined, keyPath, {}, cb);
       }
     }).apply(this, arguments);
   }
+
+  static allModels(cb:(err?: Error, models?: Model[]) => void) {
+    Model.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
+      if(docs){
+        this.createModels(docs, cb);
+      }else{
+        cb(err);
+      }
+    });
+  }
+
   public all(model: IModel, args, bucket, cb)
   {
     model.all(this, args, bucket, cb);
