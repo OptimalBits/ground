@@ -366,9 +366,12 @@ export class Queue extends Base implements IStorage
   private success(err: Error)
   {
     this.currentTransfer = null;
+    var storage = this.localStorage;
     
     if(!err){ // || (err.status >= 400 && err.status < 500)){
-      this.queue.shift();
+      var 
+        cmd = this.queue.shift(),
+        syncFn = _.bind(this.synchronize, this);
       
       //
       // Note: since we cannot have an atomic operation for updating the server and the
@@ -376,22 +379,64 @@ export class Queue extends Base implements IStorage
       // some hazardous scenarios (if the browser crashes after updating the server
       // and before the local storage). revisions should fix this problem.
       //
-      this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
-        Util.nextTick(_.bind(this.synchronize, this));
+      storage.extract(['meta', 'storageQueue'], 0, (err)=>{
+        var opts = {insync: true};
+        
+        // Update localStorage
+        switch(cmd.cmd){
+          case 'add':
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.add(cmd.keyPath, 
+                        cmd.itemsKeyPath, 
+                        cmd.itemIds,
+                        opts, (err?) => {
+              Util.nextTick(syncFn);
+            });
+          });
+          break;
+          case 'remove': 
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.remove(cmd.keyPath, 
+                           cmd.itemsKeyPath, 
+                           cmd.itemIds,
+                           opts, (err?) =>{
+              Util.nextTick(syncFn);
+            });
+          });
+          break;
+          default:
+            Util.nextTick(syncFn);
+        }
       });
     }
   }
-  
+
   private updateQueueIds(oldId, newId)
   { 
     _.each(this.queue, (cmd: Command) => {
       updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
-      cmd.itemIds && updateIds(cmd.itemIds, oldId, newId);
+      if(cmd.itemIds){
+        cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
+      }
     });
     
+    //
     // TODO: Serialize after updating Ids
+    //
   }
+}
+
+function updateIds(keyPath: string[], oldId: string, newId: string): string[]
+{
+  var updatedKeys = [];
+  for(var i=0; i<keyPath.length; i++){
+    if(keyPath[i] == oldId){
+      keyPath[i] = newId;
+      updatedKeys.push(oldId);
+    }
+  }
+  return updatedKeys;
 }
 
 }
