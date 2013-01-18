@@ -1076,21 +1076,25 @@ var Gnd;
                         doc['_id'] = _.last(keyPath);
                         cb(err, doc);
                     }
-                    _this.useRemote && _this.remoteStorage.fetch(keyPath, function (err, docRemote) {
-                        if(!err) {
-                            docRemote['_persisted'] = true;
-                            _this.localStorage.put(keyPath, docRemote, function (err) {
-                                if(err) {
-                                    var collectionKeyPath = _.initial(keyPath);
-                                    docRemote['_cid'] = docRemote['_id'];
-                                    _this.localStorage.create(collectionKeyPath, docRemote, function () {
-                                    });
-                                }
-                            });
-                            _this.emit('resync:' + Queue.makeKey(keyPath), docRemote);
-                        }
-                        !doc && cb(err, docRemote);
-                    });
+                    if(!_this.useRemote) {
+                        cb(err);
+                    } else {
+                        _this.remoteStorage.fetch(keyPath, function (err, docRemote) {
+                            if(!err) {
+                                docRemote['_persisted'] = true;
+                                _this.localStorage.put(keyPath, docRemote, function (err) {
+                                    if(err) {
+                                        var collectionKeyPath = _.initial(keyPath);
+                                        docRemote['_cid'] = docRemote['_id'];
+                                        _this.localStorage.create(collectionKeyPath, docRemote, function () {
+                                        });
+                                    }
+                                });
+                                _this.emit('resync:' + Queue.makeKey(keyPath), docRemote);
+                            }
+                            !doc && cb(err, docRemote);
+                        });
+                    }
                 });
             };
             Queue.prototype.updateLocalCollection = function (keyPath, query, options, newItems, cb) {
@@ -1161,18 +1165,22 @@ _.last(keyPath)                ];
                     if(result) {
                         cb(err, result);
                     }
-                    _this.useRemote && _this.remoteStorage.find(keyPath, query, options, function (err, remote) {
-                        if(!err) {
-                            _this.updateLocalCollection(keyPath, query, options, remote, function (err) {
-                                if(result) {
-                                    _this.localStorage.find(keyPath, query, localOpts, function (err, items) {
-                                        !err && _this.emit('resync:' + Queue.makeKey(keyPath), items);
-                                    });
-                                }
-                            });
-                        }
-                        !result && cb(err, remote);
-                    });
+                    if(!_this.useRemote) {
+                        cb(err);
+                    } else {
+                        _this.remoteStorage.find(keyPath, query, options, function (err, remote) {
+                            if(!err) {
+                                _this.updateLocalCollection(keyPath, query, options, remote, function (err) {
+                                    if(result) {
+                                        _this.localStorage.find(keyPath, query, localOpts, function (err, items) {
+                                            !err && _this.emit('resync:' + Queue.makeKey(keyPath), items);
+                                        });
+                                    }
+                                });
+                            }
+                            !result && cb(err, remote);
+                        });
+                    }
                 });
             };
             Queue.prototype.create = function (keyPath, args, cb) {
@@ -2507,6 +2515,51 @@ var Gnd;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
+        function $(selector, context) {
+        var context = context || document, query = new Query(), push = _.bind(Array.prototype.push, query), el;
+        switch(selector[0]) {
+            case '#': {
+                var id = selector.slice(1);
+                el = context.getElementById(id);
+                if(el && el.parentNode) {
+                    if(el.id === id) {
+                        query[0] = el;
+                        query.length = 1;
+                    }
+                }
+
+            }
+            case '.': {
+                var className = selector.slice(1);
+                push(el.getElementsByClassName(className));
+
+            }
+            default: {
+                push(el.getElementsByTagName(selector));
+
+            }
+        }
+        return query;
+    }
+    Gnd.$ = $;
+    function Query() {
+    }
+    ; ;
+    Query.prototype = {
+        $: $,
+        on: function (eventName, handler) {
+            _.each(this, function (el) {
+                if(el.addEventListener) {
+                    el.addEventListener(eventName, handler);
+                } else {
+                    if(el['attachEvent']) {
+                        el['attachEvent']("on" + eventName, handler);
+                    }
+                }
+            });
+            return this;
+        }
+    };
     function $$(selector, context) {
         var el = context || document;
         switch(selector[0]) {
