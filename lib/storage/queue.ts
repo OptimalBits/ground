@@ -199,12 +199,14 @@ export class Queue extends Base implements IStorage
     });
   }
     
-  create(keyPath: string[], args:{}, cb)
+  create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
   {
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
-        args['cid'] = cid;
-        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, cb);
+        args['_cid'] = args['_cid'] || cid;
+        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, (err?) => {
+          cb(err, cid);
+        });
       }else{
         cb(err);
       }
