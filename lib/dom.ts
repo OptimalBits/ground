@@ -23,13 +23,12 @@ module Gnd
  *
  * http://jsperf.com/simple-jquery-selector-vs-140medley/2
  */
-
 export function $$(selector: string, context?: Element): HTMLElement
 {
   var el = context || document;
   switch(selector[0]){
     case '#': return el.getElementById(selector.slice(1));
-    case '.': return el.getElementsByClassName(selector.slice(1));
+    case '.': return el.getElementsByClassName(selector.slice(1))[0];
   }
   return el.getElementsByTagName(selector)[0];
 }
