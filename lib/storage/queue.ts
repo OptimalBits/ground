@@ -86,21 +86,24 @@ export class Queue extends Base implements IStorage
         doc['_id'] = _.last(keyPath);
         cb(err, doc);
       }
-      this.useRemote &&
-      this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
-        if(!err){
-          docRemote['_persisted'] = true;
-          this.localStorage.put(keyPath, docRemote, (err?) => {
-            if(err) { //not in local cache
-              var collectionKeyPath = _.initial(keyPath);
-              docRemote['_cid'] = docRemote['_id'];
-              this.localStorage.create(collectionKeyPath, docRemote, ()=>{});
-            }
-          });
-          this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
-        }
-        !doc && cb(err, docRemote);
-      });
+      if(!this.useRemote){
+        cb(err);
+      }else{
+        this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
+          if(!err){
+            docRemote['_persisted'] = true;
+            this.localStorage.put(keyPath, docRemote, (err?) => {
+              if(err) { //not in local cache
+                var collectionKeyPath = _.initial(keyPath);
+                docRemote['_cid'] = docRemote['_id'];
+                this.localStorage.create(collectionKeyPath, docRemote, ()=>{});
+              }
+            });
+            this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
+          }
+          !doc && cb(err, docRemote);
+        });
+      }
     });
   }
   
@@ -183,19 +186,22 @@ export class Queue extends Base implements IStorage
         cb(err, result);
       }
       
-      this.useRemote && 
-      this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
-        if(!err){
-          this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
-            if(result){
-              this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
-                !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
-              })
-            }
-          });
-        }
-        !result && cb(err, remote);
-      });
+      if(!this.useRemote){
+        cb(err);
+      }else{ 
+        this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
+          if(!err){
+            this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
+              if(result){
+                this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
+                  !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
+                })
+              }
+            });
+          }
+          !result && cb(err, remote);
+        });
+      }
     });
   }
     
