@@ -14,15 +14,16 @@ module Gnd.Storage {
   // The Queue needs a local storage (based on HTML5 local storage, IndexedDB, WebSQL, etc)
   // and a remote Storage.
   //
-
-  function updateIds(keyPath: string[], oldId: string, newId: string)
-  {
-    for(var i=0; i<keyPath.length; i++){
-      if(keyPath[i] == oldId){
-        keyPath[i] = newId;
-      }
-    }
+  
+  interface Command {
+    cmd: string;
+    keyPath: string[];
+    itemsKeyPath?: string[];
+    args?: {};
+    itemIds?: string[];
+    oldItemIds?: string[];
   }
+  
   
 /**
   Storage Queue
@@ -106,33 +107,52 @@ export class Queue extends Base implements IStorage
   private updateLocalCollection(keyPath: string[], 
                                 query: {}, 
                                 options: {},
-                                remote: any[], cb: (err?:Error) => void)
+                                newItems: any[], cb: (err?:Error) => void)
   {
     var 
       storage = this.localStorage,
       itemKeyPath = [_.last(keyPath)];
     
-    storage.find(keyPath, query, options, (err?:Error, old?: {}[]) => {
+    options = _.extend({snapshot: false}, options);
+    
+    storage.find(keyPath, query, options, (err?:Error, oldItems?: {}[]) => {
       if(!err){
-        // We assume here that _cid is the key used in the local collection... (may be wrong in some cases).
-        var toRemove = _.difference(_.pluck(old, '_cid'), _.pluck(remote,'_id'));
-        storage.remove(keyPath, itemKeyPath, toRemove, {}, (err?) => {
-            if(!err){
-            var keys = [];
-            Util.asyncForEach(remote, (doc, done) => {
-              var 
-                id = doc._id,
-                elemKeyPath = itemKeyPath.concat(id);
-          
-              doc._persisted = true;
+        var itemsToRemove = [], itemsToAdd = [];     
         
+        function findItem(items, itemToFind){
+          return _.find(items, function(item){
+              return (item._cid === itemToFind._cid || 
+                      item._cid === itemToFind._id);
+          });
+        }
+        
+        // Gather item ids to be removed from localStorage 
+        _.each(oldItems, function(oldItem){
+          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
+            itemsToRemove.push(oldItem._cid, oldItem._id);
+          }
+        });
+        
+        // Gather item ids to be added to localStorage      
+        _.each(newItems, function(newItem){
+          !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
+        });
+        
+        storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}, (err?) => {
+          if(!err){
+            Util.asyncForEach(newItems, (doc, done) => {
+              var elemKeyPath = itemKeyPath.concat(doc._id);
+
+              doc._persisted = true;
+
+              // TODO: Probably not needed to update all newItems
               storage.put(elemKeyPath, doc, (err?) => {
-                if(err) { //not in local cache
-                  doc._cid = id;
+                if(err) {
+                  //not in local cache
+                  doc._cid = doc._id;
                   storage.create(itemKeyPath, doc, (err?)=>{
                     done(err);
                   });
-                  keys.push(id);
                 }else{
                   done();
                 }
@@ -140,7 +160,7 @@ export class Queue extends Base implements IStorage
             }, (err) => {
               if(!err){
                 // Add the new collection keys to the keyPath
-                storage.add(keyPath, itemKeyPath, keys, {}, cb);
+                storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
               }else{
                 cb(err);
               }
@@ -150,23 +170,28 @@ export class Queue extends Base implements IStorage
           }
         });
       }else{
-        storage.add(keyPath, itemKeyPath, _.pluck(remote, '_id'), {}, cb);
+        storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}, cb);
       }
     });
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err?: Error, result?: any[]) => void): void
   {
-    this.localStorage.find(keyPath, query, options, (err?, result?) => {
+    var localOpts = _.extend({snapshot:true}, options);
+    this.localStorage.find(keyPath, query, localOpts, (err?, result?) => {
       if(result){
         cb(err, result);
       }
-    
+      
       this.useRemote && 
       this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
         if(!err){
           this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
-            result && this.emit('resync:'+Queue.makeKey(keyPath), remote);
+            if(result){
+              this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
+                !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
+              })
+            }
           });
         }
         !result && cb(err, remote);
@@ -174,12 +199,14 @@ export class Queue extends Base implements IStorage
     });
   }
     
-  create(keyPath: string[], args:{}, cb)
+  create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
   {
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
-        args['cid'] = cid;
-        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, cb);
+        args['_cid'] = args['_cid'] || cid;
+        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, (err?) => {
+          cb(err, cid);
+        });
       }else{
         cb(err);
       }
@@ -339,9 +366,12 @@ export class Queue extends Base implements IStorage
   private success(err: Error)
   {
     this.currentTransfer = null;
+    var storage = this.localStorage;
     
     if(!err){ // || (err.status >= 400 && err.status < 500)){
-      this.queue.shift();
+      var 
+        cmd = this.queue.shift(),
+        syncFn = _.bind(this.synchronize, this);
       
       //
       // Note: since we cannot have an atomic operation for updating the server and the
@@ -349,22 +379,64 @@ export class Queue extends Base implements IStorage
       // some hazardous scenarios (if the browser crashes after updating the server
       // and before the local storage). revisions should fix this problem.
       //
-      this.localStorage.extract(['meta', 'storageQueue'], 0, (err)=>{
-        Util.nextTick(_.bind(this.synchronize, this));
+      storage.extract(['meta', 'storageQueue'], 0, (err)=>{
+        var opts = {insync: true};
+        
+        // Update localStorage
+        switch(cmd.cmd){
+          case 'add':
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.add(cmd.keyPath, 
+                        cmd.itemsKeyPath, 
+                        cmd.itemIds,
+                        opts, (err?) => {
+              Util.nextTick(syncFn);
+            });
+          });
+          break;
+          case 'remove': 
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.remove(cmd.keyPath, 
+                           cmd.itemsKeyPath, 
+                           cmd.itemIds,
+                           opts, (err?) =>{
+              Util.nextTick(syncFn);
+            });
+          });
+          break;
+          default:
+            Util.nextTick(syncFn);
+        }
       });
     }
   }
-  
+
   private updateQueueIds(oldId, newId)
   { 
     _.each(this.queue, (cmd: Command) => {
       updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
-      cmd.itemIds && updateIds(cmd.itemIds, oldId, newId);
+      if(cmd.itemIds){
+        cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
+      }
     });
     
+    //
     // TODO: Serialize after updating Ids
+    //
   }
+}
+
+function updateIds(keyPath: string[], oldId: string, newId: string): string[]
+{
+  var updatedKeys = [];
+  for(var i=0; i<keyPath.length; i++){
+    if(keyPath[i] == oldId){
+      keyPath[i] = newId;
+      updatedKeys.push(oldId);
+    }
+  }
+  return updatedKeys;
 }
 
 }

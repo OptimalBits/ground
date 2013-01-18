@@ -549,41 +549,49 @@ describe('Collections', function(){
         var tiger = new Animal({name:"tiger"});
         animals.add(tiger, function(err){
           expect(err).to.not.be.ok();
+          expect(animals.count).to.be(1);
             
           storageQueue.once('synced:', function(){
+            expect(animals.count).to.be(1);
+            
             zoo.all(Animal, function(err, onlineAnimals){
               expect(err).to.not.be.ok();
               expect(onlineAnimals).to.be.an(Object);
+              expect(onlineAnimals.count).to.be(1);
               
               var onlineTiger = onlineAnimals.first();
               
               expect(onlineTiger).to.be.an(Object);
               expect(onlineTiger.id()).to.be.equal(tiger.id());
               
-              Gnd.Ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) {
-                // The server has deleted the model, but we do not know it yet.
-                // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
+              onlineAnimals.once('resynced:', function(){
+                expect(onlineAnimals.count).to.be(1);
+                
+                Gnd.Ajax.del('http://localhost:8080/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) {
+                  // The server has deleted the model, but we do not know it yet.
+                  // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
                   
-                zoo.all(Animal, function(err, emptyZoo){
-                  expect(err).to.not.be.ok();
-                  expect(emptyZoo).to.be.an(Object);
-                  expect(emptyZoo.count).to.be(1);
+                  zoo.all(Animal, function(err, emptyZoo){
+                    expect(err).to.not.be.ok();
+                    expect(emptyZoo).to.be.an(Object);
+                    expect(emptyZoo.count).to.be(1);
                   
-                  emptyZoo.on('resynced:', function(){
-                    expect(emptyZoo.count).to.be(0);
-                    
-                    emptyZoo.release();
-                  
-                    socket.disconnect();
-                  
-                    zoo.all(Animal, function(err, emptyZoo){
-                      expect(err).to.not.be.ok();
-                      expect(emptyZoo).to.be.an(Object);
+                    emptyZoo.once('resynced:', function(){
                       expect(emptyZoo.count).to.be(0);
                     
-                      Gnd.Util.release(onlineAnimals, emptyZoo);
-                      socket.socket.connect();
-                      socket.once('connect', done);
+                      emptyZoo.release();
+                  
+                      socket.disconnect();
+                  
+                      zoo.all(Animal, function(err, emptyZoo){
+                        expect(err).to.not.be.ok();
+                        expect(emptyZoo).to.be.an(Object);
+                        expect(emptyZoo.count).to.be(0);
+                    
+                        Gnd.Util.release(onlineAnimals, emptyZoo);
+                        socket.socket.connect();
+                        socket.once('connect', done);
+                      });
                     });
                   });
                 });

@@ -18,12 +18,8 @@ app.use(express.static(__dirname));
 
 // Setup a mongo DB. This is used by the chat example
 var Message = new Schema({
-<<<<<<< HEAD
   _cid: {type: String},
   text: {type: String},
-=======
-  text : {type: String},
->>>>>>> Various improvements in Chat example
   ts: {type: Number}
 });
 

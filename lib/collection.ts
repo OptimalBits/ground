@@ -401,7 +401,7 @@ export class Collection extends Base implements Sync.ISynchronizable
       var id = item.id(), shouldRemove = true;
       for(var i=0; i<items.length; i++){
         if(id == items[i]._id){
-          item.set(items[i]);
+          item.set(items[i], {nosync: true});
           shouldRemove = false;
           break;
         }

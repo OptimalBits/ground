@@ -75,8 +75,11 @@ function traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
         });
         return {
           key: key,
-          value: keys
-        };
+          value: _.reduce(keys, function(memo, key){
+              memo[key] = 'insync';
+              return memo;
+          }, {})
+        }
       } else {
         return traverseLinks(value);
       }
@@ -88,7 +91,7 @@ function traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
 
 export class Local implements IStorage {
   
-  create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void) {
+  create(keyPath: string[], doc: any, cb: (err?: Error, id?: string) => void) {
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
@@ -146,25 +149,31 @@ export class Local implements IStorage {
   //
   // ISetStorage
   //  
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void): void{
+  // Save as an Object where key = itemId, value = add|rm|synced
+  // 
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void): void{
     var
       key = makeKey(keyPath),
       itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
       keyValue = traverseLinks(key),
-      oldItemIdsKeys = keyValue ? keyValue.value || [] : [];
-    
+      oldItemIdsKeys = keyValue ? keyValue.value || {} : {},
+      newIdKeys = {};
+
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
       createCollectionLink(keyPath[0]);
       return cb();
     }
-    //
-    // TODO: we could potentially mix in the same item just pointed by
-    // different links...      
-    _put(key, _.union(oldItemIdsKeys, itemIdsKeys));
+    
+    key = keyValue ? keyValue.key : key;
+    _.each(itemIdsKeys, (id)=>{
+      newIdKeys[id] = opts.insync ? 'insync' : 'add';
+    })
+    _put(key, _.extend(oldItemIdsKeys, newIdKeys));
+    
     cb();
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void) {
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void) {
     var 
       key = makeKey(keyPath),
       itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
@@ -173,33 +182,45 @@ export class Local implements IStorage {
     if(itemIds.length === 0) return cb(); // do nothing
 
     if(keyValue){
-      var moreKeysToDelete = [];
-      for(var i=0; i<itemIdsKeys.length; i++){          
-        traverseLinks(itemIdsKeys[i], (itemKey)=>{
-          moreKeysToDelete.push(itemKey);
+      var keysToDelete = keyValue.value;
+      _.each(itemIdsKeys, (id)=>{
+        traverseLinks(id, (itemKey)=>{
+          if(opts.insync){
+            delete keysToDelete[id];
+          }else{
+            keysToDelete[id] = 'rm';
+          }
         });
-      }
-      
-      _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys, moreKeysToDelete));
+      });
+      _put(keyValue.key, keysToDelete);
       cb();
     }else{
       cb(InvalidKeyError);
     }
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: {}[]) => void) : void
+  find(keyPath: string[], query: {}, opts, cb: (err: Error, result?: {}[]) => void) : void
   {
     this.fetch(keyPath, (err, collection?) => {
-      var result = [];
+      var result = {};
       if(collection){
-        for(var i=0; i<collection.length;i++){
-          var keyValue = traverseLinks(collection[i]);
-          if(keyValue){
-            result.push(keyValue.value);
+        _.each(_.keys(collection), (key)=>{
+          var op = collection[key]
+          if(op !== 'rm' || !opts.snapshot){
+            var keyValue = traverseLinks(key);
+            if(keyValue){
+              var 
+                item = keyValue.value,
+                id = item._cid;
+              if(!(result[id]) || op === 'insync'){
+                if(!opts.snapshot) item.__op = op;
+                result[id] = item;
+              }
+            }
           }
-        }
+        });
       }
-      cb(null, result);
+      cb(null, _.values(result));
     });
   }
   

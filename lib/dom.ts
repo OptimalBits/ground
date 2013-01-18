@@ -23,13 +23,12 @@ module Gnd
  *
  * http://jsperf.com/simple-jquery-selector-vs-140medley/2
  */
-
 export function $$(selector: string, context?: Element): HTMLElement
 {
   var el = context || document;
   switch(selector[0]){
     case '#': return el.getElementById(selector.slice(1));
-    case '.': return el.getElementsByClassName(selector.slice(1));
+    case '.': return el.getElementsByClassName(selector.slice(1))[0];
   }
   return el.getElementsByTagName(selector)[0];
 }
@@ -195,7 +194,7 @@ module Gnd.Ajax
   }
   export function del(url: string, obj: {}, cb: AjaxCallback)
   {
-    base('DEL', url, obj, cb);
+    base('DELETE', url, obj, cb);
   }
   
   /*
@@ -228,8 +227,13 @@ module Gnd.Ajax
     var xhr = getXhr();
     xhr.onreadystatechange = () => {
       if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          cb(null, JSON.stringify(xhr.responseText || {}));
+        xhr.onreadystatechange = null;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          var res;
+          try{
+            res = JSON.parse(xhr.responseText || {});
+          }catch(e){};
+          cb(null, res);
         } else {
           cb(new Error("Ajax Error: "+xhr.responseText));
         }
@@ -237,8 +241,8 @@ module Gnd.Ajax
           // still not ready
       }
     }
-    
-    xhr.open('GET', url);
+    xhr.open(method, url);
+    xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.send(JSON.stringify(obj));
   }
 } // Ajax
