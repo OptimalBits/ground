@@ -7,6 +7,7 @@ var
 // Animals 
 //
 var Animal = new Schema({
+  _cid: {type: String},
   legs: {type: Number},
   tail: {type: Boolean},
   name: {type: String}
@@ -16,6 +17,7 @@ var Animal = mongoose.model('Animal', Animal)
 module.exports.animals = Animal;
 
 var Zoo = new Schema({
+  _cid: {type: String},
   animals: [{ type: Schema.ObjectId, ref: 'Animal' }],
   birds: [{ name: String }],
 })
