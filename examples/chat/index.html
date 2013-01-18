@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Room Example</title>
+  <title>Chat Example</title>
   <!--<link rel="stylesheet" type="text/css" href="styles.css"> -->
 <script src="../socket.io/socket.io.js"></script>
 <script type="text/javascript">
@@ -76,6 +76,12 @@
         var Room = Gnd.Model.extend('rooms');
         var Message = Gnd.Model.extend('messages');
         
+        // Helper function to render templates
+        function renderTemplate(tmplName) {
+          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
+          Gnd.$$('body').innerHTML = template();
+        }
+
         // Helper function to render templates
         function renderTemplate(tmplName) {
           var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
@@ -201,7 +207,6 @@
 
               function sendMessage() { 
                 var newMsg = new Message({text : currentMsg.get('text'), ts: Date.now()}); 
-                console.log(newMsg.get('ts'));
                 messages.add(
                   newMsg,
                   function(err){
