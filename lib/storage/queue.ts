@@ -106,33 +106,52 @@ export class Queue extends Base implements IStorage
   private updateLocalCollection(keyPath: string[], 
                                 query: {}, 
                                 options: {},
-                                remote: any[], cb: (err?:Error) => void)
+                                newItems: any[], cb: (err?:Error) => void)
   {
     var 
       storage = this.localStorage,
       itemKeyPath = [_.last(keyPath)];
     
-    storage.find(keyPath, query, options, (err?:Error, old?: {}[]) => {
+    options = _.extend({snapshot: false}, options);
+    
+    storage.find(keyPath, query, options, (err?:Error, oldItems?: {}[]) => {
       if(!err){
-        // We assume here that _cid is the key used in the local collection... (may be wrong in some cases).
-        var toRemove = _.difference(_.pluck(old, '_cid'), _.pluck(remote,'_id'));
-        storage.remove(keyPath, itemKeyPath, toRemove, {}, (err?) => {
-            if(!err){
-            var keys = [];
-            Util.asyncForEach(remote, (doc, done) => {
-              var 
-                id = doc._id,
-                elemKeyPath = itemKeyPath.concat(id);
-          
-              doc._persisted = true;
+        var itemsToRemove = [], itemsToAdd = [];     
         
+        function findItem(items, itemToFind){
+          return _.find(items, function(item){
+              return (item._cid === itemToFind._cid || 
+                      item._cid === itemToFind._id);
+          });
+        }
+        
+        // Gather item ids to be removed from localStorage 
+        _.each(oldItems, function(oldItem){
+          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
+            itemsToRemove.push(oldItem._cid, oldItem._id);
+          }
+        });
+        
+        // Gather item ids to be added to localStorage      
+        _.each(newItems, function(newItem){
+          !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
+        });
+        
+        storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}, (err?) => {
+          if(!err){
+            Util.asyncForEach(newItems, (doc, done) => {
+              var elemKeyPath = itemKeyPath.concat(doc._id);
+
+              doc._persisted = true;
+
+              // TODO: Probably not needed to update all newItems
               storage.put(elemKeyPath, doc, (err?) => {
-                if(err) { //not in local cache
-                  doc._cid = id;
+                if(err) {
+                  //not in local cache
+                  doc._cid = doc._id;
                   storage.create(itemKeyPath, doc, (err?)=>{
                     done(err);
                   });
-                  keys.push(id);
                 }else{
                   done();
                 }
@@ -140,7 +159,7 @@ export class Queue extends Base implements IStorage
             }, (err) => {
               if(!err){
                 // Add the new collection keys to the keyPath
-                storage.add(keyPath, itemKeyPath, keys, {}, cb);
+                storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
               }else{
                 cb(err);
               }
@@ -150,23 +169,28 @@ export class Queue extends Base implements IStorage
           }
         });
       }else{
-        storage.add(keyPath, itemKeyPath, _.pluck(remote, '_id'), {}, cb);
+        storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}, cb);
       }
     });
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err?: Error, result?: any[]) => void): void
   {
-    this.localStorage.find(keyPath, query, options, (err?, result?) => {
+    var localOpts = _.extend({snapshot:true}, options);
+    this.localStorage.find(keyPath, query, localOpts, (err?, result?) => {
       if(result){
         cb(err, result);
       }
-    
+      
       this.useRemote && 
       this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
         if(!err){
           this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
-            result && this.emit('resync:'+Queue.makeKey(keyPath), remote);
+            if(result){
+              this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
+                !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
+              })
+            }
           });
         }
         !result && cb(err, remote);
