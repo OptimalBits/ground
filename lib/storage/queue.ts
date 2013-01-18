@@ -14,15 +14,16 @@ module Gnd.Storage {
   // The Queue needs a local storage (based on HTML5 local storage, IndexedDB, WebSQL, etc)
   // and a remote Storage.
   //
-
-  function updateIds(keyPath: string[], oldId: string, newId: string)
-  {
-    for(var i=0; i<keyPath.length; i++){
-      if(keyPath[i] == oldId){
-        keyPath[i] = newId;
-      }
-    }
+  
+  interface Command {
+    cmd: string;
+    keyPath: string[];
+    itemsKeyPath?: string[];
+    args?: {};
+    itemIds?: string[];
+    oldItemIds?: string[];
   }
+  
   
 /**
   Storage Queue

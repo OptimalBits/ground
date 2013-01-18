@@ -9,14 +9,6 @@
 /// <reference path="base.ts" />
 /// <reference path="util.ts" />
 
-interface Command {
-  cmd: string;
-  keyPath: string[];
-  itemsKeyPath?: string[];
-  args?: {};
-  itemIds?: string[];
-}
-
 module Gnd {
 /*
 export enum ErrorCode {
