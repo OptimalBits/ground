@@ -1040,13 +1040,6 @@ var Gnd;
 var Gnd;
 (function (Gnd) {
     (function (Storage) {
-        function updateIds(keyPath, oldId, newId) {
-            for(var i = 0; i < keyPath.length; i++) {
-                if(keyPath[i] == oldId) {
-                    keyPath[i] = newId;
-                }
-            }
-        }
         var Queue = (function (_super) {
             __extends(Queue, _super);
             function Queue(local, remote) {
@@ -1100,33 +1093,49 @@ var Gnd;
                     });
                 });
             };
-            Queue.prototype.updateLocalCollection = function (keyPath, query, options, remote, cb) {
+            Queue.prototype.updateLocalCollection = function (keyPath, query, options, newItems, cb) {
                 var storage = this.localStorage, itemKeyPath = [
 _.last(keyPath)                ];
-                storage.find(keyPath, query, options, function (err, old) {
+                options = _.extend({
+                    snapshot: false
+                }, options);
+                storage.find(keyPath, query, options, function (err, oldItems) {
                     if(!err) {
-                        var toRemove = _.difference(_.pluck(old, '_cid'), _.pluck(remote, '_id'));
-                        storage.remove(keyPath, itemKeyPath, toRemove, {
+                        var itemsToRemove = [], itemsToAdd = [];
+                        function findItem(items, itemToFind) {
+                            return _.find(items, function (item) {
+                                return (item._cid === itemToFind._cid || item._cid === itemToFind._id);
+                            });
+                        }
+                        _.each(oldItems, function (oldItem) {
+                            if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)) {
+                                itemsToRemove.push(oldItem._cid, oldItem._id);
+                            }
+                        });
+                        _.each(newItems, function (newItem) {
+                            !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
+                        });
+                        storage.remove(keyPath, itemKeyPath, itemsToRemove, {
+                            insync: true
                         }, function (err) {
                             if(!err) {
-                                var keys = [];
-                                Gnd.Util.asyncForEach(remote, function (doc, done) {
-                                    var id = doc._id, elemKeyPath = itemKeyPath.concat(id);
+                                Gnd.Util.asyncForEach(newItems, function (doc, done) {
+                                    var elemKeyPath = itemKeyPath.concat(doc._id);
                                     doc._persisted = true;
                                     storage.put(elemKeyPath, doc, function (err) {
                                         if(err) {
-                                            doc._cid = id;
+                                            doc._cid = doc._id;
                                             storage.create(itemKeyPath, doc, function (err) {
                                                 done(err);
                                             });
-                                            keys.push(id);
                                         } else {
                                             done();
                                         }
                                     });
                                 }, function (err) {
                                     if(!err) {
-                                        storage.add(keyPath, itemKeyPath, keys, {
+                                        storage.add(keyPath, itemKeyPath, itemsToAdd, {
+                                            insync: true
                                         }, cb);
                                     } else {
                                         cb(err);
@@ -1137,21 +1146,29 @@ _.last(keyPath)                ];
                             }
                         });
                     } else {
-                        storage.add(keyPath, itemKeyPath, _.pluck(remote, '_id'), {
+                        storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {
+                            insync: true
                         }, cb);
                     }
                 });
             };
             Queue.prototype.find = function (keyPath, query, options, cb) {
                 var _this = this;
-                this.localStorage.find(keyPath, query, options, function (err, result) {
+                var localOpts = _.extend({
+                    snapshot: true
+                }, options);
+                this.localStorage.find(keyPath, query, localOpts, function (err, result) {
                     if(result) {
                         cb(err, result);
                     }
                     _this.useRemote && _this.remoteStorage.find(keyPath, query, options, function (err, remote) {
                         if(!err) {
                             _this.updateLocalCollection(keyPath, query, options, remote, function (err) {
-                                result && _this.emit('resync:' + Queue.makeKey(keyPath), remote);
+                                if(result) {
+                                    _this.localStorage.find(keyPath, query, localOpts, function (err, items) {
+                                        !err && _this.emit('resync:' + Queue.makeKey(keyPath), items);
+                                    });
+                                }
                             });
                         }
                         !result && cb(err, remote);
@@ -1162,12 +1179,14 @@ _.last(keyPath)                ];
                 var _this = this;
                 this.localStorage.create(keyPath, args, function (err, cid) {
                     if(!err) {
-                        args['cid'] = cid;
+                        args['_cid'] = args['_cid'] || cid;
                         _this.addCmd({
                             cmd: 'create',
                             keyPath: keyPath,
                             args: args
-                        }, cb);
+                        }, function (err) {
+                            cb(err, cid);
+                        });
                     } else {
                         cb(err);
                     }
@@ -1328,15 +1347,41 @@ _.last(keyPath)                ];
                 }
             };
             Queue.prototype.success = function (err) {
-                var _this = this;
                 this.currentTransfer = null;
+                var storage = this.localStorage;
                 if(!err) {
-                    this.queue.shift();
-                    this.localStorage.extract([
+                    var cmd = this.queue.shift(), syncFn = _.bind(this.synchronize, this);
+                    storage.extract([
                         'meta', 
                         'storageQueue'
                     ], 0, function (err) {
-                        Gnd.Util.nextTick(_.bind(_this.synchronize, _this));
+                        var opts = {
+                            insync: true
+                        };
+                        switch(cmd.cmd) {
+                            case 'add': {
+                                storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, function (err) {
+                                    storage.add(cmd.keyPath, cmd.itemsKeyPath, cmd.itemIds, opts, function (err) {
+                                        Gnd.Util.nextTick(syncFn);
+                                    });
+                                });
+                                break;
+
+                            }
+                            case 'remove': {
+                                storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, function (err) {
+                                    storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.itemIds, opts, function (err) {
+                                        Gnd.Util.nextTick(syncFn);
+                                    });
+                                });
+                                break;
+
+                            }
+                            default: {
+                                Gnd.Util.nextTick(syncFn);
+
+                            }
+                        }
                     });
                 }
             };
@@ -1344,12 +1389,24 @@ _.last(keyPath)                ];
                 _.each(this.queue, function (cmd) {
                     updateIds(cmd.keyPath, oldId, newId);
                     cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
-                    cmd.itemIds && updateIds(cmd.itemIds, oldId, newId);
+                    if(cmd.itemIds) {
+                        cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
+                    }
                 });
             };
             return Queue;
         })(Gnd.Base);
         Storage.Queue = Queue;        
+        function updateIds(keyPath, oldId, newId) {
+            var updatedKeys = [];
+            for(var i = 0; i < keyPath.length; i++) {
+                if(keyPath[i] == oldId) {
+                    keyPath[i] = newId;
+                    updatedKeys.push(oldId);
+                }
+            }
+            return updatedKeys;
+        }
     })(Gnd.Storage || (Gnd.Storage = {}));
     var Storage = Gnd.Storage;
 })(Gnd || (Gnd = {}));
@@ -1407,7 +1464,11 @@ var Gnd;
                         });
                         return {
                             key: key,
-                            value: keys
+                            value: _.reduce(keys, function (memo, key) {
+                                memo[key] = 'insync';
+                                return memo;
+                            }, {
+                            })
                         };
                     } else {
                         return traverseLinks(value);
@@ -1466,12 +1527,19 @@ var Gnd;
                 cb();
             };
             Local.prototype.add = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
-                var key = makeKey(keyPath), itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds), keyValue = traverseLinks(key), oldItemIdsKeys = keyValue ? keyValue.value || [] : [];
+                var key = makeKey(keyPath), itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds), keyValue = traverseLinks(key), oldItemIdsKeys = keyValue ? keyValue.value || {
+                } : {
+                }, newIdKeys = {
+                };
                 if(keyPath.length === 1 && itemsKeyPath.length === 1) {
                     createCollectionLink(keyPath[0]);
                     return cb();
                 }
-                _put(key, _.union(oldItemIdsKeys, itemIdsKeys));
+                key = keyValue ? keyValue.key : key;
+                _.each(itemIdsKeys, function (id) {
+                    newIdKeys[id] = opts.insync ? 'insync' : 'add';
+                });
+                _put(key, _.extend(oldItemIdsKeys, newIdKeys));
                 cb();
             };
             Local.prototype.remove = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
@@ -1480,30 +1548,44 @@ var Gnd;
                     return cb();
                 }
                 if(keyValue) {
-                    var moreKeysToDelete = [];
-                    for(var i = 0; i < itemIdsKeys.length; i++) {
-                        traverseLinks(itemIdsKeys[i], function (itemKey) {
-                            moreKeysToDelete.push(itemKey);
+                    var keysToDelete = keyValue.value;
+                    _.each(itemIdsKeys, function (id) {
+                        traverseLinks(id, function (itemKey) {
+                            if(opts.insync) {
+                                delete keysToDelete[id];
+                            } else {
+                                keysToDelete[id] = 'rm';
+                            }
                         });
-                    }
-                    _put(keyValue.key, _.difference(keyValue.value, itemIdsKeys, moreKeysToDelete));
+                    });
+                    _put(keyValue.key, keysToDelete);
                     cb();
                 } else {
                     cb(InvalidKeyError);
                 }
             };
-            Local.prototype.find = function (keyPath, query, options, cb) {
+            Local.prototype.find = function (keyPath, query, opts, cb) {
                 this.fetch(keyPath, function (err, collection) {
-                    var result = [];
+                    var result = {
+                    };
                     if(collection) {
-                        for(var i = 0; i < collection.length; i++) {
-                            var keyValue = traverseLinks(collection[i]);
-                            if(keyValue) {
-                                result.push(keyValue.value);
+                        _.each(_.keys(collection), function (key) {
+                            var op = collection[key];
+                            if(op !== 'rm' || !opts.snapshot) {
+                                var keyValue = traverseLinks(key);
+                                if(keyValue) {
+                                    var item = keyValue.value, id = item._cid;
+                                    if(!(result[id]) || op === 'insync') {
+                                        if(!opts.snapshot) {
+                                            item.__op = op;
+                                        }
+                                        result[id] = item;
+                                    }
+                                }
                             }
-                        }
+                        });
                     }
-                    cb(null, result);
+                    cb(null, _.values(result));
                 });
             };
             Local.prototype.insert = function (keyPath, index, doc, cb) {
@@ -1703,16 +1785,6 @@ var Gnd;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
-    (function (ModelState) {
-        ModelState._map = [];
-        ModelState._map[0] = "INITIAL";
-        ModelState.INITIAL = 0;
-        ModelState._map[1] = "CREATING";
-        ModelState.CREATING = 1;
-        ModelState._map[2] = "CREATED";
-        ModelState.CREATED = 2;
-    })(Gnd.ModelState || (Gnd.ModelState = {}));
-    var ModelState = Gnd.ModelState;
     var Model = (function (_super) {
         __extends(Model, _super);
         function Model(args, bucket) {
@@ -1722,7 +1794,7 @@ var Gnd;
             this._persisted = false;
             this._dirty = true;
             this._keepSynced = false;
-            this.state = ModelState.INITIAL;
+            this._initial = true;
             _.extend(this, args);
             this._cid = this._id || this._cid || Gnd.Util.uuid();
             this.__bucket = bucket;
@@ -1730,17 +1802,19 @@ var Gnd;
                 _this._dirty = true;
             });
             var listenToResync = function () {
-                Model.storageQueue && Model.storageQueue.on('resync:' + Gnd.Storage.Queue.makeKey(_this.getKeyPath()), function (doc) {
+                Model.storageQueue.on('resync:' + Gnd.Storage.Queue.makeKey(_this.getKeyPath()), function (doc) {
                     _this.set(doc, {
                         nosync: true
                     });
                     _this.emit('resynced:');
                 });
             };
-            if(this.isPersisted()) {
-                listenToResync();
-            } else {
-                this.once('id', listenToResync);
+            if(Model.storageQueue) {
+                if(this.isPersisted()) {
+                    listenToResync();
+                } else {
+                    this.once('id', listenToResync);
+                }
             }
         }
         Model.__bucket = "";
@@ -1777,10 +1851,7 @@ var Gnd;
                                 var id = instance.id();
                                 Model.storageQueue.once('created:' + id, function (id) {
                                     instance.id(id);
-                                    instance.state = ModelState.CREATED;
                                 });
-                            } else {
-                                instance.state = ModelState.CREATED;
                             }
                             instance.init(function () {
                                 cb(null, instance);
@@ -1852,7 +1923,7 @@ var Gnd;
         };
         Model.prototype.id = function (id) {
             if(id) {
-                this._cid = this._id = id;
+                this._id = id;
                 this._persisted = true;
                 this.emit('id', id);
             }
@@ -1871,7 +1942,7 @@ var Gnd;
             return this._keepSynced;
         };
         Model.prototype.isPersisted = function () {
-            return this._persisted || (this.state >= ModelState.CREATED);
+            return this._persisted;
         };
         Model.prototype.bucket = function () {
             return this.__bucket;
@@ -1886,15 +1957,16 @@ var Gnd;
             var bucket = this.__bucket, id = this.id();
             cb = cb || function (err) {
             };
-            if(this.state == ModelState.INITIAL) {
-                args['state'] = this.state = ModelState.CREATING;
+            if(this._initial) {
+                args['_initial'] = this._initial = false;
                 Model.storageQueue.once('created:' + id, function (id) {
                     _this.id(id);
-                    _this.state = ModelState.CREATED;
                 });
                 Model.storageQueue.create([
                     bucket
-                ], args, cb);
+                ], args, function (err, id) {
+                    cb(err);
+                });
             } else {
                 Model.storageQueue.put([
                     bucket, 
@@ -2330,7 +2402,9 @@ var Gnd;
                 var id = item.id(), shouldRemove = true;
                 for(var i = 0; i < items.length; i++) {
                     if(id == items[i]._id) {
-                        item.set(items[i]);
+                        item.set(items[i], {
+                            nosync: true
+                        });
                         shouldRemove = false;
                         break;
                     }
@@ -2441,7 +2515,7 @@ var Gnd;
 
             }
             case '.': {
-                return el.getElementsByClassName(selector.slice(1));
+                return el.getElementsByClassName(selector.slice(1))[0];
 
             }
         }
@@ -2565,7 +2639,7 @@ var Gnd;
             }
             Ajax.post = post;
             function del(url, obj, cb) {
-                base('DEL', url, obj, cb);
+                base('DELETE', url, obj, cb);
             }
             Ajax.del = del;
             function getXhr() {
@@ -2585,16 +2659,24 @@ var Gnd;
                 var xhr = getXhr();
                 xhr.onreadystatechange = function () {
                     if(xhr.readyState === 4) {
-                        if(xhr.status === 200) {
-                            cb(null, JSON.stringify(xhr.responseText || {
-                            }));
+                        xhr.onreadystatechange = null;
+                        if(xhr.status >= 200 && xhr.status < 300) {
+                            var res;
+                            try  {
+                                res = JSON.parse(xhr.responseText || {
+                                });
+                            } catch (e) {
+                            }
+                            ; ;
+                            cb(null, res);
                         } else {
                             cb(new Error("Ajax Error: " + xhr.responseText));
                         }
                     } else {
                     }
                 };
-                xhr.open('GET', url);
+                xhr.open(method, url);
+                xhr.setRequestHeader('Content-Type', 'application/json');
                 xhr.send(JSON.stringify(obj));
             }
         })(Gnd.Ajax || (Gnd.Ajax = {}));
