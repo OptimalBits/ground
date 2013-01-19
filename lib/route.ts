@@ -20,19 +20,25 @@ declare var curl;
 
 module Gnd.Route {
 
-interface Node {
+interface Node
+{
   el: Element;
   selector: string;
-  select: Gnd.Task;
-  enter: Gnd.Task;
-  hide: Gnd.Task;
-  show: Gnd.Task;
-  drain: Gnd.Task;
-  before: Gnd.Task;
-  after: Gnd.Task;
-  render: Gnd.Task;
-  load: Gnd.Task;
+  select: Task;
+  enter: Task;
+  hide: Task;
+  show: Task;
+  drain: Task;
+  before: Task;
+  after: Task;
+  render: Task;
+  load: Task;
   autoreleasePool: AutoreleasePool;
+}
+
+interface Middleware 
+{
+  (req: Request, done: (err?:Error)=>{});
 }
 
 //
@@ -77,7 +83,7 @@ export function listen(root, cb) {
               req.index = 1;
               req.initNode('body');
               req.notFoundFn.call(req, req);
-              var queue = new Gnd.TaskQueue();
+              var queue = new TaskQueue();
               enqueueNode(queue, req.node())
             }else{
               console.log('Undefined route:'+location.hash);
@@ -226,44 +232,8 @@ var decomposeUrl = function(url){
   return {components:components, query:parseQuery(s[1])};
 }
 
-function parseGetArguments(args){
-  var result = {
-    middlewares:[], 
-    selector:'body',
-    cb: undefined,
-    component: undefined,
-    handler: undefined,
-    args: undefined
-  }, i = 0, len=args.length;
-  
-  if(_.isFunction(args[0])){
-    result.middlewares = _.initial(args);
-    result.cb = _.last(args);
-  }else{
-    result.component = args[0];
-    result.selector = args[1];
-    i = 2;
-    if(_.isFunction(args[i])){
-      while(_.isFunction(args[i])&&(i<len-1)){
-        result.middlewares.push(args[i]);
-        i++;
-      }
-    }
-    if(i<len){
-      if(_.isFunction(args[i])){
-        result.cb = args[i];
-      }else{
-        result.handler = args[i];
-      }
-      i++;
-      (i<len) && (result.args = args[i]);
-    }
-  }
-  return result;
-}
-
 function processMiddlewares(req, middlewares, cb){
-  Gnd.Util.asyncForEach(middlewares, function(fn, cb){
+  Util.asyncForEach(middlewares, function(fn, cb){
     fn(req, cb);
   },cb);
 }
@@ -276,7 +246,7 @@ function exitNodes(queue, nodes, start){
   }
 }
 
-function enqueueNode(queue: Gnd.TaskQueue, node: Node): void {
+function enqueueNode(queue: TaskQueue, node: Node): void {
   queue.append(node.select, 
                node.hide, 
                node.before, 
@@ -300,7 +270,7 @@ class Request {
   public index: number = 0;
   public level: number = 0;
   public params: {} = {};
-  public queue: Gnd.TaskQueue = new Gnd.TaskQueue();
+  public queue: TaskQueue = new TaskQueue();
   public components: string[];
   public startIndex: number;
   public prevNodes: any[];
@@ -352,20 +322,18 @@ class Request {
   }
   
   private consume(expr, level) : bool {
-    var 
-      self = this,
-      index = self.index;
+    var index = this.index;
   
     if(expr){
-      if((level != index) || (index >= self.components.length)){
+      if((level != index) || (index >= this.components.length)){
         return false
       }
-      var comp = self.components[index];
-      if(!parseParams(expr, comp, self.params) && expr !== comp){
+      var comp = this.components[index];
+      if(!parseParams(expr, comp, this.params) && expr !== comp){
         return false;
       }
     }
-    self.index++;
+    this.index++;
     return true;
   }
   
@@ -441,52 +409,76 @@ class Request {
     return this.nodes[this.index<=0 ? 0:(this.index-1)];
   }
   
-  public get() : Request {
-    var
-      self = this, 
-      args = parseGetArguments(arguments),
-      component = args.component,
-      handler = args.handler, 
-      selector = args.selector,
-      cb = args.cb,
-      level = self.level;
-
-    if(self.wantsRedirect || !self.consume(component, level)){
-      return self;
-    }
-  
-    //
-    // Create a task for entering this subroute
-    //
-    var task = function(done?: Gnd.TaskCallback) : void {
-      processMiddlewares(self, args.middlewares, function(err){
+  private createRouteTask(level, selector, args, middlewares, handler, cb) : Task
+  {
+    return function(done?: TaskCallback) : void 
+    {
+      processMiddlewares(this, middlewares, (err) => {
         var
-          node = self.node(),
+          node = this.node(),
           pool = node.autoreleasePool,
-          index = self.index,
-          isLastRoute = index === self.components.length;
+          index = this.index,
+          isLastRoute = index === this.components.length;
         
-          if(index == self.startIndex){
-            exitNodes(self.queue, self.prevNodes, self.startIndex);
+          if(index == this.startIndex){
+            exitNodes(this.queue, this.prevNodes, this.startIndex);
           }
-          self.initNode(selector, node);
+          this.initNode(selector, node);
     
           if(cb){
-            self.enterNode(cb, node, index, level, {}, pool, isLastRoute);
+            this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
             done();
           }else{
             curl([handler], function(cb){
-              self.enterNode(cb, node, index, level, args.args, pool, isLastRoute);
+              this.enterNode(cb, node, index, level, args, pool, isLastRoute);
               done();
             });
           }
       })
     };
+  }
+
+  public get(handler: ()=>void);
+  public get(component: string, handler: ()=>void);
+  public get(component: string, selector: string, handler: ()=>void);
+  public get(component: string, selector: string, args: {}, handler: string);
+  public get(): Request
+  {
+    return overload({
+      'String String Function': function(component, selector, handler){
+        return this._get(component, selector, {}, undefined, handler);
+      },
+      'String String Object String': function(component, selector, args, handler){
+        return this._get(component, selector, args, handler);
+      },
+      'String Function': function(component, handler){
+        return this._get(component, 'body', {}, undefined, handler);
+      },
+      'Function': function(handler){
+        return this._get(undefined, 'body', {}, undefined, handler);
+      },
+      // TODO: Implement middleware's overloading functions
+    }).apply(this, arguments);
+  }
+  
+  private _get(component: string,
+             selector: string, 
+             args: {}, 
+             handler: string, 
+             cb: () => void): Request
+  {
+    var level = this.level;
+
+    if(this.wantsRedirect || !this.consume(component, level)){
+      return this;
+    }
+      
+    this.queue.append(
+      this.createRouteTask(level, selector, args, [], handler, cb)
+    );
     
-    self.queue.append(task);
-    
-    self.level = level;
-    return self;
+    this.level = level; // is this needeD?
+    return this;
   }
   
   public isLast(){
@@ -568,7 +560,7 @@ class Request {
         return this.render(templateUrl, "", {}, cb);
       },
       "String": function(templateUrl){
-        return this.render(templateUrl, Gnd.Util.noop);
+        return this.render(templateUrl, Util.noop);
       },
     }).apply(this, arguments);
   }
@@ -601,7 +593,7 @@ class Request {
       locals = undefined;
     }
   
-    cb = cb || Gnd.Util.noop;
+    cb = cb || Util.noop;
   
     var items = ['text!'+templateUrl];
     css && items.push('css!'+css);

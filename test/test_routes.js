@@ -239,19 +239,6 @@ describe('simple routes', function(){
     });
   });
   
-  it('render template', function(done){
-    route.stop();
-    goToUrl('');
-    route.listen(function(req){
-      req.get(function(){
-        req.render('fixtures/test1.tmpl', function(){
-          done();
-        })
-      });
-    });
-  });
-  
-  
   it('autorelease objects after change from one deep route to another deep route', function(done){
     var test = new Gnd.Base();
     var foo = new Gnd.Base();
@@ -601,6 +588,18 @@ describe('simple routes', function(){
     goToUrl('/b');
   });
   */
+  
+  it('render template', function(done){
+    route.stop();
+    goToUrl('');
+    route.listen(function(req){
+      req.get('', '#dummy', function(){
+        req.render('fixtures/test1.tmpl', function(){
+          done();
+        })
+      });
+    });
+  });
   
   it('stop listening route', function(){
     route.stop();
