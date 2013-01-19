@@ -114,12 +114,12 @@ describe('ViewModel', function(){
       
       el.checked = true;
       el.setAttribute('checked', 'true');
-      Gnd.fireEvent(el, 'change');
+      Gnd.$(el).trigger('change');
       expect(tiger.selected).to.be(true);
       
       el.checked = false;
       el.setAttribute('checked', 'false');
-      Gnd.fireEvent(el, 'change');
+      Gnd.$(el).trigger('change');
       expect(tiger.selected).to.be(false);
       
       // Text input
@@ -136,7 +136,7 @@ describe('ViewModel', function(){
       
       el.value = 'quxbaz';
       el.setAttribute('value', 'quxbaz');
-      Gnd.fireEvent(el, 'change');
+      Gnd.$(el).trigger('change');
       expect(tiger.description).to.be('quxbaz');
     });
     
@@ -285,7 +285,7 @@ describe('ViewModel', function(){
       obj.handleClick = function(node, evt){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
-        Gnd.fireEvent(el, 'change');
+        Gnd.$(el).trigger('change');
       }
       
       obj.handleChange = function(node, evt){
@@ -297,7 +297,7 @@ describe('ViewModel', function(){
       
       var vm = new Gnd.ViewModel(el, {obj: obj});
       
-      Gnd.fireEvent(el, 'click');
+      Gnd.$(el).trigger('click');
     });
   });
   describe('data-each', function(){

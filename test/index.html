@@ -120,7 +120,8 @@
       })
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
-          curl(['test/test_util',
+          curl(['test/test_dom',
+                'test/test_util',
                 'test/test_storage_local',
                 'test/test_storage_socket',
                 'test/test_overload',
@@ -148,5 +149,8 @@
 </head>
 <body>
   <div id="mocha"></div>
+  <div id="dummy" class="test1"></div>
+  <div id="dummy2" class="test1"></div>
+  <div id="dummy3" class="test1"></div>
 </body>
 </html>

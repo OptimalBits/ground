@@ -184,7 +184,7 @@ class TwoWayBinder implements Binder
         }
         obj.retain();
         obj.on(keypath, modelListener);
-        $$on(el, 'change', elemListener);
+        $(el).on('change', elemListener);
         
         this.bindings.push([obj, keypath, modelListener, elemListener]);
       }else{
@@ -197,7 +197,7 @@ class TwoWayBinder implements Binder
     _.each(this.bindings, (item) => {
       item[0].off(item[1], item[2]);
       item[0].release();
-      item[3] && $$off(this.el, 'change', item[3]);
+      item[3] && $(this.el).off('change', item[3]);
     });
   }
 }
@@ -538,7 +538,7 @@ class EventBinder implements Binder
             handler.call(obj, el, evt);
           }
           
-          $$on(el, eventName, elementListener);
+          $(el).on(eventName, elementListener);
           
           this.bindings.push([obj, eventName, elementListener]);
         }else{
@@ -557,7 +557,7 @@ class EventBinder implements Binder
   unbind(){
     _.each(this.bindings, (item) => {
       item[0].release();
-      $$off(this.el, item[1], item[2]);
+      $(this.el).off(item[1], item[2]);
     });
   }
 }

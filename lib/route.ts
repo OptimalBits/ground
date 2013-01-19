@@ -125,7 +125,7 @@ export function redirect(url) {
   // but if we just cancel the previous execution this tree may not be there...
   location.hash = url;
   if ('onhashchange' in window) {
-    fireEvent(window, 'onhashchange');
+    $(window).trigger('onhashchange');
   }
 }
 
@@ -343,7 +343,7 @@ class Request {
   
     (function(node: Node){
       node.select = wrap(function(done):void{
-        node.el = self.el = $$(selector);
+        node.el = self.el = $(selector)[0];
         done();
       });
       node.selector = selector;
@@ -619,23 +619,19 @@ class Request {
     }
   
     function waitForImages(el, cb) {
-      var images = $$$('img', el),
-            len = images.length,
-        counter = 0;
+      var
+        $images = $('img', el),
+        counter = $images.length;
 
-      if(len>0){        
-        for(var i=0; i<len; i++){
-          (function(el){
-            var loadEvent = function(evt){
-              $$off(el, 'load', loadEvent);
-              counter++;
-              if(counter===len){
-                cb();
-              }
-            }
-            $$on(el, 'load', loadEvent);
-          })(images[0]);
+      if(counter>0){        
+        var loadEvent = function(evt){
+          $images.off('load', loadEvent);
+          counter--;
+          if(counter === 0){
+            cb();
+          }
         }
+        $images.on('load', loadEvent);
       }else{
         cb();
       }

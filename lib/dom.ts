@@ -1,17 +1,154 @@
 /**
-  Ground Web Framework. Route Management. (c) OptimalBits 2011-2012.
+  Ground Web Framework. DOM Management. (c) OptimalBits 2011-2012.
 */
 /**
   DOM Utils.
     
   Simple and lightweight utility functions for cross browser DOM manipulation.
   
-  Some functions based or inspired by 140medley:
-  https://github.com/honza/140medley
+  Some functions based or inspired by 140medley
+    https://github.com/honza/140medley
+  and sizzle
 */
+
+/// <reference path="../third/underscore.browser.d.ts" />
 
 module Gnd
 {
+  /*
+   *  Usage:
+   *   $('div');
+   *   $('#name');
+   *   $('.name');
+   *
+   */
+  
+  export function $(element: Window): Query;
+  export function $(element: Element): Query;
+  export function $(selector: string, context?: HTMLElement): Query;
+  export function $(selectorOrElement: any, context?: Element): Query
+  {
+    var 
+      context = context || document,
+      query = new Query(),
+      push = _.bind(Array.prototype.push, query),
+      el;
+      
+    if(_.isString(selectorOrElement)){
+      var selector = selectorOrElement;
+    
+      switch(selector[0]){
+        case '#':
+          var id = selector.slice(1);
+          el = context.getElementById(id);
+          if(el && el.parentNode) {
+      	    // Handle the case where IE, Opera, and Webkit return items
+      		  // by name instead of ID
+      		  if(el.id === id){
+              push(el);
+      		  }
+      	  }
+          break;
+        case '.': 
+          var className = selector.slice(1);
+          push.apply(query, context.getElementsByClassName(className));
+          break;
+        case '<':
+          push(makeElement(selector));
+          break;
+        default: 
+          push.apply(query, context.getElementsByTagName(selector));
+      }
+    }else{
+      push(selectorOrElement);
+    }
+    return query;
+  }
+
+export class Query
+{
+  public length: number;
+  
+  on(eventNames: string, handler: (evt) => void): Query
+  {
+    _.each(eventNames.split(' '), (eventName) => {
+      _.each(this, (el) => {
+        if(el.addEventListener){
+          // W3C DOM
+          el.addEventListener(eventName, handler);
+        }else if (el['attachEvent']){
+          // IE DOM 6, 7, 8
+          el['attachEvent']("on"+eventName, handler);
+        }
+      });
+    });
+    return this;
+  }
+  
+  off(eventNames: string, handler: (evt) => void): Query
+  {
+    _.each(eventNames.split(' '), (eventName) => {
+      _.each(this, (el) => {
+        if(el.removeEventListener){
+          // W3C DOM
+          el.removeEventListener(eventName, handler);
+        }else if (el['detachEvent']) { 
+          // IE DOM 6, 7, 8
+          el['detachEvent']("on"+eventName, handler);
+        }
+      });
+    });
+    return this;
+  }
+
+  trigger(eventNames: string)
+  {
+    _.each(eventNames.split(' '), (eventName) => {
+      _.each(this, (element) => {
+        if (document.createEventObject){
+          // dispatch for IE
+          var evt = document.createEventObject();
+          element.fireEvent('on'+eventName, evt)
+        }else{
+          // dispatch for firefox + others
+          var msEvent = document.createEvent("HTMLEvents");
+          msEvent.initEvent(eventName, true, true ); // event type,bubbling,cancelable
+          !element.dispatchEvent(msEvent);
+        }
+      });
+    });
+    return this;
+  }
+  
+  attr(attr: string, value?: any)
+  {
+    if(value){
+      _.each(this, (el) => {
+        setAttr(el, attr, value);
+      })
+      return this;
+    }else{
+      return getAttr(this[0], attr);
+    }
+  }
+  
+  show()
+  {
+    _.each(this, (el)=>{
+      show(el);
+    })
+    return this;
+  }
+  
+  hide()
+  {
+    _.each(this, (el)=>{
+      hide(el);
+    })
+    return this;
+  }
+
+}
   
 /*
  * DOM selector
@@ -23,21 +160,6 @@ module Gnd
  *
  * http://jsperf.com/simple-jquery-selector-vs-140medley/2
  */
-export function $$(selector: string, context?: Element): HTMLElement
-{
-  var el = context || document;
-  switch(selector[0]){
-    case '#': return el.getElementById(selector.slice(1));
-    case '.': return el.getElementsByClassName(selector.slice(1))[0];
-  }
-  return el.getElementsByTagName(selector)[0];
-}
-
-export function $$$(tagName: string, context?: Element): NodeList
-{
-  var el = context || document;
-  return el.getElementsByTagName(tagName);
-}
 
 export function isElement(object) {
   return object && object.nodeType === Node.ELEMENT_NODE
@@ -65,49 +187,11 @@ export function makeElement(html: string): DocumentFragment
   container.innerHTML = html;                       // write the HTML to it, and
   
   while (container = <HTMLElement> container.firstChild){ // the container element has a first child
-    fragment.appendChild(container);             // append the child to the fragment,
+    fragment.appendChild(container);  // append the child to the fragment,
   } 
 
   return fragment;
 }
-
-/**
-  DOM Events
-*/
-
-export function $$on(el: Element, eventName: string, handler: (evt) => void){
-  if(el.addEventListener){
-    // W3C DOM
-    el.addEventListener(eventName, handler);
-  }else if (el['attachEvent']){
-    // IE DOM 6, 7, 8
-    el['attachEvent']("on"+eventName, handler);
-  }
-}
-
-export function $$off(el: Element, eventName: string, handler: (evt) => void){
-  if(el.removeEventListener){
-    // W3C DOM
-    el.removeEventListener(eventName, handler);
-  }else if (el['detachEvent']) { 
-    // IE DOM 6, 7, 8
-    el['detachEvent']("on"+eventName, handler);
-  }
-}
-
-export function fireEvent(element, event){
-  if (document.createEventObject){
-    // dispatch for IE
-    var evt = document.createEventObject();
-    return element.fireEvent('on'+event,evt)
-  }else{
-    // dispatch for firefox + others
-    var msEvent = document.createEvent("HTMLEvents");
-    msEvent.initEvent(event, true, true ); // event type,bubbling,cancelable
-    return !element.dispatchEvent(msEvent);
-  }
-}
-  
 
 /**
   DOM Attributes.
@@ -143,7 +227,6 @@ export function getAttr(el: Element, attr){
   Show / Hide
   
 */
-
 export function show(el: Element)
 {
   el['style'].display = getAttr(el, 'data-display') || 'block';
@@ -152,8 +235,7 @@ export function show(el: Element)
 export function hide(el: Element)
 {
   setAttr(el, 'data-display', el['style'].display);
-  el['style'].display = "none";
-  
+  el['style'].display = 'none';
 }
 
 //
