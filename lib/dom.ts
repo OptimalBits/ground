@@ -254,7 +254,8 @@ export function show(el: Element)
 
 export function hide(el: Element)
 {
-  setAttr(el, 'data-display', el['style'].display);
+  var oldDisplay = el['style'].display;
+  (oldDisplay != 'none') && setAttr(el, 'data-display', oldDisplay);
   el['style'].display = 'none';
 }
 
