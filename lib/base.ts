@@ -25,7 +25,6 @@ module Gnd {
 export class Base extends EventEmitter {
   private _refCounter: number = 1;
   private _bindings: any = {};
-  private _formatters;
   private _destroyed: bool;
   private _destroyedTrace: string;
   private _undoMgr: UndoManager = new UndoManager();
@@ -40,7 +39,7 @@ export class Base extends EventEmitter {
   //
   // TODO: Accept keypath arrays besides strings.
   //
-  private _set(keypath, val, options) {
+  private _set(keypath: string, val, options) {
     var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
   
     for(var i=0;i<len;i++){
@@ -150,60 +149,11 @@ export class Base extends EventEmitter {
     }
   }
   
-  // format(property, fn?): any
-  // {
-  //   if(arguments.length==1){
-  //     if(_.isObject(property)){
-  //       if(!this._formatters){
-  //         this._formatters = {};
-  //       }
-  //       _.extend(this._formatters, property);
-  //     } else if((this._formatters)&&(property in this._formatters)){
-  //       var val = this.get(property);
-  //       if(_.isFunction(val)){
-  //         val = val.call(this);
-  //       }
-  //       return this._formatters[property].call(this, val);
-  //     }else{
-  //       return this.get(property);
-  //     }
-  //   }else{
-  //     if(!this._formatters){
-  //       this._formatters = {};
-  //     }
-  //     this._formatters[property] = fn;
-  //   }
-  // }
-
-  format(property, fn?): any
-  {
-    if(arguments.length==1){
-      if(_.isObject(property)){
-        if(!this._formatters){
-          this._formatters = {};
-        }
-        _.extend(this._formatters, property);
-      } else if((this._formatters)&&(property in this._formatters)){
-        var val = this.get(property);
-        if(_.isFunction(val)){
-          val = val.call(this);
-        }
-        return this._formatters[property].call(this, val);
-      }else{
-        return this.get(property);
-      }
-    }else{
-      if(!this._formatters){
-        this._formatters = {};
-      }
-      this._formatters[property] = fn;
-    }
-  }
-  
   /**
     Begins an undo operation over setting a given key to a value.
   */
-  beginUndoSet(key){
+  beginUndoSet(key)
+  {
     var base = this
     ;(function(value){
       this.undoMgr.beginUndo(function(){
@@ -213,40 +163,49 @@ export class Base extends EventEmitter {
   /**
     Ends an undo operation over setting a given key to a value.
   */
-  endUndoSet(key, fn){
+  endUndoSet(key, fn)
+  {
     var base = this
     ;(function(value){
       this.undoMgr.endUndo(function(){
         base.set(key, value)
     })}(this[key]))
   }
+  
   /**
     Sets a key value while registering it as an undo operation
   */
-  undoSet(key, value, fn){
+  undoSet(key, value, fn)
+  {
     this.beginUndoSet(key)
     this.set(key, value)
     this.endUndoSet(key, fn)
   }
-  destroy(){
+  
+  destroy()
+  {
+    this.emit('destroy:');
+    this._destroyed = true;
+    this._destroyedTrace = "";//new Error().stack;
     this.off();
-    // We should nullify this object.
+    
+    // TODO: nullify this object.
   }
   
-  retain(){
+  retain(): Base
+  {
     if(this._destroyed){
       throw new Error("Cannot retain destroyed object");
     }
     this._refCounter++;
     return this;
   }
-  release(){
+  
+  release(): Base
+  {
     this._refCounter--;
     if(this._refCounter===0){
-      this.emit('destroy:');
       this.destroy();
-      this._destroyed = true;
-      this._destroyedTrace = "";//new Error().stack;
     }else if(this._refCounter < 0){
       var msg;
       if(this._destroyed){
@@ -263,14 +222,16 @@ export class Base extends EventEmitter {
     return this;
   }
   
-  autorelease(){
+  autorelease(): Base
+  {
     Util.nextTick(()=>{
       this.release();
     });
     return this;
   }
   
-  isDestroyed(){
+  isDestroyed(): bool
+  {
     return this._refCounter === 0;
   }
 }
