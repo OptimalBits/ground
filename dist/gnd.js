@@ -719,33 +719,6 @@ var Gnd;
                 delete bindings[key];
             }
         };
-        Base.prototype.format = function (property, fn) {
-            if(arguments.length == 1) {
-                if(_.isObject(property)) {
-                    if(!this._formatters) {
-                        this._formatters = {
-                        };
-                    }
-                    _.extend(this._formatters, property);
-                } else {
-                    if((this._formatters) && (property in this._formatters)) {
-                        var val = this.get(property);
-                        if(_.isFunction(val)) {
-                            val = val.call(this);
-                        }
-                        return this._formatters[property].call(this, val);
-                    } else {
-                        return this.get(property);
-                    }
-                }
-            } else {
-                if(!this._formatters) {
-                    this._formatters = {
-                    };
-                }
-                this._formatters[property] = fn;
-            }
-        };
         Base.prototype.beginUndoSet = function (key) {
             var base = this;
             ((function (value) {
@@ -768,6 +741,9 @@ var Gnd;
             this.endUndoSet(key, fn);
         };
         Base.prototype.destroy = function () {
+            this.emit('destroy:');
+            this._destroyed = true;
+            this._destroyedTrace = "";
             this.off();
         };
         Base.prototype.retain = function () {
@@ -780,10 +756,7 @@ var Gnd;
         Base.prototype.release = function () {
             this._refCounter--;
             if(this._refCounter === 0) {
-                this.emit('destroy:');
                 this.destroy();
-                this._destroyed = true;
-                this._destroyedTrace = "";
             } else {
                 if(this._refCounter < 0) {
                     var msg;
@@ -2515,71 +2488,135 @@ var Gnd;
 })(Gnd || (Gnd = {}));
 var Gnd;
 (function (Gnd) {
-        function $(selector, context) {
+                function $(selectorOrElement, context) {
         var context = context || document, query = new Query(), push = _.bind(Array.prototype.push, query), el;
-        switch(selector[0]) {
-            case '#': {
-                var id = selector.slice(1);
-                el = context.getElementById(id);
-                if(el && el.parentNode) {
-                    if(el.id === id) {
-                        query[0] = el;
-                        query.length = 1;
+        if(_.isString(selectorOrElement)) {
+            var selector = selectorOrElement;
+            switch(selector[0]) {
+                case '#': {
+                    var id = selector.slice(1);
+                    el = context.getElementById(id);
+                    if(el && el.parentNode) {
+                        if(el.id === id) {
+                            push(el);
+                        }
                     }
+                    break;
+
                 }
+                case '.': {
+                    var className = selector.slice(1);
+                    push.apply(query, context.getElementsByClassName(className));
+                    break;
 
-            }
-            case '.': {
-                var className = selector.slice(1);
-                push(el.getElementsByClassName(className));
+                }
+                case '<': {
+                    push(makeElement(selector));
+                    break;
 
-            }
-            default: {
-                push(el.getElementsByTagName(selector));
+                }
+                default: {
+                    push.apply(query, context.getElementsByTagName(selector));
 
+                }
             }
+        } else {
+            push(selectorOrElement);
         }
         return query;
     }
     Gnd.$ = $;
-    function Query() {
-    }
-    ; ;
-    Query.prototype = {
-        $: $,
-        on: function (eventName, handler) {
-            _.each(this, function (el) {
-                if(el.addEventListener) {
-                    el.addEventListener(eventName, handler);
-                } else {
-                    if(el['attachEvent']) {
-                        el['attachEvent']("on" + eventName, handler);
+    var Query = (function () {
+        function Query() { }
+        Query.prototype.on = function (eventNames, handler) {
+            var _this = this;
+            _.each(eventNames.split(' '), function (eventName) {
+                _.each(_this, function (el) {
+                    if(el.addEventListener) {
+                        el.addEventListener(eventName, handler);
+                    } else {
+                        if(el['attachEvent']) {
+                            el['attachEvent']("on" + eventName, handler);
+                        }
                     }
-                }
+                });
             });
             return this;
-        }
-    };
-    function $$(selector, context) {
-        var el = context || document;
-        switch(selector[0]) {
-            case '#': {
-                return el.getElementById(selector.slice(1));
-
+        };
+        Query.prototype.off = function (eventNames, handler) {
+            var _this = this;
+            _.each(eventNames.split(' '), function (eventName) {
+                _.each(_this, function (el) {
+                    if(el.removeEventListener) {
+                        el.removeEventListener(eventName, handler);
+                    } else {
+                        if(el['detachEvent']) {
+                            el['detachEvent']("on" + eventName, handler);
+                        }
+                    }
+                });
+            });
+            return this;
+        };
+        Query.prototype.trigger = function (eventNames) {
+            var _this = this;
+            _.each(eventNames.split(' '), function (eventName) {
+                _.each(_this, function (element) {
+                    if(document.createEventObject) {
+                        var evt = document.createEventObject();
+                        element.fireEvent('on' + eventName, evt);
+                    } else {
+                        var msEvent = document.createEvent("HTMLEvents");
+                        msEvent.initEvent(eventName, true, true);
+                        !element.dispatchEvent(msEvent);
+                    }
+                });
+            });
+            return this;
+        };
+        Query.prototype.attr = function (attr, value) {
+            if(value) {
+                _.each(this, function (el) {
+                    setAttr(el, attr, value);
+                });
+                return this;
+            } else {
+                return getAttr(this[0], attr);
             }
-            case '.': {
-                return el.getElementsByClassName(selector.slice(1))[0];
-
+        };
+        Query.prototype.show = function () {
+            _.each(this, function (el) {
+                show(el);
+            });
+            return this;
+        };
+        Query.prototype.hide = function () {
+            _.each(this, function (el) {
+                hide(el);
+            });
+            return this;
+        };
+        Query.prototype.html = function (html) {
+            var el = this[0];
+            if(el.textContent) {
+                if(!html) {
+                    return el.textContent;
+                }
+                _.each(this, function (el) {
+                    el.textContent = html;
+                });
+            } else {
+                if(!html) {
+                    return el.innerText;
+                }
+                _.each(this, function (el) {
+                    el.innerText = html;
+                });
             }
-        }
-        return el.getElementsByTagName(selector)[0];
-    }
-    Gnd.$$ = $$;
-    function $$$(tagName, context) {
-        var el = context || document;
-        return el.getElementsByTagName(tagName);
-    }
-    Gnd.$$$ = $$$;
+        };
+        return Query;
+    })();
+    Gnd.Query = Query;    
     function isElement(object) {
         return object && object.nodeType === Node.ELEMENT_NODE;
     }
@@ -2594,37 +2631,6 @@ var Gnd;
         return fragment;
     }
     Gnd.makeElement = makeElement;
-    function $$on(el, eventName, handler) {
-        if(el.addEventListener) {
-            el.addEventListener(eventName, handler);
-        } else {
-            if(el['attachEvent']) {
-                el['attachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    Gnd.$$on = $$on;
-    function $$off(el, eventName, handler) {
-        if(el.removeEventListener) {
-            el.removeEventListener(eventName, handler);
-        } else {
-            if(el['detachEvent']) {
-                el['detachEvent']("on" + eventName, handler);
-            }
-        }
-    }
-    Gnd.$$off = $$off;
-    function fireEvent(element, event) {
-        if(document.createEventObject) {
-            var evt = document.createEventObject();
-            return element.fireEvent('on' + event, evt);
-        } else {
-            var msEvent = document.createEvent("HTMLEvents");
-            msEvent.initEvent(event, true, true);
-            return !element.dispatchEvent(msEvent);
-        }
-    }
-    Gnd.fireEvent = fireEvent;
     function setAttr(el, attr, value) {
         if(el.hasOwnProperty(attr)) {
             el[attr] = value;
@@ -2664,8 +2670,9 @@ var Gnd;
     }
     Gnd.show = show;
     function hide(el) {
-        setAttr(el, 'data-display', el['style'].display);
-        el['style'].display = "none";
+        var oldDisplay = el['style'].display;
+        (oldDisplay != 'none') && setAttr(el, 'data-display', oldDisplay);
+        el['style'].display = 'none';
     }
     Gnd.hide = hide;
     function serialize(obj) {
@@ -2800,7 +2807,7 @@ url = location.hash.replace(/^#!?/, '');
         function redirect(url) {
             location.hash = url;
             if('onhashchange' in window) {
-                Gnd.fireEvent(window, 'onhashchange');
+                Gnd.$(window).trigger('onhashchange');
             }
         }
         Route.redirect = redirect;
@@ -2854,15 +2861,14 @@ url = location.hash.replace(/^#!?/, '');
         var wrap = Gnd.overload({
             'Function Array Function': function (fn, args, cb) {
                 return function (done) {
-                    (function (args) {
-                        args.push(function () {
-                            cb(done);
-                            if(cb.length === 0) {
-                                done();
-                            }
-                        });
-                        fn.apply(null, args);
-                    })(_.clone(args));
+                    var _args = _.clone(args);
+                    _args.push(function () {
+                        cb(done);
+                        if(cb.length === 0) {
+                            done();
+                        }
+                    });
+                    fn.apply(null, _args);
                 }
             },
             'Function Function': function (fn, cb) {
@@ -2887,39 +2893,6 @@ url = location.hash.replace(/^#!?/, '');
                 query: parseQuery(s[1])
             };
         };
-        function parseGetArguments(args) {
-            var result = {
-middlewares: [],
-selector: 'body',
-cb: undefined,
-component: undefined,
-handler: undefined,
-args: undefined            }, i = 0, len = args.length;
-            if(_.isFunction(args[0])) {
-                result.middlewares = _.initial(args);
-                result.cb = _.last(args);
-            } else {
-                result.component = args[0];
-                result.selector = args[1];
-                i = 2;
-                if(_.isFunction(args[i])) {
-                    while(_.isFunction(args[i]) && (i < len - 1)) {
-                        result.middlewares.push(args[i]);
-                        i++;
-                    }
-                }
-                if(i < len) {
-                    if(_.isFunction(args[i])) {
-                        result.cb = args[i];
-                    } else {
-                        result.handler = args[i];
-                    }
-                    i++;
-                    (i < len) && (result.args = args[i]);
-                }
-            }
-            return result;
-        }
         function processMiddlewares(req, middlewares, cb) {
             Gnd.Util.asyncForEach(middlewares, function (fn, cb) {
                 fn(req, cb);
@@ -2979,24 +2952,24 @@ args: undefined            }, i = 0, len = args.length;
                 return subPath;
             };
             Request.prototype.consume = function (expr, level) {
-                var self = this, index = self.index;
+                var index = this.index;
                 if(expr) {
-                    if((level != index) || (index >= self.components.length)) {
+                    if((level != index) || (index >= this.components.length)) {
                         return false;
                     }
-                    var comp = self.components[index];
-                    if(!parseParams(expr, comp, self.params) && expr !== comp) {
+                    var comp = this.components[index];
+                    if(!parseParams(expr, comp, this.params) && expr !== comp) {
                         return false;
                     }
                 }
-                self.index++;
+                this.index++;
                 return true;
             };
             Request.prototype.initNode = function (selector, node) {
                 var self = this;
                 (function (node) {
                     node.select = wrap(function (done) {
-                        node.el = self.el = Gnd.$$(selector);
+                        node.el = self.el = Gnd.$(selector)[0];
                         done();
                     });
                     node.selector = selector;
@@ -3008,9 +2981,9 @@ args: undefined            }, i = 0, len = args.length;
                         node.el && Gnd.show(node.el);
                         done();
                     });
-                    node.drain = wrap(function (cb) {
+                    node.drain = wrap(function (done) {
                         node.autoreleasePool.drain();
-                        cb();
+                        done();
                     });
                 })(node || self.node());
             };
@@ -3046,35 +3019,55 @@ args: undefined            }, i = 0, len = args.length;
             Request.prototype.node = function () {
                 return this.nodes[this.index <= 0 ? 0 : (this.index - 1)];
             };
-            Request.prototype.get = function () {
-                var self = this, args = parseGetArguments(arguments), component = args.component, handler = args.handler, selector = args.selector, cb = args.cb, level = self.level;
-                if(self.wantsRedirect || !self.consume(component, level)) {
-                    return self;
-                }
-                var task = function (done) {
-                    processMiddlewares(self, args.middlewares, function (err) {
-                        var node = self.node(), pool = node.autoreleasePool, index = self.index, isLastRoute = index === self.components.length;
-                        if(index == self.startIndex) {
-                            exitNodes(self.queue, self.prevNodes, self.startIndex);
+            Request.prototype.createRouteTask = function (level, selector, args, middlewares, handler, cb) {
+                var _this = this;
+                return function (done) {
+                    processMiddlewares(this, middlewares, function (err) {
+                        var node = _this.node(), pool = node.autoreleasePool, index = _this.index, isLastRoute = index === _this.components.length;
+                        if(index == _this.startIndex) {
+                            exitNodes(_this.queue, _this.prevNodes, _this.startIndex);
                         }
-                        self.initNode(selector, node);
+                        _this.initNode(selector, node);
                         if(cb) {
-                            self.enterNode(cb, node, index, level, {
+                            _this.enterNode(cb, node, index, level, {
                             }, pool, isLastRoute);
                             done();
                         } else {
                             curl([
                                 handler
                             ], function (cb) {
-                                self.enterNode(cb, node, index, level, args.args, pool, isLastRoute);
+                                this.enterNode(cb, node, index, level, args, pool, isLastRoute);
                                 done();
                             });
                         }
                     });
-                };
-                self.queue.append(task);
-                self.level = level;
-                return self;
+                }
+            };
+            Request.prototype.get = function () {
+                return Gnd.overload({
+                    'String String Function': function (component, selector, handler) {
+                        return this._get(component, selector, {
+                        }, undefined, handler);
+                    },
+                    'String String Object String': function (component, selector, args, handler) {
+                        return this._get(component, selector, args, handler);
+                    },
+                    'String Function': function (component, handler) {
+                        return this._get(component, 'body', {
+                        }, undefined, handler);
+                    },
+                    'Function': function (handler) {
+                        return this._get('', 'body', {
+                        }, undefined, handler);
+                    }
+                }).apply(this, arguments);
+            };
+            Request.prototype._get = function (component, selector, args, handler, cb) {
+                if(this.wantsRedirect || !this.consume(component, this.level)) {
+                    return this;
+                }
+                this.queue.append(this.createRouteTask(this.level, selector, args, [], handler, cb));
+                return this;
             };
             Request.prototype.isLast = function () {
                 return this.index >= this.components.length;
@@ -3089,52 +3082,38 @@ args: undefined            }, i = 0, len = args.length;
                 });
                 this.wantsRedirect = true;
             };
-            Request.prototype.anim = function (node, name, speed, cb) {
-                node.$el[name](speed || 'fast', cb);
-            };
             Request.prototype.before = function (cb) {
-                var fn = _.bind(function (cb) {
+                this.node().before = wrap(function (cb) {
                     cb();
-                }, this);
-                this.node().before = wrap(fn, cb);
+                }, cb);
                 return this;
             };
             Request.prototype.after = function (cb) {
-                var fn = _.bind(function (cb) {
+                this.node().after = wrap(function (cb) {
                     cb();
-                }, this);
-                this.node().after = wrap(fn, cb);
+                }, cb);
                 return this;
             };
-            Request.prototype.exit = function (name, speed, cb) {
-                cb = _.isFunction(speed) ? speed : cb;
-                speed = _.isFunction(speed) ? undefined : speed;
+            Request.prototype.enter = function (fn) {
                 var node = this.node();
-                var fn = _.bind(this.anim, this);
-                node.exit = wrap(fn, [
-                    node, 
-                    name, 
-                    speed
-                ], cb);
+                node.enter = wrap(function (done) {
+                    node.el && fn(node.el, done);
+                    (fn.length == 1) && done();
+                });
                 return this;
             };
-            Request.prototype.enter = function (name, speed, cb) {
-                cb = _.isFunction(speed) ? speed : cb;
-                speed = _.isFunction(speed) ? undefined : speed;
+            Request.prototype.exit = function (fn) {
                 var node = this.node();
-                var fn = _.bind(this.anim, this);
-                node.enter = wrap(fn, [
-                    node, 
-                    name, 
-                    speed
-                ], cb);
+                node.exit = wrap(function (done) {
+                    node.el && fn(node.el, done);
+                    (fn.length == 1) && done();
+                });
                 return this;
             };
             Request.prototype.leave = function (cb) {
-                var fn = _.bind(function (cb) {
+                this.node().leave = wrap(function (cb) {
                     cb();
-                }, this);
-                this.node().leave = wrap(fn, cb);
+                }, cb);
                 return this;
             };
             Request.prototype.render = function (templateUrl, css, locals, cb) {
@@ -3222,20 +3201,16 @@ args: undefined            }, i = 0, len = args.length;
                     waitForImages(self.el, cb);
                 }
                 function waitForImages(el, cb) {
-                    var images = Gnd.$$$('img', el), len = images.length, counter = 0;
-                    if(len > 0) {
-                        for(var i = 0; i < len; i++) {
-                            (function (el) {
-                                var loadEvent = function (evt) {
-                                    Gnd.$$off(el, 'load', loadEvent);
-                                    counter++;
-                                    if(counter === len) {
-                                        cb();
-                                    }
-                                };
-                                Gnd.$$on(el, 'load', loadEvent);
-                            })(images[0]);
-                        }
+                    var $images = Gnd.$('img', el), counter = $images.length;
+                    if(counter > 0) {
+                        var loadEvent = function (evt) {
+                            $images.off('load', loadEvent);
+                            counter--;
+                            if(counter === 0) {
+                                cb();
+                            }
+                        };
+                        $images.on('load', loadEvent);
                     } else {
                         cb();
                     }
@@ -3319,10 +3294,13 @@ var Gnd;
     var dataBindingReqExp = /^data-/;
     var ViewModel = (function (_super) {
         __extends(ViewModel, _super);
-        function ViewModel(el, context, binders) {
+        function ViewModel(el, context, formatters, binders) {
                 _super.call(this);
             this.contexts = [];
             this.boundBinders = [];
+            this.formatters = {
+            };
+            this.formatters = formatters || this.formatters;
             this.binders = {
                 bind: TwoWayBinder,
                 each: EachBinder,
@@ -3400,49 +3378,62 @@ var Gnd;
     var TwoWayBinder = (function () {
         function TwoWayBinder() {
             this.bindings = [];
+            this.attrBindings = {
+            };
+            this.attrFormatters = {
+            };
         }
-        TwoWayBinder.re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
-        TwoWayBinder.prototype.parse = function (value) {
-            var attrBindings = {
-            }, match;
+        TwoWayBinder.re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
+        TwoWayBinder.prototype.parse = function (value, formatters) {
+            var match, formatter;
             while(match = TwoWayBinder.re.exec(value)) {
-                attrBindings[match[3]] = makeKeypathArray(match[4]);
+                var attr = match[3];
+                this.attrBindings[attr] = makeKeypathArray(match[4]);
+                formatter = formatters[match[7]];
+                if(formatter) {
+                    this.attrFormatters[attr] = formatter;
+                }
             }
-            return attrBindings;
+        };
+        TwoWayBinder.prototype.createBinding = function (attr, el, viewModel) {
+            var attrBinding = this.attrBindings[attr], attrFormatter = this.attrFormatters[attr], obj = viewModel.resolveContext(_.initial(attrBinding));
+            if(obj instanceof Gnd.Base) {
+                var keypath = _.rest(attrBinding).join('.'), modelListener, elemListener = null;
+                var format = function () {
+                    return attrFormatter ? attrFormatter(obj.get(keypath)) : obj.get(keypath);
+                };
+                if(attr === 'text') {
+                    setText(el, format());
+                    modelListener = function () {
+                        setText(el, format());
+                    };
+                } else {
+                    Gnd.setAttr(el, attr, format());
+                    modelListener = function () {
+                        Gnd.setAttr(el, attr, format());
+                    };
+                    elemListener = function (value) {
+                        obj.set(keypath, Gnd.getAttr(el, attr));
+                    };
+                }
+                obj.retain();
+                obj.on(keypath, modelListener);
+                Gnd.$(el).on('change', elemListener);
+                this.bindings.push([
+                    obj, 
+                    keypath, 
+                    modelListener, 
+                    elemListener
+                ]);
+            } else {
+                console.log("Warning: not found a valid model: " + attrBinding[0]);
+            }
         };
         TwoWayBinder.prototype.bind = function (el, value, viewModel) {
-            var attrBindings = this.parse(value);
+            this.parse(value, viewModel.formatters);
             this.el = el;
-            for(var attr in attrBindings) {
-                var obj = viewModel.resolveContext(_.initial(attrBindings[attr]));
-                if(obj instanceof Gnd.Base) {
-                    var keypath = _.rest(attrBindings[attr]).join('.'), modelListener, elemListener = null;
-                    if(attr === 'text') {
-                        setText(el, obj.format(keypath));
-                        modelListener = function () {
-                            setText(el, obj.format(keypath));
-                        };
-                    } else {
-                        Gnd.setAttr(el, attr, obj.format(keypath));
-                        modelListener = function () {
-                            Gnd.setAttr(el, attr, obj.format(keypath));
-                        };
-                        elemListener = function (value) {
-                            obj.set(keypath, Gnd.getAttr(el, attr));
-                        };
-                    }
-                    obj.retain();
-                    obj.on(keypath, modelListener);
-                    Gnd.$$on(el, 'change', elemListener);
-                    this.bindings.push([
-                        obj, 
-                        keypath, 
-                        modelListener, 
-                        elemListener
-                    ]);
-                } else {
-                    console.log("Warning: not found a valid model: " + attrBindings[attr][0]);
-                }
+            for(var attr in this.attrBindings) {
+                this.createBinding(attr, el, viewModel);
             }
         };
         TwoWayBinder.prototype.unbind = function () {
@@ -3450,7 +3441,7 @@ var Gnd;
             _.each(this.bindings, function (item) {
                 item[0].off(item[1], item[2]);
                 item[0].release();
-                item[3] && Gnd.$$off(_this.el, 'change', item[3]);
+                item[3] && Gnd.$(_this.el).off('change', item[3]);
             });
         };
         return TwoWayBinder;
@@ -3676,7 +3667,7 @@ setVisibility(visible);                };
                         var elementListener = function (evt) {
                             handler.call(obj, el, evt);
                         };
-                        Gnd.$$on(el, eventName, elementListener);
+                        Gnd.$(el).on(eventName, elementListener);
                         _this.bindings.push([
                             obj, 
                             eventName, 
@@ -3697,7 +3688,7 @@ setVisibility(visible);                };
             var _this = this;
             _.each(this.bindings, function (item) {
                 item[0].release();
-                Gnd.$$off(_this.el, item[1], item[2]);
+                Gnd.$(_this.el).off(item[1], item[2]);
             });
         };
         return EventBinder;
@@ -3705,15 +3696,11 @@ setVisibility(visible);                };
     if(!String.prototype.trim) {
         String.prototype.trim = Gnd.Util.trim;
     }
-    function setText(node, value) {
+    function setText(el, value) {
         if(Gnd.isElement(value)) {
-            node.parentNode.replaceChild(value, node);
+            el.parentNode.replaceChild(value, el);
         } else {
-            if(node.textContent) {
-                node.textContent = value;
-            } else {
-                node['innerText'] = value;
-            }
+            Gnd.$(el).html(value);
         }
     }
     function makeKeypathArray(keypath) {
