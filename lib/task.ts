@@ -15,7 +15,7 @@ export interface TaskCallback {
 }
 
 export interface Task {
-  (cb? : TaskCallback) : void;
+  (done? : TaskCallback) : void;
 }
 
 export class TaskQueue {
