@@ -589,17 +589,43 @@ describe('simple routes', function(){
   });
   */
   
+  it('enter and exit route', function(done){
+    route.stop();
+    goToUrl('/foo');
+    route.listen(function(req){
+      req.get(function(){
+        req.get('bar', '#dummy', function(){
+          req.enter(function(el){
+            expect(Gnd.isElement(el)).to.be(true);
+            done();
+          });
+        });
+        req.get('foo', function(){
+          req.exit(function(el){
+            expect(Gnd.isElement(el)).to.be(true);
+          });
+          req.after(function(){
+            req.redirect('/bar');
+          });
+        })
+      });
+    });
+  });
+  
   it('render template', function(done){
     route.stop();
     goToUrl('');
     route.listen(function(req){
       req.get('', '#dummy', function(){
-        req.render('fixtures/test1.tmpl', function(){
+        req.render('fixtures/test1.tmpl');
+        req.enter(function(el){
+          expect(Gnd.isElement(el)).to.be(true);
           done();
-        })
+        });
       });
     });
   });
+
   
   it('stop listening route', function(){
     route.stop();

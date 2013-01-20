@@ -196,15 +196,14 @@ class AutoreleasePool {
 var wrap = overload({
   'Function Array Function': function(fn, args, cb) {
     return function(done){
-      (function(args){
-        args.push(function(){
-          cb(done);
-          if(cb.length === 0){
-            done();
-          }
-        });
-        fn.apply(null, args);
-      })(_.clone(args));
+      var _args = _.clone(args);
+      _args.push(function(){
+        cb(done);
+        if(cb.length === 0){
+          done();
+        }
+      });
+      fn.apply(null, _args);
     }
   },
   'Function Function': function(fn, cb){
@@ -348,7 +347,8 @@ class Request {
       });
       node.selector = selector;
    
-      node.hide = wrap(function(done):void{
+      node.hide = wrap(function(done):void
+      {
         node.el && hide(node.el);
         done();
       });
@@ -358,9 +358,9 @@ class Request {
         done();
       });
      
-      node.drain = wrap(function(cb){
+      node.drain = wrap(function(done){
         node.autoreleasePool.drain();
-        cb();
+        done();
       });
     })(node || self.node());
   }
@@ -455,29 +455,27 @@ class Request {
         return this._get(component, 'body', {}, undefined, handler);
       },
       'Function': function(handler){
-        return this._get(undefined, 'body', {}, undefined, handler);
+        return this._get('', 'body', {}, undefined, handler);
       },
       // TODO: Implement middleware's overloading functions
     }).apply(this, arguments);
   }
   
   private _get(component: string,
-             selector: string, 
-             args: {}, 
-             handler: string, 
-             cb: () => void): Request
+               selector: string, 
+               args: {}, 
+               handler: string, 
+               cb: () => void): Request
   {
-    var level = this.level;
-
-    if(this.wantsRedirect || !this.consume(component, level)){
+    if(this.wantsRedirect || !this.consume(component, this.level)){
       return this;
     }
       
     this.queue.append(
-      this.createRouteTask(level, selector, args, [], handler, cb)
+      this.createRouteTask(this.level, selector, args, [], handler, cb)
     );
     
-    this.level = level; // is this needeD?
+//    this.level = level; // is this needeD?
     return this;
   }
   
@@ -497,45 +495,39 @@ class Request {
     this.wantsRedirect = true;
   }
   
-  private anim(node, name, speed, cb){
-    node.$el[name](speed || 'fast', cb);
-  }
-  
   public before(cb): Request {
-    // Is this bind really needed?
-    var fn = _.bind(function(cb){cb()}, this);
-    this.node().before = wrap(fn, cb);
+    this.node().before = wrap((cb)=>{cb()}, cb);
     return this;
   }
   
   public after(cb): Request {
-    // Is this bind really needed?
-    var fn = _.bind(function(cb){cb()}, this);
-    this.node().after = wrap(fn, cb);
+    this.node().after = wrap((cb)=>{cb()}, cb);
     return this;
   }
   
-  public exit(name, speed?, cb?): Request {
-    cb = _.isFunction(speed)? speed : cb;
-    speed = _.isFunction(speed)? undefined : speed;
+  public enter(fn: (el: HTMLElement, done?: ()=>void) => void): Request
+  {
     var node = this.node();
-    var fn = _.bind(this.anim, this);
-    node.exit = wrap(fn, [node, name, speed], cb);
+    node.enter = wrap(function(done){
+      node.el && fn(node.el, done);
+      (fn.length==1) && done();
+    });
     return this;
   }
   
-  public enter(name, speed?, cb?): Request {
-    cb = _.isFunction(speed)? speed : cb;
-    speed = _.isFunction(speed)? undefined : speed;
+  public exit(fn: (el: HTMLElement, done?: ()=>void) => void): Request
+  {
     var node = this.node();
-    var fn = _.bind(this.anim, this);
-    node.enter = wrap(fn, [node,name,speed], cb);
+    node.exit = wrap(function(done){
+      node.el && fn(node.el, done);
+      (fn.length==1) && done();
+    });
     return this;
   }
   
-  public leave(cb): Request {
-    var fn = _.bind(function(cb){cb()}, this);
-    this.node().leave = wrap(fn, cb);
+  public leave(cb:(done?:()=>void) =>void): Request 
+  {
+    this.node().leave = wrap((cb)=>{cb()}, cb);
     return this;
   }
   
