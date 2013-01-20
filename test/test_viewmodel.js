@@ -39,6 +39,26 @@ describe('ViewModel', function(){
       expect(el.title).to.be.eql('The tiger (Panthera tigris) is the largest cat species');
     });
     
+    it('bind to several attributes and use formatters', function(){
+      el = document.createElement('div');
+      Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.description | lowercase');
+      
+      var tiger = new Animal({
+        name: 'tiger', 
+        description: 'PUT DESCRIPTION HERE...'
+      });
+      var vm = new Gnd.ViewModel(el, {tiger: tiger}, {
+        uppercase: function(str){ return str.toUpperCase()},
+        lowercase: function(str){ return str.toLowerCase()},
+      });
+      
+      expect(el.innerText).to.be.eql('TIGER');
+      expect(el.title).to.be.eql('put description here...');
+      
+      tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
+      expect(el.title).to.be.eql('the tiger (panthera tigris) is the largest cat species');
+    });
+    
     it('bind to several sub elements', function(){
       var tiger = new Animal({name: 'tiger', desc:'1'});
       var lion = new Animal({name: 'lion', desc: '2'});

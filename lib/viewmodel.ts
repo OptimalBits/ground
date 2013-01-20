@@ -37,9 +37,16 @@ export class ViewModel extends Base
   private contexts: {}[] = [];
   private boundBinders: Binder[] = [];
   
-  constructor(el: Element, context: {}, binders: IBinder[])
+  public formatters: {[index: string]: (input: string)=>string;} = {};
+  
+  constructor(el: Element, 
+              context: {}, 
+              formatters?: {}, 
+              binders?: IBinder[])
   {
     super();
+    
+    this.formatters =  formatters || this.formatters;
     
     this.binders = {
       bind: TwoWayBinder,
@@ -140,56 +147,76 @@ export class ViewModel extends Base
 //
 // Syntax: "attr0: keyPath; attr1: keyPath "
 //
+// Syntax: "attr0: keyPath | formatter0; attr1: keyPath | formatter1"
+
 class TwoWayBinder implements Binder
 {
   // [ [model, onKeypathFn, eventListener], [...], ...] 
   private bindings: any[][] = [];
   private el: Element;
+  private attrBindings: {[index: string]: string[];} = {};
+  private attrFormatters: {[index: string]: (input: string)=>string;} = {};
+    
+  static private re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
   
-  static private re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
-  
-  private parse(value: string): {[index: string]: string[];}
+  private parse(value: string, formatters: {[index: string]: (input: string)=>string;})
   {
-    var attrBindings = {}, match;
+    var match, formatter;
     while(match = TwoWayBinder.re.exec(value)){
-      attrBindings[match[3]] = makeKeypathArray(match[4]);
+      var attr = match[3];
+      this.attrBindings[attr] = makeKeypathArray(match[4]);
+      formatter = formatters[match[7]];
+      if(formatter){
+        this.attrFormatters[attr] = formatter;
+      }
     }
-    return attrBindings;
+  }
+  
+  private createBinding(attr: string, el: Element, viewModel: ViewModel)
+  {
+    var 
+      attrBinding = this.attrBindings[attr],
+      attrFormatter = this.attrFormatters[attr],
+      obj = viewModel.resolveContext(_.initial(attrBinding));
+    
+    if(obj instanceof Base){
+      // TODO: This join('.') will disapear when we have
+      // keypath support in Base as an array.
+      var 
+        keypath = _.rest(attrBinding).join('.'),
+        modelListener,
+        elemListener = null;
+        
+      var format = () => {
+        return attrFormatter ? attrFormatter(obj.get(keypath)) : obj.get(keypath);
+      }
+        
+      if(attr === 'text'){
+        setText(el, format());
+        modelListener = () => { setText(el, format());}
+      }else{
+        setAttr(el, attr, format());
+        modelListener = () => { setAttr(el, attr, format()); };
+        elemListener = (value) => { obj.set(keypath, getAttr(el, attr)); };
+      }
+      obj.retain();
+      obj.on(keypath, modelListener);
+      $(el).on('change', elemListener);
+        
+      this.bindings.push([obj, keypath, modelListener, elemListener]);
+    }else{
+      console.log("Warning: not found a valid model: "+attrBinding[0]);
+    }
   }
   
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var attrBindings = this.parse(value);
-      
+    this.parse(value, viewModel.formatters);
+        
     this.el = el;
-        
-    for(var attr in attrBindings){
-      var obj = viewModel.resolveContext(_.initial(attrBindings[attr]));
-      
-      if(obj instanceof Base){
-        // TODO: This join('.') will disapear when we have
-        // keypath support in Base as an array.
-        var 
-          keypath = _.rest(attrBindings[attr]).join('.'),
-          modelListener,
-          elemListener = null;
-        
-        if(attr === 'text'){
-          setText(el, obj.format(keypath));
-          modelListener = () => { setText(el, obj.format(keypath)); }
-        }else{
-          setAttr(el, attr, obj.format(keypath));
-          modelListener = () => { setAttr(el, attr, obj.format(keypath)); };          
-          elemListener = (value) => { obj.set(keypath, getAttr(el, attr)); };
-        }
-        obj.retain();
-        obj.on(keypath, modelListener);
-        $(el).on('change', elemListener);
-        
-        this.bindings.push([obj, keypath, modelListener, elemListener]);
-      }else{
-        console.log("Warning: not found a valid model: "+attrBindings[attr][0]);
-      }
+    
+    for(var attr in this.attrBindings){
+      this.createBinding(attr, el, viewModel);
     }
   }
 
