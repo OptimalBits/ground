@@ -595,15 +595,11 @@ if(!String.prototype.trim) {
   String.prototype.trim = Util.trim;
 }
 
-function setText(node: Element, value){
+function setText(el: Element, value){
   if(isElement(value)){
-    node.parentNode.replaceChild(value, node);
+    el.parentNode.replaceChild(value, el);
   }else{
-    if(node.textContent){
-      node.textContent = value;
-    }else{
-      node['innerText'] = value;
-    }
+    $(el).html(value);
   }
 }
 

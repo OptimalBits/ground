@@ -65,7 +65,11 @@ module Gnd
     return query;
   }
 
-export class Query
+export interface QueryNodes{
+  [index: number]: HTMLElement;
+}
+
+export class Query // implements QueryNodes
 {
   public length: number;
   
@@ -146,6 +150,22 @@ export class Query
       hide(el);
     })
     return this;
+  }
+  
+  html(html?: string)
+  {
+    var el = this[0];
+    if(el.textContent){
+      if(!html) return el.textContent;
+      _.each(this, (el) => {
+        el.textContent = html;
+      });
+    }else{
+      if(!html) return el.innerText;
+      _.each(this, (el) => {
+        el.innerText = html;
+      });
+    }
   }
 
 }
