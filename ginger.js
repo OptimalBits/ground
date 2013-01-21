@@ -60,7 +60,7 @@ define(['jquery', 'underscore'], function($, _){
 // Polyfills
 //
 
-if (!Object.create) {  
+if (!Object.create) {
   Object.create = function (parent) {
     function F(){}
     F.prototype = parent;
@@ -73,13 +73,13 @@ if (!Object.create) {
 //
 
 var ginger = {
-  noop : function(){}, 
+  noop : function(){},
   assert : function(cond, msg){
     if(!cond){
       console.log('Assert failed:%s',msg);
     }
   },
-  uuid : function(a,b){for(b=a='';a++<36;b+=a*51&52?(a^15?8^Math.random()*(a^20?16:4):4).toString(16):'-');return b},  
+  uuid : function(a,b){for(b=a='';a++<36;b+=a*51&52?(a^15?8^Math.random()*(a^20?16:4):4).toString(16):'-');return b;},
   refresh : function(){
     window.location.replace('');
   },
@@ -155,7 +155,7 @@ var ginger = {
       func.apply(this, args);
     };
   },
-  // Search Filter. returns true if any of the fields of the 
+  // Search Filter. returns true if any of the fields of the
   // obj includes the search string.
   searchFilter : function(obj, search, fields){
     if(search){
@@ -177,7 +177,7 @@ var ginger = {
     function iter(item, len){
       fn(item, function(err) {
         if(err){
-          deferred.reject()
+          deferred.reject();
           cb && cb(err);
           cb = noop;
         }else{
@@ -3266,6 +3266,7 @@ Views.Modal = View.extend({
   constructor : function Modal(options){
     this.super(Views.Modal, 'constructor', options.classNames || 'modalForm', options.css);
     var view = this;
+    var $content;
 
     // header
     var $header = $('<div class="modalTop">');
@@ -3279,10 +3280,12 @@ Views.Modal = View.extend({
     
       $header.prepend(view.$close);
     }
-  
-    // content
+
+    // Content
     this.$content = $content = $('<div class="modalContent">');
-    $content.append(options.content);
+    
+    // preface
+    if(options.preface) $content.append(options.preface);
   
     // form
     if (options.form) {
@@ -3319,9 +3322,12 @@ Views.Modal = View.extend({
         $form.append(view.$submitButton);
       }
       // add content to modal
-      $content.prepend($form);
+      $content.append($form);
     }
 
+    // content
+    $content.append(options.content);
+  
     // buttons
     if(options.cancelButton) {
       view.$cancelButton = $('<button/>',options.cancelButton);
