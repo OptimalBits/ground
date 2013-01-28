@@ -25,7 +25,7 @@ module Gnd
   
   export function $(element: Window): Query;
   export function $(element: Element): Query;
-  export function $(selector: string, context?: HTMLElement): Query;
+  export function $(selector: string, context?: Element): Query;
   export function $(selectorOrElement: any, context?: Element): Query
   {
     var 
@@ -136,6 +136,12 @@ export class Query // implements QueryNodes
     }
   }
   
+  css(styles: {[index: string]: string;}){
+    _.each(this, (el) => {
+      _.extend(el.style, styles);
+    });
+  }
+  
   show()
   {
     _.each(this, (el)=>{
@@ -152,7 +158,7 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  html(html?: string)
+  text(html?: string)
   {
     var el = this[0];
     if(el.textContent){
@@ -166,6 +172,13 @@ export class Query // implements QueryNodes
         el.innerText = html;
       });
     }
+  }
+  
+  html(html?: string){
+    if(_.isUndefined(html)) return this[0].innerHTML;
+    _.each(this, (el) => {
+      el.innerHTML = html;
+    });
   }
 
 }
@@ -202,12 +215,15 @@ export function isElement(object) {
  */
 export function makeElement(html: string): DocumentFragment
 {
-  var container = document.createElement("p");      // create a container element,
-  var fragment = document.createDocumentFragment(); // create a fragment.
-  container.innerHTML = html;                       // write the HTML to it, and
+  var 
+    child,
+    container = document.createElement("p"),
+    fragment = document.createDocumentFragment();
+    
+  container.innerHTML = html;
   
-  while (container = <HTMLElement> container.firstChild){ // the container element has a first child
-    fragment.appendChild(container);  // append the child to the fragment,
+  while (child = <HTMLElement> container.firstChild){
+    fragment.appendChild(child);
   } 
 
   return fragment;
