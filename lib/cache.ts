@@ -240,7 +240,7 @@ export class Cache extends Base {
   
   private populate(){
     var that = this;
-    var i, len, key, s, k, tVal, size, list = [];
+    var i, len, key, tVal, size, list = [];
     this.size = 0;
     this.map = {};
     this.index = new Index();
