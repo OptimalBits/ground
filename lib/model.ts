@@ -23,7 +23,8 @@
 
 module Gnd {
 
-export interface IModel {
+export interface IModel 
+{
   new (args: {}, bucket: string): Model;
   __bucket: string;
   create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
@@ -54,8 +55,8 @@ export class Model extends Base implements Sync.ISynchronizable
   public _initial: bool = true;
   
   
-  static syncManager: Gnd.Sync.Manager;
-  static storageQueue: Gnd.Storage.Queue;
+  static syncManager: Sync.Manager;
+  static storageQueue: Storage.Queue;
   
   constructor(args: {}, bucket: string){
     super();
@@ -86,7 +87,17 @@ export class Model extends Base implements Sync.ISynchronizable
     }
   }
   
-  static extend(bucket: string){
+  /**
+   *
+   *  Subclasses the Model class
+   *
+   *  @param {String} bucket A string representing a placeholder in the 
+   *  storage where to save the model.
+   *  @return {IModel} A Model Subclass.
+   *
+   */
+  static extend(bucket: string)
+  {
     var _this = this;
     function __(args, _bucket) {
       _this.call(this, args, bucket || _bucket);
@@ -310,7 +321,7 @@ export class Model extends Base implements Sync.ISynchronizable
     }
   
     this.on('changed:', (doc, options) => {
-      if(!options || ((options.nosync != true) && !_.isEqual(doc, options.doc))){
+      if(!options || ((!options.nosync) && !_.isEqual(doc, options.doc))){
         this.update(doc);
       }
     });
