@@ -9,6 +9,9 @@
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="dom.ts" />
+/// <reference path="overload.ts" />
+/// <reference path="using.ts" />
 
 
 module Gnd.Util {
@@ -233,4 +236,44 @@ export function safeEmit(socket, ...args:any[]): void
   }
 }
 
+export function waitForImages(el, cb)
+{
+  var
+    $images = $('img', el),
+    counter = $images.length;
+    
+  if(counter>0){        
+    var loadEvent = function(evt){
+      $images.off('load', loadEvent);
+      counter--;
+      if(counter === 0){
+        cb();
+      }
+    }
+    $images.on('load', loadEvent);
+  }else{
+    cb();
+  }
 }
+
+declare var curl;
+
+export function fetchTemplate(templateUrl?: string, 
+                              cssUrl?: string, 
+                              done?:(err?: Error, templ?: string)=>void)
+{
+  var items = [];
+  templateUrl && items.push('text!'+templateUrl);
+  cssUrl && items.push('css!'+cssUrl);
+  done = done || Util.noop;
+  
+  try{
+    curl(items, function(templ){
+      done(null, templ);
+    });
+  } catch(e){
+    done(e);
+  }
+}
+
+} // Gnd.Util
