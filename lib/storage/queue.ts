@@ -303,8 +303,8 @@ export class Queue extends Base implements IStorage
         
         switch (obj.cmd){
           case 'create':
-            (function(cid, args){
-              remoteStorage.create(keyPath, args, function(err?, sid?){
+            ((cid, args) => {
+              remoteStorage.create(keyPath, args, (err?, sid?) => {
                 var localKeyPath = keyPath.concat(cid);
                 if(err){
                   done(err);
