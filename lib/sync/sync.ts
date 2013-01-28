@@ -23,7 +23,7 @@ module Gnd.Sync {
 /**
   An abstract class representing a synchronizable object.
 */
-export interface ISynchronizable
+export interface ISynchronizable extends ISettable
 {
   isKeptSynced:() => bool;
   getKeyPath:() => string[];
@@ -63,10 +63,10 @@ export class Manager extends Base {
         // OBSOLETE if done according to new 'sync'
         Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath(), (err, doc) => {
           if(!err){
-            doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
+            //doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=docs.length; i<len; i++){
               docs[i].set(doc, {nosync: true});
-              docs[i].id(id);
+              //docs[i].id(id);
             }
             // TODO: we probably should update locally...
             // doc.local().update(doc);
