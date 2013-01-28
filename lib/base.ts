@@ -21,8 +21,24 @@
 // Error.prototype.stack = Error.prototype.stack || '';
 
 module Gnd {
+  
+export interface IObservable 
+{
+  // TODO: Implement
+}
 
-export class Base extends EventEmitter {
+export interface ISettable
+{
+  set(keyOrObj, val?: any, options?: {});
+}
+
+export interface IGettable
+{
+  get(key: string): any;
+}
+
+export class Base implements ISettable, IGettable extends EventEmitter 
+{
   private _refCounter: number = 1;
   private _bindings: any = {};
   private _destroyed: bool;
@@ -51,7 +67,7 @@ export class Base extends EventEmitter {
       }
     }
   
-    if((_.isEqual(obj[key], val) == false) || (options && options.force)){
+    if((_.isEqual(obj[key], val) === false) || (options && options.force)){
       var oldval = obj[key],
         val = this.willChange ? this.willChange(key, val):val;
       obj[key] = val
@@ -95,7 +111,8 @@ export class Base extends EventEmitter {
   /**
     get - Gets a property. Accepts key paths for accessing deep properties.
   */
-  get(key){
+  get(key: string): any
+  {
     var path = key.split('.'), result;
   
     result = this[path[0]];
@@ -163,7 +180,7 @@ export class Base extends EventEmitter {
   /**
     Ends an undo operation over setting a given key to a value.
   */
-  endUndoSet(key, fn)
+  endUndoSet(key)
   {
     var base = this
     ;(function(value){
@@ -179,7 +196,7 @@ export class Base extends EventEmitter {
   {
     this.beginUndoSet(key)
     this.set(key, value)
-    this.endUndoSet(key, fn)
+    this.endUndoSet(key)
   }
   
   destroy()
