@@ -614,9 +614,14 @@ class Request {
       var
         $images = $('img', el),
         counter = $images.length;
+      
+      cb = _.once(cb);
+      var deferTimeout = _.debounce(cb, 1000);
 
-      if(counter>0){        
+      if(counter>0){
+        deferTimeout(); // start timer
         var loadEvent = function(evt){
+          deferTimeout();
           $images.off('load', loadEvent);
           counter--;
           if(counter === 0){
