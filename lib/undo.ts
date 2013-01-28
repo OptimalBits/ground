@@ -13,7 +13,7 @@
 
 module Gnd {
 
-export class UndoManager extends Gnd.EventEmitter {
+export class UndoManager extends EventEmitter {
   private undones : any[] = [];
   private actions : any[] = [];
   private undoFn : any = null;
