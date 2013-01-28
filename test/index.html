@@ -117,7 +117,7 @@
     socket.once('connect', function(){
       socket.on('file_changed:', function(url){
         document.location.reload(true)
-      })
+      });
       curl(['underscore'], function(_){  
         curl(['test/test_cache'], function(){
           curl(['test/test_dom',
@@ -130,6 +130,7 @@
                 'test/test_tasks',
                 'test/test_events',
                 'test/test_viewmodel',
+                'test/test_view',
                 // 'test/test_base',
                 'test/test_routes',             
                  //'test/test_declare',
@@ -152,5 +153,6 @@
   <div id="dummy" class="test1"></div>
   <div id="dummy2" class="test1"></div>
   <div id="dummy3" class="test1"></div>
+  <div id="views"></div>
 </body>
 </html>
