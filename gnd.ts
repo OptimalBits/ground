@@ -9,13 +9,14 @@
    - Declarative Bindings.
    - Undo/Redo Manager.
    - Canvas View.
-  
+
    Dependencies:
    - LoDash
 
    (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
 
+/// <reference path="./lib/using.ts" />
 /// <reference path="./lib/util.ts" />
 /// <reference path="./lib/overload.ts" />
 /// <reference path="./lib/task.ts" />
