@@ -162,9 +162,15 @@ function parseParams(expr, component, params){
   return false;
 }
 
-class AutoreleasePool {
+export interface PoolEntry
+{
+  [index: number]: Base;
+}
+
+class AutoreleasePool
+{ 
   private drained : bool = false;
-  public pool : Base[] = [];
+  private pool : Base[] = [];
   
   public autorelease(...objs:Base[]) : void;
   public autorelease(objs:Base[]) : void;
@@ -389,29 +395,13 @@ class Request {
     this.notFoundFn = fn;
   }
   
-  /**
-    use - Define plugins to be used for different tasks.
-  
-    use(kind, plugin)
-  
-    kind can be one of several:
-      'template'    
-  */
-  public use(kind, plugin: (tmpl: string, args:{}) => void){
-    switch(kind){
-      case 'template':
-        this.template = plugin;
-      break;
-    }
-  }
-  
   public node(){
     return this.nodes[this.index<=0 ? 0:(this.index-1)];
   }
   
   private createRouteTask(level, selector, args, middlewares, handler, cb) : Task
   {
-    return function(done?: TaskCallback) : void 
+    return (done?: TaskCallback) : void =>
     {
       processMiddlewares(this, middlewares, (err) => {
         var
@@ -532,9 +522,9 @@ class Request {
   }
   
   public render(templateUrl: string): Request;
-  public render(templateUrl: string, cb: (err?: Error)=>void): Request;
-  public render(templateUrl: string, locals: {}, cb: (err?: Error)=>void): Request;
-  public render(templateUrl: string, css: string, cb: (err?: Error)=>void): Request;
+  public render(templateUrl: string, cb?: (err?: Error)=>void): Request;
+  public render(templateUrl: string, locals: {}, cb?: (err?: Error)=>void): Request;
+  public render(templateUrl: string, css: string, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
     return overload({
       "String String Object Function": function(templateUrl, css, locals, cb){
@@ -544,6 +534,12 @@ class Request {
       },
       "String String Function": function(templateUrl, css, cb){
         return this.render(templateUrl, css, {}, cb);
+      },
+      "String String": function(templateUrl, css){
+        return this.render(templateUrl, css, {}, Util.noop);
+      },
+      "String String Object": function(templateUrl, css, locals){
+        return this.render(templateUrl, css, locals, Util.noop);
       },
       "String Object Function": function(templateUrl, locals, cb){
         return this.render(templateUrl, "", locals, cb);
@@ -605,7 +601,8 @@ class Request {
       }else{
         args = {};
       }
-      var html = self.template ? self.template(templ, args) : templ;
+      var html = using.template(templ)(args);
+      
       self.el.innerHTML = html;
       waitForImages(self.el, cb);
     }
