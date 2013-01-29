@@ -344,31 +344,29 @@ class Request {
   
   // TODO: Generate error if selector returns empty set or more than one DOM node!
   private initNode(selector: string, node : Node){
-    var self = this;
   
-    (function(node: Node){
-      node.select = wrap(function(done):void{
-        node.el = self.el = $(selector)[0];
+    ((node: Node) => {
+      node.select = wrap((done) => {
+        node.el = this.el = $(selector)[0];
         done();
       });
       node.selector = selector;
    
-      node.hide = wrap(function(done):void
-      {
+      node.hide = wrap((done) => {
         node.el && hide(node.el);
         done();
       });
    
-      node.show = wrap(function(done):void{
+      node.show = wrap((done) => {
         node.el && show(node.el);
         done();
       });
      
-      node.drain = wrap(function(done){
+      node.drain = wrap((done) => {
         node.autoreleasePool.drain();
         done();
       });
-    })(node || self.node());
+    })(node || this.node());
   }
   
   private enterNode(fn, node, index, level, args, pool, isLastRoute){
@@ -541,6 +539,9 @@ class Request {
       "String String Object": function(templateUrl, css, locals){
         return this.render(templateUrl, css, locals, Util.noop);
       },
+      "String Object": function(templateUrl, locals){
+        return this.render(templateUrl, "", locals, Util.noop);
+      },
       "String Object Function": function(templateUrl, locals, cb){
         return this.render(templateUrl, "", locals, cb);
       },
@@ -603,8 +604,12 @@ class Request {
       }
       var html = using.template(templ)(args);
       
-      self.el.innerHTML = html;
-      waitForImages(self.el, cb);
+      if(self.el){
+        self.el.innerHTML = html;
+        waitForImages(self.el, cb);
+      }else{
+        cb();
+      }
     }
   
     function waitForImages(el, cb) {
