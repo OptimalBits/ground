@@ -20,7 +20,7 @@ function scb(cb){
 
 module Gnd {
 export class SocketBackend {
-  constructor(socketManager: any, server: Gnd.Server){
+  constructor(socketManager: any, server: Server){
     
     socketManager.on('connection', function(socket){
     

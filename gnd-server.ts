@@ -21,12 +21,24 @@
    (c) 2011-2012 OptimalBits - Licensed as MIT.
 */
 
+//import _ = module('underscore');
+
 /// <reference path="./lib/server.ts" />
 /// <reference path="./lib/storage/socket-backend.ts" />
 /// <reference path="./lib/storage/mongoose-backend.ts" />
 
 declare var define;
 declare var exports;
+declare var window; // Browser
+declare var global; // Node.js
+
+var windowOrGlobal;
+if(typeof window === 'undefined'){
+  windowOrGlobal = global;
+}else{
+  windowOrGlobal = window;
+}
+
 (function (root, factory) {
   if (typeof exports === 'object') {
     for(var k in factory()){
@@ -39,6 +51,6 @@ declare var exports;
     // Browser globals (root is window)
     root.returnExports = factory();
   }
-}(this, function () {
+}(windowOrGlobal, function () {
     return Gnd;
 }));

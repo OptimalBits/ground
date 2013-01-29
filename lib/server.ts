@@ -17,9 +17,9 @@
 module Gnd {
 
 export class Server {
-  public storage: Gnd.IStorage;
+  public storage: IStorage;
 
-  constructor(persistentStorage: IStorage, syncHub: Gnd.Sync.SyncHub) 
+  constructor(persistentStorage: IStorage, syncHub: Sync.SyncHub) 
   {
     this.storage = new ProxyStorage(persistentStorage, syncHub);
   }

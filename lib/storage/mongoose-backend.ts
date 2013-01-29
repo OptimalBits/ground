@@ -21,17 +21,15 @@
 */
 /// <reference path="../storage.ts" />
 
-module Gnd {
-  
-import _ = module('underscore');
-
 declare module "underscore" {
   export function last (array : any[], n? : number) : any;
   export function isEqual (object : any, other : any) : bool;
   export function isFunction (object : any) : bool;
   export function initial (array : any[], n? : number) : any[];
 }
-  
+
+module Gnd {
+ 
 export interface GndModel {
   parent?: ()=>string;
  // gnd?: { add: (id: string, name: string, itemIds: string[], cb: (err: Error, ids: string[])=>void)=>void}; 
