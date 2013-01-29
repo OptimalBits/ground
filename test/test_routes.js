@@ -2,6 +2,11 @@ define(['gnd', 'jquery'], function(Gnd, $){
 
 var route = Gnd.Route;
 
+//
+// TODO: Add a test similar to the route demo where we check that all
+// callbacks are called in correct order.
+//
+
 // Helpers
 var goToUrl = function(url){
   location.hash = url;
@@ -133,6 +138,30 @@ describe('simple routes', function(){
           req.get('baz','#test', function(){
             req.get('qux','#baz', function(){
               done(); 
+            });
+          });
+        });
+      });
+    });
+    goToUrl('/test/foo/bar');
+  });
+  
+  it('change from one deep route back one step' , function(done){
+    route.stop();
+    goToUrl('');
+    var counter = 0;
+    route.listen(function(req){
+      req.get(function(){
+        req.get('test', '#main', function(){
+          req.get('foo','#test', function(){
+            counter ++;
+            if(counter == 2){
+              req.after(function(){
+                done();
+              })
+            }
+            req.get('bar', '#foo', function(){
+              goToUrl('/test/foo');  
             });
           });
         });
@@ -617,7 +646,7 @@ describe('simple routes', function(){
     goToUrl('');
     route.listen(function(req){
       req.get('', '#dummy', function(){
-        req.render('fixtures/test1.tmpl');
+        req.render('fixtures/test1.tmpl', {animal: 'tiger'});
         req.enter(function(el){
           expect(Gnd.isElement(el)).to.be(true);
           done();
