@@ -2512,7 +2512,7 @@ _.extend(Collection.prototype, {
   keepSynced : function(){
     if(!Model.socket) return;
     
-    this._startSync();
+    !this._keepSynced && this._startSync();
   
     this.map(function(item){
       item.keepSynced()
