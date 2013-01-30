@@ -1,6 +1,30 @@
 _ = require('underscore');
 
-require('require-typescript');
+//require('require-typescript');
+
+// @see http://nodejs.org/api/all.html#all_require_extensions
+var uuid = require('node-uuid')
+  , fs = require('fs')
+  , execSync = require('execSync')
+  , path = require('path');
+  
+// typescript doesn't export any public interface, we need to spawn a
+// process
+// @todo: do I need to take care of caching or is this done at a higher level??
+// @todo: cache compiled files and don't recompile them if source didn't
+//        change (last modified date comparison)
+require.extensions['.ts'] = function(module, filename) {
+  var baseName = path.basename(filename, '.ts');
+  var basePath = path.dirname(filename);
+  var out = path.join(basePath, baseName)+'.js';
+  var cmd = 'tsc -out '+ out + ' ' + filename;
+  console.log(cmd);
+  execSync.stdout(cmd);
+  var content = fs.readFileSync(out, 'utf8');
+  //execSync.stdout('rm ' + out);
+  return module._compile(content, filename);
+};
+
 
 var Gnd = require('../gnd-server.ts');
 
