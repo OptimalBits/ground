@@ -217,7 +217,7 @@ export function makeElement(html: string): DocumentFragment
 {
   var 
     child,
-    container = document.createElement("p"),
+    container = document.createElement("div"),
     fragment = document.createDocumentFragment();
     
   container.innerHTML = html;
