@@ -51,13 +51,13 @@ module Gnd
           break;
         case '.': 
           var className = selector.slice(1);
-          push.apply(query, context.getElementsByClassName(className));
+          push.apply(query, Array.prototype.slice.call(context.getElementsByClassName(className)));
           break;
         case '<':
           push(makeElement(selector));
           break;
         default: 
-          push.apply(query, context.getElementsByTagName(selector));
+          push.apply(query, Array.prototype.slice.call(context.getElementsByTagName(selector)));
       }
     }else{
       push(selectorOrElement);
