@@ -1,7 +1,12 @@
 var Gnd;
 (function (Gnd) {
                 function $(selectorOrElement, context) {
-        var context = context || document, query = new Query(), push = _.bind(Array.prototype.push, query), el;
+        var context = context || document, query = new Query(), el, push = function (elements) {
+for(i = 0; i < elements.length; i++) {
+                query[i] = elements[i];
+            }
+            query.length = elements.length;
+        };
         if(_.isString(selectorOrElement)) {
             var selector = selectorOrElement;
             switch(selector[0]) {
@@ -10,7 +15,9 @@ var Gnd;
                     el = context.getElementById(id);
                     if(el && el.parentNode) {
                         if(el.id === id) {
-                            push(el);
+                            push([
+                                el
+                            ]);
                         }
                     }
                     break;
@@ -18,22 +25,26 @@ var Gnd;
                 }
                 case '.': {
                     var className = selector.slice(1);
-                    push.apply(query, Array.prototype.slice.call(context.getElementsByClassName(className)));
+                    push(context.getElementsByClassName(className));
                     break;
 
                 }
                 case '<': {
-                    push(makeElement(selector));
+                    push([
+                        makeElement(selector)
+                    ]);
                     break;
 
                 }
                 default: {
-                    push.apply(query, Array.prototype.slice.call(context.getElementsByTagName(selector)));
+                    push(context.getElementsByTagName(selector));
 
                 }
             }
         } else {
-            push(selectorOrElement);
+            push([
+                selectorOrElement
+            ]);
         }
         return query;
     }
@@ -156,7 +167,7 @@ var Gnd;
     }
     Gnd.makeElement = makeElement;
     function setAttr(el, attr, value) {
-        if(el.hasOwnProperty(attr)) {
+        if(Object.prototype.hasOwnProperty.call(el, attr)) {
             el[attr] = value;
         }
         if(value) {
@@ -167,7 +178,7 @@ var Gnd;
     }
     Gnd.setAttr = setAttr;
     function getAttr(el, attr) {
-        if(el.hasOwnProperty(attr)) {
+        if(Object.prototype.hasOwnProperty.call(el, attr)) {
             return el[attr];
         } else {
             var val = el.getAttribute(attr);
@@ -2287,7 +2298,7 @@ var Gnd;
                 });
             }
         };
-        Model.prototype.delete = function (cb) {
+        Model.prototype.remove = function (cb) {
             var _this = this;
             cb = cb || function (err) {
             };
@@ -3430,7 +3441,7 @@ var Gnd;
                 bind: TwoWayBinder,
                 each: EachBinder,
                 show: ShowBinder,
-                class: ClassBinder,
+                'class': ClassBinder,
                 event: EventBinder
             };
             _.extend(this.binders, binders);
