@@ -25,7 +25,7 @@ describe('DOM', function(){
     it('select element by Name', function(){
       var $dummy = Gnd.$('div');
       expect($dummy).to.be.a(Gnd.Query);
-      expect($dummy.length).to.be(4);
+      expect($dummy.length).to.be(5);
       expect($dummy[0]).to.have.property('nodeName');
       expect($dummy[0].nodeName).to.be('DIV');
       expect($dummy[1]).to.have.property('nodeName');
@@ -34,6 +34,8 @@ describe('DOM', function(){
       expect($dummy[2].nodeName).to.be('DIV');
       expect($dummy[3]).to.have.property('nodeName');
       expect($dummy[3].nodeName).to.be('DIV');
+      expect($dummy[4]).to.have.property('nodeName');
+      expect($dummy[4].nodeName).to.be('DIV');
     });
     
     it('listen to events', function(done){
