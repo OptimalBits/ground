@@ -31,8 +31,13 @@ module Gnd
     var 
       context = context || document,
       query = new Query(),
-      push = _.bind(Array.prototype.push, query),
-      el;
+      el, 
+      push = function(elements: any[]){
+        for(var i: number=0; i<elements.length; i++){
+          query[i] = elements[i];
+        }
+        query.length = elements.length;
+      }
       
     if(_.isString(selectorOrElement)){
       var selector = selectorOrElement;
@@ -45,19 +50,19 @@ module Gnd
       	    // Handle the case where IE, Opera, and Webkit return items
       		  // by name instead of ID
       		  if(el.id === id){
-              push(el);
+              push([el]);
       		  }
       	  }
           break;
         case '.': 
           var className = selector.slice(1);
-          push.apply(query, context.getElementsByClassName(className));
+          push(context.getElementsByClassName(className));
           break;
         case '<':
-          push(makeElement(selector));
+          push([makeElement(selector)]);
           break;
         default: 
-          push.apply(query, context.getElementsByTagName(selector));
+          push(context.getElementsByTagName(selector));
       }
     }else{
       push(selectorOrElement);
