@@ -1,37 +1,34 @@
 #Introduction
 
-Ground is a lightweight (less than 15Kb) and flexible HTML5 javascript/typescript framework that provides 
-the building blocks and the structure to create modern, realtime interactive web applications that 
-are required to work seamlessly both online and offline.
+Ground is a compact, modern web development framework providing you with all the building blocks necessary to create modern, realtime interactive web applications that are required to work seamlessly both online and offline.
+
+Ground is light (15Kb + 5Kb of dependencies), and well suited both for desktop and mobile applications.
 
 In ground, most of the application logic is moved from the server to the client, whereas the server
 acts just as an scalable, efficient storage and synchronization controller.
 
-Ground includes also some rather useful features such as a hierarchical routing system, an undo/redo
-manager, property bindings, reference counting and automatic synchronization between clients 
-and servers while always maintaining high performance and low memory consumption.
+It includes also some rather useful features such as a hierarchical routing system, an undo/redo
+manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers while always maintaining high performance and low memory consumption.
 
-Ground is written in [Typescript](http://www.typescriptlang.org/), and can be used both in javascript
-and typescript projects.
+Ground is written in [Typescript](http://www.typescriptlang.org/), for modularity and stability and is suitable for both javascript and typescript projects.
+
 
 ##Highlights
 
-- Designed and optimized for NodeJS servers.
+- Designed and optimized for Node.js servers.
 - Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
-- Models with property **bindings**, **persistence** and client-server **synchronization**.
+- Models, Collections and Sequences with with property **bindings**, **persistence** and client-server **synchronization**.
 - Complete **offline** support.
 - *Declarative Bindings* for easily connecting views and models.
-- Canvas Views.
-- Preloaded with some common views based on jQuery UI.
-- Events.
-- Undo/Redo Manager.
+
 
 ##Philosophy
 
 The philosophy of Ground is to focus on *performance* and *simplicity*. It should be a complete Web framework 
-that is fun to use and that uses efficiently the newest web browser technologies, and that relies on NodeJs server technology to 
+that is fun to use and that uses efficiently the newest web browser technologies, and that relies on Node.js server technology to 
 provide scalability and synchronization. It tries to be un-orthodox in some areas, like providing a hierarchical 
 routing system or only relaying on socket.io for communication instead of AJAX.
+
 
 ##Dependencies
 
@@ -42,17 +39,28 @@ Ground itself is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wi
 not work without a module loader. While it should work with any AMD compatible loader, although we recommend Curl since it
 is already a required dependency.
 
+
 ##Install
 
 Install Ground using npm:
 
     npm install ground
+    
+
+#Demos
+
+  Take a look at some demos created with Ground that demonstrate some of its highlights:
+
+  * [Hierarchical Routing](http://gnd.io/demos/route)
+  * [Dynamic lists](http://gnd.io/demos/list)
+  * [Dynamic tables](http://gnd.io/demos/list)
+  * [Realtime multi user chat](http://gnd.io/demos/chat)
 
 
 #Routing
 
 In modern web applications, it is desired to avoid page refreshes in order to provide a better user experience 
-as well as to help keeping the application state. While it is possible to keep an internal state between the 
+as well as to help keeping the application state and reduce latency. While it is possible to keep an internal state between the 
 application different components, it is often convenient to offer urls that links to different "global" states 
 of the application. This is achieved using a client side url routing system.
 
@@ -61,25 +69,33 @@ the routes are assumed to be **hierarchical**, matching  the hierarchical nature
 underlying DOM structure. The framework is smart enough to avoid re-rendering unnecessary DOM nodes, as well as 
 deleting the ones that are not part of the current route.
 
-With this approach it is possible to reduce redundancy dramatically and also create transition effects between 
-views very easily.
+With this approach it is possible to reduce redundancy dramatically and also create transition effects between views very easily.
+
+##Basics
 
 The routing module is started by specifying an optional root (defaults to '/') and a function callback where
 all the routes will be defined. Lets see the simplest possible example:
 
-	gnd.route(function(req){
+	Gnd.Route.listen(function(req: Request){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 	  });
 	});
 
 In this case we will render the [jade](https://github.com/visionmedia/jade/) template *main.jade* into the *body* tag.
+
 Note that we used jade as an example template engine, any template engine can be used by ground, although it defaults
 to [underscore](http://underscorejs.org/#template) microtemplates.
 
+The template engine to use is defined by the *use* method of Gnd global object, for example to use jade as template engine:
+
+    Gnd.use('template', function(templ: string){
+      return jade.compile(templ);
+    });
+
 Since the system is hierarchical, if we want to add some more sub routes we can do it like so:
 
-	gnd.route(function(req){
+	Gnd.Route.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');
 
@@ -87,11 +103,11 @@ Since the system is hierarchical, if we want to add some more sub routes we can 
 		  req.render('/templates/products.jade');
 
 		  req.get('foo', '#content', function(){
-			req.render('/templates/foo.jade');
+			  req.render('/templates/foo.jade');
 		  });
 
 		  req.get('bar', '#content', function(){
-			req.render('/templates/bar.jade');
+			  req.render('/templates/bar.jade');
 		  });
 		});
 
@@ -115,8 +131,30 @@ by the framework internally to provide some smart features.
 
 Also note that the framework is taking care of the asynchronicity between calls, for example, the render
 function will fetch a template from the server, but the user does not need to wait for it before 
-calling the next *get* functions. This is achieved by using promises internally. Sometimes it is 
-needed to do something after the function has finished, so render accepts a callback function for this means:
+calling the next *get* functions. This is achieved by using promises internally. 
+
+
+##Entering the routes
+
+The *get* method in the Request class defines a subroute in the route hierarchy. The callback parameter is used to determine what is going to happen when that subroute is matched by the url, for example we can call *get* again to define a new subroute or we can call several other methods that make useful things. These methods can be called in any order, but Ground will always call them in a specified order, and depending if we are entering or exiting the route different methods are called:
+
+When entering the route:
+
+    Request##before(done?: ()=>void)
+    Request##load(url: string, done?: ()=>void)
+    Request##render(urlTemplate: string, urlCss?: string, done?: ()=>void)
+    
+    Request##enter(el: HTMLElement, done?: ()=>void)
+    Request##after(done?: ()=>void)
+
+When exiting the route:
+    
+    Request##exit(el: HTMLElement, done?: ()=>void)
+    
+
+###Asynchronous and synchronous operations
+
+Sometimes it is needed to do something after the function has finished, so render accepts a callback function for this means:
 
 	req.render('/templates/products.jade', function(done){
 	  // Do something asynchronous...
@@ -124,7 +162,7 @@ needed to do something after the function has finished, so render accepts a call
 	});
 
 The callback takes an optional parameter done. This is a function used to tell the system that your function has finished doing what it was doing.
-you need this parameter only when your function performs asynchronous operations. If your callback is just doing simple synchronous stuff, just
+You need this parameter only when your function performs asynchronous operations. If your callback is just doing simple synchronous stuff, just
 skip the parameter and the system will understand that it is a synchronous callback:
 
 	req.render('/templates/products.jade', function(){
@@ -145,26 +183,51 @@ Templates usually need data that may be fetched from the server as well. For tha
 	  });
 	});
 
-*load* will fetch the data from the server and place it in req.data, which will be used by *render* placing it in the *locals* variable of the template system.
+*load* will fetch the data from the server and place it in req.data, which will be used by *render* placing it in the *context* variable of the template system.
 
-The framework also provides an easy function to make transitions between routes. They are enabled by using the pair of functions *enter* and *exit*. The first one will define what animation to run when entering the route, and the second one will define what animation to run when exiting the route.
+###Transitions
 
-	gnd.route.listen(function(req){
+The framework also provides a mechanism to make transitions between routes possible. They are enabled by using the pair of functions *Request##enter* and *Request##exit*.
+
+*enter* will be called when the top DOM node for the route has been rendered, but it is still hidden. If you do not call *enter*, Ground will just show the DOM node directly without animation, otherwise, you can specify an animation using any framework of your choosing.
+
+Lets see a simple example conveing animations using jquery:
+
+	Gnd.Route.listen(function(req){
 	  req.get(function(){
 	    req
-	      .enter('fadeOut');
-		    .render('/templates/main.jade');
-	      .exit('fadeIn');
+		    .render('/templates/main.jade')
+	      .enter(function(el, done){
+          $(el).fadeIn(done)
+        })
+	      .exit(function(el, done){
+          $(el).fadeOut(done)
+        });
 	  });
 	});
 
-The call to *exit* will perform a *fade out* operation on the content of the *body*, while the call to *exit* will *fade in* the rendered template. By using exit and enter its possible to combine many different animations for different parts of the web page or application. Also note that the order in which *enter* and *exit* are called is irrelevant, there can only be one call for every node in the route hierarchy and the system will call them when necessary.
+The call to *exit* will perform a *fade out* operation on the content of the *body*, while the call to *exit* will *fade in* the rendered template. By using exit and enter its possible to combine many different animations for different parts of the web page or application. The order in which *enter* and *exit* are called is irrelevant, there can only be one call for every node in the route hierarchy and the system will call them when necessary. Also note that in the example we are using an asynchronous call, which means that the rendering of the route will wait until the animation has completed, in some cases we may not want to wait, and run all the animations in parallel for a different visual effect:
+
+    Gnd.Route.listen(function(req){
+      req.get(function(){
+        req
+          .render('/templates/main.jade')
+          .enter(function(el){
+            $(el).fadeIn()
+          })
+          .exit(function(el){
+            $(el).fadeOut()
+          });
+        });
+      });
+
+###Before and After
 
 We have also a pair of function to be used when custom code must be executed, they are called ***before*** and ***after***. The first function is called before rendering the node content, and the second function is called after the rendering. These functions will prove very useful, for example, *before* can be used to protect a route and make it only available to logged in users, while *after* can be used for doing operations on the DOM after the rendering. Usually is in the *after* function where all the logic for that specific route is placed.
 
 In order to avoid large files with many route handlers that would keep the code large and clunky, we can use external route handlers. Simply provide a path to a handler in the get method instead of the function callback. Lets see a more complete example:
 
-    gnd.route.listen(function(req){
+    Gnd.Route.listen(function(req){
       req.use('template', template);
 
       req.get(function(){
@@ -195,30 +258,54 @@ In order to avoid large files with many route handlers that would keep the code 
     });
     
 
-##Auto release pools
+###Auto release pools
 
-Ground uses a reference counting based mechanism to avoid memory and event leaks. This
-mechanism requires the user to manually call *release*. Usually, when entering a new
-route, several objects are created and it can be difficult to keep track when to release
-them. For this reason the route system provides autorelease pools where you can put all 
-the created objects and the pools will be released automatically when leaving the
-route.
+Ground uses a reference counting based mechanism to avoid memory and event leaks. This mechanism requires the user to manually call *release*. Usually, when entering a new route, several objects are created and it can be difficult to keep track when to release them. For this reason the route system provides autorelease pools where you can put all  the created objects and the pools will be released automatically when leaving the route.
 
 Example:
 
+    // TO BE ADDED
 
-#Objects
 
-Javascript does not provided Classes, although it provides a similar mechanism called
-prototypal inheritance, where objects just can inherit from other objects.
+#Classes
 
-Ground provides a mechanism to simplify standard prototypal inheritance and it also 
-provides a hierarchy of objects that will prove quite useful for developing advanced 
-web applications.
+
+
+##Base
+
+
+###Property bindings
+
+
+###Reference Counting
+
+In Ground we provide a reference counting mechanism. Reference counting is a simple yet quite effective method 
+to avoid memory and event leaks. 
+
+The Base class in Ground provides two methods: retain and release. The former is used to increase the reference 
+counter, its called retain because it expresses that the object that called it "retains" a reference to it. 
+It is equivalent to sharing the ownership of the retained object. It also means that the object that called
+*retain* is now responsible of calling *release* when it is not needed anymore.
+ 
+Every time *release* is called, the reference counter is decremented, and when it reaches zero, the object is
+destroyed by calling the method *destroy*, which is also part of the Base class, although it is quite often
+overrided to perform customized clean ups for your classes.
+
+It may seem strange that we need a reference counting mechanism when javascript includes a garbage
+collector. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
+the garbage collector is only able to free objects that are not referenced by any other object. In complex 
+applications, it is necessary some structured mechanism in order to un-reference the objects so that the 
+garbage collector can do its job. Also, besides memory, we want to avoid *event leaks*, which occour when
+some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
+, by default, all the events associated to it are also removed.#
+
+Javascript does not provided Classes, although it provides a similar mechanism called prototypal inheritance, where objects just can inherit from other objects.
+
+Ground provides a mechanism to simplify standard prototypal inheritance and it also provides a hierarchy of objects that will prove quite useful for developing advanced web applications.
 
 Objects inheriting from other objects are just declared using gnd.Declare:
 
-  var myObject = gnd.Declare(Super, [constructor, statics])
+    var myObject = gnd.Declare(Super, [constructor, statics])
   
 The only mandatory parameter is Super, which is the super object that your object derives from.
 At the top of the object hierarchy in ground lies the object gnd.Base, which provides some 
@@ -447,30 +534,7 @@ i.e., they do not wait for the next event loop. The reason for this is to provid
 performance and responsivity. The major implication of this is that you have always to place
 your listeners before you emit, otherwise the event will be missed.
 
-##Property bindings
 
-
-##Reference Counting
-
-In Ground we provide a reference counting mechanism. Reference counting is a simple yet quite effective method 
-to avoid memory and event leaks. 
-
-The Base class in Ground provides two methods: retain and release. The former is used to increase the reference 
-counter, its called retain because it expresses that the object that called it "retains" a reference to it. 
-It is equivalent to sharing the ownership of the retained object. It also means that the object that called
-*retain* is now responsible of calling *release* when it is not needed anymore.
- 
-Every time *release* is called, the reference counter is decremented, and when it reaches zero, the object is
-destroyed by calling the method *destroy*, which is also part of the Base class, although it is quite often
-overrided to perform customized clean ups for your classes.
-
-It may seem strange that we need a reference counting mechanism when javascript includes a garbage
-collector. Garbage collection is a powerful facility that helps in releasing un-used objects, but 
-the garbage collector is only able to free objects that are not referenced by any other object. In complex 
-applications, it is necessary some structured mechanism in order to un-reference the objects so that the 
-garbage collector can do its job. Also, besides memory, we want to avoid *event leaks*, which occour when
-some event are still listening even if we do not care of them anymore. In Ground when an object is destroyed
-, by default, all the events associated to it are also removed.
 
 
 ##Undo / Redo
@@ -487,7 +551,7 @@ gets updated automatically as soon as the application gets connectivity with the
 
 
 
-#ViewModel and Declarative Bindings
+##ViewModel and Declarative Bindings
 
 Ground supports the popular MVVM pattern, as a specialization of the MVC. This
 pattern implies that the controller is replaced by a ViewModel
@@ -530,11 +594,11 @@ The ViewModel class accepts in its constructor customized data binders, but
 out fo the box it provides the most common ones: *bind*, *each*, *show*, *class* and *event*.
 
 
-##Available binders
+###Available binders
 
 Ground provides a basic set of binders that cover the most common needs, but more binders can be added easily if necessary.
 
-###bind
+####bind
 
 This binder binds an attribute or the innerHTML of a tag with the given model properties. It accepts the following syntax:
 
@@ -547,7 +611,7 @@ Examples:
     <img data-bind="src: myimage.src; alt: myimage.desc"></img>
     <h1 data-bind="text: obj.title"></h1>
 
-###each
+####each
 
 The each binder is used to bind collections and sequences. Its syntax is as
 follows:
@@ -558,7 +622,7 @@ The HTML node where data-each is placed will be repeated as many times as elemen
 also it may have subnodes with binders as well, and even the data-each binder, allowing as much nesting as necessary.
 
 
-###show
+####show
 
 This binder is used to show or hide an HTML element depending on the value of a property bound to it:
 
@@ -567,7 +631,7 @@ This binder is used to show or hide an HTML element depending on the value of a 
 It supports negating the keypath value (using the optional exclamation character), and by that it becomes in practice a *data-hide* binder.
 
 
-###class
+####class
 
 This binder is used to add one or several css classes to an HTML element depending on the given properties.
 
@@ -576,7 +640,7 @@ This binder is used to add one or several css classes to an HTML element dependi
 An arbitrary set of classes can therefore be associated to a boolean value in the specified keypath. The keypath can be negated in a similar way to the show binder.
 
 
-###event
+####event
 
 This binder attaches a event to a given element. This binder is particularly useful combined with the *each* binder, since it will bind events
 to nodes that are added and removed dynamically.
@@ -585,19 +649,6 @@ to nodes that are added and removed dynamically.
 
 The events that can be bound to keypaths are any standard DOM events, such as
 *change*, *click*, *keyup*, etc
-
-#DOM
-
-Ground encourages to avoid interacting with the DOM as much as possible. Using complex queries to create behaviour in a web application often leads to code of poor quality and innecessary complexity. Still, there are situations where it is unavoidable to access to the DOM, for example when attaching a root element to a ViewModel or defining entry elements in a hierarchical route. 
-
-Instead of leaving the DOM manipulation to a heavy weight library such as jQuery, Ground provides a minimal set of efficient and cross browser utilities to fullfill most of the required needs.
-
-##Selection
-
-##Attributes
-
-##Events
-
 
 
 #Server
@@ -616,15 +667,43 @@ The server is designed to work with [Mongoose](http://mongoosejs.com) as databas
 #Utilities
 
 
+##DOM
 
-#Demos
+You will notice that when developing applications with Ground, you will not need to interact with the DOM as often as you may do, in fact, Ground encourages to avoid interacting with the DOM as much as possible. Using complex queries to create behaviour in a web application often leads to code of poor quality and innecessary complexity. Still, there are situations where it is unavoidable to access to the DOM, for example when attaching a root element to a ViewModel or defining entry elements in a hierarchical route. 
 
-Take a look at some demos created with Ground that demonstrate some of its highlights:
+Instead of leaving the DOM manipulation to a heavy weight library such as jQuery, Ground provides a minimal set of efficient and cross browser utilities to fullfill most of the required needs. The methods provided try to be close to jQuery APIs.
 
-* [Hierarchical Routing](http://gnd.io/demos/route)
-* [Realtime multi user chat](http://gnd.io/demos/chat)
-* [Dynamic lists](http://gnd.io/demos/list)
-* [TodoMVC](http://gnd.io/demos/todoMVC)
+###Selection
+
+You make selections as in jQuery by using the $ method. Only a few selectors
+are available, and they will all return an array like wrapper object with all
+the HTML elements that match the query:
+
+    Gnd.$(queryString: string, context?: HTMLElement): Gnd.Query;
+
+You can use the context to constraint the query to just a subtree of the DOM.
+
+
+#### By Id
+
+    var $myid = Gnd.$('#myid')  
+
+#### By class name
+    
+    var $redBoxes = Gnd.$('.red-box')
+
+#### By Name
+
+    var $alldivs = Gnd.$('div');
+
+
+###Creation
+
+
+###Attributes
+
+###Events
+
 
 
 #[Reference](http://gnd.io/api)
