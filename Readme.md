@@ -53,7 +53,7 @@ Install Ground using npm:
 
   * [Hierarchical Routing](http://gnd.io/demos/route)
   * [Dynamic lists](http://gnd.io/demos/list)
-  * [Dynamic tables](http://gnd.io/demos/list)
+  * [Dynamic tables](http://gnd.io/demos/table)
   * [Realtime multi user chat](http://gnd.io/demos/chat)
 
 
