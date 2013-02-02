@@ -65,7 +65,7 @@ module Gnd
           push(context.getElementsByTagName(selector));
       }
     }else{
-      push(selectorOrElement);
+      push([selectorOrElement]);
     }
     return query;
   }
@@ -222,7 +222,7 @@ export function makeElement(html: string): DocumentFragment
 {
   var 
     child,
-    container = document.createElement("p"),
+    container = document.createElement("div"),
     fragment = document.createDocumentFragment();
     
   container.innerHTML = html;
@@ -240,7 +240,7 @@ export function makeElement(html: string): DocumentFragment
 */
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
 export function setAttr(el: Element, attr: string, value: any){
-  if(el.hasOwnProperty(attr)){
+  if(Object.prototype.hasOwnProperty.call(el, attr)) {
     el[attr] = value;
   }
   if(value){
@@ -251,7 +251,7 @@ export function setAttr(el: Element, attr: string, value: any){
 }
 
 export function getAttr(el: Element, attr){
-  if(el.hasOwnProperty(attr)){
+  if(Object.prototype.hasOwnProperty.call(el, attr)) {
     return el[attr];
   }else{
     var val = el.getAttribute(attr);

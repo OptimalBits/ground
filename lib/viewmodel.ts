@@ -52,7 +52,7 @@ export class ViewModel extends Base
       bind: TwoWayBinder,
       each: EachBinder,
       show: ShowBinder,
-      class: ClassBinder,
+      'class': ClassBinder,
       event: EventBinder
     }
     

@@ -21,8 +21,8 @@ describe('Model', function(){
       animal.save();
       storageQueue.once('synced:', function(){
         done();
-      })
-    })
+      });
+    });
   });
   
   describe('Instantiation', function(){
@@ -61,13 +61,13 @@ describe('Model', function(){
           doc.release();
           done();
         });
-      })
+      });
       
       animal.set('name', 'foobar');
       animal.save(function(err){
         expect(err).to.not.be.ok();
         expect(animal).to.have.property('_id');
-        expect(animal._id).to.be.eql(animal.id())
+        expect(animal._id).to.be.eql(animal.id());
       });
     });
     
@@ -128,7 +128,7 @@ describe('Model', function(){
         expect(err).to.not.be.ok();
         oneFox.keepSynced();
         
-        oneFox.once('changed:', function(){  
+        oneFox.once('changed:', function(){
           done();
         });
       });
@@ -146,9 +146,9 @@ describe('Model', function(){
         whale.save(function(err){
           shark = new Animal({name:'shark'});
           shark.save(function(err){
-            done();  
+            done();
           });
-        });  
+        });
       });
     });
     
@@ -215,7 +215,7 @@ describe('Model', function(){
     });
     
     //
-    //  Creates a model while offline automatically creates it when 
+    //  Creates a model while offline automatically creates it when
     //  going back to online.
     //
     it('create', function(done){
@@ -236,13 +236,13 @@ describe('Model', function(){
 
       tempAnimal.set({legs : 8, name:'gorilla'});
       tempAnimal.save(function(err){
-        expect(err).to.not.be.ok()
+        expect(err).to.not.be.ok();
         tempAnimal.keepSynced();
         
         Animal.findById(tempAnimal.id(), function(err, doc){
           tempAnimal2 = doc;
           tempAnimal2.keepSynced();
-          socket.socket.connect();           
+          socket.socket.connect();
         });
       });
     });
@@ -263,7 +263,7 @@ describe('Model', function(){
         expect(elephant._persisted).to.be.ok();
         expect(elephant).to.have.property('_id');
         Animal.findById(elephant._id, function(err, otherElephant){
-          expect(err).to.not.be.ok()
+          expect(err).to.not.be.ok();
           expect(otherElephant).to.be.ok();
           
           otherElephant.keepSynced();
@@ -281,11 +281,11 @@ describe('Model', function(){
     });
     
     //
-    //  Tests that after doing a findById, the object has been cached and 
+    //  Tests that after doing a findById, the object has been cached and
     //  is available in offline mode.
     //
     it('findById caches object', function(){
-      // TO IMPLEMENT: This case 
+      // TO IMPLEMENT: This case
     });
 
     //
@@ -305,7 +305,7 @@ describe('Model', function(){
         expect(tempAnimal).to.have.property('_id');
         
         socket.disconnect();
-        tempAnimal.delete(function(){
+        tempAnimal.remove(function(){
           socket.socket.connect();              
         });
         
@@ -331,7 +331,7 @@ describe('Model', function(){
       storageQueue.once('synced:', function(){
         expect(spiderPig).to.have.property('_id');
         
-        spiderPig.delete(function(err){
+        spiderPig.remove(function(err){
           expect(err).to.not.be.ok();
           
           socket.disconnect();
@@ -357,7 +357,7 @@ describe('Model', function(){
     });
     
     //
-    // A model updated in the server while being offline gets 
+    // A model updated in the server while being offline gets
     // updated as soon as we get online.
     // (Note: we do not handle conflicts yet).
     //
@@ -369,8 +369,8 @@ describe('Model', function(){
       });
       
       storageQueue.once('synced:', function(){
-        var obj = {legs:7}
-        Gnd.Ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) { 
+        var obj = {legs:7};
+        Gnd.Ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) {
           socket.socket.disconnect();
           socket.socket.connect();
         });
@@ -380,7 +380,7 @@ describe('Model', function(){
             doc.on('changed:', function(){
               expect(doc.legs).to.be(7);
               done();
-            })
+            });
             // This case will be worked-out later...
             // expect(tempAnimal.legs).to.be(7);
           });
@@ -406,7 +406,7 @@ describe('Model', function(){
         });
       });
       
-      tempAnimal.delete(function(err){
+      tempAnimal.remove(function(err){
         expect(err).to.not.be.ok();
       });
     });
