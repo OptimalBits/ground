@@ -541,10 +541,7 @@ your listeners before you emit, otherwise the event will be missed.
 
 ##Offline
 
-A modern web application should be able to work offline. Ground provides a complete synchronization mechanism
-between client and server instances of models and collections. Data required by the local instances of
-models are cached so that they are available when working offline, and all data produced while being offline
-gets updated automatically as soon as the application gets connectivity with the server.
+A modern web application should be able to work offline. Ground provides a complete synchronization mechanism between client and server instances of models and collections. Data required by the local instances of models are cached so that they are available when working offline, and all data produced while being offline gets updated automatically as soon as the application gets connectivity with the server.
 
 
 #Views
@@ -667,6 +664,7 @@ The server is designed to work with [Mongoose](http://mongoosejs.com) as databas
 #Utilities
 
 
+
 ##DOM
 
 You will notice that when developing applications with Ground, you will not need to interact with the DOM as often as you may do, in fact, Ground encourages to avoid interacting with the DOM as much as possible. Using complex queries to create behaviour in a web application often leads to code of poor quality and innecessary complexity. Still, there are situations where it is unavoidable to access to the DOM, for example when attaching a root element to a ViewModel or defining entry elements in a hierarchical route. 
@@ -683,24 +681,39 @@ the HTML elements that match the query:
 
 You can use the context to constraint the query to just a subtree of the DOM.
 
+- By Id
 
-#### By Id
+        var $myid = Gnd.$('#myid')  
 
-    var $myid = Gnd.$('#myid')  
-
-#### By class name
+- By class name
     
-    var $redBoxes = Gnd.$('.red-box')
+        var $redBoxes = Gnd.$('.red-box')
+    
+- By Name
 
-#### By Name
-
-    var $alldivs = Gnd.$('div');
+        var $alldivs = Gnd.$('div');
 
 
 ###Creation
 
 
+DOM fragments can be created by giving HTML code:
+
+    var $fragment = Gnd.$('<div><p>Hello World</p><div>')
+    Gnd.$('body')[0].appendChild($fragment[0]);
+
+
 ###Attributes
+
+Attributes can be read and wrote similar to jQuery:
+
+    Gnd.$(div).attr('', )
+
+    var attr = $(div).attr('');
+
+###Text and Html
+
+
 
 ###Events
 
@@ -709,4 +722,5 @@ You can use the context to constraint the query to just a subtree of the DOM.
 #[Reference](http://gnd.io/api)
 
 
+In progress
 
