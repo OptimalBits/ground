@@ -2770,20 +2770,20 @@ var View = ginger.View = Base.extend({
     this.$parent && this.render(this.$parent);
   },
   clean : function(){
-    this.$el.detach();
+    this.$el && this.$el.detach();
   },
   remove : function(){
-    this.$el.remove()
+    this.$el && this.$el.remove()
     this.$el = null;
   },
   disable : function(disable){
     console.log(this+" does not implement disable")
   },
   hide : function(duration, easing, callback) {
-    this.$el.hide(arguments)
+    this.$el && this.$el.hide(arguments)
   },
   show : function(duration, easing, callback) {
-    this.$el.show(arguments)
+    this.$el && this.$el.show(arguments)
   },
   destroy : function(){
     this.remove();
