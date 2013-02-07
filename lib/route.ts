@@ -59,7 +59,9 @@ export function listen(root, cb) {
     root = '/';
   }
   
-  var req, fn = function(){
+  var 
+    req, 
+    fn = function(){
       var url = location.hash.replace(/^#!?/, '');
       if(!req || (req.url !== url)){
         req && req.queue.cancel();
@@ -71,7 +73,9 @@ export function listen(root, cb) {
         // (TODO: improve this copy paste stuff...
         //
         var index = req.index;
+        
         cb(req);
+        
         if(index == req.index){
           req.isNotFound = true;
           req.queue.end();
@@ -293,10 +297,13 @@ class Request {
     
     //
     // Reuse previous autorelease pools and find the starting index for the new route.
-    //
+    // (we should generalize this solution...)
     for (i=0; i<len; i++){
-      var prev = prevNodes[i];
-      if(prev && (prev.component === components[i])){
+      var 
+        prev = prevNodes[i],
+        prevNext = prevNodes[i+1];
+      if(prev && (prev.component === components[i]) && 
+        (!prevNext || prev.selector != prevNext.selector)){
         self.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
@@ -315,117 +322,6 @@ class Request {
     }
   }
   
-  private currentSubPath(){
-    var subPath = '';
-    for(var i=0, len=this.index;i<len;i++){
-      subPath += this.components[i]+'/';
-    }
-    if(subPath.length>0){
-      subPath = subPath.substr(0, subPath.length-1)
-    }
-    return subPath;
-  }
-  
-  private consume(expr, level) : bool {
-    var index = this.index;
-  
-    if(expr){
-      if((level != index) || (index >= this.components.length)){
-        return false
-      }
-      var comp = this.components[index];
-      if(!parseParams(expr, comp, this.params) && expr !== comp){
-        return false;
-      }
-    }
-    this.index++;
-    return true;
-  }
-  
-  // TODO: Generate error if selector returns empty set or more than one DOM node!
-  private initNode(selector: string, node : Node){
-  
-    ((node: Node) => {
-      node.select = wrap((done) => {
-        node.el = this.el = $(selector)[0];
-        done();
-      });
-      node.selector = selector;
-   
-      node.hide = wrap((done) => {
-        node.el && hide(node.el);
-        done();
-      });
-   
-      node.show = wrap((done) => {
-        node.el && show(node.el);
-        done();
-      });
-     
-      node.drain = wrap((done) => {
-        node.autoreleasePool.drain();
-        done();
-      });
-    })(node || this.node());
-  }
-  
-  private enterNode(fn, node, index, level, args, pool, isLastRoute){
-    var self = this;
-    self.level = level + 1;
-    if(arguments.length==7){
-      fn && fn.call(self, pool, args);
-    }else{
-      fn && fn.call(self, args);
-      isLastRoute = pool;
-    }
-  
-    self.isNotFound = (index >= self.index) && !isLastRoute;
-    if(!self.isNotFound && index > self.startIndex){
-      enqueueNode(self.queue, node);
-    }
-          
-    if(self.isNotFound || isLastRoute){
-      self.queue.end();
-    }
-  }
-  
-  private notFound(fn){
-    this.notFoundFn = fn;
-  }
-  
-  public node(){
-    return this.nodes[this.index<=0 ? 0:(this.index-1)];
-  }
-  
-  private createRouteTask(level, selector, args, middlewares, handler, cb) : Task
-  {
-    return (done?: TaskCallback) : void =>
-    {
-      processMiddlewares(this, middlewares, (err) => {
-        var
-          node = this.node(),
-          pool = node.autoreleasePool,
-          index = this.index,
-          isLastRoute = index === this.components.length;
-        
-          if(index == this.startIndex){
-            exitNodes(this.queue, this.prevNodes, this.startIndex);
-          }
-          this.initNode(selector, node);
-    
-          if(cb){
-            this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
-            done();
-          }else{
-            curl([handler], function(cb){
-              this.enterNode(cb, node, index, level, args, pool, isLastRoute);
-              done();
-            });
-          }
-      })
-    };
-  }
-
   public get(handler: ()=>void);
   public get(component: string, handler: ()=>void);
   public get(component: string, selector: string, handler: ()=>void);
@@ -463,8 +359,117 @@ class Request {
       this.createRouteTask(this.level, selector, args, [], handler, cb)
     );
     
-//    this.level = level; // is this needeD?
     return this;
+  }
+  
+  private createRouteTask(level, selector, args, middlewares, handler, cb) : Task
+  {
+    return (done?: TaskCallback) : void =>
+    {
+      processMiddlewares(this, middlewares, (err) => {
+        var
+          node = this.node(),
+          pool = node.autoreleasePool,
+          index = this.index,
+          isLastRoute = index === this.components.length;
+        
+          if(index == this.startIndex){
+            exitNodes(this.queue, this.prevNodes, this.startIndex);
+          }
+          this.initNode(selector, node);
+
+          if(cb){
+            this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
+            done();
+          }else{
+            curl([handler], function(cb){
+              this.enterNode(cb, node, index, level, args, pool, isLastRoute);
+              done();
+            });
+          }
+      });
+    };
+  }
+  
+  // TODO: Generate error if selector returns empty set or more than one DOM node!
+  private initNode(selector: string, node : Node){
+  
+    ((node: Node) => {
+      node.select = wrap((done) => {
+        node.el = this.el = $(selector)[0];
+        done();
+      });
+      node.selector = selector;
+   
+      node.hide = wrap((done) => {
+        node.el && hide(node.el);
+        done();
+      });
+   
+      node.show = wrap((done) => {
+        node.el && show(node.el);
+        done();
+      });
+     
+      node.drain = wrap((done) => {
+        node.autoreleasePool.drain();
+        done();
+      });
+    })(node || this.node());
+  }
+  
+  private enterNode(fn, node, index, level, args, pool, isLastRoute){
+    this.level = level + 1;
+    if(arguments.length==7){
+      fn && fn.call(this, pool, args);
+    }else{
+      fn && fn.call(this, args);
+      isLastRoute = pool;
+    }
+  
+    this.isNotFound = (index >= this.index) && !isLastRoute;
+    if(!this.isNotFound && index > this.startIndex){
+      enqueueNode(this.queue, node);
+    }
+          
+    if(this.isNotFound || isLastRoute){
+      this.queue.end();
+    }
+  }
+  
+  private currentSubPath(){
+    var subPath = '';
+    for(var i=0, len=this.index;i<len;i++){
+      subPath += this.components[i]+'/';
+    }
+    if(subPath.length>0){
+      subPath = subPath.substr(0, subPath.length-1)
+    }
+    return subPath;
+  }
+  
+  private consume(expr, level) : bool {
+    var index = this.index;
+  
+    if(expr){
+      if((level != index) || (index >= this.components.length)){
+        return false
+      }
+      var comp = this.components[index];
+      if(!parseParams(expr, comp, this.params) && expr !== comp){
+        return false;
+      }
+    }
+    this.index++;
+    return true;
+  }
+  
+  private notFound(fn){
+    this.notFoundFn = fn;
+  }
+  
+  public node(){
+    return this.nodes[this.index<=0 ? 0:(this.index-1)];
   }
   
   public isLast(){
@@ -611,7 +616,7 @@ class Request {
         cb();
       }
     }
-  
+
     function waitForImages(el, cb) {
       var
         $images = $('img', el),

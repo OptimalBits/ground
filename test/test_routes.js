@@ -146,14 +146,14 @@ describe('simple routes', function(){
     goToUrl('/test/foo/bar');
   });
   
-  it('change from one deep route back one step' , function(done){
+  it('change from one deep route back one step with same selector' , function(done){
     route.stop();
     goToUrl('');
     var counter = 0;
     route.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
-          req.get('foo','#test', function(){
+          req.get('foo','#foo', function(){
             counter ++;
             if(counter == 2){
               req.after(function(){
