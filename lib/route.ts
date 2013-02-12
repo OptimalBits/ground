@@ -285,12 +285,13 @@ class Request {
   public prevNodes: any[];
 
   constructor(url:string, prevNodes:any[]){
-    var self = this, components, i, len;
+    var self = this, components, i, len, prevLen;
   
     _.extend(self, decomposeUrl(url));
     
     components = self.components;
     len = components.length;
+    prevLen = prevNodes.length;
     
     this.url = url;
     this.prevNodes = prevNodes;
@@ -302,8 +303,10 @@ class Request {
       var 
         prev = prevNodes[i],
         prevNext = prevNodes[i+1];
-      if(prev && (prev.component === components[i]) && 
-        (!prevNext || prev.selector != prevNext.selector)){
+      
+      if(prev && 
+         (prev.component === components[i]) && 
+         (prevLen < len || prev.selector != prevNext.selector || i < len-1)){
         self.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
