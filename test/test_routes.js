@@ -43,7 +43,7 @@ describe('simple routes', function(){
     });
     goToUrl('/foo/bar');
   });
-  
+
   it('parametric route', function(done){
     route.stop();
     goToUrl('');
@@ -59,7 +59,27 @@ describe('simple routes', function(){
     });
     goToUrl('/foo/123456');
   });
-  
+  it('route with middleware', function(done){
+    route.stop();
+    goToUrl('');
+    route.listen(function(req){
+      req.get(function(){
+        req.get('foo', '#foo', function(){
+          req.get('bar', '#bar', [function(req,next){
+            next()
+          },function(req,next){
+            goToUrl('/foo/baz');
+          }],function(){
+            expect(1).to.be(0);
+          });
+          req.get('baz', '#baz', function(){
+            done();
+          });
+        })
+      });
+    });
+    goToUrl('/foo/bar');
+  });
   it('foobar route with baz in main and subroute', function(done){
     route.stop();
     goToUrl('');

@@ -325,24 +325,36 @@ class Request {
     }
   }
   
-  public get(handler: ()=>void);
-  public get(component: string, handler: ()=>void);
-  public get(component: string, selector: string, handler: ()=>void);
+  public get(cb: ()=>void);
+  public get(component: string, cb: ()=>void);
+  public get(component: string, selector: string, cb: ()=>void);
+  public get(component: string, selector: string, handler: string);
   public get(component: string, selector: string, args: {}, handler: string);
+  public get(component: string, selector: string, args: {}, middelwares: {(): void; }[],handler: string);
+  public get(component: string, selector: string, args: {}, middelwares: {(): void; }[],cb: ()=>void);
   public get(): Request
   {
     return overload({
-      'String String Function': function(component, selector, handler){
-        return this._get(component, selector, {}, undefined, handler);
+      'String String String': function(component, selector, handler){
+        return this._get(component, selector, {}, [], handler);
+      },
+      'String String Array String': function(component, selector, middelwares, handler){
+        return this._get(component, selector, {}, middelwares, handler);
+      },
+      'String String Array Function': function(component, selector, middelwares, cb){
+        return this._get(component, selector, {}, middelwares, cb);
+      },
+      'String String Function': function(component, selector, cb){
+        return this._get(component, selector, {}, [], undefined, cb);
       },
       'String String Object String': function(component, selector, args, handler){
-        return this._get(component, selector, args, handler);
+        return this._get(component, selector, args, [], handler);
       },
-      'String Function': function(component, handler){
-        return this._get(component, 'body', {}, undefined, handler);
+      'String Function': function(component, cb){
+        return this._get(component, 'body', {}, [], undefined, cb);
       },
-      'Function': function(handler){
-        return this._get('', 'body', {}, undefined, handler);
+      'Function': function(cb){
+        return this._get('', 'body', {}, [], undefined, cb);
       },
       // TODO: Implement middleware's overloading functions
     }).apply(this, arguments);
@@ -350,7 +362,8 @@ class Request {
   
   private _get(component: string,
                selector: string, 
-               args: {}, 
+               args: {},
+               middelwares:{ (): void; }[],
                handler: string, 
                cb: () => void): Request
   {
@@ -359,7 +372,7 @@ class Request {
     }
       
     this.queue.append(
-      this.createRouteTask(this.level, selector, args, [], handler, cb)
+      this.createRouteTask(this.level, selector, args, middelwares, handler, cb)
     );
     
     return this;
