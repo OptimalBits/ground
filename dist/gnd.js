@@ -2949,15 +2949,16 @@ var Gnd;
                 this.params = {
                 };
                 this.queue = new Gnd.TaskQueue();
-                var self = this, components, i, len;
+                var self = this, components, i, len, prevLen;
                 _.extend(self, decomposeUrl(url));
                 components = self.components;
                 len = components.length;
+                prevLen = prevNodes.length;
                 this.url = url;
                 this.prevNodes = prevNodes;
                 for(i = 0; i < len; i++) {
                     var prev = prevNodes[i], prevNext = prevNodes[i + 1];
-                    if(prev && (prev.component === components[i]) && (!prevNext || prev.selector != prevNext.selector)) {
+                    if(prev && (prev.component === components[i]) && (prevLen < len || prev.selector != prevNext.selector || i < len - 1)) {
                         self.nodes.push({
                             component: components[i],
                             autoreleasePool: prev.autoreleasePool
@@ -3017,7 +3018,7 @@ var Gnd;
                             curl([
                                 handler
                             ], function (cb) {
-                                this.enterNode(cb, node, index, level, args, pool, isLastRoute);
+                                _this.enterNode(cb, node, index, level, args, pool, isLastRoute);
                                 done();
                             });
                         }
