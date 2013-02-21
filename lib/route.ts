@@ -385,7 +385,7 @@ class Request {
             this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
             done();
           }else{
-            curl([handler], function(cb){
+            curl([handler], (cb) => {
               this.enterNode(cb, node, index, level, args, pool, isLastRoute);
               done();
             });
