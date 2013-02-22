@@ -429,10 +429,26 @@ export class Model extends Base implements Sync.ISynchronizable
   static seq(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, sequence?: Sequence) => void){
     function allInstances(parent, keyPath, args, cb){
       // Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
-      Model.storageQueue.all(keyPath, {}, {}, (err?, docs?) => {
-        if(docs){
-          _.each(docs, function(doc){_.extend(doc, args)});
-          Sequence.create(this, parent, docs, cb);
+      // Model.storageQueue.all(keyPath, {}, {}, (err?, docs?) => {
+      //   if(docs){
+      //     _.each(docs, function(doc){_.extend(doc, args)});
+      //     Sequence.create(this, parent, docs, cb);
+      //   }else{
+      //     cb(err);
+      //   }
+      Model.storageQueue.all(keyPath, {}, {}, (err, keyPaths?) => {
+        if(keyPaths){
+          var docs = [];
+          Util.asyncForEach(keyPaths, (keyPath, fn)=>{
+            Model.storageQueue.fetch(keyPath, (err, doc)=>{
+
+              _.extend(doc, args);
+              docs.push(doc);
+              fn(err);
+            });
+          }, (err) => {
+            Sequence.create(this, parent, docs, cb);
+          });
         }else{
           cb(err);
         }

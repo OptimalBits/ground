@@ -209,7 +209,7 @@ describe('Sequencess', function(){
       });
     });
 
-    it.skip('many items', function(done){
+    it('many items', function(done){
       parade.seq(Animal, function(err, animals){
         expect(err).to.not.be.ok();
         expect(animals).to.be.an(Object);

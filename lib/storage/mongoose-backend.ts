@@ -40,6 +40,13 @@ declare module "underscore" {
 module Gnd {
 import mongoose = module('mongoose');
  
+function makeKey(keyPath: string[]): string {
+  return keyPath.join('@');
+}
+function parseKey(key: string): string[] {
+  return key.split('@');
+}
+
 export interface GndModel {
   parent?: ()=>string;
  // gnd?: { add: (id: string, name: string, itemIds: string[], cb: (err: Error, ids: string[])=>void)=>void}; 
@@ -70,7 +77,7 @@ export class MongooseStorage implements IStorage {
       type: {type: String},
       prev: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      keyPath: [{ type: String}],
+      // keyPath: [{ type: String}],
       modelId: { type: String}
     }));
   }
@@ -135,7 +142,7 @@ export class MongooseStorage implements IStorage {
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:{}, cb: (err?: Error) => void): void;
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any, cb: any): void
   {
-    console.log('-----------');
+    console.log('---add--------');
     console.log(keyPath);
     if(_.isFunction(opts)) cb = opts;
     this.getModel(itemsKeyPath, (Set) => {
@@ -247,13 +254,13 @@ export class MongooseStorage implements IStorage {
   private findContainerOfModel(Model: IMongooseModel, id, name, modelId, cb:(err: Error, container?)=>void){
     console.log(modelId);
     switch(modelId) {
-      case '_begin':
-        this.findEndPoints(Model, id, name, (err, begin, end)=>{
+      case '##@_begin':
+        this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
           cb(err, begin);
         });
         break;
-      case '_end':
-        this.findEndPoints(Model, id, name, (err, begin, end)=>{
+      case '##@_end':
+        this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
           cb(err, end);
         });
         break;
@@ -280,13 +287,17 @@ export class MongooseStorage implements IStorage {
         });
   }
 
-  private findEndPoints(Model: IMongooseModel, id, name, cb:(err: Error, begin, end)=>void){
+  private findEndPoints(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
+    console.log('ep');
+    console.log(id);
     Model.findById(id).exec((err, doc) => {
+      if(err) return cb(err);
       this.listContainer.find()
         .where('_id').in(doc[name])
         .or([{type:'_begin'}, {type:'_end'}])
         .exec((err, docs)=>{
           console.log(docs);
+          if(docs.length < 2) return cb(Error('could not find end points'));
           cb(err,
             _.find(docs, (doc) => {
               return doc.type === '_begin';
@@ -309,7 +320,7 @@ export class MongooseStorage implements IStorage {
     );
   }
 
-  private initSequence(Model: IMongooseModel, id, name, cb:(err: Error, begin, end)=>void){
+  private initSequence(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
     //TODO: Atomify
     Model.findById(id).exec((err, doc) => {
       console.log('---init sequence---');
@@ -344,7 +355,8 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  private insertContainerBefore(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
+  // private insertContainerBefore(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
+  private insertContainerBefore(Model:IMongooseModel, id, name, refContainerId, itemKey, opts, cb: (err?:Error)=>void)
   {
     //TODO: Atomify
     this.listContainer.findById(refContainerId)
@@ -353,8 +365,9 @@ export class MongooseStorage implements IStorage {
         var newContainer = new this.listContainer({
           prev: prevId,
           next: refContainerId,
-          keyPath: itemKeyPath,
-          modelId: _.last(itemKeyPath)
+          // keyPath: itemKeyPath,
+          // modelId: _.last(itemKeyPath)
+          modelId: itemKey
         });
         newContainer.save((err, newContainer)=>{
           //TODO: parallellize
@@ -375,76 +388,96 @@ export class MongooseStorage implements IStorage {
       });
   }
 
-  private insertContainerAfter(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
-  {
-    //TODO: Atomify
-    this.listContainer.findById(refContainerId)
-      .exec((err, doc)=>{
-        var nextId = doc.next;
-        var newContainer = new this.listContainer({
-          prev: refContainerId,
-          next: nextId,
-          keyPath: itemKeyPath,
-          modelId: _.last(itemKeyPath)
-        });
-        newContainer.save((err, newContainer)=>{
-          //TODO: parallellize
-          this.listContainer.update({_id: refContainerId}, {next: newContainer._id}, (err)=>{
-            this.listContainer.update({_id: nextId}, {prev: newContainer._id}, (err)=>{
-              var delta = {};
-              delta[name] = newContainer._id;
-              Model.update(
-                {_id: id},
-                { $push: delta },
-                (err)=>{
-                  cb(err);
-                }
-              );
-            });
-          });
-        });
-      });
-  }
+  // private insertContainerAfter(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
+  // {
+  //   //TODO: Atomify
+  //   this.listContainer.findById(refContainerId)
+  //     .exec((err, doc)=>{
+  //       var nextId = doc.next;
+  //       var newContainer = new this.listContainer({
+  //         prev: refContainerId,
+  //         next: nextId,
+  //         keyPath: itemKeyPath,
+  //         modelId: _.last(itemKeyPath)
+  //       });
+  //       newContainer.save((err, newContainer)=>{
+  //         //TODO: parallellize
+  //         this.listContainer.update({_id: refContainerId}, {next: newContainer._id}, (err)=>{
+  //           this.listContainer.update({_id: nextId}, {prev: newContainer._id}, (err)=>{
+  //             var delta = {};
+  //             delta[name] = newContainer._id;
+  //             Model.update(
+  //               {_id: id},
+  //               { $push: delta },
+  //               (err)=>{
+  //                 cb(err);
+  //               }
+  //             );
+  //           });
+  //         });
+  //       });
+  //     });
+  // }
 
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
-  {
-    this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-      if(!err){
-        if(index >= 0){
-          seq.splice(index, 0, doc);
-        }else{
-          seq.push(doc);
-        }
-        seqDoc.save(cb);
-      }else{
-        cb(err)
-      }
-    })
-  }
-  
-  extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
-  {
-    this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-      if(!err){
-        var docs = seq.splice(index, 1);
-        console.log(docs)
-        seqDoc.save(function(err){
-          cb(err, docs[0]);
-        });
-      }else{
-        cb(err)
-      }
-    });
-  }
+  // insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  // {
+  //   this.getSequence(keyPath, (err, seqDoc?, seq?) => {
+  //     if(!err){
+  //       if(index >= 0){
+  //         seq.splice(index, 0, doc);
+  //       }else{
+  //         seq.push(doc);
+  //       }
+  //       seqDoc.save(cb);
+  //     }else{
+  //       cb(err)
+  //     }
+  //   })
+  // }
+  // 
+  // extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
+  // {
+  //   this.getSequence(keyPath, (err, seqDoc?, seq?) => {
+  //     if(!err){
+  //       var docs = seq.splice(index, 1);
+  //       console.log(docs)
+  //       seqDoc.save(function(err){
+  //         cb(err, docs[0]);
+  //       });
+  //     }else{
+  //       cb(err)
+  //     }
+  //   });
+  // }
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
   {
-    this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-      if(!err){
-        cb(err, seq);
-      }else{
-        cb(err);
-      }
+    //TODO: refactor (performance)
+    var all = [];
+    console.log('--a--l--l--');
+    var traverse = (item)=>{
+      console.log('item');
+      console.log(item);
+      this.next(keyPath, item, opts, (err, next?)=>{
+        if(!next) return cb(null, all);
+        all.push(next);
+        traverse(next);
+      });
+    };
+      
+    this.first(keyPath, opts, (err, first?)=>{
+      console.log('first');
+      console.log(first);
+      if(!first) return cb(null, all);
+      all.push(first);
+      traverse(first);
     });
+    // this.getSequence(keyPath, (err, seqDoc?, seq?) => {
+    //   if(!err){
+    //     cb(err, seq);
+    //   }else{
+    //     cb(err);
+    //   }
+    // });
   }
 
   first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
@@ -462,17 +495,20 @@ export class MongooseStorage implements IStorage {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), (err, container?)=>{
+      console.log(1);
+      this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, container?)=>{
         if(err) return cb(err);
 
+      console.log(1);
         this.findContainer(Model, id, seqName, container.next, (err, container?)=>{
+      console.log(1);
         //TODO:Err handling
           if(container.type === '_rip'){
-            this.next(keyPath, container.keyPath, opts, cb);
+            this.next(keyPath, parseKey(container.modelId), opts, cb);
           }else if(container.type === '_end'){
             cb(Error('No next item found'));
           }else{
-            cb(null, container.keyPath);
+            cb(null, parseKey(container.modelId));
           }
         });
       });
@@ -484,17 +520,17 @@ export class MongooseStorage implements IStorage {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), (err, container?)=>{
+      this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, container?)=>{
         if(err) return cb(err);
 
         this.findContainer(Model, id, seqName, container.prev, (err, container?)=>{
         //TODO:Err handling
           if(container.type === '_rip'){
-            this.prev(keyPath, container.keyPath, opts, cb);
+            this.prev(keyPath, parseKey(container.modelId), opts, cb);
           }else if(container.type === '_begin'){
             cb(Error('No previous item found'));
           }else{
-            cb(null, container.keyPath);
+            cb(null, parseKey(container.modelId));
           }
         });
       });
@@ -538,12 +574,12 @@ export class MongooseStorage implements IStorage {
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
-      this.initSequence(Model, id, seqName, (err, first, last) => {
-        var refContainer = this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), (err, refContainer)=>{
+      this.initSequence(Model, id, seqName, (err, first?, last?) => {
+        var refContainer = this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, refContainer)=>{
           console.log('---asd-f-asd-f');
           console.log(refContainer);
           if(err) return cb(err);
-          this.insertContainerBefore(Model, id, seqName, refContainer._id, itemKeyPath, opts, cb);
+          this.insertContainerBefore(Model, id, seqName, refContainer._id, makeKey(itemKeyPath), opts, cb);
         });
       });
     }, cb);
@@ -571,7 +607,7 @@ export class MongooseStorage implements IStorage {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, _.last(itemKeyPath), (err, container?)=>{
+      this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), (err, container?)=>{
         if(err) return cb(err);
         this.removeFromSeq(container._id, cb);
       });
@@ -604,7 +640,10 @@ export class MongooseStorage implements IStorage {
         .findById(id)
         .select(seqName)
         .exec(function(err, seqDoc){
+          console.log('-----get sq----');
+          console.log(seqDoc);
           if(!err){
+
             cb(err, seqDoc, seqDoc[seqName]);
           }else{
             cb(err);

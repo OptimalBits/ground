@@ -243,6 +243,67 @@ return function(storage, storageType){
           });
         });
       });
+      describe('all', function(){
+        it('one item', function(done){
+          storage.create(['parade'], {}, function(err, paradeId){
+            storage.create(['animals'], {name:'cat'}, function(err, id1){
+              expect(err).to.not.be.ok();
+              expect(id1).to.be.ok();
+              storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}, function(err){
+                expect(err).to.not.be.ok();
+                storage.all(['parade', paradeId, 'animals'], {}, {}, function(err, items){
+                  expect(err).to.not.be.ok();
+                  expect(items).to.have.property('length', 1);
+                  done();
+                });
+              });
+            });
+          });
+        });
+        it('many items', function(done){
+          storage.create(['parade'], {}, function(err, paradeId){
+            storage.create(['animals'], {name:'cat'}, function(err, id){
+              expect(err).to.not.be.ok();
+              expect(id).to.be.ok();
+              storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
+                expect(err).to.not.be.ok();
+                storage.create(['animals'], {name:'frog'}, function(err, id){
+                  expect(err).to.not.be.ok();
+                  expect(id).to.be.ok();
+                  storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
+                    expect(err).to.not.be.ok();
+                    storage.create(['animals'], {name:'dog'}, function(err, id){
+                      expect(err).to.not.be.ok();
+                      expect(id).to.be.ok();
+                      storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
+                        expect(err).to.not.be.ok();
+                        storage.all(['parade', paradeId, 'animals'], {}, {}, function(err, items){
+                          expect(err).to.not.be.ok();
+                          expect(items).to.have.property('length', 3);
+                          done();
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+        it('empty sequence', function(done){
+          storage.create(['parade'], {}, function(err, paradeId){
+            storage.create(['animals'], {name:'cat'}, function(err, id1){
+              expect(err).to.not.be.ok();
+              expect(id1).to.be.ok();
+              storage.all(['parade', paradeId, 'animals'], {}, {}, function(err, items){
+                expect(err).to.not.be.ok();
+                expect(items).to.have.property('length', 0);
+                done();
+              });
+            });
+          });
+        });
+      });
       // describe('push', function(){
       //   it('one item', function(done){
       //     storage.create(['parade'], {}, function(err, paradeId){

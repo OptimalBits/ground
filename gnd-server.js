@@ -1349,6 +1349,12 @@ var Gnd;
 var Gnd;
 (function (Gnd) {
     var mongoose = require('mongoose')
+    function makeKey(keyPath) {
+        return keyPath.join('@');
+    }
+    function parseKey(key) {
+        return key.split('@');
+    }
     var MongooseStorage = (function () {
         function MongooseStorage(models, sync) {
             this.models = models;
@@ -1365,11 +1371,6 @@ var Gnd;
                     type: mongoose.Schema.ObjectId,
                     ref: 'ListContainer'
                 },
-                keyPath: [
-                    {
-                        type: String
-                    }
-                ],
                 modelId: {
                     type: String
                 }
@@ -1413,7 +1414,7 @@ var Gnd;
         };
         MongooseStorage.prototype.add = function (keyPath, itemsKeyPath, itemIds, opts, cb) {
             var _this = this;
-            console.log('-----------');
+            console.log('---add--------');
             console.log(keyPath);
             if(_.isFunction(opts)) {
                 cb = opts;
@@ -1521,14 +1522,14 @@ var Gnd;
             var _this = this;
             console.log(modelId);
             switch(modelId) {
-                case '_begin': {
+                case '##@_begin': {
                     this.findEndPoints(Model, id, name, function (err, begin, end) {
                         cb(err, begin);
                     });
                     break;
 
                 }
-                case '_end': {
+                case '##@_end': {
                     this.findEndPoints(Model, id, name, function (err, begin, end) {
                         cb(err, end);
                     });
@@ -1561,7 +1562,12 @@ var Gnd;
         };
         MongooseStorage.prototype.findEndPoints = function (Model, id, name, cb) {
             var _this = this;
+            console.log('ep');
+            console.log(id);
             Model.findById(id).exec(function (err, doc) {
+                if(err) {
+                    return cb(err);
+                }
                 _this.listContainer.find().where('_id').in(doc[name]).or([
                     {
                         type: '_begin'
@@ -1571,6 +1577,9 @@ var Gnd;
                     }
                 ]).exec(function (err, docs) {
                     console.log(docs);
+                    if(docs.length < 2) {
+                        return cb(Error('could not find end points'));
+                    }
                     cb(err, _.find(docs, function (doc) {
                         return doc.type === '_begin';
                     }), _.find(docs, function (doc) {
@@ -1625,15 +1634,14 @@ var Gnd;
                 }
             });
         };
-        MongooseStorage.prototype.insertContainerBefore = function (Model, id, name, refContainerId, itemKeyPath, opts, cb) {
+        MongooseStorage.prototype.insertContainerBefore = function (Model, id, name, refContainerId, itemKey, opts, cb) {
             var _this = this;
             this.listContainer.findById(refContainerId).exec(function (err, doc) {
                 var prevId = doc.prev;
                 var newContainer = new _this.listContainer({
                     prev: prevId,
                     next: refContainerId,
-                    keyPath: itemKeyPath,
-                    modelId: _.last(itemKeyPath)
+                    modelId: itemKey
                 });
                 newContainer.save(function (err, newContainer) {
                     _this.listContainer.update({
@@ -1661,76 +1669,29 @@ var Gnd;
                 });
             });
         };
-        MongooseStorage.prototype.insertContainerAfter = function (Model, id, name, refContainerId, itemKeyPath, opts, cb) {
-            var _this = this;
-            this.listContainer.findById(refContainerId).exec(function (err, doc) {
-                var nextId = doc.next;
-                var newContainer = new _this.listContainer({
-                    prev: refContainerId,
-                    next: nextId,
-                    keyPath: itemKeyPath,
-                    modelId: _.last(itemKeyPath)
-                });
-                newContainer.save(function (err, newContainer) {
-                    _this.listContainer.update({
-                        _id: refContainerId
-                    }, {
-                        next: newContainer._id
-                    }, function (err) {
-                        _this.listContainer.update({
-                            _id: nextId
-                        }, {
-                            prev: newContainer._id
-                        }, function (err) {
-                            var delta = {
-                            };
-                            delta[name] = newContainer._id;
-                            Model.update({
-                                _id: id
-                            }, {
-                                $push: delta
-                            }, function (err) {
-                                cb(err);
-                            });
-                        });
-                    });
-                });
-            });
-        };
-        MongooseStorage.prototype.insert = function (keyPath, index, doc, cb) {
-            this.getSequence(keyPath, function (err, seqDoc, seq) {
-                if(!err) {
-                    if(index >= 0) {
-                        seq.splice(index, 0, doc);
-                    } else {
-                        seq.push(doc);
-                    }
-                    seqDoc.save(cb);
-                } else {
-                    cb(err);
-                }
-            });
-        };
-        MongooseStorage.prototype.extract = function (keyPath, index, cb) {
-            this.getSequence(keyPath, function (err, seqDoc, seq) {
-                if(!err) {
-                    var docs = seq.splice(index, 1);
-                    console.log(docs);
-                    seqDoc.save(function (err) {
-                        cb(err, docs[0]);
-                    });
-                } else {
-                    cb(err);
-                }
-            });
-        };
         MongooseStorage.prototype.all = function (keyPath, query, opts, cb) {
-            this.getSequence(keyPath, function (err, seqDoc, seq) {
-                if(!err) {
-                    cb(err, seq);
-                } else {
-                    cb(err);
+            var _this = this;
+            var all = [];
+            console.log('--a--l--l--');
+            var traverse = function (item) {
+                console.log('item');
+                console.log(item);
+                _this.next(keyPath, item, opts, function (err, next) {
+                    if(!next) {
+                        return cb(null, all);
+                    }
+                    all.push(next);
+                    traverse(next);
+                });
+            };
+            this.first(keyPath, opts, function (err, first) {
+                console.log('first');
+                console.log(first);
+                if(!first) {
+                    return cb(null, all);
                 }
+                all.push(first);
+                traverse(first);
             });
         };
         MongooseStorage.prototype.first = function (keyPath, opts, cb) {
@@ -1750,18 +1711,21 @@ var Gnd;
             this.getModel(keyPath, function (Model) {
                 var id = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), function (err, container) {
+                console.log(1);
+                _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, container) {
                     if(err) {
                         return cb(err);
                     }
+                    console.log(1);
                     _this.findContainer(Model, id, seqName, container.next, function (err, container) {
+                        console.log(1);
                         if(container.type === '_rip') {
-                            _this.next(keyPath, container.keyPath, opts, cb);
+                            _this.next(keyPath, parseKey(container.modelId), opts, cb);
                         } else {
                             if(container.type === '_end') {
                                 cb(Error('No next item found'));
                             } else {
-                                cb(null, container.keyPath);
+                                cb(null, parseKey(container.modelId));
                             }
                         }
                     });
@@ -1773,18 +1737,18 @@ var Gnd;
             this.getModel(keyPath, function (Model) {
                 var id = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), function (err, container) {
+                _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, container) {
                     if(err) {
                         return cb(err);
                     }
                     _this.findContainer(Model, id, seqName, container.prev, function (err, container) {
                         if(container.type === '_rip') {
-                            _this.prev(keyPath, container.keyPath, opts, cb);
+                            _this.prev(keyPath, parseKey(container.modelId), opts, cb);
                         } else {
                             if(container.type === '_begin') {
                                 cb(Error('No previous item found'));
                             } else {
-                                cb(null, container.keyPath);
+                                cb(null, parseKey(container.modelId));
                             }
                         }
                     });
@@ -1806,13 +1770,13 @@ var Gnd;
                 var id = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
                 _this.initSequence(Model, id, seqName, function (err, first, last) {
-                    var refContainer = _this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), function (err, refContainer) {
+                    var refContainer = _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, refContainer) {
                         console.log('---asd-f-asd-f');
                         console.log(refContainer);
                         if(err) {
                             return cb(err);
                         }
-                        _this.insertContainerBefore(Model, id, seqName, refContainer._id, itemKeyPath, opts, cb);
+                        _this.insertContainerBefore(Model, id, seqName, refContainer._id, makeKey(itemKeyPath), opts, cb);
                     });
                 });
             }, cb);
@@ -1822,7 +1786,7 @@ var Gnd;
             this.getModel(keyPath, function (Model) {
                 var id = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, _.last(itemKeyPath), function (err, container) {
+                _this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), function (err, container) {
                     if(err) {
                         return cb(err);
                     }
@@ -1845,6 +1809,8 @@ var Gnd;
                 var seqName = _.last(keyPath);
                 var id = keyPath[keyPath.length - 2];
                 Model.findById(id).select(seqName).exec(function (err, seqDoc) {
+                    console.log('-----get sq----');
+                    console.log(seqDoc);
                     if(!err) {
                         cb(err, seqDoc, seqDoc[seqName]);
                     } else {

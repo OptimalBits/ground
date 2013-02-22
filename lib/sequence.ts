@@ -48,11 +48,11 @@ export class Sequence extends Base implements Sync.ISynchronizable
     
     var self = this;
     this.updateFn = function(args){
-      if(self.sortByFn){
-        var index = self['indexOf'](this);
-        self.items.splice(index, 1);
-        self.sortedAdd(this);
-      }
+      // if(self.sortByFn){
+      //   var index = self['indexOf'](this);
+      //   self.items.splice(index, 1);
+      //   self.sortedAdd(this);
+      // }
       self.emit('updated:', this, args);
     };
   
@@ -353,14 +353,14 @@ export class Sequence extends Base implements Sync.ISynchronizable
   
   //TODO: noadd
   // This function feel a bit hacky
-  private sortedAdd(item: Model): number
-  {    
-    (this.sortOrder == 'desc') && this.items.reverse();
-    var i = this['sortedIndex'](item, this.sortByFn);
-    this.items.splice(i, 0, item);
-    (this.sortOrder == 'desc') && this.items.reverse();
-    return i;
-  }
+  // private sortedAdd(item: Model): number
+  // {    
+  //   (this.sortOrder == 'desc') && this.items.reverse();
+  //   var i = this['sortedIndex'](item, this.sortByFn);
+  //   this.items.splice(i, 0, item);
+  //   (this.sortOrder == 'desc') && this.items.reverse();
+  //   return i;
+  // }
     
   private startSync()
   {
@@ -410,7 +410,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
     if(this.findById(item.id())) return cb();
     
     if(this.sortByFn){
-      this.sortedAdd(item);
+      // this.sortedAdd(item);
     }else {
       this.items.push(item);
     }
@@ -495,8 +495,17 @@ export class Sequence extends Base implements Sync.ISynchronizable
     }, cb);
   }
   
-  private resync(items: any[]){
-return;
+  private resync(keyPaths: any[]){
+    
+    var items = [];
+    Util.asyncForEach(keyPaths, (keyPath, fn)=>{
+      Model.storageQueue.fetch(keyPath, (err, item)=>{
+
+        items.push(item);
+        fn(err);
+      });
+    }, (err) => {
+
     // throw Error('fix me');
     // this.items = items.slice(0);
     // this.set('count', this.items.length);
@@ -529,6 +538,7 @@ return;
           }
         });
       }
+    });
     });
   }
   

@@ -403,8 +403,10 @@ export class Local implements IStorage {
     var key = makeKey(keyPath);
     var itemKey = makeKey(itemKeyPath);
     var keyValue = traverseLinks(key);
+    var itemKeyValue = traverseLinks(itemKey);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
+    itemKey = itemKeyValue ? itemKeyValue.key : itemKey;
 
     var item = _.find(itemKeys, (item) => {
       return item.key === itemKey;

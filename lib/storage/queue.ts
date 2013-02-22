@@ -122,61 +122,34 @@ export class Queue extends Base implements IStorage
     
     storage.all(keyPath, {}, opts, (err?:Error, oldItems?: {}[]) => {
       if(!err){
-        var itemsToRemove = [], itemsToAdd = [];     
-        
-        function findItem(items, itemToFind){
-          return _.find(items, function(item){
-              return (item._cid === itemToFind._cid || 
-                      item._cid === itemToFind._id);
-          });
-        }
-        
-        // Gather item ids to be removed from localStorage 
-        _.each(oldItems, function(oldItem){
-          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
-            itemsToRemove.push(oldItem._cid, oldItem._id);
+        _.each(oldItems, (item)=>{
+          if(!item.__op || item.__op === 'insync'){
+            console.log('del');
+            console.log(item);
+            storage.deleteItem(keyPath, item, {insync:true}, (err?)=>{
+              console.log('deleted');
+            });
           }
         });
-        
-        // Gather item ids to be added to localStorage      
-        _.each(newItems, function(newItem){
-          !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
-        });
-        
-        storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}, (err?) => {
-          if(!err){
-            Util.asyncForEach(newItems, (doc, done) => {
-              var elemKeyPath = itemKeyPath.concat(doc._id);
 
-              doc._persisted = true;
-
-              // TODO: Probably not needed to update all newItems
-              storage.put(elemKeyPath, doc, (err?) => {
-                if(err) {
-                  //not in local cache
-                  doc._cid = doc._id;
-                  storage.create(itemKeyPath, doc, (err?)=>{
-                    done(err);
-                  });
-                }else{
-                  done();
-                }
-              });
-            }, (err) => {
-              if(!err){
-                // Add the new collection keys to the keyPath
-                storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
-              }else{
-                cb(err);
-              }
-            }); 
-          }else{
-            cb(err);
-          }
+        _.each(newItems, (item)=>{
+            console.log('push');
+            console.log(item);
+            storage.insertBefore(keyPath, null, item, {insync:true}, (err?)=>{
+              console.log('pushed');
+            });
         });
+
       }else{
-        storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}, cb);
+        _.each(newItems, (item)=>{
+            console.log('push');
+            console.log(item);
+            storage.insertBefore(keyPath, null, item, {insync:true}, (err?)=>{
+              console.log('pushed');
+            });
+        });
       }
+      cb();
     });
   }
   
@@ -262,6 +235,8 @@ export class Queue extends Base implements IStorage
       if(!this.useRemote){
         cb(err);
       }else{ 
+      console.log('xxx find');
+      console.log(keyPath);
         this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
           if(!err){
             this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
@@ -361,6 +336,9 @@ export class Queue extends Base implements IStorage
       if(!this.useRemote){
         cb(err);
       }else{ 
+      console.log('xxx all');
+      console.log(keyPath);
+        // TODO: what if keyPath is local (same for find())
         this.remoteStorage.all(keyPath, query, opts, (err?, remote?) => {
           if(!err){
             this.updateLocalSequence(keyPath, {}, remote, (err?)=>{
@@ -624,6 +602,8 @@ export class Queue extends Base implements IStorage
     _.each(this.queue, (cmd: Command) => {
       updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
+      cmd.itemKeyPath && updateIds(cmd.itemKeyPath, oldId, newId);
+      cmd.refItemKeyPath && updateIds(cmd.refItemKeyPath, oldId, newId);
       if(cmd.itemIds){
         cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
       }
