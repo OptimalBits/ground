@@ -130,22 +130,18 @@ return function(storage, storageType){
                 expect(err).to.not.be.ok();
                 storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
                   expect(err).to.not.be.ok();
-                  expect(item).to.be.an(Array);
-                  storage.fetch(item, function(err, doc){
-                    expect(doc).to.have.property('name', 'tiger');
-                    storage.create(['animals'], {name:'dog'}, function(err, id2){
+                  expect(item).to.be.an(Object);
+                  expect(item.doc).to.have.property('name', 'tiger');
+                  storage.create(['animals'], {name:'dog'}, function(err, id2){
+                    expect(err).to.not.be.ok();
+                    expect(id2).to.be.ok();
+                    storage.insertBefore(['parade', paradeId, 'animals'], item.keyPath, ['animals', id2], {}, function(err){
                       expect(err).to.not.be.ok();
-                      expect(id2).to.be.ok();
-                      storage.insertBefore(['parade', paradeId, 'animals'], item, ['animals', id2], {}, function(err){
+                      storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
                         expect(err).to.not.be.ok();
-                        storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
-                          expect(err).to.not.be.ok();
-                          expect(item).to.be.an(Array);
-                          storage.fetch(item, function(err, doc){
-                            expect(doc).to.have.property('name', 'dog');
-                            done();
-                          });
-                        });
+                        expect(item).to.be.an(Object);
+                        expect(item.doc).to.have.property('name', 'dog');
+                        done();
                       });
                     });
                   });
@@ -163,11 +159,8 @@ return function(storage, storageType){
                 expect(err).to.not.be.ok();
                 storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
                   expect(err).to.not.be.ok();
-                  expect(item).to.be.an(Array);
-                  storage.fetch(item, function(err, doc){
-                    expect(doc).to.have.property('name', 'tiger');
-                    done();
-                  });
+                  expect(item.doc).to.have.property('name', 'tiger');
+                  done();
                 });
               });
             });
@@ -192,28 +185,20 @@ return function(storage, storageType){
                         expect(err).to.not.be.ok();
                         storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
                           expect(err).to.not.be.ok();
-                          expect(item).to.be.an(Array);
-                          storage.fetch(item, function(err, doc){
-                            expect(doc).to.have.property('name', 'eagle');
-                            storage.create(['animals'], {name:'shark'}, function(err, id4){
+                          expect(item).to.be.an(Object);
+                          expect(item.doc).to.have.property('name', 'eagle');
+                          storage.create(['animals'], {name:'shark'}, function(err, id4){
+                            expect(err).to.not.be.ok();
+                            expect(id4).to.be.ok();
+                            storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id4], {}, function(err){
                               expect(err).to.not.be.ok();
-                              expect(id4).to.be.ok();
-                              storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id4], {}, function(err){
+                              storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
                                 expect(err).to.not.be.ok();
-                                storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
+                                expect(item.doc).to.have.property('name', 'shark');
+                                storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
                                   expect(err).to.not.be.ok();
-                                  expect(item).to.be.an(Array);
-                                  storage.fetch(item, function(err, doc){
-                                    expect(doc).to.have.property('name', 'shark');
-                                    storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
-                                      expect(err).to.not.be.ok();
-                                      expect(item).to.be.an(Array);
-                                      storage.fetch(item, function(err, doc){
-                                        expect(doc).to.have.property('name', 'cat');
-                                        done();
-                                      });
-                                    });
-                                  });
+                                  expect(item.doc).to.have.property('name', 'cat');
+                                  done();
                                 });
                               });
                             });
@@ -677,40 +662,30 @@ return function(storage, storageType){
         it('next', function(done){
           storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
             expect(err).to.not.be.ok();
-            expect(item).to.be.an(Array);
-            storage.fetch(item, function(err, doc){
+            expect(item).to.be.an(Object);
+            expect(err).to.not.be.ok();
+            expect(item.doc).to.have.property('name', 'tiger');
+            storage.next(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
               expect(err).to.not.be.ok();
-              expect(doc).to.have.property('name', 'tiger');
-              storage.next(['parade', paradeId, 'animals'], item, {}, function(err, item){
+              expect(item).to.be.an(Object);
+              expect(err).to.not.be.ok();
+              expect(item.doc).to.have.property('name', 'monkey');
+              storage.next(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                 expect(err).to.not.be.ok();
-                expect(item).to.be.an(Array);
-                storage.fetch(item, function(err, doc){
+                expect(item).to.be.an(Object);
+                expect(err).to.not.be.ok();
+                expect(item.doc).to.have.property('name', 'prawn');
+                storage.next(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                   expect(err).to.not.be.ok();
-                  expect(doc).to.have.property('name', 'monkey');
-                  storage.next(['parade', paradeId, 'animals'], item, {}, function(err, item){
+                  expect(item).to.be.an(Object);
+                  expect(err).to.not.be.ok();
+                  expect(item.doc).to.have.property('name', 'shark');
+                  storage.next(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                     expect(err).to.not.be.ok();
-                    expect(item).to.be.an(Array);
-                    storage.fetch(item, function(err, doc){
-                      expect(err).to.not.be.ok();
-                      expect(doc).to.have.property('name', 'prawn');
-                      storage.next(['parade', paradeId, 'animals'], item, {}, function(err, item){
-                        expect(err).to.not.be.ok();
-                        expect(item).to.be.an(Array);
-                        storage.fetch(item, function(err, doc){
-                         expect(err).to.not.be.ok();
-                         expect(doc).to.have.property('name', 'shark');
-                         storage.next(['parade', paradeId, 'animals'], item, {}, function(err, item){
-                           expect(err).to.not.be.ok();
-                           expect(item).to.be.an(Array);
-                           storage.fetch(item, function(err, doc){
-                             expect(err).to.not.be.ok();
-                             expect(doc).to.have.property('name', 'dog');
-                             done();
-                           });
-                         });
-                        });
-                      });
-                    });
+                    expect(item).to.be.an(Object);
+                    expect(err).to.not.be.ok();
+                    expect(item.doc).to.have.property('name', 'dog');
+                    done();
                   });
                 });
               });
@@ -720,40 +695,25 @@ return function(storage, storageType){
         it('prev', function(done){
           storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
             expect(err).to.not.be.ok();
-            expect(item).to.be.an(Array);
-            storage.fetch(item, function(err, doc){
+            expect(err).to.not.be.ok();
+            expect(item.doc).to.have.property('name', 'dog');
+            storage.prev(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
               expect(err).to.not.be.ok();
-              expect(doc).to.have.property('name', 'dog');
-              storage.prev(['parade', paradeId, 'animals'], item, {}, function(err, item){
+              expect(err).to.not.be.ok();
+              expect(item.doc).to.have.property('name', 'shark');
+              storage.prev(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                 expect(err).to.not.be.ok();
-                expect(item).to.be.an(Array);
-                storage.fetch(item, function(err, doc){
+                expect(err).to.not.be.ok();
+                expect(item.doc).to.have.property('name', 'prawn');
+                storage.prev(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                   expect(err).to.not.be.ok();
-                  expect(doc).to.have.property('name', 'shark');
-                  storage.prev(['parade', paradeId, 'animals'], item, {}, function(err, item){
+                  expect(err).to.not.be.ok();
+                  expect(item.doc).to.have.property('name', 'monkey');
+                  storage.prev(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, item){
                     expect(err).to.not.be.ok();
-                    expect(item).to.be.an(Array);
-                    storage.fetch(item, function(err, doc){
-                      expect(err).to.not.be.ok();
-                      expect(doc).to.have.property('name', 'prawn');
-                      storage.prev(['parade', paradeId, 'animals'], item, {}, function(err, item){
-                        expect(err).to.not.be.ok();
-                        expect(item).to.be.an(Array);
-                        storage.fetch(item, function(err, doc){
-                         expect(err).to.not.be.ok();
-                         expect(doc).to.have.property('name', 'monkey');
-                         storage.prev(['parade', paradeId, 'animals'], item, {}, function(err, item){
-                           expect(err).to.not.be.ok();
-                           expect(item).to.be.an(Array);
-                           storage.fetch(item, function(err, doc){
-                             expect(err).to.not.be.ok();
-                             expect(doc).to.have.property('name', 'tiger');
-                             done();
-                           });
-                         });
-                        });
-                      });
-                    });
+                    expect(err).to.not.be.ok();
+                    expect(item.doc).to.have.property('name', 'tiger');
+                    done();
                   });
                 });
               });
@@ -809,21 +769,17 @@ return function(storage, storageType){
         it('delete first', function(done){
           storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
             expect(err).to.not.be.ok();
-            expect(item).to.be.an(Array);
-            storage.fetch(item, function(err, doc){
+            expect(item).to.be.an(Object);
+            expect(err).to.not.be.ok();
+            expect(item.doc).to.have.property('name', 'tiger');
+            storage.deleteItem(['parade', paradeId, 'animals'], item.keyPath, {}, function(err){
               expect(err).to.not.be.ok();
-              expect(doc).to.have.property('name', 'tiger');
-              storage.deleteItem(['parade', paradeId, 'animals'], item, {}, function(err){
+              storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
                 expect(err).to.not.be.ok();
-                storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
-                  expect(err).to.not.be.ok();
-                  expect(item).to.be.an(Array);
-                  storage.fetch(item, function(err, doc){
-                    expect(err).to.not.be.ok();
-                    expect(doc).to.have.property('name', 'monkey');
-                    done();
-                  });
-                });
+                expect(item).to.be.an(Object);
+                expect(err).to.not.be.ok();
+                expect(item.doc).to.have.property('name', 'monkey');
+                done();
               });
             });
           });
@@ -831,21 +787,17 @@ return function(storage, storageType){
         it('delete last', function(done){
           storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
             expect(err).to.not.be.ok();
-            expect(item).to.be.an(Array);
-            storage.fetch(item, function(err, doc){
+            expect(item).to.be.an(Object);
+            expect(err).to.not.be.ok();
+            expect(item.doc).to.have.property('name', 'dog');
+            storage.deleteItem(['parade', paradeId, 'animals'], item.keyPath, {}, function(err){
               expect(err).to.not.be.ok();
-              expect(doc).to.have.property('name', 'dog');
-              storage.deleteItem(['parade', paradeId, 'animals'], item, {}, function(err){
+              storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
                 expect(err).to.not.be.ok();
-                storage.last(['parade', paradeId, 'animals'], {}, function(err, item){
-                  expect(err).to.not.be.ok();
-                  expect(item).to.be.an(Array);
-                  storage.fetch(item, function(err, doc){
-                    expect(err).to.not.be.ok();
-                    expect(doc).to.have.property('name', 'shark');
-                    done();
-                  });
-                });
+                expect(item).to.be.an(Object);
+                expect(err).to.not.be.ok();
+                expect(item.doc).to.have.property('name', 'shark');
+                done();
               });
             });
           });
@@ -853,55 +805,37 @@ return function(storage, storageType){
         it('delete middle', function(done){
           storage.first(['parade', paradeId, 'animals'], {}, function(err, item){
             expect(err).to.not.be.ok();
-            expect(item).to.be.an(Array);
-            storage.fetch(item, function(err, doc){
               expect(err).to.not.be.ok();
-              expect(doc).to.have.property('name', 'tiger');
-              storage.next(['parade', paradeId, 'animals'], item, {}, function(err, itemPrev){
+              expect(item.doc).to.have.property('name', 'tiger');
+              storage.next(['parade', paradeId, 'animals'], item.keyPath, {}, function(err, itemPrev){
                 expect(err).to.not.be.ok();
-                expect(itemPrev).to.be.an(Array);
-                storage.fetch(itemPrev, function(err, docPrev){
+                expect(err).to.not.be.ok();
+                expect(itemPrev.doc).to.have.property('name', 'monkey');
+                storage.next(['parade', paradeId, 'animals'], itemPrev.keyPath, {}, function(err, itemDel){
                   expect(err).to.not.be.ok();
-                  expect(docPrev).to.have.property('name', 'monkey');
-                  storage.next(['parade', paradeId, 'animals'], itemPrev, {}, function(err, itemDel){
+                  expect(err).to.not.be.ok();
+                  expect(itemDel.doc).to.have.property('name', 'prawn');
+                  storage.next(['parade', paradeId, 'animals'], itemDel.keyPath, {}, function(err, itemNext){
                     expect(err).to.not.be.ok();
-                    expect(itemDel).to.be.an(Array);
-                    storage.fetch(itemDel, function(err, doc){
+                    expect(err).to.not.be.ok();
+                    expect(itemNext.doc).to.have.property('name', 'shark');
+                    storage.deleteItem(['parade', paradeId, 'animals'], itemDel.keyPath, {}, function(err){
                       expect(err).to.not.be.ok();
-                      expect(doc).to.have.property('name', 'prawn');
-                      storage.next(['parade', paradeId, 'animals'], itemDel, {}, function(err, itemNext){
+                      storage.next(['parade', paradeId, 'animals'], itemPrev.keyPath, {}, function(err, item){
                         expect(err).to.not.be.ok();
-                        expect(itemNext).to.be.an(Array);
-                        storage.fetch(itemNext, function(err, docNext){
+                        expect(err).to.not.be.ok();
+                        expect(item.doc).to.eql(itemNext.doc);
+                        storage.prev(['parade', paradeId, 'animals'], itemNext.keyPath, {}, function(err, item){
                           expect(err).to.not.be.ok();
-                          expect(docNext).to.have.property('name', 'shark');
-                          storage.deleteItem(['parade', paradeId, 'animals'], itemDel, {}, function(err){
-                            expect(err).to.not.be.ok();
-                            storage.next(['parade', paradeId, 'animals'], itemPrev, {}, function(err, item){
-                              expect(err).to.not.be.ok();
-                              expect(item).to.be.an(Array);
-                              storage.fetch(item, function(err, doc){
-                                expect(err).to.not.be.ok();
-                                expect(doc).to.eql(docNext);
-                                storage.prev(['parade', paradeId, 'animals'], itemNext, {}, function(err, item){
-                                  expect(err).to.not.be.ok();
-                                  expect(item).to.be.an(Array);
-                                  storage.fetch(item, function(err, doc){
-                                    expect(err).to.not.be.ok();
-                                    expect(doc).to.eql(docPrev);
-                                    done();
-                                  });
-                                });
-                              });
-                            });
-                          });
+                          expect(err).to.not.be.ok();
+                          expect(item.doc).to.eql(itemPrev.doc);
+                          done();
                         });
                       });
                     });
                   });
                 });
               });
-            });
           });
         });
       });

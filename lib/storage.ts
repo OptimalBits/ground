@@ -53,30 +53,21 @@ export interface ISetStorage {
   find(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void): void;
 }
 
+export interface IDoc {
+  keyPath: string[];
+  doc: {};
+}
 //
 //  Sequence Storage (ordered)
 //
 export interface ISeqStorage {
-  // insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void);
-  // extract(keyPath: string[], index:number, cb: (err: Error, doc?:{}) => void);
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void) : void;
-
-  // new operations
-  // first(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
-  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath:string[]) => void);
-  // last(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
-  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath:string[]) => void);
-  // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void);
-  // prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void);
-  // pop(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
-  // shift(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void);
+  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
   deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
-  // push(keyPath: string[], itemKeyPath: string[], opts:{}, cb: (err?: Error) => void);
-  // unshift(keyPath: string[], itemKeyPath: string[], opts:{}, cb: (err?: Error) => void);
   insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
-  // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
 }
 
 }

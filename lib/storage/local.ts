@@ -285,18 +285,18 @@ export class Local implements IStorage {
     // var key = makeKey(keyPath);        
     // cb(null, _get(key) || []);
     var all = [];
-    var traverse = (item)=>{
-      this.next(keyPath, item, opts, (err, next?)=>{
+    var traverse = (kp)=>{
+      this.next(keyPath, kp, opts, (err, next?)=>{
         if(!next) return cb(null, all);
         all.push(next);
-        traverse(next);
+        traverse(next.keyPath);
       });
     };
       
     this.first(keyPath, opts, (err, first?)=>{
       if(!first) return cb(null, all);
       all.push(first);
-      traverse(first);
+      traverse(first.keyPath);
     });
   }
 
@@ -315,17 +315,18 @@ export class Local implements IStorage {
     }
   }
   
-  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  // first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.next(keyPath, ['##', 'first'], opts, cb);
   }
 
-  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.prev(keyPath, ['##', 'last'], opts, cb);
   }
   // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     var key = makeKey(keyPath);
     var refItemKey = makeKey(refItemKeyPath);
@@ -341,10 +342,17 @@ export class Local implements IStorage {
     var item = itemKeys[refItem.next];
     if(item.next < 0) return cb(null); //last pointer
 
-    // this.fetch(parseKey(item.key), cb);
-    cb(null, parseKey(item.key));
+    var itemKeyPath = parseKey(item.key);
+    this.fetch(itemKeyPath, (err, doc?)=>{
+      var iDoc = {
+        keyPath: itemKeyPath,
+        doc: doc
+      };
+      cb(null, iDoc);
+    });
+    // cb(null, parseKey(item.key));
   }
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     var key = makeKey(keyPath);
     var refItemKey = makeKey(refItemKeyPath);
@@ -360,8 +368,15 @@ export class Local implements IStorage {
     var item = itemKeys[refItem.prev];
     if(item.prev < 0) return cb(null); //first pointer
 
-    // this.fetch(parseKey(item.key), cb);
-    cb(null, parseKey(item.key));
+    var itemKeyPath = parseKey(item.key);
+    this.fetch(itemKeyPath, (err, doc?)=>{
+      var iDoc = {
+        keyPath: itemKeyPath,
+        doc: doc
+      };
+      cb(null, iDoc);
+    });
+    // cb(null, parseKey(item.key));
   }
   // pop(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
   // {
