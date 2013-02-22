@@ -63,6 +63,7 @@ export class SyncHub {
       subClient.subscribe('delete:');
       subClient.subscribe('add:');
       subClient.subscribe('remove:');
+      subClient.subscribe('push:');
       
       subClient.on('message', (channel, msg) => {
         var args = JSON.parse(msg);
@@ -84,6 +85,10 @@ export class SyncHub {
             break;
           case 'remove:':
             sio.in(id).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            break;
+          case 'push:':
+          console.log("Emitting PUSH:"+id)
+            sio.in(id).emit('push:', args.keyPath, args.itemKeyPath);
             break;
         }
       });
@@ -121,6 +126,46 @@ export class SyncHub {
   
   extract(keyPath, index){
     
+  }
+
+  push(keyPath: string[], itemKeyPath: string[])
+  {
+    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
+    console.log('push-synchub');
+    console.log(args);
+    this.pubClient.publish('push:', JSON.stringify(args));
+  }
+
+  unshift(keyPath: string[], itemKeyPath: string[])
+  {
+    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
+    console.log('unshift-synchub');
+    console.log(args);
+    this.pubClient.publish('unshift:', JSON.stringify(args));
+  }
+
+  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[])
+  {
+    var args = {keyPath: keyPath, refItemKeyPath: itemKeyPath, itemKeyPath: itemKeyPath};
+    console.log('insertBefore-synchub');
+    console.log(args);
+    this.pubClient.publish('insertBefore:', JSON.stringify(args));
+  }
+
+  insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[])
+  {
+    var args = {keyPath: keyPath, refItemKeyPath: itemKeyPath, itemKeyPath: itemKeyPath};
+    console.log('insertAfter-synchub');
+    console.log(args);
+    this.pubClient.publish('insertAfter:', JSON.stringify(args));
+  }
+
+  deleteItem(keyPath: string[], itemKeyPath: string[])
+  {
+    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
+    console.log('deleteItem-synchub');
+    console.log(args);
+    this.pubClient.publish('deleteItem:', JSON.stringify(args));
   }
 }
 

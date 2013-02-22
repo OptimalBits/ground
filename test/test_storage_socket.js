@@ -1,9 +1,11 @@
 define(['gnd'], function(Gnd){
 
-describe('Socket.io Storage', function(){  
-  storage = new Gnd.Storage.Socket(socket);
-  storageType = "Socket Storage"
-  curl(['test/test_storage'])
+describe('Socket.io Storage', function(){
+  curl(['test/test_storage'], function(suite){
+    var storage = new Gnd.Storage.Socket(socket);
+    var storageType = "Socket Storage";
+    suite(storage, storageType);
+  });
 });
 
 });

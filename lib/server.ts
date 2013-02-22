@@ -89,32 +89,107 @@ class ProxyStorage implements IStorage {
     this.storage.find(keyPath, query, options, cb);
   }
 
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  // insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  // {
+  //   var self = this;
+  //   this.storage.insert(keyPath, index, doc, function(err?: Error){
+  //     if(!err){
+  //       this.syncHub && self.syncHub.insert(keyPath, index, doc);
+  //     }
+  //     cb(err);
+  //   })
+  // }
+
+  // extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
+  // {
+  //   var self = this;
+  //   this.storage.extract(keyPath, index, function(err: Error, doc?: {}){
+  //     if(!err){
+  //       this.syncHub && self.syncHub.extract(keyPath, index);
+  //     }
+  //     cb(err, doc);
+  //   })
+  // }
+
+  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void) : void
   {
-    var self = this;
-    this.storage.insert(keyPath, index, doc, function(err?: Error){
+    this.storage.all(keyPath, query, opts, cb);
+  }
+
+  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.storage.first(keyPath, opts, cb);
+  }
+  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.storage.last(keyPath, opts, cb);
+  }
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.storage.next(keyPath, refItemKeyPath, opts, cb);
+  }
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.storage.prev(keyPath, refItemKeyPath, opts, cb);
+  }
+  // pop(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  // {
+  //   this.storage.pop(keyPath, opts, cb);
+  // }
+  // shift(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
+  // {
+  //   this.storage.shift(keyPath, opts, cb);
+  // }
+  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  {
+    this.storage.deleteItem(keyPath, itemKeyPath, opts, (err?: Error) => {
       if(!err){
-        this.syncHub && self.syncHub.insert(keyPath, index, doc);
+        this.syncHub && this.syncHub.deleteItem(keyPath, itemKeyPath);
       }
       cb(err);
-    })
+    });
   }
 
-  extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
+  // push(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  // {
+  //   this.storage.push(keyPath, itemKeyPath, opts, (err?: Error) => {
+  //     if(!err){
+  //       this.syncHub && this.syncHub.push(keyPath, itemKeyPath);
+  //     }
+  //     cb(err);
+  //   });
+  // }
+
+  // unshift(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  // {
+  //   this.storage.unshift(keyPath, itemKeyPath, opts, (err?: Error) => {
+  //     if(!err){
+  //       this.syncHub && this.syncHub.unshift(keyPath, itemKeyPath);
+  //     }
+  //     cb(err);
+  //   });
+  // }
+
+  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
   {
-    var self = this;
-    this.storage.extract(keyPath, index, function(err: Error, doc?: {}){
+    this.storage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, opts, (err?: Error) => {
       if(!err){
-        this.syncHub && self.syncHub.extract(keyPath, index);
+        this.syncHub && this.syncHub.insertBefore(keyPath, refItemKeyPath, itemKeyPath);
       }
-      cb(err, doc);
-    })
+      cb(err);
+    });
   }
 
-  all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void
-  {
-    this.storage.all(keyPath, cb);
-  }
+  // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  // {
+  //   this.storage.insertAfter(keyPath, refItemKeyPath, itemKeyPath, opts, (err?: Error) => {
+  //     if(!err){
+  //       this.syncHub && this.syncHub.insertAfter(keyPath, refItemKeyPath, itemKeyPath);
+  //     }
+  //     cb(err);
+  //   });
+  // }
+
 }
 
 }

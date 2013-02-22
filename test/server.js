@@ -3,11 +3,11 @@ _ = require('underscore');
 //require('require-typescript');
 
 // @see http://nodejs.org/api/all.html#all_require_extensions
-var uuid = require('node-uuid')
-  , fs = require('fs')
-  , execSync = require('execSync')
-  , path = require('path');
-  
+var uuid = require('node-uuid');
+var fs = require('fs');
+var execSync = require('execSync');
+var path = require('path');
+
 // typescript doesn't export any public interface, we need to spawn a
 // process
 // @todo: do I need to take care of caching or is this done at a higher level??
@@ -37,7 +37,7 @@ var express = require('express'),
     cabinet = require('cabinet'),
     Server = require('../server'),
     staticDir = __dirname + '/../';
-    
+
 app.use(cabinet(staticDir+'node_modules/mocha', {
   ignore: ['.git', 'node_modules', '*~', 'examples']
 }));
@@ -46,7 +46,7 @@ app.use(cabinet(staticDir+'node_modules/expect.js', {
   ignore: ['.git', 'node_modules', '*~', 'examples']
 }));
 
-app.use(cabinet(staticDir, 
+app.use(cabinet(staticDir,
   {
     ignore: ['.git', 'node_modules', '*~', 'examples', '*.js'],
     typescript: {
@@ -56,7 +56,7 @@ app.use(cabinet(staticDir,
   },
   function(url){
     console.log("FILE Changed:"+url);
-    if(url.indexOf('.ts') != -1){
+    if(url.indexOf('.ts') !== -1){
       sio.sockets.emit('file_changed:', url);
     }
   }
@@ -87,16 +87,16 @@ app.put('/animals/:id', function(req, res){
   console.log(req.body);
   models.animals.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
-    res.send(204)
-  })
-})
+    res.send(204);
+  });
+});
 
 app.put('/zoos/:zooId/animals/:id', function(req, res){
   res.send(204);
-})
+});
 
 app.del('/zoos/:zooId/animals/:id', function(req, res){
-  models.zoo.findById(req.params.zooId, function(err, zoo){    
+  models.zoo.findById(req.params.zooId, function(err, zoo){
     if (err) {
       throw new Error('Error remove animal:'+req.params.id+' from Zoo:'+req.params.zooId+' '+err);
     } else {
@@ -114,12 +114,12 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
 //
 
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
-  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
+  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
     console.log(result);
     mongoose.disconnect(function(){
       mongoose.connect('mongodb://localhost/testGingerSync');
       //var server = new Server(models, 6379, 'localhost', sio.sockets);
-  
+
       app.listen(8080);
       console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
     });

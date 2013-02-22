@@ -36,6 +36,10 @@ function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
 }
 
+function parseKey(key: string): string[] {
+  return key.split('@');
+}
+
 function isLink(doc): bool {
   return _.isString(doc);
 }
@@ -203,61 +207,292 @@ export class Local implements IStorage {
   {
     this.fetch(keyPath, (err, collection?) => {
       var result = {};
-      if(collection){
-        _.each(_.keys(collection), (key)=>{
-          var op = collection[key]
-          if(op !== 'rm' || !opts.snapshot){
+      var sequence = [];
+      if(_.isArray(collection)){
+        _.each(collection, (elem)=>{
+          // var key = elem.keyPath;
+          var key = elem.key;
+          var op = elem.sync;
+          if(op !== 'rm' || !opts.snapshot){ //TODO: more 
             var keyValue = traverseLinks(key);
             if(keyValue){
               var 
-                item = keyValue.value,
-                id = item._cid;
-              if(!(result[id]) || op === 'insync'){
+                item = keyValue.value;
+                // id = item._cid;
+              // if(!(result[id]) || op === 'insync'){
                 if(!opts.snapshot) item.__op = op;
-                result[id] = item;
-              }
+                // result[id] = item;
+                sequence.push(item);
+              // }
             }
           }
         });
+        return cb(null, sequence);
+      }else{
+        if(collection){
+          _.each(_.keys(collection), (key)=>{
+            var op = collection[key]
+            if(op !== 'rm' || !opts.snapshot){
+              var keyValue = traverseLinks(key);
+              if(keyValue){
+                var 
+                  item = keyValue.value,
+                  id = item._cid;
+                if(!(result[id]) || op === 'insync'){
+                  if(!opts.snapshot) item.__op = op;
+                  result[id] = item;
+                }
+              }
+            }
+          });
+        }
+        return cb(null, _.values(result));
       }
-      cb(null, _.values(result));
     });
   }
   
   //
   // ISeqStorage
   //
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
-  {
-    var key = makeKey(keyPath);
-    
-    var oldItems = _get(key) || [];
-    if(index == -1){
-      oldItems.push(doc);
-    }else{
-      oldItems.splice(index, 0, doc);
-    }
-    
-    _put(key, oldItems);
-    cb(null);
-  }
+  // insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  // {
+  //   var key = makeKey(keyPath);
+  //   
+  //   var oldItems = _get(key) || [];
+  //   if(index == -1){
+  //     oldItems.push(doc);
+  //   }else{
+  //     oldItems.splice(index, 0, doc);
+  //   }
+  //   
+  //   _put(key, oldItems);
+  //   cb(null);
+  // }
+  // 
+  // extract(keyPath: string[], index:number, cb: (err: Error, doc:{}) => void)
+  // {
+  //   var key = makeKey(keyPath);
+  //       
+  //   var oldItems = _get(key) || [];
+  //   var extracted = oldItems.splice(index, 1) || [];
+  //   
+  //   _put(key, oldItems);
+  //   cb(null, extracted[0]);
+  // }
   
-  extract(keyPath: string[], index:number, cb: (err: Error, doc:{}) => void)
-  {
-    var key = makeKey(keyPath);
-        
-    var oldItems = _get(key) || [];
-    var extracted = oldItems.splice(index, 1) || [];
-    
-    _put(key, oldItems);
-    cb(null, extracted[0]);
-  }
-  
-  all(keyPath: string[], cb: (err: Error, result: {}[]) => void) : void
+  all(keyPath: string[], query, opts, cb: (err: Error, result: {}[]) => void) : void
   {
     var key = makeKey(keyPath);        
     cb(null, _get(key) || []);
+    var all = [];
+    var traverse = (item)=>{
+      this.next(keyPath, keyPath, opts, (err, next?)=>{
+        if(!next) return cb(null, all);
+        all.push(next);
+        traverse(next);
+      });
+    };
+      
+    this.first(keyPath, opts, (err, first?)=>{
+      if(!first) return cb(null, all);
+      all.push(first);
+      traverse(first);
+    });
   }
+
+  private initSequence(seq){
+    if(seq.length < 2){
+      seq[0] = { //first
+        key: '##@first',
+        prev: -1,
+        next: 1
+      };
+      seq[1] = { //last
+        key: '##@last',
+        prev: 0,
+        next: -1
+      }
+    }
+  }
+  
+  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.next(keyPath, ['##', 'first'], opts, cb);
+  }
+
+  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    this.prev(keyPath, ['##', 'last'], opts, cb);
+  }
+  // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    var key = makeKey(keyPath);
+    var refItemKey = makeKey(refItemKeyPath);
+    var keyValue = traverseLinks(key);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+
+    var refItem = _.find(itemKeys, (item) => {
+      return item.key === refItemKey;
+    });
+
+    if(!refItem) return cb(Error('reference item not found'));
+    var item = itemKeys[refItem.next];
+    if(item.next < 0) return cb(null); //last pointer
+
+    // this.fetch(parseKey(item.key), cb);
+    cb(null, parseKey(item.key));
+  }
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
+  {
+    var key = makeKey(keyPath);
+    var refItemKey = makeKey(refItemKeyPath);
+    var keyValue = traverseLinks(key);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+
+    var refItem = _.find(itemKeys, (item) => {
+      return item.key === refItemKey;
+    });
+
+    if(!refItem) return cb(Error('reference item not found'));
+    var item = itemKeys[refItem.prev];
+    if(item.prev < 0) return cb(null); //first pointer
+
+    // this.fetch(parseKey(item.key), cb);
+    cb(null, parseKey(item.key));
+  }
+  // pop(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
+  // {
+  //   var key = makeKey(keyPath);
+  //   var keyValue = traverseLinks(key);
+  //   var itemKeys = keyValue ? keyValue.value || [] : [];
+
+  //   var refItem = _.find(itemKeys, (item) => {
+  //     return item.key === makeKey(['##', 'last']);
+  //   });
+  //   var item = itemKeys[refItem.prev];
+  //   if(item.key === makeKey(['##', 'first'])) return cb(Error('No last item to pop'));
+  //   var itemKey = parseKey(item.key);
+  //   this.deleteItem(keyPath, itemKey, opts, (err?: Error) => {
+  //     if(err) return cb(err);
+  //     this.fetch(itemKey, cb);
+  //   });
+  // }
+
+  // shift(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
+  // {
+  //   var key = makeKey(keyPath);
+  //   var keyValue = traverseLinks(key);
+  //   var itemKeys = keyValue ? keyValue.value || [] : [];
+
+  //   var refItem = _.find(itemKeys, (item) => {
+  //     return item.key === makeKey(['##', 'first']);
+  //   });
+  //   var item = itemKeys[refItem.next];
+  //   if(item.key === makeKey(['##', 'last'])) return cb(Error('No last item to pop'));
+  //   var itemKey = parseKey(item.key);
+  //   this.deleteItem(keyPath, itemKey, opts, (err?: Error) => {
+  //     if(err) return cb(err);
+  //     this.fetch(itemKey, cb);
+  //   });
+  // }
+  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  {
+    var key = makeKey(keyPath);
+    var itemKey = makeKey(itemKeyPath);
+    var keyValue = traverseLinks(key);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+
+    var item = _.find(itemKeys, (item) => {
+      return item.key === itemKey;
+    });
+
+    item.sync = 'rm'; //tombstone
+    //should we do this?
+    itemKeys[item.prev].next = item.next;
+    itemKeys[item.next].prev = item.prev;
+
+    _put(key, itemKeys);
+    cb();
+  }
+  // push(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  // {
+  //   this.insertBefore(keyPath, null, itemKeyPath, opts, cb);
+  // }
+  // unshift(keyPath: string[], itemKeyPath:string[], opts, cb: (err?: Error) => void)
+  // {
+  //   this.insertAfter(keyPath, ['##', 'first'], itemKeyPath, opts, cb);
+  // }
+  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  {
+    var refItemKey;
+    if(refItemKeyPath){
+      refItemKey = makeKey(refItemKeyPath);
+      var linked = traverseLinks(refItemKey);
+      refItemKey = linked ? linked.key : refItemKey;
+    }else{
+      refItemKey = makeKey(['##', 'last']);
+    }
+    var key = makeKey(keyPath);
+    var itemKey = makeKey(itemKeyPath);
+    var keyValue = traverseLinks(key);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+    this.initSequence(itemKeys);
+
+    var refItem = _.find(itemKeys, (item) => {
+      return item.key === refItemKey;
+    });
+
+    if(!refItem) return cb(Error('reference item not found'));
+    var prevItem = itemKeys[refItem.prev];
+    
+    var newItem = {
+      key: itemKey,
+      sync: opts.insync ? 'insync' : 'ib',
+      prev: refItem.prev,
+      next: prevItem.next
+    };
+
+    itemKeys.push(newItem);
+    prevItem.next = refItem.prev = itemKeys.length-1;
+
+    _put(key, itemKeys);
+    cb();
+  }
+  // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  // {
+  //   var key = makeKey(keyPath);
+  //   var refItemKey = makeKey(refItemKeyPath);
+  //   var itemKey = makeKey(itemKeyPath);
+  //   var keyValue = traverseLinks(key);
+  //   var itemKeys = keyValue ? keyValue.value || [] : [];
+  //   key = keyValue ? keyValue.key : key;
+  //   this.initSequence(itemKeys);
+
+  //   var refItem = _.find(itemKeys, (item) => {
+  //     return item.key === refItemKey;
+  //   });
+
+  //   if(!refItem) return cb(Error('reference item not found'));
+  //   var nextItem = itemKeys[refItem.next];
+  //   
+  //   var newItem = {
+  //     key: itemKey,
+  //     sync: opts.insync ? 'insync' : 'ib',
+  //     prev: nextItem.prev,
+  //     next: refItem.next
+  //   };
+
+  //   itemKeys.push(newItem);
+  //   refItem.next = nextItem.prev = itemKeys.length-1;
+
+  //   _put(key, itemKeys);
+  //   cb();
+  // }
 }
 
 }
