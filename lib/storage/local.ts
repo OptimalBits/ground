@@ -282,11 +282,11 @@ export class Local implements IStorage {
   
   all(keyPath: string[], query, opts, cb: (err: Error, result: {}[]) => void) : void
   {
-    var key = makeKey(keyPath);        
-    cb(null, _get(key) || []);
+    // var key = makeKey(keyPath);        
+    // cb(null, _get(key) || []);
     var all = [];
     var traverse = (item)=>{
-      this.next(keyPath, keyPath, opts, (err, next?)=>{
+      this.next(keyPath, item, opts, (err, next?)=>{
         if(!next) return cb(null, all);
         all.push(next);
         traverse(next);
