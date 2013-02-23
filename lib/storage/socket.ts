@@ -69,20 +69,20 @@ export class Socket implements IStorage {
     Gnd.Util.safeEmit(this.socket, 'all', keyPath, query, opts, cb);
   }
   
-  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
+  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     Gnd.Util.safeEmit(this.socket, 'first', keyPath, opts, cb);
   }
-  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
+  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     Gnd.Util.safeEmit(this.socket, 'last', keyPath, opts, cb);
   }
   // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err?: Error, doc?:{}) => void)
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     Gnd.Util.safeEmit(this.socket, 'next', keyPath, refItemKeyPath, opts, cb);
   }
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     Gnd.Util.safeEmit(this.socket, 'prev', keyPath, refItemKeyPath, opts, cb);
   }

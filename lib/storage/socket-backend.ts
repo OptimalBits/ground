@@ -67,16 +67,16 @@ export class SocketBackend {
         server.storage.all(keyPath, query, opts, scb(cb));
       });
 
-      socket.on('first', function(keyPath: string[], opts: {}, cb: (err: string, keyPath?:string[]) => void){
+      socket.on('first', function(keyPath: string[], opts: {}, cb: (err: string, doc?:IDoc) => void){
         server.storage.first(keyPath, opts, scb(cb));
       });
-      socket.on('last', function(keyPath: string[], opts: {}, cb: (err: string, keyPath?:string[]) => void){
+      socket.on('last', function(keyPath: string[], opts: {}, cb: (err: string, doc?:IDoc) => void){
         server.storage.last(keyPath, opts, scb(cb));
       });
-      socket.on('next', function(keyPath: string[], refItemKeyPath: string[], opts, cb: (err: string, keyPath?:string[]) => void){
+      socket.on('next', function(keyPath: string[], refItemKeyPath: string[], opts, cb: (err: string, doc?:IDoc) => void){
         server.storage.next(keyPath, refItemKeyPath, opts, scb(cb));
       });
-      socket.on('prev', function(keyPath: string[], refItemKeyPath: string[], opts, cb: (err: string, keyPath?:string[]) => void){
+      socket.on('prev', function(keyPath: string[], refItemKeyPath: string[], opts, cb: (err: string, doc?:IDoc) => void){
         server.storage.prev(keyPath, refItemKeyPath, opts, scb(cb));
       });
       // socket.on('pop', function(keyPath: string[], opts, cb: (err: string, doc?:{}) => void){

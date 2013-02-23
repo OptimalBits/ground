@@ -460,7 +460,7 @@ export class MongooseStorage implements IStorage {
       this.next(keyPath, item, opts, (err, next?)=>{
         if(!next) return cb(null, all);
         all.push(next);
-        traverse(next);
+        traverse(next.keyPath);
       });
     };
       
@@ -469,7 +469,7 @@ export class MongooseStorage implements IStorage {
       console.log(first);
       if(!first) return cb(null, all);
       all.push(first);
-      traverse(first);
+      traverse(first.keyPath);
     });
     // this.getSequence(keyPath, (err, seqDoc?, seq?) => {
     //   if(!err){
@@ -480,41 +480,45 @@ export class MongooseStorage implements IStorage {
     // });
   }
 
-  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
+  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.next(keyPath, ['##', '_begin'], opts, cb);
   }
-  last(keyPath: string[], opts: {}, cb: (err: Error, doc?) => void)
+  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.prev(keyPath, ['##', '_end'], opts, cb);
   }
   // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      console.log(1);
       this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, container?)=>{
         if(err) return cb(err);
 
-      console.log(1);
         this.findContainer(Model, id, seqName, container.next, (err, container?)=>{
-      console.log(1);
         //TODO:Err handling
           if(container.type === '_rip'){
             this.next(keyPath, parseKey(container.modelId), opts, cb);
           }else if(container.type === '_end'){
             cb(Error('No next item found'));
           }else{
-            cb(null, parseKey(container.modelId));
+            var kp = parseKey(container.modelId);
+            this.fetch(kp, (err, doc?)=>{
+              if(err) return cb(err);
+              cb(null, {
+                keyPath: kp,
+                doc: doc
+              });
+            });
           }
         });
       });
     }, cb);
   }
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
+  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
@@ -530,7 +534,14 @@ export class MongooseStorage implements IStorage {
           }else if(container.type === '_begin'){
             cb(Error('No previous item found'));
           }else{
-            cb(null, parseKey(container.modelId));
+            var kp = parseKey(container.modelId);
+            this.fetch(kp, (err, doc?)=>{
+              if(err) return cb(err);
+              cb(null, {
+                keyPath: kp,
+                doc: doc
+              });
+            });
           }
         });
       });

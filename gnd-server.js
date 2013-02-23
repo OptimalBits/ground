@@ -1681,7 +1681,7 @@ var Gnd;
                         return cb(null, all);
                     }
                     all.push(next);
-                    traverse(next);
+                    traverse(next.keyPath);
                 });
             };
             this.first(keyPath, opts, function (err, first) {
@@ -1691,7 +1691,7 @@ var Gnd;
                     return cb(null, all);
                 }
                 all.push(first);
-                traverse(first);
+                traverse(first.keyPath);
             });
         };
         MongooseStorage.prototype.first = function (keyPath, opts, cb) {
@@ -1711,21 +1711,27 @@ var Gnd;
             this.getModel(keyPath, function (Model) {
                 var id = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                console.log(1);
                 _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, container) {
                     if(err) {
                         return cb(err);
                     }
-                    console.log(1);
                     _this.findContainer(Model, id, seqName, container.next, function (err, container) {
-                        console.log(1);
                         if(container.type === '_rip') {
                             _this.next(keyPath, parseKey(container.modelId), opts, cb);
                         } else {
                             if(container.type === '_end') {
                                 cb(Error('No next item found'));
                             } else {
-                                cb(null, parseKey(container.modelId));
+                                var kp = parseKey(container.modelId);
+                                _this.fetch(kp, function (err, doc) {
+                                    if(err) {
+                                        return cb(err);
+                                    }
+                                    cb(null, {
+                                        keyPath: kp,
+                                        doc: doc
+                                    });
+                                });
                             }
                         }
                     });
@@ -1748,7 +1754,16 @@ var Gnd;
                             if(container.type === '_begin') {
                                 cb(Error('No previous item found'));
                             } else {
-                                cb(null, parseKey(container.modelId));
+                                var kp = parseKey(container.modelId);
+                                _this.fetch(kp, function (err, doc) {
+                                    if(err) {
+                                        return cb(err);
+                                    }
+                                    cb(null, {
+                                        keyPath: kp,
+                                        doc: doc
+                                    });
+                                });
                             }
                         }
                     });
