@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2012-2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 /**
@@ -86,9 +86,7 @@ export class Queue extends Base implements IStorage
         doc['_id'] = _.last(keyPath);
         cb(err, doc);
       }
-      if(!this.useRemote){
-        cb(err);
-      }else{
+      if(this.useRemote){
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
           if(!err){
             docRemote['_persisted'] = true;
@@ -103,6 +101,8 @@ export class Queue extends Base implements IStorage
           }
           !doc && cb(err, docRemote);
         });
+      }else if(!doc){
+        cb(err);
       }
     });
   }
@@ -186,9 +186,7 @@ export class Queue extends Base implements IStorage
         cb(err, result);
       }
       
-      if(!this.useRemote){
-        cb(err);
-      }else{ 
+      if(this.useRemote){
         this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
           if(!err){
             this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
@@ -201,6 +199,8 @@ export class Queue extends Base implements IStorage
           }
           !result && cb(err, remote);
         });
+      }else if(!result){
+        cb(err);
       }
     });
   }
