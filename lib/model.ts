@@ -385,7 +385,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, collection?: Collection) => void);
   static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
   static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
-    function allInstances(parent, keyPath, args, cb){
+      var allInstances = (parent, keyPath, args, cb) => {
       Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
         if(docs){
           _.each(docs, function(doc){_.extend(doc, args)});
