@@ -9,7 +9,7 @@ describe('ViewModel', function(){
     });
     
     it('bind a property to text', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: feline.name');
       
       var feline = new Animal({name: 'tiger'});
@@ -23,11 +23,11 @@ describe('ViewModel', function(){
     });
 
     it('bind to several attributes', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
@@ -40,16 +40,16 @@ describe('ViewModel', function(){
     });
     
     it('bind to several attributes and use formatters', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.description | lowercase');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'PUT DESCRIPTION HERE...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger}, {
-        uppercase: function(str){ return str.toUpperCase()},
-        lowercase: function(str){ return str.toLowerCase()},
+        uppercase: function(str){ return str.toUpperCase();},
+        lowercase: function(str){ return str.toLowerCase();},
       });
       
       expect(el.innerText).to.be.eql('TIGER');
@@ -87,7 +87,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3');      
+      expect(el22.title).to.be.eql('3');
     });
     
     // This will not work since we cannot listen easily for attr changes...
@@ -97,7 +97,7 @@ describe('ViewModel', function(){
       el.setAttribute('data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
@@ -122,7 +122,7 @@ describe('ViewModel', function(){
       
       var tiger = new Animal({
         selected: true,
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       
@@ -188,7 +188,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3'); 
+      expect(el22.title).to.be.eql('3');
     
       vm.unbind();
       
@@ -202,7 +202,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3'); 
+      expect(el22.title).to.be.eql('3');
       
       // Also test input elements
     });
@@ -212,7 +212,7 @@ describe('ViewModel', function(){
     it('changes visibility style', function(){
       var feline = new Animal({name: 'tiger', visible:true});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-show', 'feline.visible');
       el.style.display = 'block';
       
@@ -229,7 +229,7 @@ describe('ViewModel', function(){
     it('changes visibility style using negation', function(){
       var feline = new Animal({name: 'tiger', notVisible:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-show', '!feline.notVisible');
       el.style.display = 'block';
       
@@ -248,7 +248,7 @@ describe('ViewModel', function(){
     it('adds classes to element', function(){
       var feline = new Animal({name: 'tiger', useClasses:true});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.useClasses');
       
       var vm = new Gnd.ViewModel(el, {feline: feline});
@@ -261,7 +261,7 @@ describe('ViewModel', function(){
     it('use negation for adding classes to element', function(){
       var feline = new Animal({name: 'tiger', notUseClasses:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: !feline.notUseClasses');
       
       var vm = new Gnd.ViewModel(el, {feline: feline});
@@ -274,7 +274,7 @@ describe('ViewModel', function(){
     it('several class sets bound to an element', function(){
       var feline = new Animal({name: 'tiger', a:true, b:false, c:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.a; classU classV: feline.b; classY classB: feline.c');
       el.className = 'classU';
       
@@ -299,21 +299,21 @@ describe('ViewModel', function(){
     it('Bind document properties to events', function(done){
       var obj = new Gnd.Base();
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-event', 'click: obj.handleClick; change: obj.handleChange');
     
       obj.handleClick = function(node, evt){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
         Gnd.$(el).trigger('change');
-      }
+      };
       
       obj.handleChange = function(node, evt){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
         done();
         
-      }
+      };
       
       var vm = new Gnd.ViewModel(el, {obj: obj});
       
@@ -336,9 +336,9 @@ describe('ViewModel', function(){
       listEl.setAttribute('data-each', 'zoo.animals: animal');
       listEl.setAttribute('data-bind', 'text: animal.name');
       list.appendChild(listEl);
-    })
+    });
     
-    it('populate a list from collection', function(){      
+    it('populate a list from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
@@ -354,7 +354,7 @@ describe('ViewModel', function(){
       vm.unbind();
     });
     
-    it('remove elements from collection', function(){      
+    it('remove elements from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
@@ -362,7 +362,7 @@ describe('ViewModel', function(){
       expect(list.children[1].innerText).to.be.eql('lion');
       expect(list.children[2].innerText).to.be.eql('leopard');
       
-      zoo.animals.remove([lion.id(), tiger.id()])
+      zoo.animals.remove([lion.id(), tiger.id()]);
       expect(list.children.length).to.be(1);
       expect(list.children[0].innerText).to.be.eql('leopard');
       
@@ -375,7 +375,7 @@ describe('ViewModel', function(){
       expect(list.children.length).to.be(3);
       zoo.animals.set('filterFn', function(item){
         return (item.name === 'lion') || (item.name === 'leopard');
-      })
+      });
       expect(list.children.length).to.be(2);
       expect(list.children[0].innerText).to.be.eql('lion');
       expect(list.children[1].innerText).to.be.eql('leopard');
@@ -388,7 +388,7 @@ describe('ViewModel', function(){
       
       zoo.animals.set('sortByFn', function(item){
         return 3 - item.pos;
-      })
+      });
       
       expect(list.children.length).to.be(3);
       expect(list.children[2].innerText).to.be.eql('tiger');
@@ -402,7 +402,7 @@ describe('ViewModel', function(){
       
       zoo.animals.set('sortByFn', function(item){
         return 3 - item.pos;
-      })
+      });
       
       expect(list.children.length).to.be(3);
       expect(list.children[2].innerText).to.be.eql('tiger');
@@ -411,7 +411,7 @@ describe('ViewModel', function(){
       
       zoo.animals.set('sortByFn', function(item){
         return item.pos;
-      })
+      });
       expect(list.children[0].innerText).to.be.eql('tiger');
       expect(list.children[1].innerText).to.be.eql('lion');
       expect(list.children[2].innerText).to.be.eql('leopard');
@@ -449,7 +449,7 @@ describe('ViewModel', function(){
       expect(list.children[1].innerText).to.be.eql('leopard');
       zoo.animals.set('filterFn',null);
       vm.unbind();
-    })
+    });
   });
   describe('data-each with nested nodes', function(){
     var tiger, lion, leopard, zoo, list, listEl,listNestedEl;
@@ -463,12 +463,12 @@ describe('ViewModel', function(){
       
       list = document.createElement('lu');
       listEl = document.createElement('li');
-      listNestedEl = document.createElement('span')
+      listNestedEl = document.createElement('span');
       listEl.setAttribute('data-each', 'zoo.animals: animal');
       listNestedEl.setAttribute('data-bind', 'text: animal.name');
-      listEl.appendChild(listNestedEl)
+      listEl.appendChild(listNestedEl);
       list.appendChild(listEl);
-    })
+    });
     it('populate a list from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
@@ -483,7 +483,7 @@ describe('ViewModel', function(){
       expect(list.children[3].children[0].innerText).to.be.eql('jaguar');
       
       vm.unbind();
-    })
+    });
   });
 });
 
