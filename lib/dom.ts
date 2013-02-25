@@ -163,18 +163,18 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  text(html?: string)
+  text(text?: string)
   {
     var el = this[0];
     if(el.textContent){
-      if(!html) return el.textContent;
+      if(_.isUndefined(text)) return el.textContent;
       _.each(this, (el) => {
-        el.textContent = html;
+        el.textContent = text;
       });
     }else{
-      if(!html) return el.innerText;
+      if(_.isUndefined(text)) return el.innerText;
       _.each(this, (el) => {
-        el.innerText = html;
+        el.innerText = text;
       });
     }
   }
