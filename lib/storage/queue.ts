@@ -119,16 +119,78 @@ export class Queue extends Base implements IStorage
 
   private updateLocalSequence(keyPath: string[], 
                                 opts: {},
-                                remoteSeq: any[], cb: (err?:Error) => void)
+                                remoteSeq: IDoc[], cb: (err?:Error) => void)
   {
     var storage = this.localStorage;
     
     opts = _.extend({snapshot: false}, opts);
-    
-    storage.all(keyPath, {}, opts, (err?:Error, localSeq?: {}[]) => {
+
+    storage.all(keyPath, {}, opts, (err?:Error, localSeq?: IDoc[]) => {
       console.log('update local sequence');
       console.log(localSeq);
       console.log(remoteSeq);
+      var remoteIds = _.map(remoteSeq, function(item){
+        return item.doc._id;
+      }).sort();
+      var remainingItems = [];
+      Util.asyncForEach(localSeq, function(item, done){
+        if(-1 === _.indexOf(remoteIds, item.doc._id, true)){
+          storage.deleteItem(keyPath, item.keyPath, {insync:true}, (err?)=>{
+            console.log('deleted');
+            done(err);
+          });
+        }else{
+          remainingItems.push(item);
+          done();
+        }
+      }, function(err){
+        // insert new items
+        var newItems = [];
+        var i=0;
+        var j=0;
+        var localItem, remoteItem;
+        while(i<remainingItems.length){
+          var localItem = remainingItems[i];
+          if(localItem.doc.__op === 'insync'){
+            remoteItem = remoteSeq[j];
+            if(localItem.doc._id === remoteItem.doc._id){
+              i++;
+            }else{
+              newItems.push({
+                refKeyPath: localItem.keyPath,
+                keyPath: remoteItem.keyPath
+              });
+              // storage.insertBefore(keyPath, localItem.keyPath, remoteItem.keyPath, opts, (err?)=>{
+              //   console.log('insertBefore');
+              // });
+            }
+            j++;
+          }else{
+            i++;
+          }
+        }
+        while(j<remoteSeq.length){
+          remoteItem = remoteSeq[j];
+          newItems.push({
+            refKeyPath: null,
+            keyPath: remoteItem.keyPath
+          });
+          // storage.insertBefore(keyPath, null, remoteItem.keyPath, opts, (err?)=>{
+          //   console.log('push');
+          // });
+          j++;
+        }
+
+        Util.asyncForEach(newItems, function(item, done){
+          storage.insertBefore(keyPath, item.refKeyPath, item.keyPath, {insync:true}, (err?)=>{
+            console.log('insertBefore');
+            done(err);
+          });
+        }, function(err){
+          cb(err);
+        });
+      });
+
       // var itemsToRemove = _.difference(_.pluck(localSeq, _
       // if(localSeq){
       //   _.each(oldItems, (item)=>{
@@ -158,7 +220,6 @@ export class Queue extends Base implements IStorage
       //       });
       //   });
       // }
-      cb();
     });
   }
   

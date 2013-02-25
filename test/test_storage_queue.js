@@ -323,7 +323,7 @@ describe('Storage Queue', function(){
         socket.on('connect', storage.syncFn);
         done();
       });
-      it.skip('items are cached when going offline', function(done){
+      it('items are cached when going offline', function(done){
         socket.disconnect();
         storage.all(keyPath, {}, {}, function(err, docs){
           expect(err).to.not.be.ok();
@@ -337,7 +337,7 @@ describe('Storage Queue', function(){
           done();
         });
       });
-      it.skip('insert while offline', function(done){
+      it('insert item while offline', function(done){
         socket.disconnect();
         storage.create(['animals'], {name:'camel'}, function(err, id){
           expect(err).to.not.be.ok();
@@ -456,7 +456,34 @@ describe('Storage Queue', function(){
           });
         });
       });
-      it('serverside remove while offline');
+      it('serverside remove while offline', function(done){
+        storage.next(keyPath, null, {}, function(err, item){
+          expect(err).to.be(null);
+          expect(item).to.be.an(Object);
+          socket.disconnect();
+          Gnd.Ajax.del('http://localhost:8080/parade/'+keyPath[1]+'/seq/animals/'+item.doc._id, null, function(err, res) {
+            socket.once('connect', function(){
+              storage.all(keyPath, {}, {}, function(err, docs){
+                expect(err).to.not.be.ok();
+                expect(docs).to.be.ok();
+                expect(docs).to.have.property('length', 2);
+                expect(docs[0]).to.have.property('doc');
+                expect(docs[0].doc).to.have.property('name', 'tiger');
+                expect(docs[1]).to.have.property('doc');
+                expect(docs[1].doc).to.have.property('name', 'monkey');
+                storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
+                  expect(docs).to.be.ok();
+                  expect(docs).to.have.property('length', 1);
+                  expect(docs[0]).to.have.property('doc');
+                  expect(docs[0].doc).to.have.property('name', 'monkey');
+                  done();
+                });
+              });
+            });
+            socket.socket.connect();
+          });
+        });
+      });
       it('inserted while online are available offline');
       it('deleted while online are not available offline');
     });

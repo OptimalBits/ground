@@ -104,6 +104,14 @@ app.put('/parade/:seqId/seq/animals/:id', function(req, res){
   });
 });
 
+app.del('/parade/:seqId/seq/animals/:id', function(req, res){
+  console.log('deleting '+req.params.id+' from '+req.params.seqId);
+  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'], ['animals', req.params.id], {}, function(err){
+    if(err) throw new Error('Error in test service');
+    res.send(204);
+  });
+});
+
 app.del('/zoos/:zooId/animals/:id', function(req, res){
   models.zoo.findById(req.params.zooId, function(err, zoo){
     if (err) {
