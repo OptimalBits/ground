@@ -28,7 +28,7 @@ describe('ViewModel', function(){
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
@@ -45,12 +45,12 @@ describe('ViewModel', function(){
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.description | lowercase');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'PUT DESCRIPTION HERE...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger}, {
-        uppercase: function(str){ return str.toUpperCase()},
-        lowercase: function(str){ return str.toLowerCase()},
+        uppercase: function(str){ return str.toUpperCase();},
+        lowercase: function(str){ return str.toLowerCase();},
       });
       
       expect(Gnd.$(el).text()).to.be.eql('TIGER');
@@ -88,7 +88,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3');      
+      expect(el22.title).to.be.eql('3');
     });
     
     // This will not work since we cannot listen easily for attr changes...
@@ -98,7 +98,7 @@ describe('ViewModel', function(){
       el.setAttribute('data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
@@ -123,7 +123,7 @@ describe('ViewModel', function(){
       
       var tiger = new Animal({
         selected: true,
-        name: 'tiger', 
+        name: 'tiger',
         description: 'put description here...'
       });
       
@@ -189,7 +189,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3'); 
+      expect(el22.title).to.be.eql('3');
     
       vm.unbind();
       
@@ -203,7 +203,7 @@ describe('ViewModel', function(){
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
-      expect(el22.title).to.be.eql('3'); 
+      expect(el22.title).to.be.eql('3');
       
       // Also test input elements
     });
@@ -307,14 +307,14 @@ describe('ViewModel', function(){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
         Gnd.$(el).trigger('change');
-      }
+      };
       
       obj.handleChange = function(node, evt){
         expect(node).to.be(el);
         expect(evt).to.be.ok(evt);
         done();
         
-      }
+      };
       
       var vm = new Gnd.ViewModel(el, {obj: obj});
       
@@ -337,9 +337,9 @@ describe('ViewModel', function(){
       listEl.setAttribute('data-each', 'zoo.animals: animal');
       listEl.setAttribute('data-bind', 'text: animal.name');
       list.appendChild(listEl);
-    })
+    });
     
-    it('populate a list from collection', function(){      
+    it('populate a list from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
@@ -355,7 +355,7 @@ describe('ViewModel', function(){
       vm.unbind();
     });
     
-    it('remove elements from collection', function(){      
+    it('remove elements from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
@@ -363,7 +363,7 @@ describe('ViewModel', function(){
       expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
       expect(Gnd.$(list.children[2]).text()).to.be.eql('leopard');
       
-      zoo.animals.remove([lion.id(), tiger.id()])
+      zoo.animals.remove([lion.id(), tiger.id()]);
       expect(list.children.length).to.be(1);
       expect(Gnd.$(list.children[0]).text()).to.be.eql('leopard');
       
@@ -376,7 +376,7 @@ describe('ViewModel', function(){
       expect(list.children.length).to.be(3);
       zoo.animals.set('filterFn', function(item){
         return (item.name === 'lion') || (item.name === 'leopard');
-      })
+      });
       expect(list.children.length).to.be(2);
       expect(Gnd.$(list.children[0]).text()).to.be.eql('lion');
       expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
@@ -389,7 +389,7 @@ describe('ViewModel', function(){
       
       zoo.animals.set('sortByFn', function(item){
         return 3 - item.pos;
-      })
+      });
       
       expect(list.children.length).to.be(3);
       expect(Gnd.$(list.children[2]).text()).to.be.eql('tiger');
@@ -403,7 +403,7 @@ describe('ViewModel', function(){
       
       zoo.animals.set('sortByFn', function(item){
         return 3 - item.pos;
-      })
+      });
       
       expect(list.children.length).to.be(3);
       expect(Gnd.$(list.children[2]).text()).to.be.eql('tiger');
@@ -412,12 +412,12 @@ describe('ViewModel', function(){
    
       zoo.animals.set('sortByFn', function(item){
         return item.pos;
-      })
+      });
            
       expect(Gnd.$(list.children[0]).text()).to.be.eql('tiger');
       expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
       expect(Gnd.$(list.children[2]).text()).to.be.eql('leopard');
-      
+
       vm.unbind();
     });
     it('multiple filtering on a collection',function() {
@@ -452,7 +452,7 @@ describe('ViewModel', function(){
       expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
       zoo.animals.set('filterFn',null);
       vm.unbind();
-    })
+    });
   });
   describe('data-each with nested nodes', function(){
     var tiger, lion, leopard, zoo, list, listEl,listNestedEl;
@@ -466,12 +466,12 @@ describe('ViewModel', function(){
       
       list = document.createElement('lu');
       listEl = document.createElement('li');
-      listNestedEl = document.createElement('span')
+      listNestedEl = document.createElement('span');
       listEl.setAttribute('data-each', 'zoo.animals: animal');
       listNestedEl.setAttribute('data-bind', 'text: animal.name');
-      listEl.appendChild(listNestedEl)
+      listEl.appendChild(listNestedEl);
       list.appendChild(listEl);
-    })
+    });
     it('populate a list from collection', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
@@ -486,7 +486,7 @@ describe('ViewModel', function(){
       expect(Gnd.$(list.children[3].children[0]).text()).to.be.eql('jaguar');
       
       vm.unbind();
-    })
+    });
   });
 });
 

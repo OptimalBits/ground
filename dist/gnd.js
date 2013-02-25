@@ -155,7 +155,7 @@ var Gnd;
     }
     Gnd.makeElement = makeElement;
     function setAttr(el, attr, value) {
-        if(Object.prototype.hasOwnProperty.call(el, attr)) {
+        if(el[attr]) {
             el[attr] = value;
         }
         if(value) {
@@ -166,7 +166,7 @@ var Gnd;
     }
     Gnd.setAttr = setAttr;
     function getAttr(el, attr) {
-        if(Object.prototype.hasOwnProperty.call(el, attr)) {
+        if(el[attr]) {
             return el[attr];
         } else {
             var val = el.getAttribute(attr);
