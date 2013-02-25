@@ -51,8 +51,8 @@ export function nextTick(fn){
   setTimeout(fn, 0);
 };
 
-export function trim(){
-  return this.replace(/^\s+|\s+$/g,'');
+export function trim(str: string){
+  return str.replace(/^\s+|\s+$/g,'');
 };
 
 // TODO: Add an optional timeout parameter.
