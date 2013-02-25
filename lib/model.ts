@@ -436,19 +436,19 @@ export class Model extends Base implements Sync.ISynchronizable
       //   }else{
       //     cb(err);
       //   }
-      Model.storageQueue.all(keyPath, {}, {}, (err, keyPaths?) => {
-        if(keyPaths){
-          var docs = [];
-          Util.asyncForEach(keyPaths, (keyPath, fn)=>{
-            Model.storageQueue.fetch(keyPath, (err, doc)=>{
+      Model.storageQueue.all(keyPath, {}, {}, (err, docs?) => {
+        if(docs){
+          Sequence.create(this, parent, _.pluck(docs, 'doc'), cb);
+          // Util.asyncForEach(keyPaths, (keyPath, fn)=>{
+          //   Model.storageQueue.fetch(keyPath, (err, doc)=>{
 
-              _.extend(doc, args);
-              docs.push(doc);
-              fn(err);
-            });
-          }, (err) => {
-            Sequence.create(this, parent, docs, cb);
-          });
+          //     _.extend(doc, args);
+          //     docs.push(doc);
+          //     fn(err);
+          //   });
+          // }, (err) => {
+          //   Sequence.create(this, parent, docs, cb);
+          // });
         }else{
           cb(err);
         }

@@ -492,10 +492,7 @@ describe('Collections', function(){
     //  An item is added from a collection on the server, when we come back online
     //  the local cache should be updated with the removed item.
     //
-    it('serverside add item while offline', function(done){
-      // TO IMPLEMENT;
-      done();
-    });
+    it('serverside add item while offline');
     
     
     it('removed item from collection online is not available offline', function(done){

@@ -208,27 +208,27 @@ export class Local implements IStorage {
     this.fetch(keyPath, (err, collection?) => {
       var result = {};
       var sequence = [];
-      if(_.isArray(collection)){
-        _.each(collection, (elem)=>{
-          // var key = elem.keyPath;
-          var key = elem.key;
-          var op = elem.sync;
-          if(op !== 'rm' || !opts.snapshot){ //TODO: more 
-            var keyValue = traverseLinks(key);
-            if(keyValue){
-              var 
-                item = keyValue.value;
-                // id = item._cid;
-              // if(!(result[id]) || op === 'insync'){
-                if(!opts.snapshot) item.__op = op;
-                // result[id] = item;
-                sequence.push(item);
-              // }
-            }
-          }
-        });
-        return cb(null, sequence);
-      }else{
+      // if(_.isArray(collection)){
+      //   _.each(collection, (elem)=>{
+      //     // var key = elem.keyPath;
+      //     var key = elem.key;
+      //     var op = elem.sync;
+      //     if(op !== 'rm' || !opts.snapshot){ //TODO: more 
+      //       var keyValue = traverseLinks(key);
+      //       if(keyValue){
+      //         var 
+      //           item = keyValue.value;
+      //           // id = item._cid;
+      //         // if(!(result[id]) || op === 'insync'){
+      //           if(!opts.snapshot) item.__op = op;
+      //           // result[id] = item;
+      //           sequence.push(item);
+      //         // }
+      //       }
+      //     }
+      //   });
+      //   return cb(null, sequence);
+      // }else{
         if(collection){
           _.each(_.keys(collection), (key)=>{
             var op = collection[key]
@@ -247,7 +247,7 @@ export class Local implements IStorage {
           });
         }
         return cb(null, _.values(result));
-      }
+      // }
     });
   }
   
@@ -293,22 +293,23 @@ export class Local implements IStorage {
       });
     };
       
-    this.first(keyPath, opts, (err, first?)=>{
-      if(!first) return cb(null, all);
-      all.push(first);
-      traverse(first.keyPath);
-    });
+    traverse(null);
+    // this.first(keyPath, opts, (err, first?)=>{
+    //   if(!first) return cb(null, all);
+    //   all.push(first);
+    //   traverse(first.keyPath);
+    // });
   }
 
   private initSequence(seq){
     if(seq.length < 2){
       seq[0] = { //first
-        key: '##@first',
+        key: '##@_begin',
         prev: -1,
         next: 1
       };
       seq[1] = { //last
-        key: '##@last',
+        key: '##@_end',
         prev: 0,
         next: -1
       }
@@ -318,38 +319,66 @@ export class Local implements IStorage {
   // first(keyPath: string[], opts: {}, cb: (err: Error, keyPath?:string[]) => void)
   first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.next(keyPath, ['##', 'first'], opts, cb);
+    this.next(keyPath, ['##', '_begin'], opts, cb);
   }
 
   last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.prev(keyPath, ['##', 'last'], opts, cb);
+    this.prev(keyPath, ['##', '_end'], opts, cb);
   }
   // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts, cb: (err: Error, doc?:IDoc) => void)
   {
+    var options = _.defaults(opts, {snapshot: true});
     var key = makeKey(keyPath);
-    var refItemKey = makeKey(refItemKeyPath);
     var keyValue = traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
+
+    // first item of empty sequence is not an error
+    if(itemKeys.length === 0 && !refItemKeyPath) return cb(null, null);
+
+    refItemKeyPath = refItemKeyPath || ['##', '_begin'];
+    var refItemKey = makeKey(refItemKeyPath);
+    var refItemKeyValue = traverseLinks(refItemKey);
+    refItemKey = refItemKeyValue ? refItemKeyValue.key : refItemKey; 
 
     var refItem = _.find(itemKeys, (item) => {
       return item.key === refItemKey;
     });
 
-    if(!refItem) return cb(Error('reference item not found'));
-    var item = itemKeys[refItem.next];
-    if(item.next < 0) return cb(null); //last pointer
+    if(refItem){
+      var item = itemKeys[refItem.next];
+      if(item.next < 0) return cb(null); //last pointer
 
-    var itemKeyPath = parseKey(item.key);
-    this.fetch(itemKeyPath, (err, doc?)=>{
-      var iDoc = {
-        keyPath: itemKeyPath,
-        doc: doc
-      };
-      cb(null, iDoc);
-    });
+      var itemKeyPath = parseKey(item.key);
+      var op = item.sync;
+      if(op !== 'rm' || !options.snapshot){
+        var itemKeyValue = traverseLinks(item.key);
+        if(itemKeyValue){
+          var item = itemKeyValue.value;
+          if(!options.snapshot) item.__op = op;
+          var iDoc = {
+            keyPath: _.initial(itemKeyPath).concat(item._id || item._cid),
+            doc: item
+          };
+          cb(null, iDoc);
+        }
+      }else{
+        this.next(keyPath, itemKeyPath, opts, cb);
+      }
+
+      // var itemKeyPath = parseKey(item.key);
+      // this.fetch(itemKeyPath, (err, doc?)=>{
+      //   var iDoc = {
+      //     keyPath: itemKeyPath,
+      //     doc: doc
+      //   };
+      //   cb(null, iDoc);
+      // });
+    }else{
+      return cb(Error('reference item not found'));
+    }
     // cb(null, parseKey(item.key));
   }
   prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
@@ -413,7 +442,7 @@ export class Local implements IStorage {
   //     this.fetch(itemKey, cb);
   //   });
   // }
-  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
   {
     var key = makeKey(keyPath);
     var itemKey = makeKey(itemKeyPath);
@@ -426,11 +455,15 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item.key === itemKey;
     });
+    if(!item || item.sync === 'rm') return cb(Error('Tried to delete a non-existent item'));
 
-    item.sync = 'rm'; //tombstone
-    //should we do this?
-    itemKeys[item.prev].next = item.next;
-    itemKeys[item.next].prev = item.prev;
+    if(opts.insync){
+      itemKeys[itemKeys[item.prev].next] = 'deleted';
+      itemKeys[item.prev].next = item.next;
+      itemKeys[item.next].prev = item.prev;
+    }else{
+      item.sync = 'rm'; //tombstone
+    }
 
     _put(key, itemKeys);
     cb();
@@ -445,13 +478,16 @@ export class Local implements IStorage {
   // }
   insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
   {
+    console.log('insert before');
+    console.log(refItemKeyPath);
+    console.log(itemKeyPath);
     var refItemKey;
     if(refItemKeyPath){
       refItemKey = makeKey(refItemKeyPath);
       var linked = traverseLinks(refItemKey);
       refItemKey = linked ? linked.key : refItemKey;
     }else{
-      refItemKey = makeKey(['##', 'last']);
+      refItemKey = makeKey(['##', '_end']);
     }
     var key = makeKey(keyPath);
     var itemKey = makeKey(itemKeyPath);
@@ -476,6 +512,37 @@ export class Local implements IStorage {
 
     itemKeys.push(newItem);
     prevItem.next = refItem.prev = itemKeys.length-1;
+
+    _put(key, itemKeys);
+    cb();
+  }
+
+  set(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void)
+  {
+    var key = makeKey(keyPath);
+    var itemKey = makeKey(itemKeyPath);
+    var keyValue = traverseLinks(key);
+    var itemKeyValue = traverseLinks(itemKey);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+    itemKey = itemKeyValue ? itemKeyValue.key : itemKey;
+
+    var item = _.find(itemKeys, (item) => {
+      return item.key === itemKey;
+    });
+    if(!item) return cb(Error('Tried to set a non-existent item'));
+
+    switch(item.sync) {
+      case 'rm':
+        itemKeys[itemKeys[item.prev].next] = 'deleted';
+        itemKeys[item.prev].next = item.next;
+        itemKeys[item.next].prev = item.prev;
+        //TODO: remobe tombstone
+        break;
+      case 'ib':
+        item.sync = 'insync';
+        break;
+    }
 
     _put(key, itemKeys);
     cb();

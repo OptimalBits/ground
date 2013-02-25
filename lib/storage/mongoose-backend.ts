@@ -188,6 +188,7 @@ export class MongooseStorage implements IStorage {
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any, cb: any): void
   {
+    if(itemIds.length === 0) cb(null); //nothing to do
     if(_.isFunction(opts)) cb = opts;
     this.getModel(itemsKeyPath, (Set) => {
       if(Set && Set.parent){
@@ -252,14 +253,17 @@ export class MongooseStorage implements IStorage {
   }
   
   private findContainerOfModel(Model: IMongooseModel, id, name, modelId, cb:(err: Error, container?)=>void){
+    console.log('fcom');
     console.log(modelId);
     switch(modelId) {
       case '##@_begin':
+        // this.initSequence(Model, id, name, (err, begin?, end?) => {
         this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
           cb(err, begin);
         });
         break;
       case '##@_end':
+        // this.initSequence(Model, id, name, (err, begin?, end?) => {
         this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
           cb(err, end);
         });
@@ -455,8 +459,6 @@ export class MongooseStorage implements IStorage {
     var all = [];
     console.log('--a--l--l--');
     var traverse = (item)=>{
-      console.log('item');
-      console.log(item);
       this.next(keyPath, item, opts, (err, next?)=>{
         if(!next) return cb(null, all);
         all.push(next);
@@ -464,13 +466,14 @@ export class MongooseStorage implements IStorage {
       });
     };
       
-    this.first(keyPath, opts, (err, first?)=>{
-      console.log('first');
-      console.log(first);
-      if(!first) return cb(null, all);
-      all.push(first);
-      traverse(first.keyPath);
-    });
+    traverse(null);
+    // this.first(keyPath, opts, (err, first?)=>{
+    //   console.log('first');
+    //   console.log(first);
+    //   if(!first) return cb(null, all);
+    //   all.push(first);
+    //   traverse(first.keyPath);
+    // });
     // this.getSequence(keyPath, (err, seqDoc?, seq?) => {
     //   if(!err){
     //     cb(err, seq);
@@ -491,22 +494,38 @@ export class MongooseStorage implements IStorage {
   // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
   next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
+    var refItemKey = makeKey(refItemKeyPath || ['##', '_begin']);
+    console.log('next');
+    console.log(refItemKey);
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, container?)=>{
-        if(err) return cb(err);
+      this.findContainerOfModel(Model, id, seqName, refItemKey, (err, container?)=>{
+        console.log('refcont');
+        console.log(container);
+        if(err){
+          if(refItemKeyPath){
+            return cb(err);
+          }else{
+            //tried to get first item in empty sequence
+            return cb(null, null);
+          }
+        }
 
         this.findContainer(Model, id, seqName, container.next, (err, container?)=>{
+        console.log('cont');
+        console.log(container);
         //TODO:Err handling
           if(container.type === '_rip'){
             this.next(keyPath, parseKey(container.modelId), opts, cb);
           }else if(container.type === '_end'){
-            cb(Error('No next item found'));
+            cb(null); //no next item
           }else{
             var kp = parseKey(container.modelId);
             this.fetch(kp, (err, doc?)=>{
+              console.log('doc');
+        console.log(doc);
               if(err) return cb(err);
               cb(null, {
                 keyPath: kp,
@@ -582,6 +601,9 @@ export class MongooseStorage implements IStorage {
     if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
     if(_.isFunction(opts)) cb = opts;
 
+    console.log('insert before');
+    console.log(refItemKeyPath);
+    console.log(itemKeyPath);
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
@@ -594,6 +616,11 @@ export class MongooseStorage implements IStorage {
         });
       });
     }, cb);
+  }
+
+  set(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void)
+  {
+    cb(Error('operation not supported'));
   }
 
   // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
@@ -614,12 +641,14 @@ export class MongooseStorage implements IStorage {
 
   deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
   {
+    console.log('delitem');
+    console.log(itemKeyPath);
     this.getModel(keyPath, (Model) => {
       var id = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
       this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), (err, container?)=>{
-        if(err) return cb(err);
+        if(!container || container.type === '_rip') return cb(Error('Tried to delete a non-existent item'));
         this.removeFromSeq(container._id, cb);
       });
     }, cb);

@@ -17,13 +17,14 @@ module Gnd.Storage {
   
   interface Command {
     cmd: string;
-    keyPath: string[];
+    keyPath?: string[];
     refItemKeyPath?: string[];
     itemKeyPath?: string[];
     itemsKeyPath?: string[];
     args?: {};
     itemIds?: string[];
     oldItemIds?: string[];
+    fn?: (cb:()=>void)=>void; //for sync tasks
   }
   
   
@@ -51,6 +52,11 @@ export class Queue extends Base implements IStorage
     return keyPath.join(':');
   }
 
+  private static itemEquals(item1, item2){
+    return (!item1 && !item2) || 
+      (item1 && item2 && (item1.doc._id === item2.doc._id || item1.doc._cid === item2.doc._cid));
+  }
+
   constructor(local: IStorage, remote?: IStorage)
   {
     super();
@@ -58,6 +64,7 @@ export class Queue extends Base implements IStorage
     this.localStorage = local;
     this.remoteStorage = remote;
     this.queue = [];
+    this.q= [];
     
     this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
@@ -112,43 +119,45 @@ export class Queue extends Base implements IStorage
 
   private updateLocalSequence(keyPath: string[], 
                                 opts: {},
-                                newItems: any[], cb: (err?:Error) => void)
+                                remoteSeq: any[], cb: (err?:Error) => void)
   {
-    var 
-      storage = this.localStorage,
-      itemKeyPath = [_.last(keyPath)];
+    var storage = this.localStorage;
     
     opts = _.extend({snapshot: false}, opts);
     
-    storage.all(keyPath, {}, opts, (err?:Error, oldItems?: {}[]) => {
-      if(!err){
-        _.each(oldItems, (item)=>{
-          if(!item.__op || item.__op === 'insync'){
-            console.log('del');
-            console.log(item);
-            storage.deleteItem(keyPath, item, {insync:true}, (err?)=>{
-              console.log('deleted');
-            });
-          }
-        });
+    storage.all(keyPath, {}, opts, (err?:Error, localSeq?: {}[]) => {
+      console.log('update local sequence');
+      console.log(localSeq);
+      console.log(remoteSeq);
+      // var itemsToRemove = _.difference(_.pluck(localSeq, _
+      // if(localSeq){
+      //   _.each(oldItems, (item)=>{
+      //     if(!item.__op || item.__op === 'insync'){
+      //       console.log('del');
+      //       console.log(item);
+      //       storage.deleteItem(keyPath, item.keyPath, {insync:true}, (err?)=>{
+      //         console.log('deleted');
+      //       });
+      //     }
+      //   });
 
-        _.each(newItems, (item)=>{
-            console.log('push');
-            console.log(item);
-            storage.insertBefore(keyPath, null, item, {insync:true}, (err?)=>{
-              console.log('pushed');
-            });
-        });
+      //   _.each(newItems, (item)=>{
+      //       console.log('push');
+      //       console.log(item);
+      //       storage.insertBefore(keyPath, null, item.keyPath, {insync:true}, (err?)=>{
+      //         console.log('pushed');
+      //       });
+      //   });
 
-      }else{
-        _.each(newItems, (item)=>{
-            console.log('push');
-            console.log(item);
-            storage.insertBefore(keyPath, null, item, {insync:true}, (err?)=>{
-              console.log('pushed');
-            });
-        });
-      }
+      // }else{
+      //   _.each(newItems, (item)=>{
+      //       console.log('push');
+      //       console.log(item);
+      //       storage.insertBefore(keyPath, null, item.keyPath, {insync:true}, (err?)=>{
+      //         console.log('pushed');
+      //       });
+      //   });
+      // }
       cb();
     });
   }
@@ -255,10 +264,12 @@ export class Queue extends Base implements IStorage
     
   create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
   {
+    console.log('---create');
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
         args['_cid'] = args['_cid'] || cid;
         this.addCmd({cmd:'create', keyPath: keyPath, args: args}, (err?) => {
+          console.log('---added cmd');
           cb(err, cid);
         });
       }else{
@@ -356,17 +367,59 @@ export class Queue extends Base implements IStorage
     // TODO: Implement
   }
 
-  first(keyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
+  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    // TODO: Implement
+    //TODO: change to null
+    this.next(keyPath, ['##', '_begin'], opts, cb);
   }
   last(keyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
   {
     //TODO: implement
   }
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
+  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    //TODO: implement
+    this.localStorage.next(keyPath, refItemKeyPath, opts, (err, item?) => {
+      console.log('------1');
+      if(item){            
+        cb(err, item);
+      }else{
+      if(!this.useRemote){
+        cb(err);
+      }
+      // else{
+          this.remoteStorage.next(keyPath, refItemKeyPath, opts, (err, itemRemote?) => {
+      console.log('-----2');
+            // if(!err){
+            //   this.emit('resync:'+Queue.makeKey(keyPath), itemRemote);
+            // }
+            if(itemRemote){
+              this.localStorage.insertBefore(keyPath, null, itemRemote.keyPath, opts, (err?)=>{
+                cb(err, itemRemote);
+              });
+            }else{
+              cb(err, itemRemote);
+            }
+          });
+      //   this.fireOnEmptyQueue((done: ()=>void)=>{
+      //     console.log('---fireonempty');
+      //     this.remoteStorage.next(keyPath, refItemKeyPath, opts, (err, itemRemote?) => {
+      // console.log('-----2');
+      //       if(!err){
+      //         if(!Queue.itemEquals(item, itemRemote)) {
+      //         
+      //           throw Error('implement insertAfter');
+      //           //TODO: implement
+      //         }
+      //         this.emit('resync:'+Queue.makeKey(keyPath), itemRemote);
+      //       }
+      //       !item && cb(err, itemRemote);
+      //       console.log(done.toString());
+      //       done();
+      //     });
+      //   });
+      // }
+      }
+    });
   }
   prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
   {
@@ -382,6 +435,15 @@ export class Queue extends Base implements IStorage
   // }
   deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
   {
+    this.localStorage.deleteItem(keyPath, itemKeyPath, opts, (err?) => {
+      if(!err){
+        this.addCmd({
+          cmd:'deleteItem', keyPath: keyPath, itemKeyPath: itemKeyPath
+        }, cb);
+      }else{
+        cb(err);
+      }
+    });
     //TODO: implement
   }
   // push(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
@@ -423,6 +485,8 @@ export class Queue extends Base implements IStorage
     
     if (!this.currentTransfer){
       if (this.queue.length){
+        console.log('QQQQQQQ');
+        console.log(this.queue[0]);
         var 
           obj = this.currentTransfer = this.queue[0],
           localStorage = this.localStorage,
@@ -438,18 +502,26 @@ export class Queue extends Base implements IStorage
         
         switch (obj.cmd){
           case 'create':
+            console.log('---q at create');
             ((cid, args) => {
+        console.log(this.currentTransfer);
               remoteStorage.create(keyPath, args, (err?, sid?) => {
+
+        console.log(this.currentTransfer);
                 var localKeyPath = keyPath.concat(cid);
                 if(err){
+                      console.log('---err');
                   done(err);
                 }else{
                   localStorage.put(localKeyPath, {_persisted:true, _id: sid}, (err?: Error) => {
                     var newKeyPath = _.initial(localKeyPath);
                     newKeyPath.push(sid);
                     localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
+                      console.log('---created');
+        console.log(this.currentTransfer);
                       this.emit('created:'+cid, sid);
                       this.updateQueueIds(cid, sid);
+        console.log(this.currentTransfer);
                       done();
                     });
                   });
@@ -468,18 +540,26 @@ export class Queue extends Base implements IStorage
             remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
           case 'remove':
+    console.log('rm');
+    console.log(itemIds);
             remoteStorage.remove(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
-          // case 'push':
-          //   remoteStorage.push(keyPath, itemsKeyPath.concat(itemIds), {}, done);
-          //   break;
           case 'insertBefore':
             var refItemKeyPath = obj.refItemKeyPath;
             var itemKeyPath = obj.itemKeyPath;
             remoteStorage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, {}, done);
             break;
+          case 'deleteItem':
+            console.log('synd del');
+            var itemKeyPath = obj.itemKeyPath;
+            remoteStorage.deleteItem(keyPath, itemKeyPath, {}, done);
+            break;
+          case 'syncTask':
+            obj.fn(done);
+            break;
         }
       } else {        
+        console.log('synced');
         this.emit('synced:', this);
       }
     } else{
@@ -493,9 +573,17 @@ export class Queue extends Base implements IStorage
   
   public clear(cb?: (err?: Error) => void)
   {
-    this.queue = [];
+    // clearing the queue is a dangerous thing to do. Hence we wait until finished
+    console.log('---clear');
+    // this.queue = [];
     // this.localStorage.del(['meta', 'storageQueue'], cb || Util.noop);
-    this.clearCmdQueue(cb || Util.noop);
+    // this.clearCmdQueue(()=>{
+      if(this.currentTransfer){
+        this.once('synced:', cb || Util.noop);
+      }else{
+        cb && cb();
+      }
+    // });
   }
 
   private q: Command[];
@@ -521,6 +609,18 @@ export class Queue extends Base implements IStorage
   {
     //TODO: Implement
     this.q = [];
+    cb(null);
+  }
+  private fireOnEmptyQueue(fn: (cb)=>void)
+  {
+    if(this.q.length > 0){
+      this.addCmd({cmd:'syncTask', fn: fn}, (err?) => {
+        console.log(err);
+      });
+      this.once('synced:', fn);
+    }else{
+      fn(Util.noop);
+    }
   }
     
   private addCmd(cmd: Command, cb:(err?: Error)=>void)
@@ -542,14 +642,23 @@ export class Queue extends Base implements IStorage
 
   private success(err: Error)
   {
+    // var cmd = this.currentTransfer;
+    var cmd = this.queue[0];
     this.currentTransfer = null;
     var storage = this.localStorage;
     
     if(!err){ // || (err.status >= 400 && err.status < 500)){
       var 
-        cmd = this.queue.shift(),
+        // cmd = this.queue.shift(),
         syncFn = _.bind(this.synchronize, this);
       
+      // syncFn = ((syncFn)=>{
+      //   return ()=>{
+      //     this.currentTransfer = null;
+      //     syncFn();
+      //   }
+      // })(syncFn);
+      this.queue.shift();
       //
       // Note: since we cannot have an atomic operation for updating the server and the
       // execution queue, the same command could be executed 2 or more times in 
@@ -584,23 +693,34 @@ export class Queue extends Base implements IStorage
             });
             break;
           case 'insertBefore':
-            storage.deleteItem(cmd.keyPath, cmd.itemKeyPath, opts, (err?) =>{
-              storage.insertBefore(cmd.keyPath, cmd.refItemKeyPath, cmd.itemKeyPath, opts, (err?) => {
-                Util.nextTick(syncFn);
-              });
+            storage.set(cmd.keyPath, cmd.itemKeyPath, (err?) =>{
+              Util.nextTick(syncFn);
+            });
+            break;
+          case 'deleteItem':
+            console.log('succ del');
+            storage.set(cmd.keyPath, cmd.itemKeyPath, (err?) =>{
+              Util.nextTick(syncFn);
             });
             break;
           default:
             Util.nextTick(syncFn);
         }
       });
+    }else{
+      // throw err; //TODO: handle
     }
   }
 
   private updateQueueIds(oldId, newId)
   { 
+    console.log('uids');
+    console.log(oldId);
+    console.log(newId);
+    console.log(this.queue);
+
     _.each(this.queue, (cmd: Command) => {
-      updateIds(cmd.keyPath, oldId, newId);
+      cmd.keyPath && updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
       cmd.itemKeyPath && updateIds(cmd.itemKeyPath, oldId, newId);
       cmd.refItemKeyPath && updateIds(cmd.refItemKeyPath, oldId, newId);
