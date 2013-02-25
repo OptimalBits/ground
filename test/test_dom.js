@@ -74,6 +74,28 @@ describe('DOM', function(){
         expect($test[i].style.display).to.be('block');
       }
     });
+    
+    it('set / get html', function(){
+      Gnd.$('#dummy').html('<p></p>');
+      expect(Gnd.$('#dummy').html()).to.be('<p></p>');
+      
+      Gnd.$('#dummy').html('<p>');
+      expect(Gnd.$('#dummy').html()).to.be('<p></p>');
+    });
+    
+    it('set / get text', function(){
+      Gnd.$('#dummy').text('hello world');
+      expect(Gnd.$('#dummy').text()).to.be('hello world');
+      
+      Gnd.$('#dummy').text('<p>');
+      expect(Gnd.$('#dummy').text()).to.be('<p>');
+
+      Gnd.$('#dummy').text('');
+      expect(Gnd.$('#dummy').text()).to.be('');
+      
+    });
+    
+    
 });
 
     
