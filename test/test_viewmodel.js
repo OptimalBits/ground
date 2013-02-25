@@ -4,26 +4,27 @@ describe('ViewModel', function(){
   var Animal = Gnd.Model.extend('animals');
   var Zoo = Gnd.Model.extend('zoo');
   
+  
   describe('data-bind', function(){
     beforeEach(function() {
     });
     
     it('bind a property to text', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: feline.name');
       
       var feline = new Animal({name: 'tiger'});
       var vm = new Gnd.ViewModel(el, {feline: feline});
-      expect(el.innerText).to.be.eql('tiger');
+      expect(Gnd.$(el).text()).to.be.eql('tiger');
       
       for(var name in ['leopard', 'lion', 'panther']){
         feline.set('name', name);
-        expect(el.innerText).to.be.eql(name);
+        expect(Gnd.$(el).text()).to.be.eql(name);
       }
     });
 
     it('bind to several attributes', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.description ');
       
       var tiger = new Animal({
@@ -32,7 +33,7 @@ describe('ViewModel', function(){
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
       
-      expect(el.innerText).to.be.eql('tiger');
+      expect(Gnd.$(el).text()).to.be.eql('tiger');
       expect(el.title).to.be.eql('put description here...');
       
       tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
@@ -40,7 +41,7 @@ describe('ViewModel', function(){
     });
     
     it('bind to several attributes and use formatters', function(){
-      el = document.createElement('div');
+      var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.description | lowercase');
       
       var tiger = new Animal({
@@ -52,7 +53,7 @@ describe('ViewModel', function(){
         lowercase: function(str){ return str.toLowerCase()},
       });
       
-      expect(el.innerText).to.be.eql('TIGER');
+      expect(Gnd.$(el).text()).to.be.eql('TIGER');
       expect(el.title).to.be.eql('put description here...');
       
       tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
@@ -81,9 +82,9 @@ describe('ViewModel', function(){
       
       var vm = new Gnd.ViewModel(el0, {tiger: tiger, lion: lion, leopard: leopard});
       
-      expect(el20.innerText).to.be.eql('tiger');
-      expect(el21.innerText).to.be.eql('leopard');
-      expect(el22.innerText).to.be.eql('lion');
+      expect(Gnd.$(el20).text()).to.be.eql('tiger');
+      expect(Gnd.$(el21).text()).to.be.eql('leopard');
+      expect(Gnd.$(el22).text()).to.be.eql('lion');
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
@@ -143,7 +144,7 @@ describe('ViewModel', function(){
       expect(tiger.selected).to.be(false);
       
       // Text input
-      el = document.createElement('input');
+      var el = document.createElement('input');
       el.setAttribute('type', 'text');
       el.checked = false;
       el.setAttribute('data-bind', 'value: tiger.description');
@@ -182,9 +183,9 @@ describe('ViewModel', function(){
       
       var vm = new Gnd.ViewModel(el0, {tiger: tiger, lion: lion, leopard: leopard});
       
-      expect(el20.innerText).to.be.eql('tiger');
-      expect(el21.innerText).to.be.eql('leopard');
-      expect(el22.innerText).to.be.eql('lion');
+      expect(Gnd.$(el20).text()).to.be.eql('tiger');
+      expect(Gnd.$(el21).text()).to.be.eql('leopard');
+      expect(Gnd.$(el22).text()).to.be.eql('lion');
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
@@ -196,9 +197,9 @@ describe('ViewModel', function(){
       leopard.set('name', 'no listen');
       lion.set('name', 'no listen');
       
-      expect(el20.innerText).to.be.eql('tiger');
-      expect(el21.innerText).to.be.eql('leopard');
-      expect(el22.innerText).to.be.eql('lion');
+      expect(Gnd.$(el20).text()).to.be.eql('tiger');
+      expect(Gnd.$(el21).text()).to.be.eql('leopard');
+      expect(Gnd.$(el22).text()).to.be.eql('lion');
       
       expect(el20.title).to.be.eql('2');
       expect(el21.title).to.be.eql('1');
@@ -212,7 +213,7 @@ describe('ViewModel', function(){
     it('changes visibility style', function(){
       var feline = new Animal({name: 'tiger', visible:true});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-show', 'feline.visible');
       el.style.display = 'block';
       
@@ -229,7 +230,7 @@ describe('ViewModel', function(){
     it('changes visibility style using negation', function(){
       var feline = new Animal({name: 'tiger', notVisible:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-show', '!feline.notVisible');
       el.style.display = 'block';
       
@@ -248,7 +249,7 @@ describe('ViewModel', function(){
     it('adds classes to element', function(){
       var feline = new Animal({name: 'tiger', useClasses:true});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.useClasses');
       
       var vm = new Gnd.ViewModel(el, {feline: feline});
@@ -261,7 +262,7 @@ describe('ViewModel', function(){
     it('use negation for adding classes to element', function(){
       var feline = new Animal({name: 'tiger', notUseClasses:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: !feline.notUseClasses');
       
       var vm = new Gnd.ViewModel(el, {feline: feline});
@@ -274,7 +275,7 @@ describe('ViewModel', function(){
     it('several class sets bound to an element', function(){
       var feline = new Animal({name: 'tiger', a:true, b:false, c:false});
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.a; classU classV: feline.b; classY classB: feline.c');
       el.className = 'classU';
       
@@ -299,7 +300,7 @@ describe('ViewModel', function(){
     it('Bind document properties to events', function(done){
       var obj = new Gnd.Base();
       
-      el = document.createElement('div');
+      var el = document.createElement('div');
       el.setAttribute('data-event', 'click: obj.handleClick; change: obj.handleChange');
     
       obj.handleClick = function(node, evt){
@@ -342,14 +343,14 @@ describe('ViewModel', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
-      expect(list.children[0].innerText).to.be.eql('tiger');
-      expect(list.children[1].innerText).to.be.eql('lion');
-      expect(list.children[2].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[2]).text()).to.be.eql('leopard');
       
       var jaguar = new Animal({name: 'jaguar'});
       zoo.animals.add(jaguar);
       expect(list.children.length).to.be(4);
-      expect(list.children[3].innerText).to.be.eql('jaguar');
+      expect(Gnd.$(list.children[3]).text()).to.be.eql('jaguar');
       
       vm.unbind();
     });
@@ -358,13 +359,13 @@ describe('ViewModel', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
-      expect(list.children[0].innerText).to.be.eql('tiger');
-      expect(list.children[1].innerText).to.be.eql('lion');
-      expect(list.children[2].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[2]).text()).to.be.eql('leopard');
       
       zoo.animals.remove([lion.id(), tiger.id()])
       expect(list.children.length).to.be(1);
-      expect(list.children[0].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('leopard');
       
       vm.unbind();
     });
@@ -377,8 +378,8 @@ describe('ViewModel', function(){
         return (item.name === 'lion') || (item.name === 'leopard');
       })
       expect(list.children.length).to.be(2);
-      expect(list.children[0].innerText).to.be.eql('lion');
-      expect(list.children[1].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
       
       vm.unbind();
     });
@@ -391,9 +392,9 @@ describe('ViewModel', function(){
       })
       
       expect(list.children.length).to.be(3);
-      expect(list.children[2].innerText).to.be.eql('tiger');
-      expect(list.children[1].innerText).to.be.eql('lion');
-      expect(list.children[0].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[2]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('leopard');
       
       vm.unbind();
     });
@@ -405,16 +406,18 @@ describe('ViewModel', function(){
       })
       
       expect(list.children.length).to.be(3);
-      expect(list.children[2].innerText).to.be.eql('tiger');
-      expect(list.children[1].innerText).to.be.eql('lion');
-      expect(list.children[0].innerText).to.be.eql('leopard');
-      
+      expect(Gnd.$(list.children[2]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('leopard');
+   
       zoo.animals.set('sortByFn', function(item){
         return item.pos;
       })
-      expect(list.children[0].innerText).to.be.eql('tiger');
-      expect(list.children[1].innerText).to.be.eql('lion');
-      expect(list.children[2].innerText).to.be.eql('leopard');
+           
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[2]).text()).to.be.eql('leopard');
+      
       vm.unbind();
     });
     it('multiple filtering on a collection',function() {
@@ -424,13 +427,13 @@ describe('ViewModel', function(){
         return (item.name === 'lion') || (item.name === 'leopard');
       });
       expect(list.children.length).to.be(2);
-      expect(list.children[0].innerText).to.be.eql('lion');
-      expect(list.children[1].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
       zoo.animals.set('filterFn',function(item) {
         return (item.name === 'lion');
       });
       expect(list.children.length).to.be(1);
-      expect(list.children[0].innerText).to.be.eql('lion');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('lion');
       zoo.animals.set('filterFn',function(item) {
         return (item.name === '');
       });
@@ -445,8 +448,8 @@ describe('ViewModel', function(){
         return (item.name === 'lion') || (item.name === 'leopard');
       });
       expect(list.children.length).to.be(2);
-      expect(list.children[0].innerText).to.be.eql('lion');
-      expect(list.children[1].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
       zoo.animals.set('filterFn',null);
       vm.unbind();
     })
@@ -473,14 +476,14 @@ describe('ViewModel', function(){
       var vm = new Gnd.ViewModel(list, {zoo: zoo});
       
       expect(list.children.length).to.be(3);
-      expect(list.children[0].children[0].innerText).to.be.eql('tiger');
-      expect(list.children[1].children[0].innerText).to.be.eql('lion');
-      expect(list.children[2].children[0].innerText).to.be.eql('leopard');
+      expect(Gnd.$(list.children[0].children[0]).text()).to.be.eql('tiger');
+      expect(Gnd.$(list.children[1].children[0]).text()).to.be.eql('lion');
+      expect(Gnd.$(list.children[2].children[0]).text()).to.be.eql('leopard');
       
       var jaguar = new Animal({name: 'jaguar'});
       zoo.animals.add(jaguar);
       expect(list.children.length).to.be(4);
-      expect(list.children[3].children[0].innerText).to.be.eql('jaguar');
+      expect(Gnd.$(list.children[3].children[0]).text()).to.be.eql('jaguar');
       
       vm.unbind();
     })
