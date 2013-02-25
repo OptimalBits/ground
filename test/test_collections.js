@@ -25,14 +25,16 @@ describe('Collections', function(){
   });
   
   beforeEach(function(done){
-    storageQueue.clear();
+    storageQueue.clear(function(){
     
     zoo = new Zoo();
     zoo.keepSynced();
     zoo.save();
     
-    storageQueue.once('synced:', function(){
+    // storageQueue.once('synced:', function(){
+    storageQueue.once('created:'+zoo.id(), function(){
       done();
+    });
     });
   });
   
@@ -141,11 +143,11 @@ describe('Collections', function(){
             expect(leopard).to.be.an(Object);
             expect(leopard.name).to.be.eql('leopard');
         
-            leopard.on('changed:', function(args){
+            leopard.once('changed:', function(args){
               expect(args).to.be.an(Object);
               expect(args.legs).to.be(5);
-              animals.release();
-              zoo.release();
+              // animals.release();
+              // zoo.release();
               leopard.release();
               done();
             });
@@ -193,8 +195,8 @@ describe('Collections', function(){
                   animals.on('updated:', function(model, args){
                     expect(args).to.be.an(Object);
                     expect(args.legs).to.be(5);
-                    animals.release();
-                    zoo.release();
+                    // animals.release();
+                    // zoo.release();
                     done();
                   });
                 
