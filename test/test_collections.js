@@ -323,11 +323,9 @@ describe('Collections', function(){
       done();
     });
     
-    it('find items are cached', function(done){
+    it('find items are cached');
       // IMPLEMENT: Items that are "finded" from the server should be
       // cached for offline usage.
-      done();
-    });
   
     it('add item to collection being offline', function(done){
       zoo.all(Animal, function(err, animals){
