@@ -240,7 +240,7 @@ export function makeElement(html: string): DocumentFragment
 */
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
 export function setAttr(el: Element, attr: string, value: any){
-  if(Object.prototype.hasOwnProperty.call(el, attr)) {
+  if(el[attr]) {
     el[attr] = value;
   }
   if(value){
@@ -251,7 +251,7 @@ export function setAttr(el: Element, attr: string, value: any){
 }
 
 export function getAttr(el: Element, attr){
-  if(Object.prototype.hasOwnProperty.call(el, attr)) {
+  if(el[attr]) {
     return el[attr];
   }else{
     var val = el.getAttribute(attr);
