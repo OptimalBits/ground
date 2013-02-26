@@ -56,6 +56,7 @@ export interface ISetStorage {
 export interface IDoc {
   id: string;
   doc: any;
+  keyPath?: string[];
 }
 //
 //  Sequence Storage (ordered)
@@ -64,8 +65,8 @@ export interface ISeqStorage {
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void;
   next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void);
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void);
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
-  set?(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void);
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string) => void);
+  set?(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void);
 
   // first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
   // last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);

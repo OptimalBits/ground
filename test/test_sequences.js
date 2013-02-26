@@ -1,3 +1,4 @@
+/*global socket:true*/
 define(['gnd'],
   function(Gnd){
 
@@ -69,6 +70,7 @@ describe('Sequencess', function(){
 
         animals.push((new Animal({name:"tiger"})).autorelease(), function(err){
           expect(err).to.not.be.ok();
+          expect(animals.first()).to.have.property('name', 'tiger');
           storageQueue.once('synced:', function(){
 
             Parade.findById(parade.id(), function(err, sameParade){
@@ -78,8 +80,9 @@ describe('Sequencess', function(){
               sameParade.seq(Animal, function(err, sameAnimals){
                 expect(err).to.not.be.ok();
                 expect(sameAnimals).to.be.an(Object);
-              //expect(sameAnimals.count).to.be(1); // Outcommented until fix for Resync.
+                expect(sameAnimals.count).to.be(1);
                 expect(animals.count).to.be(1);
+                expect(sameAnimals.first()).to.have.property('name', 'tiger');
 
                 sameAnimals.on('resynced:', function(){
                   expect(sameAnimals.count).to.be(1);
@@ -106,6 +109,7 @@ describe('Sequencess', function(){
           animals.push((new Animal({name:"ant"})).autorelease(), function(err){
             animals.push((new Animal({name:"dog"})).autorelease(), function(err){
               expect(animals.count).to.be(3);
+              expect(animals.first()).to.have.property('name', 'tiger');
               expect(err).to.not.be.ok();
               storageQueue.once('synced:', function(){
 
@@ -116,7 +120,8 @@ describe('Sequencess', function(){
                   sameParade.seq(Animal, function(err, sameAnimals){
                     expect(err).to.not.be.ok();
                     expect(sameAnimals).to.be.an(Object);
-                  //expect(sameAnimals.count).to.be(1); // Outcommented until fix for Resync.
+                    expect(sameAnimals.count).to.be(3);
+                    expect(sameAnimals.first()).to.have.property('name', 'tiger');
                     expect(animals.count).to.be(3);
 
                     sameAnimals.on('resynced:', function(){
@@ -143,15 +148,9 @@ describe('Sequencess', function(){
         parade.seq(Animal, function(err, animals){
           expect(animals).to.be.an(Object);
           expect(animals.count).to.be(0);
-          // animals.on('resynced:', function(){
           animals.on('resynced:', function(){
             expect(animals.count).to.be(1);
-
-            var first = animals.first();
-            expect(first).to.have.property('name');
-            expect(first.name).to.be.eql('fox');
-            // expect(animals.find(function(item){ return item.name==='fox'; })).to.be.an(Object);
-
+            expect(animals.first()).to.have.property('name', 'fox');
             animals.release();
             mirrorParade.release();
             done();
@@ -163,7 +162,7 @@ describe('Sequencess', function(){
             var fox = new Animal({name:'fox'});
             animals.push(fox.autorelease(), function(err){
               expect(err).to.not.be.ok();
-              //animals.release();
+              expect(animals.first()).to.have.property('name', 'fox');
             });
           });
         });
@@ -172,16 +171,15 @@ describe('Sequencess', function(){
   });
 
   describe('Unshift', function(){
-    it.skip('one item', function(done){
-
+    it('one item', function(done){
       parade.seq(Animal, function(err, animals){
         expect(err).to.not.be.ok();
         expect(animals).to.be.an(Object);
         expect(animals.count).to.be(0);
 
-        console.log(parade);
         animals.unshift((new Animal({name:"tiger"})).autorelease(), function(err){
           expect(err).to.not.be.ok();
+          expect(animals.first()).to.have.property('name', 'tiger');
           storageQueue.once('synced:', function(){
 
             Parade.findById(parade.id(), function(err, sameParade){
@@ -191,8 +189,9 @@ describe('Sequencess', function(){
               sameParade.seq(Animal, function(err, sameAnimals){
                 expect(err).to.not.be.ok();
                 expect(sameAnimals).to.be.an(Object);
-              //expect(sameAnimals.count).to.be(1); // Outcommented until fix for Resync.
+                expect(sameAnimals.count).to.be(1);
                 expect(animals.count).to.be(1);
+                expect(sameAnimals.first()).to.have.property('name', 'tiger');
 
                 sameAnimals.on('resynced:', function(){
                   expect(sameAnimals.count).to.be(1);
@@ -216,9 +215,12 @@ describe('Sequencess', function(){
         expect(animals.count).to.be(0);
 
         animals.unshift((new Animal({name:"tiger"})).autorelease(), function(err){
+          expect(animals.first()).to.have.property('name', 'tiger');
           animals.unshift((new Animal({name:"ant"})).autorelease(), function(err){
+            expect(animals.first()).to.have.property('name', 'ant');
             animals.unshift((new Animal({name:"dog"})).autorelease(), function(err){
               expect(animals.count).to.be(3);
+              expect(animals.first()).to.have.property('name', 'dog');
               expect(err).to.not.be.ok();
               storageQueue.once('synced:', function(){
 
@@ -229,7 +231,8 @@ describe('Sequencess', function(){
                   sameParade.seq(Animal, function(err, sameAnimals){
                     expect(err).to.not.be.ok();
                     expect(sameAnimals).to.be.an(Object);
-                  //expect(sameAnimals.count).to.be(1); // Outcommented until fix for Resync.
+                    expect(sameAnimals.count).to.be(3);
+                    expect(sameAnimals.first()).to.have.property('name', 'dog');
                     expect(animals.count).to.be(3);
 
                     sameAnimals.on('resynced:', function(){
@@ -256,28 +259,95 @@ describe('Sequencess', function(){
         parade.seq(Animal, function(err, animals){
           expect(animals).to.be.an(Object);
           expect(animals.count).to.be(0);
-          animals.unshift((new Animal({name: 'fish'})).autorelease(), function(err){
-            expect(err).to.not.be.ok();
+          animals.on('resynced:', function(){
             expect(animals.count).to.be(1);
-            animals.once('resynced:', function(){
-              animals.once('resynced:', function(){
-                expect(animals.count).to.be(2);
+            expect(animals.first()).to.have.property('name', 'fox');
+            animals.release();
+            mirrorParade.release();
+            done();
+          });
 
-                var item = animals.first();
-                expect(item).to.have.property('name', 'fox');
+          mirrorParade.seq(Animal, function(err, animals){
+            expect(err).to.not.be.ok();
+            expect(animals).to.be.an(Object);
+            var fox = new Animal({name:'fox'});
+            animals.unshift(fox.autorelease(), function(err){
+              expect(err).to.not.be.ok();
+              expect(animals.first()).to.have.property('name', 'fox');
+            });
+          });
+        });
+      });
+    });
+  });
 
-                animals.release();
-                mirrorParade.release();
-                done();
-              });
+  describe('Insert', function(){
+    it('one item', function(done){
+      parade.seq(Animal, function(err, animals){
+        expect(err).to.not.be.ok();
+        expect(animals).to.be.an(Object);
+        expect(animals.count).to.be(0);
 
-              mirrorParade.seq(Animal, function(err, animals){
+        animals.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
+          expect(err).to.not.be.ok();
+          expect(animals.first()).to.have.property('name', 'tiger');
+          storageQueue.once('synced:', function(){
+
+            Parade.findById(parade.id(), function(err, sameParade){
+              expect(err).to.not.be.ok();
+              expect(sameParade).to.be.an(Object);
+
+              sameParade.seq(Animal, function(err, sameAnimals){
                 expect(err).to.not.be.ok();
-                expect(animals).to.be.an(Object);
-                var fox = new Animal({name:'fox'});
-                animals.unshift(fox.autorelease(), function(err){
+                expect(sameAnimals).to.be.an(Object);
+                expect(sameAnimals.count).to.be(1);
+                expect(animals.count).to.be(1);
+                expect(sameAnimals.first()).to.have.property('name', 'tiger');
+
+                sameAnimals.on('resynced:', function(){
+                  expect(sameAnimals.count).to.be(1);
+
+                  sameParade.release();
+                  sameAnimals.release();
+                  animals.release();
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('many items', function(done){
+      var a = ['ant', 'dog', 'tiger'];
+      parade.seq(Animal, function(err, animals){
+        expect(err).to.not.be.ok();
+        expect(animals).to.be.an(Object);
+        expect(animals.count).to.be(0);
+
+        animals.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
+          expect(animals.first()).to.have.property('name', 'tiger');
+          animals.insert(0, (new Animal({name:"ant"})).autorelease(), function(err){
+            expect(animals.first()).to.have.property('name', 'ant');
+            animals.insert(1, (new Animal({name:"dog"})).autorelease(), function(err){
+              expect(animals.count).to.be(3);
+              expect(err).to.not.be.ok();
+              storageQueue.once('synced:', function(){
+
+                Parade.findById(parade.id(), function(err, sameParade){
                   expect(err).to.not.be.ok();
-                  //animals.release();
+                  expect(sameParade).to.be.an(Object);
+
+                  sameParade.seq(Animal, function(err, sameAnimals){
+                    expect(err).to.not.be.ok();
+                    expect(sameAnimals).to.be.an(Object);
+                    expect(sameAnimals.count).to.be(3);
+                    sameAnimals.each(function(animal, i){
+                      expect(animal).to.have.property('name', a[i]);
+                    });
+                    done();
+                  });
                 });
               });
             });
@@ -375,46 +445,77 @@ describe('Sequencess', function(){
   });
 
   describe('Traversal', function(){
-    it('next', function(done){
+    it('each', function(done){
+      var a = ['tiger', 'ant', 'dog'];
       parade.seq(Animal, function(err, animals){
-        animals.push((new Animal({name:"tiger"})).autorelease(), function(err){
-          animals.push((new Animal({name:"ant"})).autorelease(), function(err){
-            animals.push((new Animal({name:"dog"})).autorelease(), function(err){
+        animals.push((new Animal({name:a[0]})).autorelease(), function(err){
+          animals.push((new Animal({name:a[1]})).autorelease(), function(err){
+            animals.push((new Animal({name:a[2]})).autorelease(), function(err){
               expect(animals.count).to.be(3);
               expect(err).to.not.be.ok();
-              storageQueue.once('synced:', function(){
-                var item = animals.first();
-                expect(item).to.have.property('name', 'tiger');
-                item = animals.next(item);
-                expect(item).to.have.property('name', 'ant');
-                item = animals.next(item);
-                expect(item).to.have.property('name', 'dog');
-                item = animals.next(item);
-                expect(item).to.not.be.ok();
-                done();
+              
+              animals.each(function(animal, i){
+                expect(animal).to.have.property('name', a[i]);
               });
+              done();
             });
           });
         });
       });
     });
-    it('prev', function(done){
+  });
+
+  describe('Updating', function(){
+    it('update item propagates to the same item in a sequence', function(done){
       parade.seq(Animal, function(err, animals){
-        animals.push((new Animal({name:"tiger"})).autorelease(), function(err){
-          animals.push((new Animal({name:"ant"})).autorelease(), function(err){
-            animals.push((new Animal({name:"dog"})).autorelease(), function(err){
-              expect(animals.count).to.be(3);
+        var tiger = new Animal({name: 'tiger'});
+        animals.push(tiger, function(err){
+          expect(err).to.be(null);
+          tiger.on('changed:', function(args){
+            expect(args).to.be.an(Object);
+            expect(args).to.have.property('legs', 5);
+            expect(animals.first()).to.have.property('legs', 5);
+            animals.release();
+            tiger.release();
+            done();
+          });
+
+          storageQueue.once('synced:', function(){
+            Animal.findById(tiger.id(), function(err, animal){
               expect(err).to.not.be.ok();
-              storageQueue.once('synced:', function(){
-                var item = animals.last();
-                expect(item).to.have.property('name', 'dog');
-                item = animals.prev(item);
-                expect(item).to.have.property('name', 'ant');
-                item = animals.prev(item);
-                expect(item).to.have.property('name', 'tiger');
-                item = animals.prev(item);
-                expect(item).to.not.be.ok();
-                done();
+              animal.keepSynced();
+              animal.set('legs', 5);
+              animal.release();
+            });
+          });
+        });
+      });
+    });
+  
+    it('sequence proxies add item event', function(done){
+      parade.seq(Animal, function(err, animals){
+        animals.push((new Animal({name:"panther"})).autorelease(), function(err){
+          var panther = animals.find(function(item){ return item.name==='panther'; });
+
+          expect(panther).to.be.an(Object);
+          expect(panther).to.have.property('name', 'panther');
+
+          storageQueue.once('synced:', function(){
+            Animal.findById(panther.id(), function(err, animal){
+              expect(err).to.not.be.ok();
+              animal.keepSynced();
+
+              animal.on('resynced:', function(){
+                animal.set('legs', 5);
+                animal.release();
+
+                animals.on('updated:', function(model, args){
+                  expect(args).to.be.an(Object);
+                  expect(args.legs).to.be(5);
+                  animals.release();
+                  done();
+                });
+
               });
             });
           });
@@ -422,176 +523,80 @@ describe('Sequencess', function(){
       });
     });
   });
-  // describe('Updating', function(){
-  //   it('update item propagates to the same item in a collection', function(done){
-  //     Zoo.findById(zoo.id(), function(err, zoo){
-  //       expect(err).to.eql(null);
-  //       expect(zoo).to.not.be(undefined);
-  //
-  //       zoo.keepSynced();
-  //
-  //       zoo.all(Animal, function(err, animals){
-  //
-  //         var leopard = new Animal({name:"leopard"});
-  //         animals.add(leopard, function(err){
-  //
-  //           expect(leopard).to.be.an(Object);
-  //           expect(leopard.name).to.be.eql('leopard');
-  //
-  //           leopard.on('changed:', function(args){
-  //             expect(args).to.be.an(Object);
-  //             expect(args.legs).to.be(5);
-  //             animals.release();
-  //             zoo.release();
-  //             leopard.release();
-  //             done();
-  //           });
-  //
-  //           storageQueue.once('synced:', function(){
-  //             Animal.findById(leopard.id(), function(err, animal){
-  //               expect(err).to.not.be.ok();
-  //               animal.keepSynced();
-  //               leopard.set('legs', 5);
-  //               animal.release();
-  //             });
-  //           });
-  //         });
-  //       });
-  //     });
-  //   });
-  //
-  //   it('collection proxies add item event', function(done){
-  //     Zoo.findById(zoo.id(), function(err, zoo){
-  //       var testAnimal;
+  describe('Remove', function(){
+    it('remove item from sequence', function(done){
+      parade.seq(Animal, function(err, animals){
+        expect(err).to.not.be.ok();
+        expect(animals).to.be.an(Object);
 
-  //       expect(err).to.not.be.ok();
-  //       expect(zoo).to.not.be(undefined);
-  //
-  //       zoo.keepSynced();
-  //
-  //       zoo.all(Animal, function(err, animals){
-  //
-  //         animals.add((new Animal({name:"panther"})).autorelease(), function(err){
+        animals.push(new Animal({name:"gorilla"}), function(err){
+          expect(err).to.not.be.ok();
 
-  //           var panther = animals.find(function(item){ return item.name==='panther'; });
+          var animal = animals.first();
+          expect(animal).to.be.an(Object);
+          animals.remove(0, function(err){
+            var found = animals.find(function(item){return item.id() === animal.id();});
+            expect(found).to.be(undefined);
+            parade.seq(Animal, function(err, otherAnimals){
+              expect(err).to.not.be.ok();
+              expect(otherAnimals).to.be.an(Object);
 
-  //           expect(panther).to.be.an(Object);
-  //           expect(panther.name).to.be.eql('panther');
-  //
-  //           storageQueue.once('synced:', function(){
-  //             Animal.findById(panther.id(), function(err, animal){
-  //               expect(err).to.not.be.ok();
-  //               animal.keepSynced();
-  //
-  //               animal.on('resynced:', function(){
-  //                 animal.set('legs', 5);
-  //                 animal.release();
-  //
-  //                 animals.on('updated:', function(model, args){
-  //                   expect(args).to.be.an(Object);
-  //                   expect(args.legs).to.be(5);
-  //                   animals.release();
-  //                   zoo.release();
-  //                   done();
-  //                 });
-  //
-  //               });
-  //             });
-  //           });
-  //         });
-  //       });
-  //     });
-  //   });
-  // });
-  // describe('Remove', function(){
-  //   it('remove item from collection', function(done){
-  //     Zoo.findById(zoo.id(), function(err, zoo){
-  //       zoo.keepSynced();
-  //
-  //       zoo.all(Animal, function(err, animals){
-  //         expect(err).to.not.be.ok();
-  //         expect(animals).to.be.an(Object);
-  //
-  //         animals.add(new Animal({name:"gorilla"}), function(err){
-  //           expect(err).to.not.be.ok();
-  //
-  //           var animal = animals.first();
-  //           expect(animal).to.be.an(Object);
-  //           animals.remove(animal.id());
-  //
-  //           var found = animals.find(function(item){return item.id() === animal.id();});
-  //           expect(found).to.be(undefined);
-  //
-  //           animals.save(function(err){
-  //             expect(err).to.not.be.ok();
-  //
-  //             zoo.all(Animal, function(err, otherAnimals){
-  //               expect(err).to.not.be.ok();
-  //               expect(otherAnimals).to.be.an(Object);
+              var found = otherAnimals.find(function(item){return item.id() === animal.id();});
+              expect(found).to.be(undefined);
+              otherAnimals.release();
+              animals.release();
+              expect(otherAnimals.isDestroyed()).to.be(true);
+              expect(animals.isDestroyed()).to.be(true);
+              done();
+            });
+          });
+        });
+      });
+    });
+  
+    it.skip('sequence proxies delete item event', function(done){
+      parade.seq(Animal, function(err, animals){
+        var otherAnimal;
 
-  //               var found = otherAnimals.find(function(item){return item.id() === animal.id();});
-  //               expect(found).to.be(undefined);
-  //               zoo.release();
-  //               otherAnimals.release();
-  //               animals.release();
-  //               expect(otherAnimals.isDestroyed()).to.be(true);
-  //               expect(animals.isDestroyed()).to.be(true);
-  //               done();
-  //             });
-  //           });
-  //         });
-  //       });
-  //     });
-  //   });
-  //
-  //   it('collection proxies delete item event', function(done){
-  //     Zoo.findById(zoo.id(), function(err, zoo){
-  //       zoo.keepSynced();
-  //
-  //       zoo.all(Animal, function(err, animals){
-  //         var otherAnimal;
-  //
-  //         animals.on('removed:', function(item){
-  //           expect(item).to.be.an(Object);
-  //           expect(item).to.have.property('_id');
-  //           expect(item.id()).to.be.eql(otherAnimal.id());
-  //           animals.release();
-  //           zoo.release();
-  //           done();
-  //         });
-  //
-  //         storageQueue.once('synced:', function(){
-  //           Zoo.findById(zoo.id(), function(err, anotherZoo){
-  //             expect(err).to.not.be.ok();
-  //             expect(anotherZoo).to.be.an(Object);
-  //
-  //             anotherZoo.keepSynced();
-  //             anotherZoo.all(Animal, function(err, otherAnimals){
-  //               expect(err).to.not.be.ok();
-  //               expect(otherAnimals).to.be.an(Object);
-  //
-  //               otherAnimal = otherAnimals.first();
-  //               otherAnimal.remove(function(err){
-  //                 expect(err).to.not.be.ok();
-  //                 otherAnimals.release();
-  //               });
-  //             });
-  //           });
-  //         });
-  //
-  //         animals.add(new Animal({name:"koala"}), function(err){
-  //           expect(err).to.not.be.ok();
-  //         });
-  //       });
-  //     });
-  //   });
-  //
-  //   it('remove item with collections', function(done){
-  //     done();
-  //   });
+        animals.on('removed:', function(item){
+          expect(item).to.be.an(Object);
+          expect(item).to.have.property('_id');
+          expect(item.id()).to.be.eql(otherAnimal.id());
+          animals.release();
+          done();
+        });
 
-  // });
-  //
+        storageQueue.once('synced:', function(){
+          Parade.findById(parade.id(), function(err, sameParade){
+            expect(err).to.not.be.ok();
+            expect(sameParade).to.be.an(Object);
+
+            sameParade.keepSynced();
+            sameParade.seq(Animal, function(err, otherAnimals){
+              expect(err).to.not.be.ok();
+              expect(otherAnimals).to.be.an(Object);
+
+              otherAnimal = otherAnimals.first();
+              otherAnimal.remove(function(err){
+                expect(err).to.not.be.ok();
+                otherAnimals.release();
+              });
+            });
+          });
+        });
+
+        animals.push(new Animal({name:"koala"}), function(err){
+          expect(err).to.not.be.ok();
+        });
+      });
+    });
+  
+    it.skip('remove item with collections', function(done){
+      done();
+    });
+
+  });
+  
   // describe('Delete', function(){
   //   it('delete item that is part of a collection', function(done){
   //     Zoo.findById(zoo.id(), function(err, zoo){

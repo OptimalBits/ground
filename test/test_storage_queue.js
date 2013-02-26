@@ -147,11 +147,11 @@ describe('Storage Queue', function(){
                       expect(err).to.not.be.ok();
                       expect(item).to.be.an(Object);
                       expect(item.doc).to.have.property('name', 'tiger');
-                      storage.next(keyPath, item.keyPath, {}, function(err, item2){
+                      storage.next(keyPath, item.id, {}, function(err, item2){
                         expect(err).to.not.be.ok();
                         expect(item2).to.be.an(Object);
                         expect(item2.doc).to.have.property('name', 'prawn');
-                        storage.next(keyPath, item2.keyPath, {}, function(err, item){
+                        storage.next(keyPath, item2.id, {}, function(err, item){
                           expect(err).to.not.be.ok();
                           expect(item).to.be.an(Object);
                           expect(item.doc).to.have.property('name', 'shark');
@@ -190,7 +190,7 @@ describe('Storage Queue', function(){
           expect(err).to.not.be.ok();
           expect(item).to.be.an(Object);
           expect(item.doc).to.have.property('name', 'tiger');
-          storage.deleteItem(keyPath, item.keyPath, {}, function(err){
+          storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
             done();
           });
@@ -201,7 +201,7 @@ describe('Storage Queue', function(){
           expect(err).to.not.be.ok();
           expect(item).to.be.an(Object);
           expect(item.doc).to.have.property('name', 'tiger');
-          storage.deleteItem(keyPath, item.keyPath, {}, function(err){
+          storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
             storage.once('synced:', function() {
               storage.all(keyPath, {}, {}, function(err, docs) {
@@ -260,7 +260,7 @@ describe('Storage Queue', function(){
         storage.next(keyPath, null, {}, function(err, item){
           expect(err).to.not.be.ok();
           expect(item).to.be.ok();
-          storage.deleteItem(keyPath, item.keyPath, {}, function(err){
+          storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
             storage.all(keyPath, {}, {}, function(err, docs){
               expect(err).to.not.be.ok();
@@ -425,7 +425,7 @@ describe('Storage Queue', function(){
         storage.next(keyPath, null, {}, function(err, item){
           expect(err).to.be(null);
           expect(item).to.be.an(Object);
-          storage.deleteItem(keyPath, item.keyPath, {}, function(err){
+          storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
 
             storage.once('synced:', function(){
@@ -461,7 +461,7 @@ describe('Storage Queue', function(){
           expect(err).to.be(null);
           expect(item).to.be.an(Object);
           socket.disconnect();
-          Gnd.Ajax.del('http://localhost:8080/parade/'+keyPath[1]+'/seq/animals/'+item.doc._id, null, function(err, res) {
+          Gnd.Ajax.del('http://localhost:8080/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
             socket.once('connect', function(){
               storage.all(keyPath, {}, {}, function(err, docs){
                 expect(err).to.not.be.ok();

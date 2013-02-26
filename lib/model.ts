@@ -31,7 +31,7 @@ export interface IModel
   create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
-  seq(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
+  seq(parent: Model, args: {}, bucket: string, cb:(err: Error, items: {model:Model; id:string;}[]) => void);
 }
 
 export class Model extends Base implements Sync.ISynchronizable
@@ -118,6 +118,7 @@ export class Model extends Base implements Sync.ISynchronizable
       seq: this.seq,
       allModels: this.allModels,
       createModels: this.createModels,
+      createSequenceModels: this.createSequenceModels,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
@@ -367,6 +368,21 @@ export class Model extends Base implements Sync.ISynchronizable
       done(err, models);
     });
   }
+
+  static createSequenceModels(items:IDoc[], done){
+    var models = [];
+    
+    Util.asyncForEach(items, (item, fn)=>{
+      this.create(item.doc, function(err, instance?: Model){
+        if(instance){
+          models.push({model: instance, id: item.id});
+        }
+        fn(err);
+      });
+    }, (err) => {
+      done(err, models);
+    });
+  }
   
   static allModels(cb:(err?: Error, models?: Model[]) => void) {
     Model.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
@@ -436,9 +452,9 @@ export class Model extends Base implements Sync.ISynchronizable
       //   }else{
       //     cb(err);
       //   }
-      Model.storageQueue.all(keyPath, {}, {}, (err, docs?) => {
-        if(docs){
-          Sequence.create(this, parent, _.pluck(docs, 'doc'), cb);
+      Model.storageQueue.all(keyPath, {}, {}, (err, items?) => {
+        if(items){
+          Sequence.create(this, parent, items, cb);
           // Util.asyncForEach(keyPaths, (keyPath, fn)=>{
           //   Model.storageQueue.fetch(keyPath, (err, doc)=>{
 

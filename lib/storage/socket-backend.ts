@@ -64,7 +64,7 @@ export class SocketBackend {
       socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: string) => void){
         server.storage.deleteItem(keyPath, id, opts, scb(cb));
       });
-      socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: string) => void){
+      socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: string, id?: string) => void){
         server.storage.insertBefore(keyPath, id, itemKeyPath, opts, scb(cb));
       });
     });

@@ -360,7 +360,7 @@ export class Local implements IStorage {
     cb();
   }
   
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
   {
     console.log('insert before');
     console.log(itemKeyPath);
@@ -391,24 +391,22 @@ export class Local implements IStorage {
     prevItem.next = refItem.prev = itemKeys.length-1;
 
     _put(key, itemKeys);
-    cb();
+    cb(null, newItem._cid);
   }
 
-  set(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void)
+  set(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void)
   {
     var key = makeKey(keyPath);
-    var itemKey = makeKey(itemKeyPath);
     var keyValue = traverseLinks(key);
-    var itemKeyValue = traverseLinks(itemKey);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
-    itemKey = itemKeyValue ? itemKeyValue.key : itemKey;
 
     var item = _.find(itemKeys, (item) => {
-      return item.key === itemKey;
+      return item._id === id || item._cid === id;
     });
     if(!item) return cb(Error('Tried to set a non-existent item'));
 
+    if(sid) item._id = sid;
     switch(item.sync) {
       case 'rm':
         itemKeys[itemKeys[item.prev].next] = 'deleted';

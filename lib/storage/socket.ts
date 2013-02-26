@@ -69,7 +69,7 @@ export class Socket implements IStorage {
     Gnd.Util.safeEmit(this.socket, 'deleteItem', keyPath, id, opts, cb);
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
   {
     Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts, cb);
   }

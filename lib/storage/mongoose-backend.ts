@@ -369,7 +369,7 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err?:Error)=>void)
+  private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err:Error, id?: string)=>void)
   {
     //TODO: Atomify
     console.log('icbf');
@@ -395,7 +395,9 @@ export class MongooseStorage implements IStorage {
                 {_id: modelId},
                 { $push: delta },
                 (err)=>{
-                  cb(err);
+                console.log('inserted');
+                console.log(newContainer._id);
+                  cb(err, newContainer._id);
                 }
               );
             });
@@ -427,17 +429,6 @@ export class MongooseStorage implements IStorage {
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      // this.findContainerOfModel(Model, id, seqName, refItemKey, (err, container?)=>{
-      //   console.log('refcont');
-      //   console.log(container);
-      //   if(err){
-      //     if(refItemKeyPath){
-      //       return cb(err);
-      //     }else{
-      //       //tried to get first item in empty sequence
-      //       return cb(null, null);
-      //     }
-      //   }
       this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
         if(!id && !container) return cb(null); //empty sequence
         this.findContainer(Model, modelId, seqName, container.next, (err, container?)=>{
@@ -445,7 +436,6 @@ export class MongooseStorage implements IStorage {
         console.log(container);
         //TODO:Err handling
           if(container.type === '_rip'){ //tombstone
-            // this.next(keyPath, parseKey(container.modelId), opts, cb);
             this.next(keyPath, container._id, opts, cb);
           }else if(container.type === '_end'){
             cb(null); //no next item
@@ -457,7 +447,7 @@ export class MongooseStorage implements IStorage {
               if(err) return cb(err);
               cb(null, {
                 id: container._id,
-                // keyPath: kp,
+                keyPath: kp,
                 doc: doc
               });
             });
@@ -468,7 +458,7 @@ export class MongooseStorage implements IStorage {
     }, cb);
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: Error) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
   {
     // if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
     if(_.isFunction(opts)) cb = opts;
@@ -494,22 +484,6 @@ export class MongooseStorage implements IStorage {
   {
     cb(Error('operation not supported'));
   }
-
-  // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   if(_.isFunction(opts)) cb = opts;
-
-  //   this.getModel(keyPath, (Model) => {
-  //     var id = keyPath[keyPath.length-2];
-  //     var seqName = _.last(keyPath);
-  //     this.initSequence(Model, id, seqName, (err, first, last) => {
-  //       var refContainer = this.findContainerOfModel(Model, id, seqName, _.last(refItemKeyPath), (err, refContainer)=>{
-  //         if(err) return cb(err);
-  //         this.insertContainerAfter(Model, id, seqName, refContainer._id, itemKeyPath, opts, cb);
-  //       });
-  //     });
-  //   }, cb);
-  // }
 
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {

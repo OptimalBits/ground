@@ -18,18 +18,22 @@
 
 module Gnd {
 
+export interface ISeqModel {
+  model: Model;
+  id: string;
+};
+
 export class Sequence extends Base implements Sync.ISynchronizable
 {
-  public items: Model[]; //TODO: Should be a linked list
+  private items: ISeqModel[];
   
   private _keepSynced: bool = false;
-  private _added: Model[] = [];
-  private _insertedBefore: Model[] = [];
-  private _removed: Model[] = [];
-  private _formatters: any[];
+  // private _added: Model[] = [];
+  private _insertedBefore: ISeqModel[] = [];
+  private _removed: ISeqModel[] = [];
   
   private updateFn: (model: Model, args) => void;
-  private deleteFn: (model: Model) => void;
+  private deleteFn: (id: string) => void;
   private resyncFn: (items: any[]) => void;
   
   public model: IModel;
@@ -48,18 +52,19 @@ export class Sequence extends Base implements Sync.ISynchronizable
     
     var self = this;
     this.updateFn = function(args){
-      // if(self.sortByFn){
-      //   var index = self['indexOf'](this);
-      //   self.items.splice(index, 1);
-      //   self.sortedAdd(this);
-      // }
       self.emit('updated:', this, args);
+      console.log('seq update');
+      console.log(args);
     };
   
-    this.deleteFn = (itemId) => {
-      //TODO: noremove
-      // this.remove(itemId, false, Util.noop);
-      throw Error('deleteFn not implemented');
+    this.deleteFn = (id) => {
+      console.log('seq delete');
+      console.log(id);
+      for(var i = this.items.length-1; i >= 0; i--){
+        if(this.items[i].model.id() === id){
+          this.remove(i, Util.noop);
+        }
+      }
     };
   
     this.items = items || [];
@@ -67,15 +72,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
 
     this.model = model;
     this.parent = parent;
-    
-    this.on('sortByFn sortOrder', (fn) => {
-      var oldItems = this.items;
-      if(this.sortByFn){
-        this.items = this['sortBy'](this.sortByFn)
-      }
-      (this.sortOrder == 'desc') && this.items.reverse();
-      this.emit('sorted:', this.items, oldItems);
-    });
     
     if(parent){
       if(parent.isPersisted()){
@@ -97,16 +93,16 @@ export class Sequence extends Base implements Sync.ISynchronizable
     super.destroy();
   }
   
-  static public create(model: IModel, parent: Model, items: Model[]): Sequence;
-  static public create(model: IModel, parent: Model, docs: {}[], cb: (err?: Error, sequence?: Sequence) => void);
-  static public create(model: IModel, docs: {}[], cb: (err?: Error, sequence?: Sequence) => void);
+  static public create(model: IModel, parent: Model, items: IDoc[]): Sequence;
+  static public create(model: IModel, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
+  static public create(model: IModel, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
 
-  static public create(model?: IModel, parent?: Model, docs?: {}[], cb?): any
+  static public create(model?: IModel, parent?: Model, docs?: IDoc[], cb?): any
   {
     return overload({
       'Function Model Array': function(model, parent, models){
         var sequence = new Sequence(model, parent, models);
-        Util.release(models);
+        Util.release(_.pluck(models, 'model'));
         if(parent && parent.isKeptSynced()){
           sequence.keepSynced()
         }
@@ -114,7 +110,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
         return sequence;
       },
       'Function Model Array Function': function(model, parent, items, cb){
-        model.createModels(items, (err?: Error, models?: Model[])=>{
+        model.createSequenceModels(items, (err?: Error, models?: IDoc[])=>{
           if(err){
             cb(err)
           }else{
@@ -136,97 +132,114 @@ export class Sequence extends Base implements Sync.ISynchronizable
     return _.map(items, function(item){return item.id()});
   }
   
-  private findById(id)
-  {
-    return this['find']((item) => {
-      return item.id() == id
-    });
-  }
   
   save(cb: (err?: Error) => void): void
   {
-    // var keyPath = this.getKeyPath();
-    // var itemsKeyPath = [];
-    // 
-    // if(this._removed.length){
-    //   itemsKeyPath = _.initial(this._removed[0].getKeyPath());
-    // }else if(this._added.length){
-    //   itemsKeyPath = _.initial(this._added[0].getKeyPath());
-    // }
-    // var itemIds = Collection.getItemIds(this._removed);
-    // Model.storageQueue.remove(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
-    //   if(!err){
-    //     this._removed = []
-    //     Util.asyncForEach(this.items, (item, cb) => {
-    //       item.save(cb);
-    //     }, (err) => {
-    //       if((!err)&&(this._added.length > 0)){
-    //         itemIds = Collection.getItemIds(this._added);
-    //         
-    //         Model.storageQueue.add(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
-    //           if(!err){
-    //             this._added = [];
-    //           }
-    //           cb(err);
-    //         });
-    //       }else{
-    //         cb(err);
-    //       }
-    //     });
-    //   }else{
-    //     cb(err);
-    //   }
-    // })
+    var keyPath = this.getKeyPath();
+    var itemsKeyPath = [];
+    
+    //TODO: keep track of insert- and remove operations an replay them on save
   }
 
-  first()
+  push(item: Model, opts?, cb?: (err)=>void): void
   {
-    return _.first(this.items);
+    this.insertBefore(null, item, opts, cb);
   }
 
-  next(item)
+  unshift(item: Model, opts?, cb?: (err)=>void): void
   {
-    var index = _.indexOf(this.items, item) + 1;
-    if(index >= this.count) return null;
-    return this.items[index]; //TODO: tombstones
+    var firstId = this.items.length>0 ? _.first(this.items).id : null;
+    this.insertBefore(firstId, item, opts, cb);
   }
 
-  prev(item)
+  insert(idx: number, item: Model, opts?, cb?: (err)=>void): void
   {
-    var index = _.indexOf(this.items, item) - 1;
-    if(index < 0) return null;
-    return this.items[index]; //TODO: tombstones
+    var seqItem = this.items[idx];
+    var id = seqItem ? seqItem.id : null;
+    this.insertBefore(id, item, opts, cb);
   }
 
-  last()
+  remove(idx: number, opts?, cb?: (err?)=>void): void
   {
-    return _.last(this.items);
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
+    var item = this.items[idx];
+
+    if(!item) return cb(Error('index out of bounds'));
+    this.items.splice(idx, 1);
+    
+    item.model.off('changed:', this.updateFn);
+    item.model.off('deleted:', this.deleteFn);
+    
+    this.set('count', this.items.length);
+    this.emit('removed:', item.model, idx);
+    item.model.release();
+    
+    if(this.isKeptSynced() && (!opts || !opts.nosync)){
+      Model.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, cb);
+    }else{
+      this._removed.push(item);
+      cb();
+    }
   }
 
-  // push(item: Model, opts?, cb?: (err)=>void): void
-  // {
-  //   this.insertBefore(null, item, opts, cb);
-  // }
+  private insertItemBefore(id: string, item: Model, opts, cb)
+  {
+    var seqItem = {
+      model: item,
+      id: 'pending'
+    };
+    function done(err, id?){
+      seqItem.id = id || seqItem.id;
+      console.log('done');
+      cb(err);
+    }
 
-  // unshift(item: Model, opts?, cb?: (err)=>void): void
-  // {
-  //   var first = this.first();
-  //   this.insertBefore(first, item, opts, cb);
-  // }
+    var index = this.items.length;
+    _.each(this.items, (item, i)=>{
+      if(item.id === id) index = i;
+    });
+    this.items.splice(index, 0, seqItem);
 
-  // insertBefore(refItem: Model, item: Model, opts?, cb?: (err)=>void): void
-  // {
-  //   if(_.isFunction(opts)){
-  //     cb = opts;
-  //     opts = {};
-  //   }
-  //   cb = cb || Util.noop;
+    this.initItems([seqItem]);
+    
+    this.set('count', this.items.length);
+    this.emit('insertedBefore:', item); //TODO: we probably need more args
+    
+    if(this.isKeptSynced()){
+      if(!opts || (opts.nosync !== true)){
+        if(item.isPersisted()){
+          this.insertPersistedItemBefore(id, item, done);
+        }else{
+          item.save((err) => {
+            if(err) return cb(err);
+            this.insertPersistedItemBefore(id, item, done);
+          });
+        }
+      }else{
+        cb();
+      }
+    }else{
+      this._insertedBefore.push(seqItem); //TODO: We probably need more items
+      cb();
+    }
+  }
 
-  //   this.insertItemBefore(refItem, item, opts, (err) => {
-  //     !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-  //     cb(null);
-  //   });
-  // }
+  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): void
+  {
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
+    cb = cb || Util.noop;
+
+    this.insertItemBefore(id, item, opts, (err) => {
+      !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
+      cb(null);
+    });
+  }
   
   getKeyPath(): string[]
   {
@@ -238,8 +251,8 @@ export class Sequence extends Base implements Sync.ISynchronizable
   {  
     this.startSync();
   
-    this['map']((item) => {
-      item.keepSynced()
+    _.map(this.items,(item) => {
+      item.model.keepSynced();
     });
   }
   
@@ -255,19 +268,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
   //   });
   // }
 
-  filtered(result: (err: Error, models?: Model[])=>void)
-  {
-    if(this.filterFn){
-      result(null, this.filter(this.filterFn));
-    }else{
-      result(null, this.items);
-    }
-  }
-  
-  isFiltered(item: Model): bool
-  {
-    return this.filterFn ? this.filterFn(item) : true;
-  } 
   
   // private pushPersistedItem(item: Model, cb:(err?: Error) => void): void
   // {
@@ -277,91 +277,24 @@ export class Sequence extends Base implements Sync.ISynchronizable
   //   Model.storageQueue.push(keyPath, itemKeyPath, {}, cb);
   // }
 
+  private getSeqIdOfModel(item: Model, cb:(err: Error, id?: string)=>void): void
+  {
+    var refItemKeyPath = item ? item.getKeyPath() : null;
+    Model.storageQueue.all(this.getKeyPath(), {}, {}, (err, items?)=>{
+      
+    });
+  }
   // private insertPersistedItemBefore(refItem: Model, item: Model, cb:(err?: Error) => void): void
-  // {
-  //   var keyPath = this.getKeyPath();
-  //   var refItemKeyPath = refItem ? refItem.getKeyPath() : null;
-  //   var itemKeyPath = item.getKeyPath();
-  //   
-  //   Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
-  // }
+  private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
+  {
+    var keyPath = this.getKeyPath();
+    var itemKeyPath = item.getKeyPath();
+    // this.getSeqIdOfModel(refItem, (err, id?)=>{
+    //   Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+    // });
+    Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+  }
 
-  // private insertItemBefore(refItem, item, opts, cb)
-  // {
-  //   if(refItem){
-  //     var index = _.indexOf(this.items, refItem);
-  //     this.items.splice(index, 0, item);
-  //   }else{
-  //     this.items.push(item);
-  //   }
-  //   this.initItems(item);
-  //   
-  //   this.set('count', this.items.length);
-  //   this.emit('insertedBefore:', item); //TODO: we probably need more args
-  //   
-  //   if(this.isKeptSynced()){
-  //     if(!opts || (opts.nosync !== true)){
-  //       if(item.isPersisted()){
-  //         this.insertPersistedItemBefore(refItem, item, cb);
-  //       }else{
-  //         item.save((err) => {
-  //           if(!err){
-  //             this.insertPersistedItemBefore(refItem, item, Util.noop);
-  //           }
-  //           cb(err);
-  //           //TODO: Why callback here?
-  //         });
-  //       }
-  //     }else{
-  //       cb();
-  //     }
-  //   }else{
-  //     this._insertedBefore.push(item); //TODO: We probably need more items
-  //     cb();
-  //   }
-  // }
-
-  // private pushItem(item, opts, cb)
-  // {
-  //   this.items.push(item); //TODO update next, prev...
-
-  //   this.initItems(item);
-  //   
-  //   this.set('count', this.items.length);
-  //   this.emit('pushed:', item);
-  //   
-  //   if(this.isKeptSynced()){
-  //     if(!opts || (opts.nosync !== true)){
-  //       if(item.isPersisted()){
-  //         this.pushPersistedItem(item, cb);
-  //       }else{
-  //         item.save((err) => {
-  //           if(!err){
-  //             this.pushPersistedItem(item, Util.noop);
-  //           }
-  //           cb(err);
-  //         });
-  //       }
-  //     }else{
-  //       cb();
-  //     }
-  //   }else{
-  //     this._added.push(item); //TODO: _pushed?
-  //     cb();
-  //   }
-  // }
-  
-  //TODO: noadd
-  // This function feel a bit hacky
-  // private sortedAdd(item: Model): number
-  // {    
-  //   (this.sortOrder == 'desc') && this.items.reverse();
-  //   var i = this['sortedIndex'](item, this.sortByFn);
-  //   this.items.splice(i, 0, item);
-  //   (this.sortOrder == 'desc') && this.items.reverse();
-  //   return i;
-  // }
-    
   private startSync()
   {
     this._keepSynced = true;
@@ -380,166 +313,81 @@ export class Sequence extends Base implements Sync.ISynchronizable
     //TODO: noadd
     this.on('remove:', (itemsKeyPath, itemId) => {
         //TODO: fix
-        throw Error('remove on seq not possible');
+        throw Error('no implementation yet');
       // this.remove(itemId, true, Util.noop);
     });
 
-  //   this.on('push:', (itemsKeyPath, itemId) => {
-  //     console.log('--push');
-  //     console.log(itemId);
-  //     if(!this.findById(itemId)){
-  //       this.model.findById(itemsKeyPath.concat(itemId), true, {}, (err: Error, item?: Model): void => {
-  //         if(item){
-  //           this.pushItem(item, {nosync: true}, Util.noop);
-  //         }
-  //       });
-  //     }
-  //   });
-
   }
-
-  private addPersistedItem(item: Model, cb:(err?: Error) => void): void
-  {
-    var keyPath = this.getKeyPath();
-    var itemKeyPath = _.initial(item.getKeyPath());
-    
-    Model.storageQueue.add(keyPath, itemKeyPath, [item.id()], cb);
-  }
-  private addItem(item, opts, cb)
-  {
-    if(this.findById(item.id())) return cb();
-    
-    if(this.sortByFn){
-      // this.sortedAdd(item);
-    }else {
-      this.items.push(item);
-    }
-
-    this.initItems(item);
-    
-    this.set('count', this.items.length);
-    this.emit('added:', item);
-    
-    if(this.isKeptSynced()){
-      if(!opts || (opts.nosync !== true)){
-        if(item.isPersisted()){
-          this.addPersistedItem(item, cb);
-        }else{
-          item.save((err) => {
-            if(!err){
-              this.addPersistedItem(item, Util.noop);
-            }
-            cb(err);
-          });
-        }
+  
+  private resync(newItems: any[]){
+    console.log('resync seq');
+    console.log(newItems);
+    console.log(this.items);
+    var oldItems = this.items;
+    var newIds = _.pluck(newItems, 'id').sort();
+    var remainingItems = [];
+    Util.asyncForEach(oldItems, function(item, done){
+      if(item.id !== 'pending' && -1 === _.indexOf(newIds, item.id, true)){
+      //TODO: delete
+          console.log('deleted');
+          done();
       }else{
-        cb();
+        remainingItems.push(item);
+        done();
       }
-    }else{
-      this._added.push(item);
-      cb();
-    }
-  }
-  private add(items: Model[], opts?, cb?: (err)=>void): void
-  {
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    Util.asyncForEach(items, (item, done) => {
-      this.addItem(item, opts, (err) => {
-        !err && this._keepSynced && !item._keepSynced && item.keepSynced();
-        done(err);
-      });
-    }, cb || Util.noop);
-  }
+    }, function(err){
+      // insert new items
+    console.log('remaining');
+    console.log(remainingItems);
 
-  private remove(itemIds, opts, cb){
-    var 
-      items = this.items,
-      keyPath = this.getKeyPath();
-    
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    
-    Util.asyncForEach(itemIds, (itemId, done) => {
-      var index, item, len = items.length;
-      for(index=0; index<len; index++){
-        if(items[index].id() == itemId){
-          item = items[index];
-          break;
-        }
-      }
-  
-      if(item){
-        items.splice(index, 1);
-        
-        item.off('changed:', this.updateFn);
-        item.off('deleted:', this.deleteFn);
-        
-        this.set('count', items.length);
-        this.emit('removed:', item, index);
-        item.release();
-        
-        if(this.isKeptSynced() && (!opts || !opts.nosync)){
-          var itemKeyPath = _.initial(item.getKeyPath());
-          Model.storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
-          return;
-        }else{
-          this._removed.push(itemId);
-        }
-      }
-      done();
-    }, cb);
-  }
-  
-  private resync(keyPaths: any[]){
-    
-    var items = [];
-    Util.asyncForEach(keyPaths, (keyPath, fn)=>{
-      Model.storageQueue.fetch(keyPath, (err, item)=>{
-
-        items.push(item);
-        fn(err);
-      });
-    }, (err) => {
-
-    // throw Error('fix me');
-    // this.items = items.slice(0);
-    // this.set('count', this.items.length);
-    // this.emit('resynced:');
-    var 
-      itemsToRemove = [],
-      itemsToAdd = items.slice(0);
-      
-    this['each'](function(item){
-      var id = item.id(), shouldRemove = true;
-      for(var i=0; i<items.length; i++){
-        if(id == items[i]._id){
-          item.set(items[i], {nosync: true});
-          shouldRemove = false;
-          break;
-        }
-      }
-      shouldRemove && itemsToRemove.push(id);
-    });
-    
-    // throw Error('this.remove not impl');
-    this.remove(itemsToRemove, {nosync: true}, (err) => {
-      if(!err){
-        //TODO: Is there a better way?
-        (<any>this.model).createModels(itemsToAdd, (err, models) => {
-          if(!err){
-            this.add(models, {nosync: true}, (err) => {
-              this.emit('resynced:');
+      var itemsToInsert = [];
+      var i=0;
+      var j=0;
+      var oldItem, newItem;
+      while(i<remainingItems.length){
+        oldItem = remainingItems[i];
+        if(oldItem.id !== 'pending'){
+          newItem = newItems[j];
+          if(newItem.id === oldItem.id){
+            i++;
+          }else{
+            itemsToInsert.push({
+              id: oldItem.id,
+              newItem: newItem.doc
             });
           }
-        });
+          j++;
+        }else{
+          i++;
+        }
       }
+      while(j<newItems.length){
+        newItem = newItems[j];
+        itemsToInsert.push({
+          id: null,
+          newItem: newItem.doc
+        });
+        j++;
+      }
+
+      Util.asyncForEach(itemsToInsert, (item, done)=>{
+        console.log('insertBefore');
+        (<any>this.model).create(item.newItem, (err, instance?: Model)=>{
+          if(instance){
+            console.log('created model');
+            this.insertBefore(item.id, instance, {nosync: true}, (err)=>{
+              done(err);
+            });
+          }else{
+            done(err);
+          }
+        });
+      }, (err)=>{
+        this.emit('resynced:');
+      });
     });
-    });
+  // });
+    
   }
   
   private listenToResync(){
@@ -562,10 +410,9 @@ export class Sequence extends Base implements Sync.ISynchronizable
     items = _.isArray(items)? items:[items];
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
-      item.retain();
-      item.on('changed:', this.updateFn);
-      //TODO: nodelete
-      item.on('deleted:', this.deleteFn);
+      item.model.retain();
+      item.model.on('changed:', this.updateFn);
+      item.model.on('deleted:', this.deleteFn);
     }
   }
   
@@ -576,10 +423,10 @@ export class Sequence extends Base implements Sync.ISynchronizable
     Model.storageQueue.off('resync:'+key, this.resyncFn);
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
-      item.off('changed:', this.updateFn);
+      item.model.off('changed:', this.updateFn);
       //TODO: nodelete
-      item.off('deleted:', this.deleteFn);
-      item.release();
+      item.model.off('deleted:', this.deleteFn);
+      item.model.release();
     }
   }
 }
@@ -590,13 +437,14 @@ export class Sequence extends Base implements Sync.ISynchronizable
 var methods = 
   ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
     'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
-    'contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex', 'toArray', 'size',
-    'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty', 'groupBy']
+    'contains', 'invoke', 'max', 'min', 'toArray', 'size',
+    'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty']
 
-// Mix in each Underscore method as a proxy to `Collection#items`.
+// Mix in each Underscore method as a proxy to `Sequence#items`.
+// The pluck is a candidate for optimization
 _.each(methods, function(method) {
   Sequence.prototype[method] = function() {
-    return _[method].apply(_, [this.items].concat(_.toArray(arguments)))
+    return _[method].apply(_, [_.pluck(this.items, 'model')].concat(_.toArray(arguments)))
   }
 });
 

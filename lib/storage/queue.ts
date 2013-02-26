@@ -20,6 +20,7 @@ module Gnd.Storage {
     keyPath?: string[];
     // refItemKeyPath?: string[];
     id?: string;
+    cid?: string;
     itemKeyPath?: string[];
     itemsKeyPath?: string[];
     args?: {};
@@ -135,8 +136,8 @@ export class Queue extends Base implements IStorage
       }).sort();
       var remainingItems = [];
       Util.asyncForEach(localSeq, function(item, done){
-        if(-1 === _.indexOf(remoteIds, item.doc._id, true)){
-          storage.deleteItem(keyPath, item.keyPath, {insync:true}, (err?)=>{
+        if(item.doc.__op === 'insync' && -1 === _.indexOf(remoteIds, item.doc._id, true)){
+          storage.deleteItem(keyPath, item.id, {insync:true}, (err?)=>{
             console.log('deleted');
             done(err);
           });
@@ -151,19 +152,16 @@ export class Queue extends Base implements IStorage
         var j=0;
         var localItem, remoteItem;
         while(i<remainingItems.length){
-          var localItem = remainingItems[i];
+          localItem = remainingItems[i];
           if(localItem.doc.__op === 'insync'){
             remoteItem = remoteSeq[j];
             if(localItem.doc._id === remoteItem.doc._id){
               i++;
             }else{
               newItems.push({
-                refKeyPath: localItem.keyPath,
+                id: localItem.id,
                 keyPath: remoteItem.keyPath
               });
-              // storage.insertBefore(keyPath, localItem.keyPath, remoteItem.keyPath, opts, (err?)=>{
-              //   console.log('insertBefore');
-              // });
             }
             j++;
           }else{
@@ -173,17 +171,14 @@ export class Queue extends Base implements IStorage
         while(j<remoteSeq.length){
           remoteItem = remoteSeq[j];
           newItems.push({
-            refKeyPath: null,
+            id: null,
             keyPath: remoteItem.keyPath
           });
-          // storage.insertBefore(keyPath, null, remoteItem.keyPath, opts, (err?)=>{
-          //   console.log('push');
-          // });
           j++;
         }
 
         Util.asyncForEach(newItems, function(item, done){
-          storage.insertBefore(keyPath, item.refKeyPath, item.keyPath, {insync:true}, (err?)=>{
+          storage.insertBefore(keyPath, item.id, item.keyPath, {insync:true}, (err?)=>{
             console.log('insertBefore');
             done(err);
           });
@@ -191,36 +186,6 @@ export class Queue extends Base implements IStorage
           cb(err);
         });
       });
-
-      // var itemsToRemove = _.difference(_.pluck(localSeq, _
-      // if(localSeq){
-      //   _.each(oldItems, (item)=>{
-      //     if(!item.__op || item.__op === 'insync'){
-      //       console.log('del');
-      //       console.log(item);
-      //       storage.deleteItem(keyPath, item.keyPath, {insync:true}, (err?)=>{
-      //         console.log('deleted');
-      //       });
-      //     }
-      //   });
-
-      //   _.each(newItems, (item)=>{
-      //       console.log('push');
-      //       console.log(item);
-      //       storage.insertBefore(keyPath, null, item.keyPath, {insync:true}, (err?)=>{
-      //         console.log('pushed');
-      //       });
-      //   });
-
-      // }else{
-      //   _.each(newItems, (item)=>{
-      //       console.log('push');
-      //       console.log(item);
-      //       storage.insertBefore(keyPath, null, item.keyPath, {insync:true}, (err?)=>{
-      //         console.log('pushed');
-      //       });
-      //   });
-      // }
     });
   }
   
@@ -496,13 +461,15 @@ export class Queue extends Base implements IStorage
   // {
   //   //TODO: implement
   // }
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string) => void)
   {
-    this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err?: Error) => {
+    this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, cid?: string) => {
       if(!err){
         this.addCmd({
-          cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath
-        }, cb);
+          cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, cid: cid
+        }, (err?)=>{
+          cb(err, cid);
+        });
       }else{
         cb(err);
       }
@@ -536,12 +503,9 @@ export class Queue extends Base implements IStorage
         
         switch (obj.cmd){
           case 'create':
-            console.log('---q at create');
             ((cid, args) => {
-        console.log(this.currentTransfer);
               remoteStorage.create(keyPath, args, (err?, sid?) => {
 
-        console.log(this.currentTransfer);
                 var localKeyPath = keyPath.concat(cid);
                 if(err){
                       console.log('---err');
@@ -552,10 +516,8 @@ export class Queue extends Base implements IStorage
                     newKeyPath.push(sid);
                     localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
                       console.log('---created');
-        console.log(this.currentTransfer);
                       this.emit('created:'+cid, sid);
                       this.updateQueueIds(cid, sid);
-        console.log(this.currentTransfer);
                       done();
                     });
                   });
@@ -581,7 +543,20 @@ export class Queue extends Base implements IStorage
           case 'insertBefore':
             var id = obj.id;
             var itemKeyPath = obj.itemKeyPath;
-            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}, done);
+            var cid = obj.cid;
+            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}, (err:Error, sid?: string)=>{
+              if(err){
+                console.log('---err');
+                done(err);
+              }else{
+                localStorage.set(keyPath, cid, sid, (err?: Error) => {
+                  console.log('inserted item. cid:'+cid+', sid:'+sid);
+                  this.emit('inserted:'+cid, sid);
+                  this.updateQueueIds(cid, sid);
+                  done(err, sid);
+                });
+              }
+            });
             break;
           case 'deleteItem':
             console.log('synd del');
@@ -727,13 +702,13 @@ export class Queue extends Base implements IStorage
             });
             break;
           case 'insertBefore':
-            storage.set(cmd.keyPath, cmd.itemKeyPath, (err?) =>{
+            storage.set(cmd.keyPath, cmd.id, null, (err?) =>{
               Util.nextTick(syncFn);
             });
             break;
           case 'deleteItem':
             console.log('succ del');
-            storage.set(cmd.keyPath, cmd.itemKeyPath, (err?) =>{
+            storage.set(cmd.keyPath, cmd.id, null, (err?) =>{
               Util.nextTick(syncFn);
             });
             break;

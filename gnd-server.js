@@ -1231,11 +1231,11 @@ var Gnd;
         };
         ProxyStorage.prototype.insertBefore = function (keyPath, id, itemKeyPath, opts, cb) {
             var _this = this;
-            this.storage.insertBefore(keyPath, id, itemKeyPath, opts, function (err) {
+            this.storage.insertBefore(keyPath, id, itemKeyPath, opts, function (err, id) {
                 if(!err) {
                     _this.syncHub && _this.syncHub.insertBefore(keyPath, id, itemKeyPath);
                 }
-                cb(err);
+                cb(err, id);
             });
         };
         return ProxyStorage;
@@ -1631,7 +1631,9 @@ var Gnd;
                             }, {
                                 $push: delta
                             }, function (err) {
-                                cb(err);
+                                console.log('inserted');
+                                console.log(newContainer._id);
+                                cb(err, newContainer._id);
                             });
                         });
                     });
@@ -1681,6 +1683,7 @@ var Gnd;
                                     }
                                     cb(null, {
                                         id: container._id,
+                                        keyPath: kp,
                                         doc: doc
                                     });
                                 });

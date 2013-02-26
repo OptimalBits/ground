@@ -105,14 +105,14 @@ export class Manager extends Base {
       notifyObservers(this.docs[key], 'remove:', itemsKeyPath, itemIds);
     });
 
-    socket.on('push:', (keyPath, itemKeyPath) => {
+    socket.on('insertBefore:', (keyPath, id, itemKeyPath) => {
       var key = keyPathToKey(keyPath);
-      notifyObservers(this.docs[key], 'push:', _.initial(itemKeyPath), _.last(itemKeyPath));
+      notifyObservers(this.docs[key], 'insertBefore:', id, itemKeyPath);
     });
 
-    socket.on('unshift:', (keyPath, itemKeyPath) => {
+    socket.on('deleteItem:', (keyPath, id) => {
       var key = keyPathToKey(keyPath);
-      notifyObservers(this.docs[key], 'unshift:', _.initial(itemKeyPath), _.last(itemKeyPath));
+      notifyObservers(this.docs[key], 'deleteItem:', id, null); //TODO: investigate this
     });
   }
   
