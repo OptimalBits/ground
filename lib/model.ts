@@ -290,9 +290,6 @@ export class Model extends Base implements Sync.ISynchronizable
     }
   }
 
-  //
-  // TODO: rename to remove
-  //
   remove(cb?: (err?: Error) => void)
   {
     cb = cb || (err?: Error)=>{};
