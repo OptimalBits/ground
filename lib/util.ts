@@ -20,7 +20,7 @@ export function noop(){};
 
 export function assert(cond, msg){
   if(!cond){
-    console.log('Assert failed:%s',msg);
+    console.log('Assert failed:%s', msg);
   }
 };
 
@@ -236,6 +236,7 @@ export function safeEmit(socket, ...args:any[]): void
   }
 }
 
+// TODO: Move to dom.ts and remove dom.ts as dependency for this module.
 export function waitForImages(el, cb)
 {
   var
