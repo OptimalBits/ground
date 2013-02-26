@@ -274,7 +274,7 @@ describe('Collections', function(){
                 expect(otherAnimals).to.be.an(Object);
                 
                 otherAnimal = otherAnimals.first();
-                otherAnimal.delete(function(err){
+                otherAnimal.remove(function(err){
                   expect(err).to.not.be.ok();
                   otherAnimals.release();
                 });
@@ -307,7 +307,7 @@ describe('Collections', function(){
           });
           
           animals.add(tiger, function(err){
-            tiger.delete();
+            tiger.remove();
           });
         });
       });
