@@ -203,30 +203,30 @@ export class Sequence extends Base implements Sync.ISynchronizable
     return _.last(this.items);
   }
 
-  push(item: Model, opts?, cb?: (err)=>void): void
-  {
-    this.insertBefore(null, item, opts, cb);
-  }
+  // push(item: Model, opts?, cb?: (err)=>void): void
+  // {
+  //   this.insertBefore(null, item, opts, cb);
+  // }
 
-  unshift(item: Model, opts?, cb?: (err)=>void): void
-  {
-    var first = this.first();
-    this.insertBefore(first, item, opts, cb);
-  }
+  // unshift(item: Model, opts?, cb?: (err)=>void): void
+  // {
+  //   var first = this.first();
+  //   this.insertBefore(first, item, opts, cb);
+  // }
 
-  insertBefore(refItem: Model, item: Model, opts?, cb?: (err)=>void): void
-  {
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    cb = cb || Util.noop;
+  // insertBefore(refItem: Model, item: Model, opts?, cb?: (err)=>void): void
+  // {
+  //   if(_.isFunction(opts)){
+  //     cb = opts;
+  //     opts = {};
+  //   }
+  //   cb = cb || Util.noop;
 
-    this.insertItemBefore(refItem, item, opts, (err) => {
-      !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-      cb(null);
-    });
-  }
+  //   this.insertItemBefore(refItem, item, opts, (err) => {
+  //     !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
+  //     cb(null);
+  //   });
+  // }
   
   getKeyPath(): string[]
   {
@@ -277,49 +277,49 @@ export class Sequence extends Base implements Sync.ISynchronizable
   //   Model.storageQueue.push(keyPath, itemKeyPath, {}, cb);
   // }
 
-  private insertPersistedItemBefore(refItem: Model, item: Model, cb:(err?: Error) => void): void
-  {
-    var keyPath = this.getKeyPath();
-    var refItemKeyPath = refItem ? refItem.getKeyPath() : null;
-    var itemKeyPath = item.getKeyPath();
-    
-    Model.storageQueue.insertBefore(keyPath, refItemKeyPath, itemKeyPath, {}, cb);
-  }
+  // private insertPersistedItemBefore(refItem: Model, item: Model, cb:(err?: Error) => void): void
+  // {
+  //   var keyPath = this.getKeyPath();
+  //   var refItemKeyPath = refItem ? refItem.getKeyPath() : null;
+  //   var itemKeyPath = item.getKeyPath();
+  //   
+  //   Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+  // }
 
-  private insertItemBefore(refItem, item, opts, cb)
-  {
-    if(refItem){
-      var index = _.indexOf(this.items, refItem);
-      this.items.splice(index, 0, item);
-    }else{
-      this.items.push(item);
-    }
-    this.initItems(item);
-    
-    this.set('count', this.items.length);
-    this.emit('insertedBefore:', item); //TODO: we probably need more args
-    
-    if(this.isKeptSynced()){
-      if(!opts || (opts.nosync !== true)){
-        if(item.isPersisted()){
-          this.insertPersistedItemBefore(refItem, item, cb);
-        }else{
-          item.save((err) => {
-            if(!err){
-              this.insertPersistedItemBefore(refItem, item, Util.noop);
-            }
-            cb(err);
-            //TODO: Why callback here?
-          });
-        }
-      }else{
-        cb();
-      }
-    }else{
-      this._insertedBefore.push(item); //TODO: We probably need more items
-      cb();
-    }
-  }
+  // private insertItemBefore(refItem, item, opts, cb)
+  // {
+  //   if(refItem){
+  //     var index = _.indexOf(this.items, refItem);
+  //     this.items.splice(index, 0, item);
+  //   }else{
+  //     this.items.push(item);
+  //   }
+  //   this.initItems(item);
+  //   
+  //   this.set('count', this.items.length);
+  //   this.emit('insertedBefore:', item); //TODO: we probably need more args
+  //   
+  //   if(this.isKeptSynced()){
+  //     if(!opts || (opts.nosync !== true)){
+  //       if(item.isPersisted()){
+  //         this.insertPersistedItemBefore(refItem, item, cb);
+  //       }else{
+  //         item.save((err) => {
+  //           if(!err){
+  //             this.insertPersistedItemBefore(refItem, item, Util.noop);
+  //           }
+  //           cb(err);
+  //           //TODO: Why callback here?
+  //         });
+  //       }
+  //     }else{
+  //       cb();
+  //     }
+  //   }else{
+  //     this._insertedBefore.push(item); //TODO: We probably need more items
+  //     cb();
+  //   }
+  // }
 
   // private pushItem(item, opts, cb)
   // {

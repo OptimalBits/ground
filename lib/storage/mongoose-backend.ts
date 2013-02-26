@@ -280,22 +280,32 @@ export class MongooseStorage implements IStorage {
     });
     }
   }
-  private findContainer(Model: IMongooseModel, id, name, containerId, cb:(err: Error, container?)=>void){
-        Model.findById(id).exec((err, doc) => {
-          this.listContainer.find()
-            .where('_id').equals(containerId)
-            .exec((err, docs)=>{
-              if(docs.length !== 1) return cb(Error('container '+containerId+' not found')); 
-              cb(err, docs[0]);
-            });
+  private findContainer(Model: IMongooseModel, modelId, name, id, cb:(err: Error, container?)=>void){
+    if(!id){
+      this.findEndPoints(Model, modelId, name, (err, begin?, end?)=>{
+        console.log('be');
+        console.log(begin);
+        // this.findContainer(Model, modelId, name, begin.next, cb);
+        cb(err, begin);
+      });
+    }else{
+      this.listContainer.find()
+        .where('_id').equals(id)
+        .exec((err, docs)=>{
+          if(err) return cb(err);
+          if(docs.length !== 1) return cb(Error('container '+id+' not found')); 
+          cb(null, docs[0]);
         });
+    }
   }
 
-  private findEndPoints(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
+  private findEndPoints(Model: IMongooseModel, modelId, name, cb:(err: Error, begin?, end?)=>void){
     console.log('ep');
-    console.log(id);
-    Model.findById(id).exec((err, doc) => {
+    console.log(modelId);
+    console.log(name);
+    Model.findById(modelId).exec((err, doc) => {
       if(err) return cb(err);
+      console.log(doc);
       this.listContainer.find()
         .where('_id').in(doc[name])
         .or([{type:'_begin'}, {type:'_end'}])
@@ -359,16 +369,18 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  // private insertContainerBefore(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
-  private insertContainerBefore(Model:IMongooseModel, id, name, refContainerId, itemKey, opts, cb: (err?:Error)=>void)
+  private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err?:Error)=>void)
   {
     //TODO: Atomify
-    this.listContainer.findById(refContainerId)
+    console.log('icbf');
+    this.listContainer.findById(id)
       .exec((err, doc)=>{
+        if(err) return cb(err);
+        console.log(doc);
         var prevId = doc.prev;
         var newContainer = new this.listContainer({
           prev: prevId,
-          next: refContainerId,
+          next: id,
           // keyPath: itemKeyPath,
           // modelId: _.last(itemKeyPath)
           modelId: itemKey
@@ -376,11 +388,11 @@ export class MongooseStorage implements IStorage {
         newContainer.save((err, newContainer)=>{
           //TODO: parallellize
           this.listContainer.update({_id: prevId}, {next: newContainer._id}, (err)=>{
-            this.listContainer.update({_id: refContainerId}, {prev: newContainer._id}, (err)=>{
+            this.listContainer.update({_id: id}, {prev: newContainer._id}, (err)=>{
               var delta = {};
               delta[name] = newContainer._id;
               Model.update(
-                {_id: id},
+                {_id: modelId},
                 { $push: delta },
                 (err)=>{
                   cb(err);
@@ -392,133 +404,49 @@ export class MongooseStorage implements IStorage {
       });
   }
 
-  // private insertContainerAfter(Model:IMongooseModel, id, name, refContainerId, itemKeyPath, opts, cb: (err?:Error)=>void)
-  // {
-  //   //TODO: Atomify
-  //   this.listContainer.findById(refContainerId)
-  //     .exec((err, doc)=>{
-  //       var nextId = doc.next;
-  //       var newContainer = new this.listContainer({
-  //         prev: refContainerId,
-  //         next: nextId,
-  //         keyPath: itemKeyPath,
-  //         modelId: _.last(itemKeyPath)
-  //       });
-  //       newContainer.save((err, newContainer)=>{
-  //         //TODO: parallellize
-  //         this.listContainer.update({_id: refContainerId}, {next: newContainer._id}, (err)=>{
-  //           this.listContainer.update({_id: nextId}, {prev: newContainer._id}, (err)=>{
-  //             var delta = {};
-  //             delta[name] = newContainer._id;
-  //             Model.update(
-  //               {_id: id},
-  //               { $push: delta },
-  //               (err)=>{
-  //                 cb(err);
-  //               }
-  //             );
-  //           });
-  //         });
-  //       });
-  //     });
-  // }
-
-  // insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
-  // {
-  //   this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-  //     if(!err){
-  //       if(index >= 0){
-  //         seq.splice(index, 0, doc);
-  //       }else{
-  //         seq.push(doc);
-  //       }
-  //       seqDoc.save(cb);
-  //     }else{
-  //       cb(err)
-  //     }
-  //   })
-  // }
-  // 
-  // extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
-  // {
-  //   this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-  //     if(!err){
-  //       var docs = seq.splice(index, 1);
-  //       console.log(docs)
-  //       seqDoc.save(function(err){
-  //         cb(err, docs[0]);
-  //       });
-  //     }else{
-  //       cb(err)
-  //     }
-  //   });
-  // }
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
   {
     //TODO: refactor (performance)
     var all = [];
     console.log('--a--l--l--');
-    var traverse = (item)=>{
-      this.next(keyPath, item, opts, (err, next?)=>{
+    var traverse = (id)=>{
+      this.next(keyPath, id, opts, (err, next?)=>{
         if(!next) return cb(null, all);
         all.push(next);
-        traverse(next.keyPath);
+        traverse(next.id);
       });
     };
       
     traverse(null);
-    // this.first(keyPath, opts, (err, first?)=>{
-    //   console.log('first');
-    //   console.log(first);
-    //   if(!first) return cb(null, all);
-    //   all.push(first);
-    //   traverse(first.keyPath);
-    // });
-    // this.getSequence(keyPath, (err, seqDoc?, seq?) => {
-    //   if(!err){
-    //     cb(err, seq);
-    //   }else{
-    //     cb(err);
-    //   }
-    // });
   }
 
-  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.next(keyPath, ['##', '_begin'], opts, cb);
-  }
-  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
-  {
-    this.prev(keyPath, ['##', '_end'], opts, cb);
-  }
-  // next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
-  {
-    var refItemKey = makeKey(refItemKeyPath || ['##', '_begin']);
     console.log('next');
-    console.log(refItemKey);
     this.getModel(keyPath, (Model) => {
-      var id = keyPath[keyPath.length-2];
+      var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, refItemKey, (err, container?)=>{
-        console.log('refcont');
-        console.log(container);
-        if(err){
-          if(refItemKeyPath){
-            return cb(err);
-          }else{
-            //tried to get first item in empty sequence
-            return cb(null, null);
-          }
-        }
-
-        this.findContainer(Model, id, seqName, container.next, (err, container?)=>{
+      // this.findContainerOfModel(Model, id, seqName, refItemKey, (err, container?)=>{
+      //   console.log('refcont');
+      //   console.log(container);
+      //   if(err){
+      //     if(refItemKeyPath){
+      //       return cb(err);
+      //     }else{
+      //       //tried to get first item in empty sequence
+      //       return cb(null, null);
+      //     }
+      //   }
+      this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
+        if(!id && !container) return cb(null); //empty sequence
+        this.findContainer(Model, modelId, seqName, container.next, (err, container?)=>{
         console.log('cont');
         console.log(container);
         //TODO:Err handling
-          if(container.type === '_rip'){
-            this.next(keyPath, parseKey(container.modelId), opts, cb);
+          if(container.type === '_rip'){ //tombstone
+            // this.next(keyPath, parseKey(container.modelId), opts, cb);
+            this.next(keyPath, container._id, opts, cb);
           }else if(container.type === '_end'){
             cb(null); //no next item
           }else{
@@ -528,92 +456,36 @@ export class MongooseStorage implements IStorage {
         console.log(doc);
               if(err) return cb(err);
               cb(null, {
-                keyPath: kp,
+                id: container._id,
+                // keyPath: kp,
                 doc: doc
               });
             });
           }
         });
       });
+      // });
     }, cb);
   }
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
+
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: Error) => void)
   {
-    this.getModel(keyPath, (Model) => {
-      var id = keyPath[keyPath.length-2];
-      var seqName = _.last(keyPath);
-
-      this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, container?)=>{
-        if(err) return cb(err);
-
-        this.findContainer(Model, id, seqName, container.prev, (err, container?)=>{
-        //TODO:Err handling
-          if(container.type === '_rip'){
-            this.prev(keyPath, parseKey(container.modelId), opts, cb);
-          }else if(container.type === '_begin'){
-            cb(Error('No previous item found'));
-          }else{
-            var kp = parseKey(container.modelId);
-            this.fetch(kp, (err, doc?)=>{
-              if(err) return cb(err);
-              cb(null, {
-                keyPath: kp,
-                doc: doc
-              });
-            });
-          }
-        });
-      });
-    }, cb);
-  }
-  // pop(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  // {
-  //   this.last(keyPath, opts, (err, doc?)=>{
-  //     if(err) return cb(err);
-  //     this.deleteItem(keyPath, [doc._id], opts, (err?)=>{
-  //       cb(err, doc);
-  //     });
-  //   });
-  // }
-
-  // shift(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  // {
-  //   this.first(keyPath, opts, (err, doc?)=>{
-  //     if(err) return cb(err);
-  //     this.deleteItem(keyPath, [doc._id], opts, (err?)=>{
-  //       cb(err, doc);
-  //     });
-  //   });
-  // }
-
-  // push(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   this.insertBefore(keyPath, ['##', '_end'], itemKeyPath, opts, cb);
-  // }
-
-  // unshift(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   this.insertAfter(keyPath, ['##', '_begin'], itemKeyPath, opts, cb);
-  // }
-
-  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  {
-    if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
+    // if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
     if(_.isFunction(opts)) cb = opts;
 
     console.log('insert before');
-    console.log(refItemKeyPath);
     console.log(itemKeyPath);
     this.getModel(keyPath, (Model) => {
-      var id = keyPath[keyPath.length-2];
+      var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
-      this.initSequence(Model, id, seqName, (err, first?, last?) => {
-        var refContainer = this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), (err, refContainer)=>{
-          console.log('---asd-f-asd-f');
-          console.log(refContainer);
-          if(err) return cb(err);
-          this.insertContainerBefore(Model, id, seqName, refContainer._id, makeKey(itemKeyPath), opts, cb);
-        });
+      this.initSequence(Model, modelId, seqName, (err, begin?, end?) => {
+        // var refContainer = this.findContainerOfModel(Model, modelId, seqName, makeKey(refItemKeyPath), (err, refContainer)=>{
+        //   console.log('---asd-f-asd-f');
+        //   console.log(refContainer);
+        //   if(err) return cb(err);
+        if(!id) id = end._id;
+          this.insertContainerBefore(Model, modelId, seqName, id, makeKey(itemKeyPath), opts, cb);
+        // });
       });
     }, cb);
   }
@@ -639,15 +511,16 @@ export class MongooseStorage implements IStorage {
   //   }, cb);
   // }
 
-  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
     console.log('delitem');
-    console.log(itemKeyPath);
+    console.log(id);
     this.getModel(keyPath, (Model) => {
-      var id = keyPath[keyPath.length-2];
+      var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), (err, container?)=>{
+      // this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), (err, container?)=>{
+      this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
         if(!container || container.type === '_rip') return cb(Error('Tried to delete a non-existent item'));
         this.removeFromSeq(container._id, cb);
       });

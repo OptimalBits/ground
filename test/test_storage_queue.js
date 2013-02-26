@@ -64,11 +64,11 @@ describe('Storage Queue', function(){
                       expect(err).to.not.be.ok();
                       expect(item).to.be.an(Object);
                       expect(item.doc).to.have.property('name', 'tiger');
-                      storage.next(keyPath, item.keyPath, {}, function(err, item){
+                      storage.next(keyPath, item.id, {}, function(err, item){
                         expect(err).to.not.be.ok();
                         expect(item).to.be.an(Object);
                         expect(item.doc).to.have.property('name', 'prawn');
-                        storage.next(keyPath, item.keyPath, {}, function(err, item){
+                        storage.next(keyPath, item.id, {}, function(err, item){
                           expect(err).to.not.be.ok();
                           expect(item).to.be.an(Object);
                           expect(item.doc).to.have.property('name', 'shark');
@@ -113,7 +113,7 @@ describe('Storage Queue', function(){
               storage.create(['animals'], {name:'dog'}, function(err, id){
                 expect(err).to.not.be.ok();
                 expect(id).to.be.ok();
-                storage.insertBefore(keyPath, item.keyPath, ['animals', id], {}, function(err){
+                storage.insertBefore(keyPath, item.id, ['animals', id], {}, function(err){
                   expect(err).to.not.be.ok();
                   storage.next(keyPath, null, {}, function(err, item){
                     expect(err).to.not.be.ok();

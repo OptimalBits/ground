@@ -54,22 +54,22 @@ export interface ISetStorage {
 }
 
 export interface IDoc {
-  keyPath: string[];
+  id: string;
   doc: any;
 }
 //
 //  Sequence Storage (ordered)
 //
 export interface ISeqStorage {
-  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void) : void;
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
-  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
-  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
+  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void;
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void);
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err?: Error) => void);
   set?(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void);
 
-  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
-  last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  // first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  // last(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  // prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void);
 }
 
 }

@@ -120,49 +120,19 @@ export class SyncHub {
     this.pubClient.publish('remove:', JSON.stringify(args));
   }
   
-  insert(keyPath, index, obj){
-    
-  }
-  
-  extract(keyPath, index){
-    
-  }
 
-  push(keyPath: string[], itemKeyPath: string[])
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[])
   {
-    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
-    console.log('push-synchub');
-    console.log(args);
-    this.pubClient.publish('push:', JSON.stringify(args));
-  }
-
-  unshift(keyPath: string[], itemKeyPath: string[])
-  {
-    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
-    console.log('unshift-synchub');
-    console.log(args);
-    this.pubClient.publish('unshift:', JSON.stringify(args));
-  }
-
-  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[])
-  {
-    var args = {keyPath: keyPath, refItemKeyPath: itemKeyPath, itemKeyPath: itemKeyPath};
+    var args = {keyPath: keyPath, id: id, itemKeyPath: itemKeyPath};
     console.log('insertBefore-synchub');
     console.log(args);
     this.pubClient.publish('insertBefore:', JSON.stringify(args));
   }
 
-  insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[])
-  {
-    var args = {keyPath: keyPath, refItemKeyPath: itemKeyPath, itemKeyPath: itemKeyPath};
-    console.log('insertAfter-synchub');
-    console.log(args);
-    this.pubClient.publish('insertAfter:', JSON.stringify(args));
-  }
 
-  deleteItem(keyPath: string[], itemKeyPath: string[])
+  deleteItem(keyPath: string[], id: string)
   {
-    var args = {keyPath: keyPath, itemKeyPath: itemKeyPath};
+    var args = {keyPath: keyPath, id: id};
     console.log('deleteItem-synchub');
     console.log(args);
     this.pubClient.publish('deleteItem:', JSON.stringify(args));

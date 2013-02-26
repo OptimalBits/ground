@@ -18,7 +18,8 @@ module Gnd.Storage {
   interface Command {
     cmd: string;
     keyPath?: string[];
-    refItemKeyPath?: string[];
+    // refItemKeyPath?: string[];
+    id?: string;
     itemKeyPath?: string[];
     itemsKeyPath?: string[];
     args?: {};
@@ -428,57 +429,29 @@ export class Queue extends Base implements IStorage
     // TODO: Implement
   }
 
-  first(keyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  //TODO: do we need next
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    //TODO: change to null
-    this.next(keyPath, ['##', '_begin'], opts, cb);
-  }
-  last(keyPath: string[], opts: {}, cb: (err: Error, keyPath: string[]) => void)
-  {
-    //TODO: implement
-  }
-  next(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, doc?:IDoc) => void)
-  {
-    this.localStorage.next(keyPath, refItemKeyPath, opts, (err, item?) => {
+    this.localStorage.next(keyPath, id, opts, (err, item?) => {
       console.log('------1');
       if(item){            
         cb(err, item);
       }else{
-      if(!this.useRemote){
-        cb(err);
-      }
-      // else{
-          this.remoteStorage.next(keyPath, refItemKeyPath, opts, (err, itemRemote?) => {
-      console.log('-----2');
-            // if(!err){
-            //   this.emit('resync:'+Queue.makeKey(keyPath), itemRemote);
-            // }
-            if(itemRemote){
-              this.localStorage.insertBefore(keyPath, null, itemRemote.keyPath, opts, (err?)=>{
-                cb(err, itemRemote);
-              });
-            }else{
-              cb(err, itemRemote);
-            }
-          });
-      //   this.fireOnEmptyQueue((done: ()=>void)=>{
-      //     console.log('---fireonempty');
-      //     this.remoteStorage.next(keyPath, refItemKeyPath, opts, (err, itemRemote?) => {
-      // console.log('-----2');
-      //       if(!err){
-      //         if(!Queue.itemEquals(item, itemRemote)) {
-      //         
-      //           throw Error('implement insertAfter');
-      //           //TODO: implement
-      //         }
-      //         this.emit('resync:'+Queue.makeKey(keyPath), itemRemote);
-      //       }
-      //       !item && cb(err, itemRemote);
-      //       console.log(done.toString());
-      //       done();
-      //     });
-      //   });
-      // }
+        if(!this.useRemote){
+          cb(err);
+        }
+          this.remoteStorage.next(keyPath, id, opts, (err, itemRemote?) => {
+        console.log('-----2');
+          if(itemRemote){
+          //TODO: on right pos
+          //TODO: do we need next
+            // this.localStorage.insertBefore(keyPath, null, itemRemote.keyPath, opts, (err?)=>{
+            //   cb(err, itemRemote);
+            // });
+          }else{
+            cb(err, itemRemote);
+          }
+        });
       }
     });
   }
@@ -494,12 +467,12 @@ export class Queue extends Base implements IStorage
   // {
   //   //TODO: implement
   // }
-  deleteItem(keyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
-    this.localStorage.deleteItem(keyPath, itemKeyPath, opts, (err?) => {
+    this.localStorage.deleteItem(keyPath, id, opts, (err?) => {
       if(!err){
         this.addCmd({
-          cmd:'deleteItem', keyPath: keyPath, itemKeyPath: itemKeyPath
+          cmd:'deleteItem', keyPath: keyPath, id: id
         }, cb);
       }else{
         cb(err);
@@ -523,12 +496,12 @@ export class Queue extends Base implements IStorage
   // {
   //   //TODO: implement
   // }
-  insertBefore(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err?: Error) => void)
   {
-    this.localStorage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, opts, (err?: Error) => {
+    this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err?: Error) => {
       if(!err){
         this.addCmd({
-          cmd:'insertBefore', keyPath: keyPath, refItemKeyPath: refItemKeyPath, itemKeyPath: itemKeyPath
+          cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath
         }, cb);
       }else{
         cb(err);
@@ -606,14 +579,14 @@ export class Queue extends Base implements IStorage
             remoteStorage.remove(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
           case 'insertBefore':
-            var refItemKeyPath = obj.refItemKeyPath;
+            var id = obj.id;
             var itemKeyPath = obj.itemKeyPath;
-            remoteStorage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, {}, done);
+            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}, done);
             break;
           case 'deleteItem':
             console.log('synd del');
-            var itemKeyPath = obj.itemKeyPath;
-            remoteStorage.deleteItem(keyPath, itemKeyPath, {}, done);
+            var id = obj.id;
+            remoteStorage.deleteItem(keyPath, id, {}, done);
             break;
           case 'syncTask':
             obj.fn(done);
@@ -784,7 +757,7 @@ export class Queue extends Base implements IStorage
       cmd.keyPath && updateIds(cmd.keyPath, oldId, newId);
       cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
       cmd.itemKeyPath && updateIds(cmd.itemKeyPath, oldId, newId);
-      cmd.refItemKeyPath && updateIds(cmd.refItemKeyPath, oldId, newId);
+      if(cmd.id && cmd.id === oldId) cmd.id = newId;
       if(cmd.itemIds){
         cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
       }

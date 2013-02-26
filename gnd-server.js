@@ -1130,52 +1130,20 @@ var Gnd;
                 };
                 this.pubClient.publish('remove:', JSON.stringify(args));
             };
-            SyncHub.prototype.insert = function (keyPath, index, obj) {
-            };
-            SyncHub.prototype.extract = function (keyPath, index) {
-            };
-            SyncHub.prototype.push = function (keyPath, itemKeyPath) {
+            SyncHub.prototype.insertBefore = function (keyPath, id, itemKeyPath) {
                 var args = {
                     keyPath: keyPath,
-                    itemKeyPath: itemKeyPath
-                };
-                console.log('push-synchub');
-                console.log(args);
-                this.pubClient.publish('push:', JSON.stringify(args));
-            };
-            SyncHub.prototype.unshift = function (keyPath, itemKeyPath) {
-                var args = {
-                    keyPath: keyPath,
-                    itemKeyPath: itemKeyPath
-                };
-                console.log('unshift-synchub');
-                console.log(args);
-                this.pubClient.publish('unshift:', JSON.stringify(args));
-            };
-            SyncHub.prototype.insertBefore = function (keyPath, refItemKeyPath, itemKeyPath) {
-                var args = {
-                    keyPath: keyPath,
-                    refItemKeyPath: itemKeyPath,
+                    id: id,
                     itemKeyPath: itemKeyPath
                 };
                 console.log('insertBefore-synchub');
                 console.log(args);
                 this.pubClient.publish('insertBefore:', JSON.stringify(args));
             };
-            SyncHub.prototype.insertAfter = function (keyPath, refItemKeyPath, itemKeyPath) {
+            SyncHub.prototype.deleteItem = function (keyPath, id) {
                 var args = {
                     keyPath: keyPath,
-                    refItemKeyPath: itemKeyPath,
-                    itemKeyPath: itemKeyPath
-                };
-                console.log('insertAfter-synchub');
-                console.log(args);
-                this.pubClient.publish('insertAfter:', JSON.stringify(args));
-            };
-            SyncHub.prototype.deleteItem = function (keyPath, itemKeyPath) {
-                var args = {
-                    keyPath: keyPath,
-                    itemKeyPath: itemKeyPath
+                    id: id
                 };
                 console.log('deleteItem-synchub');
                 console.log(args);
@@ -1249,32 +1217,23 @@ var Gnd;
         ProxyStorage.prototype.all = function (keyPath, query, opts, cb) {
             this.storage.all(keyPath, query, opts, cb);
         };
-        ProxyStorage.prototype.first = function (keyPath, opts, cb) {
-            this.storage.first(keyPath, opts, cb);
+        ProxyStorage.prototype.next = function (keyPath, id, opts, cb) {
+            this.storage.next(keyPath, id, opts, cb);
         };
-        ProxyStorage.prototype.last = function (keyPath, opts, cb) {
-            this.storage.last(keyPath, opts, cb);
-        };
-        ProxyStorage.prototype.next = function (keyPath, refItemKeyPath, opts, cb) {
-            this.storage.next(keyPath, refItemKeyPath, opts, cb);
-        };
-        ProxyStorage.prototype.prev = function (keyPath, refItemKeyPath, opts, cb) {
-            this.storage.prev(keyPath, refItemKeyPath, opts, cb);
-        };
-        ProxyStorage.prototype.deleteItem = function (keyPath, itemKeyPath, opts, cb) {
+        ProxyStorage.prototype.deleteItem = function (keyPath, id, opts, cb) {
             var _this = this;
-            this.storage.deleteItem(keyPath, itemKeyPath, opts, function (err) {
+            this.storage.deleteItem(keyPath, id, opts, function (err) {
                 if(!err) {
-                    _this.syncHub && _this.syncHub.deleteItem(keyPath, itemKeyPath);
+                    _this.syncHub && _this.syncHub.deleteItem(keyPath, id);
                 }
                 cb(err);
             });
         };
-        ProxyStorage.prototype.insertBefore = function (keyPath, refItemKeyPath, itemKeyPath, opts, cb) {
+        ProxyStorage.prototype.insertBefore = function (keyPath, id, itemKeyPath, opts, cb) {
             var _this = this;
-            this.storage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, opts, function (err) {
+            this.storage.insertBefore(keyPath, id, itemKeyPath, opts, function (err) {
                 if(!err) {
-                    _this.syncHub && _this.syncHub.insertBefore(keyPath, refItemKeyPath, itemKeyPath);
+                    _this.syncHub && _this.syncHub.insertBefore(keyPath, id, itemKeyPath);
                 }
                 cb(err);
             });
@@ -1322,23 +1281,14 @@ var Gnd;
                 socket.on('all', function (keyPath, query, opts, cb) {
                     server.storage.all(keyPath, query, opts, scb(cb));
                 });
-                socket.on('first', function (keyPath, opts, cb) {
-                    server.storage.first(keyPath, opts, scb(cb));
+                socket.on('next', function (keyPath, id, opts, cb) {
+                    server.storage.next(keyPath, id, opts, scb(cb));
                 });
-                socket.on('last', function (keyPath, opts, cb) {
-                    server.storage.last(keyPath, opts, scb(cb));
+                socket.on('deleteItem', function (keyPath, id, opts, cb) {
+                    server.storage.deleteItem(keyPath, id, opts, scb(cb));
                 });
-                socket.on('next', function (keyPath, refItemKeyPath, opts, cb) {
-                    server.storage.next(keyPath, refItemKeyPath, opts, scb(cb));
-                });
-                socket.on('prev', function (keyPath, refItemKeyPath, opts, cb) {
-                    server.storage.prev(keyPath, refItemKeyPath, opts, scb(cb));
-                });
-                socket.on('deleteItem', function (keyPath, itemKeyPath, opts, cb) {
-                    server.storage.deleteItem(keyPath, itemKeyPath, opts, scb(cb));
-                });
-                socket.on('insertBefore', function (keyPath, refItemKeyPath, itemKeyPath, opts, cb) {
-                    server.storage.insertBefore(keyPath, refItemKeyPath, itemKeyPath, opts, scb(cb));
+                socket.on('insertBefore', function (keyPath, id, itemKeyPath, opts, cb) {
+                    server.storage.insertBefore(keyPath, id, itemKeyPath, opts, scb(cb));
                 });
             });
         }
@@ -1553,25 +1503,35 @@ var Gnd;
                 }
             }
         };
-        MongooseStorage.prototype.findContainer = function (Model, id, name, containerId, cb) {
-            var _this = this;
-            Model.findById(id).exec(function (err, doc) {
-                _this.listContainer.find().where('_id').equals(containerId).exec(function (err, docs) {
-                    if(docs.length !== 1) {
-                        return cb(Error('container ' + containerId + ' not found'));
-                    }
-                    cb(err, docs[0]);
+        MongooseStorage.prototype.findContainer = function (Model, modelId, name, id, cb) {
+            if(!id) {
+                this.findEndPoints(Model, modelId, name, function (err, begin, end) {
+                    console.log('be');
+                    console.log(begin);
+                    cb(err, begin);
                 });
-            });
+            } else {
+                this.listContainer.find().where('_id').equals(id).exec(function (err, docs) {
+                    if(err) {
+                        return cb(err);
+                    }
+                    if(docs.length !== 1) {
+                        return cb(Error('container ' + id + ' not found'));
+                    }
+                    cb(null, docs[0]);
+                });
+            }
         };
-        MongooseStorage.prototype.findEndPoints = function (Model, id, name, cb) {
+        MongooseStorage.prototype.findEndPoints = function (Model, modelId, name, cb) {
             var _this = this;
             console.log('ep');
-            console.log(id);
-            Model.findById(id).exec(function (err, doc) {
+            console.log(modelId);
+            console.log(name);
+            Model.findById(modelId).exec(function (err, doc) {
                 if(err) {
                     return cb(err);
                 }
+                console.log(doc);
                 _this.listContainer.find().where('_id').in(doc[name]).or([
                     {
                         type: '_begin'
@@ -1638,13 +1598,18 @@ var Gnd;
                 }
             });
         };
-        MongooseStorage.prototype.insertContainerBefore = function (Model, id, name, refContainerId, itemKey, opts, cb) {
+        MongooseStorage.prototype.insertContainerBefore = function (Model, modelId, name, id, itemKey, opts, cb) {
             var _this = this;
-            this.listContainer.findById(refContainerId).exec(function (err, doc) {
+            console.log('icbf');
+            this.listContainer.findById(id).exec(function (err, doc) {
+                if(err) {
+                    return cb(err);
+                }
+                console.log(doc);
                 var prevId = doc.prev;
                 var newContainer = new _this.listContainer({
                     prev: prevId,
-                    next: refContainerId,
+                    next: id,
                     modelId: itemKey
                 });
                 newContainer.save(function (err, newContainer) {
@@ -1654,7 +1619,7 @@ var Gnd;
                         next: newContainer._id
                     }, function (err) {
                         _this.listContainer.update({
-                            _id: refContainerId
+                            _id: id
                         }, {
                             prev: newContainer._id
                         }, function (err) {
@@ -1662,7 +1627,7 @@ var Gnd;
                             };
                             delta[name] = newContainer._id;
                             Model.update({
-                                _id: id
+                                _id: modelId
                             }, {
                                 $push: delta
                             }, function (err) {
@@ -1677,55 +1642,32 @@ var Gnd;
             var _this = this;
             var all = [];
             console.log('--a--l--l--');
-            var traverse = function (item) {
-                _this.next(keyPath, item, opts, function (err, next) {
+            var traverse = function (id) {
+                _this.next(keyPath, id, opts, function (err, next) {
                     if(!next) {
                         return cb(null, all);
                     }
                     all.push(next);
-                    traverse(next.keyPath);
+                    traverse(next.id);
                 });
             };
             traverse(null);
         };
-        MongooseStorage.prototype.first = function (keyPath, opts, cb) {
-            this.next(keyPath, [
-                '##', 
-                '_begin'
-            ], opts, cb);
-        };
-        MongooseStorage.prototype.last = function (keyPath, opts, cb) {
-            this.prev(keyPath, [
-                '##', 
-                '_end'
-            ], opts, cb);
-        };
-        MongooseStorage.prototype.next = function (keyPath, refItemKeyPath, opts, cb) {
+        MongooseStorage.prototype.next = function (keyPath, id, opts, cb) {
             var _this = this;
-            var refItemKey = makeKey(refItemKeyPath || [
-                '##', 
-                '_begin'
-            ]);
             console.log('next');
-            console.log(refItemKey);
             this.getModel(keyPath, function (Model) {
-                var id = keyPath[keyPath.length - 2];
+                var modelId = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, refItemKey, function (err, container) {
-                    console.log('refcont');
-                    console.log(container);
-                    if(err) {
-                        if(refItemKeyPath) {
-                            return cb(err);
-                        } else {
-                            return cb(null, null);
-                        }
+                _this.findContainer(Model, modelId, seqName, id, function (err, container) {
+                    if(!id && !container) {
+                        return cb(null);
                     }
-                    _this.findContainer(Model, id, seqName, container.next, function (err, container) {
+                    _this.findContainer(Model, modelId, seqName, container.next, function (err, container) {
                         console.log('cont');
                         console.log(container);
                         if(container.type === '_rip') {
-                            _this.next(keyPath, parseKey(container.modelId), opts, cb);
+                            _this.next(keyPath, container._id, opts, cb);
                         } else {
                             if(container.type === '_end') {
                                 cb(null);
@@ -1738,7 +1680,7 @@ var Gnd;
                                         return cb(err);
                                     }
                                     cb(null, {
-                                        keyPath: kp,
+                                        id: container._id,
                                         doc: doc
                                     });
                                 });
@@ -1748,78 +1690,35 @@ var Gnd;
                 });
             }, cb);
         };
-        MongooseStorage.prototype.prev = function (keyPath, refItemKeyPath, opts, cb) {
+        MongooseStorage.prototype.insertBefore = function (keyPath, id, itemKeyPath, opts, cb) {
             var _this = this;
-            this.getModel(keyPath, function (Model) {
-                var id = keyPath[keyPath.length - 2];
-                var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, container) {
-                    if(err) {
-                        return cb(err);
-                    }
-                    _this.findContainer(Model, id, seqName, container.prev, function (err, container) {
-                        if(container.type === '_rip') {
-                            _this.prev(keyPath, parseKey(container.modelId), opts, cb);
-                        } else {
-                            if(container.type === '_begin') {
-                                cb(Error('No previous item found'));
-                            } else {
-                                var kp = parseKey(container.modelId);
-                                _this.fetch(kp, function (err, doc) {
-                                    if(err) {
-                                        return cb(err);
-                                    }
-                                    cb(null, {
-                                        keyPath: kp,
-                                        doc: doc
-                                    });
-                                });
-                            }
-                        }
-                    });
-                });
-            }, cb);
-        };
-        MongooseStorage.prototype.insertBefore = function (keyPath, refItemKeyPath, itemKeyPath, opts, cb) {
-            var _this = this;
-            if(!refItemKeyPath) {
-                refItemKeyPath = [
-                    '##', 
-                    '_end'
-                ];
-            }
             if(_.isFunction(opts)) {
                 cb = opts;
             }
             console.log('insert before');
-            console.log(refItemKeyPath);
             console.log(itemKeyPath);
             this.getModel(keyPath, function (Model) {
-                var id = keyPath[keyPath.length - 2];
+                var modelId = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.initSequence(Model, id, seqName, function (err, first, last) {
-                    var refContainer = _this.findContainerOfModel(Model, id, seqName, makeKey(refItemKeyPath), function (err, refContainer) {
-                        console.log('---asd-f-asd-f');
-                        console.log(refContainer);
-                        if(err) {
-                            return cb(err);
-                        }
-                        _this.insertContainerBefore(Model, id, seqName, refContainer._id, makeKey(itemKeyPath), opts, cb);
-                    });
+                _this.initSequence(Model, modelId, seqName, function (err, begin, end) {
+                    if(!id) {
+                        id = end._id;
+                    }
+                    _this.insertContainerBefore(Model, modelId, seqName, id, makeKey(itemKeyPath), opts, cb);
                 });
             }, cb);
         };
         MongooseStorage.prototype.set = function (keyPath, itemKeyPath, cb) {
             cb(Error('operation not supported'));
         };
-        MongooseStorage.prototype.deleteItem = function (keyPath, itemKeyPath, opts, cb) {
+        MongooseStorage.prototype.deleteItem = function (keyPath, id, opts, cb) {
             var _this = this;
             console.log('delitem');
-            console.log(itemKeyPath);
+            console.log(id);
             this.getModel(keyPath, function (Model) {
-                var id = keyPath[keyPath.length - 2];
+                var modelId = keyPath[keyPath.length - 2];
                 var seqName = _.last(keyPath);
-                _this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), function (err, container) {
+                _this.findContainer(Model, modelId, seqName, id, function (err, container) {
                     if(!container || container.type === '_rip') {
                         return cb(Error('Tried to delete a non-existent item'));
                     }
