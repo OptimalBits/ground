@@ -18,7 +18,7 @@
    - jQuery
    - Underscore / LoDash
 
-   (c) 2011-2012 OptimalBits - Licensed as MIT.
+   (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
 
 //import _ = module('underscore');
