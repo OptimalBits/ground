@@ -131,7 +131,7 @@ export class Query // implements QueryNodes
   
   attr(attr: string, value?: any)
   {
-    if(value){
+    if(!_.isUndefined(value)){
       _.each(this, (el) => {
         setAttr(el, attr, value);
       })
@@ -240,7 +240,7 @@ export function makeElement(html: string): DocumentFragment
 */
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
 export function setAttr(el: Element, attr: string, value: any){
-  if(el[attr]) {
+  if(!_.isUndefined(el[attr])) {
     el[attr] = value;
   }
   if(value){
@@ -251,7 +251,7 @@ export function setAttr(el: Element, attr: string, value: any){
 }
 
 export function getAttr(el: Element, attr){
-  if(el[attr]) {
+  if(!_.isUndefined(el[attr])) {
     return el[attr];
   }else{
     var val = el.getAttribute(attr);
