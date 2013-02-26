@@ -1,14 +1,14 @@
 #Introduction
 
-Ground is a compact, modern web development framework providing you with all the building blocks necessary to create modern, realtime interactive web applications that are required to work seamlessly both online and offline.
+Ground is a compact, modern web development framework providing you with all the building blocks necessary to create realtime interactive web applications that are required to work seamlessly both online and offline.
 
-Ground is light (15Kb + 5Kb of dependencies), and well suited both for desktop and mobile applications.
+Ground is light (15Kb + 5Kb of dependencies), and well suited for both desktop and mobile applications.
 
 In ground, most of the application logic is moved from the server to the client, whereas the server
-acts just as an scalable, efficient storage and synchronization controller.
+acts mostly as an scalable, efficient storage and synchronization controller.
 
 It includes also some rather useful features such as a hierarchical routing system, an undo/redo
-manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers while always maintaining high performance and low memory consumption.
+manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers. It is design to always maintaining a high performance and low memory consumption.
 
 Ground is written in [Typescript](http://www.typescriptlang.org/), for modularity and stability and is suitable for both javascript and typescript projects.
 
@@ -17,34 +17,31 @@ Ground is written in [Typescript](http://www.typescriptlang.org/), for modularit
 
 - Designed and optimized for Node.js servers.
 - Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
-- Models, Collections and Sequences with with property **bindings**, **persistence** and client-server **synchronization**.
-- Complete **offline** support.
+- Models, Collections with property **bindings**, **persistence** and client-server **synchronization**.
+- **offline** support.
 - *Declarative Bindings* for easily connecting views and models.
 
 
 ##Philosophy
 
 The philosophy of Ground is to focus on *performance* and *simplicity*. It should be a complete Web framework 
-that is fun to use and that uses efficiently the newest web browser technologies, and that relies on Node.js server technology to 
+that is fun to use, that uses efficiently the newest web browser technologies, and that relies on Node.js server technology to 
 provide scalability and synchronization. It tries to be un-orthodox in some areas, like providing a hierarchical 
 routing system or only relaying on socket.io for communication instead of AJAX.
 
 
 ##Dependencies
 
-Ground depends on the following external libraries: Curl, Socket.io and Underscore or LoDash. There are also
-provided some optional views that depend on jQuery UI.
+Ground depends on the following external libraries: Curl, Socket.io and Underscore or LoDash.
 
-Ground itself is provided as [AMD modules](https://github.com/amdjs/amdjs-api/wiki/AMD), and many of its core functions will 
-not work without a module loader. While it should work with any AMD compatible loader, although we recommend Curl since it
-is already a required dependency.
+Ground is provided both as a set of typescript classes, and as a javascript AMD module. It can be included using script tags or using an [AMD loader](https://github.com/amdjs/amdjs-api/wiki/AMD). While it should work with any AMD compatible loader, we recommend [Curl](https://github.com/cujojs/curl) since it is already a required dependency.
 
 
 ##Install
 
-Install Ground using npm:
+Install Ground by using npm:
 
-    npm install ground
+    npm install gnd
     
 
 #Demos
@@ -89,7 +86,7 @@ to [underscore](http://underscorejs.org/#template) microtemplates.
 
 The template engine to use is defined by the *use* method of Gnd global object, for example to use jade as template engine:
 
-    Gnd.use('template', function(templ: string){
+    Gnd.use.template(templ: string){
       return jade.compile(templ);
     });
 
