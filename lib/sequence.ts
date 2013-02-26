@@ -261,37 +261,10 @@ export class Sequence extends Base implements Sync.ISynchronizable
     return this._keepSynced;
   }
   
-  // setFormatters(formatters){
-  //   this._formatters = formatters;
-  //   this['each'](function(item){
-  //     item.format(formatters);
-  //   });
-  // }
-
-  
-  // private pushPersistedItem(item: Model, cb:(err?: Error) => void): void
-  // {
-  //   var keyPath = this.getKeyPath();
-  //   var itemKeyPath = item.getKeyPath();
-  //   
-  //   Model.storageQueue.push(keyPath, itemKeyPath, {}, cb);
-  // }
-
-  private getSeqIdOfModel(item: Model, cb:(err: Error, id?: string)=>void): void
-  {
-    var refItemKeyPath = item ? item.getKeyPath() : null;
-    Model.storageQueue.all(this.getKeyPath(), {}, {}, (err, items?)=>{
-      
-    });
-  }
-  // private insertPersistedItemBefore(refItem: Model, item: Model, cb:(err?: Error) => void): void
   private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
-    // this.getSeqIdOfModel(refItem, (err, id?)=>{
-    //   Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
-    // });
     Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
   }
 
@@ -310,7 +283,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     }
     
 
-    //TODO: noadd
     this.on('remove:', (itemsKeyPath, itemId) => {
         //TODO: fix
         throw Error('no implementation yet');
