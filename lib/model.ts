@@ -303,7 +303,7 @@ export class Model extends Base implements Sync.ISynchronizable
     
     Model.removeById(this.getKeyPath(), (err?)=> {
       Model.syncManager && Model.syncManager.endSync(this);
-      this.emit('deleted:', this.id());
+      this.emit('deleted:', this.getKeyPath());//this.id());
       cb(err);
     })    
   }
