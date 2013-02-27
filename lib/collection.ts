@@ -88,9 +88,12 @@ export class Collection extends Base implements Sync.ISynchronizable
   }
   
   destroy(){
+    Util.nextTick(()=>{
+      this.items = null;
+    });
+
     this._keepSynced && this.endSync();
     this.deinitItems(this.items);
-    this.items = null;
     super.destroy();
   }
   
