@@ -1,3 +1,4 @@
+/*global curl:true*/
 define(['gnd'], function(Gnd){
 
 describe('Local Storage', function(){
