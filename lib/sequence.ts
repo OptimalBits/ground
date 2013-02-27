@@ -33,7 +33,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
   private _removed: ISeqModel[] = [];
   
   private updateFn: (model: Model, args) => void;
-  private deleteFn: (id: string) => void;
+  private deleteFn: (kp: string[]) => void;
   private resyncFn: (items: any[]) => void;
   
   public model: IModel;
@@ -57,11 +57,11 @@ export class Sequence extends Base implements Sync.ISynchronizable
       console.log(args);
     };
   
-    this.deleteFn = (id) => {
+    this.deleteFn = (kp) => {
       console.log('seq delete');
-      console.log(id);
+      console.log(kp);
       for(var i = this.items.length-1; i >= 0; i--){
-        if(this.items[i].model.id() === id){
+        if(this.items[i].model.id() === _.last(kp)){
           this.remove(i, Util.noop);
         }
       }
@@ -87,9 +87,12 @@ export class Sequence extends Base implements Sync.ISynchronizable
   }
   
   destroy(){
-    this._keepSynced && this.endSync();
+    Util.nextTick(()=>{
+      this.items = null;
+    });
+
     this.deinitItems(this.items);
-    this.items = null;
+    this._keepSynced && this.endSync();
     super.destroy();
   }
   
@@ -193,7 +196,11 @@ export class Sequence extends Base implements Sync.ISynchronizable
     };
     function done(err, id?){
       seqItem.id = id || seqItem.id;
-      console.log('done');
+      console.log('inserted locally');
+      Model.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
+        console.log('inserted remotely');
+        seqItem.id = sid;
+      });
       cb(err);
     }
 
@@ -396,7 +403,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
       item.model.off('changed:', this.updateFn);
-      //TODO: nodelete
       item.model.off('deleted:', this.deleteFn);
       item.model.release();
     }

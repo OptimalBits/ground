@@ -471,7 +471,7 @@ describe('Sequencess', function(){
         var tiger = new Animal({name: 'tiger'});
         animals.push(tiger, function(err){
           expect(err).to.be(null);
-          tiger.on('changed:', function(args){
+          tiger.once('changed:', function(args){
             expect(args).to.be.an(Object);
             expect(args).to.have.property('legs', 5);
             expect(animals.first()).to.have.property('legs', 5);
@@ -554,7 +554,7 @@ describe('Sequencess', function(){
       });
     });
   
-    it.skip('sequence proxies delete item event', function(done){
+    it('sequence proxies delete item event', function(done){
       parade.seq(Animal, function(err, animals){
         var otherAnimal;
 
@@ -590,11 +590,50 @@ describe('Sequencess', function(){
         });
       });
     });
-  
-    it.skip('remove item with collections', function(done){
-      done();
-    });
 
+    it('sequence proxies delete item event for many items', function(done){
+      parade.seq(Animal, function(err, animals){
+        animals.push(new Animal({name:"tiger"}).autorelease(), function(err){
+          animals.push(new Animal({name:"panda"}).autorelease(), function(err){
+            storageQueue.once('synced:', function(){
+
+              var otherAnimal;
+
+              animals.on('removed:', function(item){
+                expect(item).to.be.an(Object);
+                expect(item).to.have.property('_id');
+                expect(item.id()).to.be.eql(otherAnimal.id());
+                animals.release();
+                done();
+              });
+
+              storageQueue.once('synced:', function(){
+                Parade.findById(parade.id(), function(err, sameParade){
+                  expect(err).to.not.be.ok();
+                  expect(sameParade).to.be.an(Object);
+
+                  sameParade.keepSynced();
+                  sameParade.seq(Animal, function(err, otherAnimals){
+                    expect(err).to.not.be.ok();
+                    expect(otherAnimals).to.be.an(Object);
+
+                    otherAnimal = otherAnimals.find(function(item){return item.name === 'koala';});
+                    otherAnimal.remove(function(err){
+                      expect(err).to.not.be.ok();
+                      otherAnimals.release();
+                    });
+                  });
+                });
+              });
+
+              animals.insert(1, new Animal({name:"koala"}).autorelease(), function(err){
+                expect(err).to.not.be.ok();
+              });
+            });
+          });
+        });
+      });
+    });
   });
   
   // describe('Delete', function(){
