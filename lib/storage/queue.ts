@@ -353,16 +353,6 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
-  {
-    // TODO: Implement
-  }
-  
-  extract(keyPath: string[], index:number, cb: (err: Error, doc?:{}) => void)
-  {
-    // TODO: Implement
-  }
-  
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
   {
     var localOpts = _.extend({snapshot:true}, {});
@@ -391,7 +381,6 @@ export class Queue extends Base implements IStorage
         });
       }
     });
-    // TODO: Implement
   }
 
   //TODO: do we need next
@@ -420,18 +409,6 @@ export class Queue extends Base implements IStorage
       }
     });
   }
-  prev(keyPath: string[], refItemKeyPath: string[], opts: {}, cb: (err: Error, keyPath?: string[]) => void)
-  {
-    //TODO: implement
-  }
-  // pop(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  // {
-  //   //TODO: implement
-  // }
-  // shift(keyPath: string[], opts: {}, cb: (err: Error, doc?:{}) => void)
-  // {
-  //   //TODO: implement
-  // }
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
     this.localStorage.deleteItem(keyPath, id, opts, (err?) => {
@@ -443,24 +420,7 @@ export class Queue extends Base implements IStorage
         cb(err);
       }
     });
-    //TODO: implement
   }
-  // push(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   this.localStorage.push(keyPath, itemKeyPath, opts, (err?: Error) => {
-  //     if(!err){
-  //       this.addCmd({
-  //         cmd:'push', keyPath: keyPath, itemsKeyPath: _.initial(itemKeyPath), itemIds:[_.last(itemKeyPath)]
-  //       }, cb);
-  //     }else{
-  //       cb(err);
-  //     }
-  //   });
-  // }
-  // unshift(keyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   //TODO: implement
-  // }
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string) => void)
   {
     this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, cid?: string) => {
@@ -475,10 +435,6 @@ export class Queue extends Base implements IStorage
       }
     });
   }
-  // insertAfter(keyPath: string[], refItemKeyPath: string[], itemKeyPath: string[], opts, cb: (err?: Error) => void)
-  // {
-  //   //TODO: implement
-  // }
   
   synchronize()
   {
@@ -651,7 +607,6 @@ export class Queue extends Base implements IStorage
 
   private success(err: Error)
   {
-    // var cmd = this.currentTransfer;
     var cmd = this.queue[0];
     this.currentTransfer = null;
     var storage = this.localStorage;
@@ -661,12 +616,6 @@ export class Queue extends Base implements IStorage
         // cmd = this.queue.shift(),
         syncFn = _.bind(this.synchronize, this);
       
-      // syncFn = ((syncFn)=>{
-      //   return ()=>{
-      //     this.currentTransfer = null;
-      //     syncFn();
-      //   }
-      // })(syncFn);
       this.queue.shift();
       //
       // Note: since we cannot have an atomic operation for updating the server and the
