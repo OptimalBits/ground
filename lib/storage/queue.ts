@@ -48,6 +48,7 @@ export class Queue extends Base implements IStorage
   private localStorage: IStorage;
   private remoteStorage: IStorage = null;
   private useRemote: bool;
+  private autosync: bool;
   
   public static makeKey(keyPath: string[])
   {
@@ -59,7 +60,7 @@ export class Queue extends Base implements IStorage
       (item1 && item2 && (item1.doc._id === item2.doc._id || item1.doc._cid === item2.doc._cid));
   }
 
-  constructor(local: IStorage, remote?: IStorage)
+  constructor(local: IStorage, remote?: IStorage, autosync?: bool)
   {
     super();
   
@@ -70,6 +71,7 @@ export class Queue extends Base implements IStorage
     
     this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
+    this.autosync = typeof autosync === 'undefined' ? true : autosync;
   }
   
   init(cb:(err?: Error) => void)
@@ -83,6 +85,10 @@ export class Queue extends Base implements IStorage
     });
   }
   
+  exec()
+  {
+    this.syncFn();
+  }
   /*
     We need to have this listener somewhere...
     init(socket){
@@ -96,10 +102,10 @@ export class Queue extends Base implements IStorage
     this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
-        cb(err, doc);
+        return cb(err, doc);
       }
       if(!this.useRemote){
-        cb(err);
+        return cb(err);
       }else{
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
           if(!err){
@@ -160,7 +166,8 @@ export class Queue extends Base implements IStorage
             }else{
               newItems.push({
                 id: localItem.id,
-                keyPath: remoteItem.keyPath
+                keyPath: remoteItem.keyPath,
+                doc: remoteItem.doc
               });
             }
             j++;
@@ -172,15 +179,32 @@ export class Queue extends Base implements IStorage
           remoteItem = remoteSeq[j];
           newItems.push({
             id: null,
-            keyPath: remoteItem.keyPath
+            keyPath: remoteItem.keyPath,
+            doc: remoteItem.doc
           });
           j++;
         }
 
         Util.asyncForEach(newItems, function(item, done){
-          storage.insertBefore(keyPath, item.id, item.keyPath, {insync:true}, (err?)=>{
-            console.log('insertBefore');
-            done(err);
+          //TODO: make put upsert
+          function upsert(item, cb){
+            storage.put(_.initial(item.keyPath), item.doc, (err?) => {
+              if(err) {
+                //not in local cache
+                item.doc._cid = item.doc._id;
+                storage.create(_.initial(item.keyPath), item.doc, (err?)=>{
+                  cb(err);
+                });
+              }else{
+                cb();
+              }
+            });
+          }
+          upsert(item, (err)=>{
+            storage.insertBefore(keyPath, item.id, item.keyPath, {insync:true}, (err?)=>{
+              console.log('insertBefore');
+              done(err);
+            });
           });
         }, function(err){
           cb(err);
@@ -596,7 +620,7 @@ export class Queue extends Base implements IStorage
       this.enqueueCmd(cmd, (err?)=>{
         if(!err){
           this.queue.push(cmd);
-          this.synchronize();
+          this.autosync && this.synchronize();
         }
         cb(err);
       });
