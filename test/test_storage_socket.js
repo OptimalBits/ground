@@ -1,3 +1,4 @@
+/*global curl:true, socket:true*/
 define(['gnd'], function(Gnd){
 
 describe('Socket.io Storage', function(){

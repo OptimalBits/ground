@@ -79,6 +79,11 @@
                main: 'local.ts?',
                lib: ''
              },
+             'memory': {
+               path: 'lib/storage',
+               main: 'memory.ts?',
+               lib: ''
+             },
              'socket': {
                path: 'lib/storage',
                main: 'socket.ts?',
@@ -122,6 +127,7 @@
         curl(['test/test_cache'], function(){
           curl(['test/test_dom',
                 'test/test_util',
+                'test/test_storage_memory',
                 'test/test_storage_local',
                 'test/test_storage_socket',
                 'test/test_storage_queue',

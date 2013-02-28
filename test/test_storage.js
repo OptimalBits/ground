@@ -1,5 +1,4 @@
 define(function(){
-
 return function(storage, storageType){
   describe(storageType, function(){
     var zooId;
@@ -549,9 +548,9 @@ return function(storage, storageType){
           storage.next(['parade', paradeId, 'animals'], null, {}, function(err, item){
             expect(err).to.not.be.ok();
             expect(item.doc).to.have.property('name', 'tiger');
-            storage.deleteItem(['parade', paradeId, 'animals'], item.keyPath, {}, function(err){
+            storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}, function(err){
               expect(err).to.not.be.ok();
-              storage.deleteItem(['parade', paradeId, 'animals'], item.keyPath, {}, function(err){
+              storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}, function(err){
                 expect(err).to.be.ok();
                 done();
               });

@@ -8,103 +8,96 @@
 
 /// <reference path="../storage.ts" />
 /// <reference path="../cache.ts" />
-
-module Gnd.Storage {
-
-var localCache = new Cache(1024*1024); // 1Mb
-
-function _get(key: string): any {
-  var doc = localCache.getItem(key);
-  if(doc){
-    return JSON.parse(doc);
-  }
-  return null;
-}
-
-function contextualizeIds(keyPath: string[], itemIds:string[]): string[] {
-  var baseItemPath = makeKey(keyPath);
-  return _.map(itemIds, function(id){
-    return makeKey([baseItemPath, id]);
-  })
-}
-
-function _put(key: string, doc: any): void {
-  localCache.setItem(key, JSON.stringify(doc));
-}
-
-function makeKey(keyPath: string[]): string {
-  return keyPath.join('@');
-}
-
-function parseKey(key: string): string[] {
-  return key.split('@');
-}
-
-function isLink(doc): bool {
-  return _.isString(doc);
-}
-
-function isCollectionLink(doc): bool {
-  return doc[0] === '/' && doc[doc.length-1] === '/';
-
-}
-function createCollectionLink(collection): void {
-  var link = '/^' + collection + '@[^@]+$/';
-  _put(collection, link);
-}
+/// <reference path="store/store.ts" />
+/// <reference path="store/local-storage.ts" />
 
 interface KeyValue {
   key: string;
   value: any;
 }
 
+module Gnd.Storage {
+
 var InvalidKeyError = new Error('Invalid Key');
 
-function traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
-{
-  var value = _get(key);
-  if (value){
-    fn && fn(key);
-    if (isLink(value)){
-      if (isCollectionLink(value)){
-        var regex = new RegExp(value.slice(1, value.length-1));
-        var allKeys = localCache.getKeys();
-        // get the keys matching our regex but only those that aren't links
-        var keys = _.filter(allKeys, (key)=>{
-          if(key.match(regex)){
-            var value = _get(key);
-            return !isLink(value);
+export class Local implements IStorage {
+  private store: Store.IStore;
+
+  private contextualizeIds(keyPath: string[], itemIds:string[]): string[] {
+    var baseItemPath = this.makeKey(keyPath);
+    return _.map(itemIds, (id)=>{
+      return this.makeKey([baseItemPath, id]);
+    })
+  }
+
+  private makeKey(keyPath: string[]): string {
+    return keyPath.join('@');
+  }
+
+  private parseKey(key: string): string[] {
+    return key.split('@');
+  }
+
+  private isLink(doc): bool {
+    return _.isString(doc);
+  }
+
+  private isCollectionLink(doc): bool {
+    return doc[0] === '/' && doc[doc.length-1] === '/';
+
+  }
+  private createCollectionLink(collection): void {
+    var link = '/^' + collection + '@[^@]+$/';
+    this.store.put(collection, link);
+  }
+
+  private traverseLinks(key: string, fn?: (key:string)=>void): KeyValue
+  {
+    var value = this.store.get(key);
+    if (value){
+      fn && fn(key);
+      if (this.isLink(value)){
+        if (this.isCollectionLink(value)){
+          var regex = new RegExp(value.slice(1, value.length-1));
+          var allKeys = this.store.allKeys(); //localCache.getKeys();
+          // get the keys matching our regex but only those that aren't links
+          var keys = _.filter(allKeys, (key)=>{
+            if(key.match(regex)){
+              var value = _get(key);
+              return !this.isLink(value);
+            }
+            return false;
+          });
+          return {
+            key: key,
+            value: _.reduce(keys, function(memo, key){
+                memo[key] = 'insync';
+                return memo;
+            }, {})
           }
-          return false;
-        });
-        return {
-          key: key,
-          value: _.reduce(keys, function(memo, key){
-              memo[key] = 'insync';
-              return memo;
-          }, {})
+        } else {
+          return this.traverseLinks(value);
         }
       } else {
-        return traverseLinks(value);
+        return {key: key, value: value};
       }
-    } else {
-      return {key: key, value: value};
     }
   }
-}
 
-export class Local implements IStorage {
-  
+  constructor(store: Storage.Store.IStore) {
+    this.store = store || new Storage.Store.LocalStore();
+  }
+
   create(keyPath: string[], doc: any, cb: (err?: Error, id?: string) => void) {
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
-    _put(makeKey(keyPath.concat(doc._cid)), doc);
+    this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
     cb(null, doc._cid);
   }
   
   fetch(keyPath: string[], cb: (err: Error, doc?: any) => void) {
-    var keyValue = traverseLinks(makeKey(keyPath));
+    var keyValue = this.traverseLinks(this.makeKey(keyPath));
     if(keyValue){
       cb(null, keyValue.value);
     }else {
@@ -114,12 +107,12 @@ export class Local implements IStorage {
   
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
     var 
-      key = makeKey(keyPath),
-      keyValue = traverseLinks(makeKey(keyPath));
+      key = this.makeKey(keyPath),
+      keyValue = this.traverseLinks(this.makeKey(keyPath));
       
     if(keyValue){
       _.extend(keyValue.value, doc);
-      _put(keyValue.key, keyValue.value);
+      this.store.put(keyValue.key, keyValue.value);
       cb();
     }else{
       cb(InvalidKeyError);  
@@ -127,8 +120,8 @@ export class Local implements IStorage {
   }
     
   del(keyPath: string[], cb: (err?: Error) => void) {
-    traverseLinks(makeKey(keyPath), (key)=>{
-      localCache.removeItem(makeKey(keyPath));
+    this.traverseLinks(this.makeKey(keyPath), (key)=>{
+      this.store.del(this.makeKey(keyPath));
     });
     cb();
   }
@@ -136,15 +129,15 @@ export class Local implements IStorage {
   link(newKeyPath: string[], oldKeyPath: string[], cb: (err?: Error) => void): void
   {
     // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
-    var oldKey = makeKey(oldKeyPath);
-    var newKey = makeKey(newKeyPath);
+    var oldKey = this.makeKey(oldKeyPath);
+    var newKey = this.makeKey(newKeyPath);
     
-    var keys = localCache.getKeys();
+    var keys = this.store.allKeys(); //localCache.getKeys();
     for(var i=0; i<keys.length; i++){
       if(keys[i].substring(0, oldKey.length) === oldKey){
         // Make Link
         var link = keys[i].replace(oldKey, newKey);
-        _put(link, keys[i]);
+        this.store.put(link, keys[i]);
       }
     }
     cb();  
@@ -157,14 +150,14 @@ export class Local implements IStorage {
   // 
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void): void{
     var
-      key = makeKey(keyPath),
-      itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
-      keyValue = traverseLinks(key),
+      key = this.makeKey(keyPath),
+      itemIdsKeys = this.contextualizeIds(itemsKeyPath, itemIds),
+      keyValue = this.traverseLinks(key),
       oldItemIdsKeys = keyValue ? keyValue.value || {} : {},
       newIdKeys = {};
 
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
-      createCollectionLink(keyPath[0]);
+      this.createCollectionLink(keyPath[0]);
       return cb();
     }
     
@@ -172,23 +165,23 @@ export class Local implements IStorage {
     _.each(itemIdsKeys, (id)=>{
       newIdKeys[id] = opts.insync ? 'insync' : 'add';
     })
-    _put(key, _.extend(oldItemIdsKeys, newIdKeys));
+    this.store.put(key, _.extend(oldItemIdsKeys, newIdKeys));
     
     cb();
   }
   
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void) {
     var 
-      key = makeKey(keyPath),
-      itemIdsKeys = contextualizeIds(itemsKeyPath, itemIds),
-      keyValue = traverseLinks(key);
+      key = this.makeKey(keyPath),
+      itemIdsKeys = this.contextualizeIds(itemsKeyPath, itemIds),
+      keyValue = this.traverseLinks(key);
 
     if(itemIds.length === 0) return cb(); // do nothing
 
     if(keyValue){
       var keysToDelete = keyValue.value;
       _.each(itemIdsKeys, (id)=>{
-        traverseLinks(id, (itemKey)=>{
+        this.traverseLinks(id, (itemKey)=>{
           if(opts.insync){
             delete keysToDelete[id];
           }else{
@@ -196,7 +189,7 @@ export class Local implements IStorage {
           }
         });
       });
-      _put(keyValue.key, keysToDelete);
+      this.store.put(keyValue.key, keysToDelete);
       cb();
     }else{
       cb(InvalidKeyError);
@@ -208,46 +201,24 @@ export class Local implements IStorage {
     this.fetch(keyPath, (err, collection?) => {
       var result = {};
       var sequence = [];
-      // if(_.isArray(collection)){
-      //   _.each(collection, (elem)=>{
-      //     // var key = elem.keyPath;
-      //     var key = elem.key;
-      //     var op = elem.sync;
-      //     if(op !== 'rm' || !opts.snapshot){ //TODO: more 
-      //       var keyValue = traverseLinks(key);
-      //       if(keyValue){
-      //         var 
-      //           item = keyValue.value;
-      //           // id = item._cid;
-      //         // if(!(result[id]) || op === 'insync'){
-      //           if(!opts.snapshot) item.__op = op;
-      //           // result[id] = item;
-      //           sequence.push(item);
-      //         // }
-      //       }
-      //     }
-      //   });
-      //   return cb(null, sequence);
-      // }else{
-        if(collection){
-          _.each(_.keys(collection), (key)=>{
-            var op = collection[key]
-            if(op !== 'rm' || !opts.snapshot){
-              var keyValue = traverseLinks(key);
-              if(keyValue){
-                var 
-                  item = keyValue.value,
-                  id = item._cid;
-                if(!(result[id]) || op === 'insync'){
-                  if(!opts.snapshot) item.__op = op;
-                  result[id] = item;
-                }
+      if(collection){
+        _.each(_.keys(collection), (key)=>{
+          var op = collection[key]
+          if(op !== 'rm' || !opts.snapshot){
+            var keyValue = this.traverseLinks(key);
+            if(keyValue){
+              var 
+                item = keyValue.value,
+                id = item._cid;
+              if(!(result[id]) || op === 'insync'){
+                if(!opts.snapshot) item.__op = op;
+                result[id] = item;
               }
             }
-          });
-        }
-        return cb(null, _.values(result));
-      // }
+          }
+        });
+      }
+      return cb(null, _.values(result));
     });
   }
   
@@ -256,8 +227,7 @@ export class Local implements IStorage {
   //
   all(keyPath: string[], query, opts, cb: (err: Error, result: {}[]) => void) : void
   {
-    // var key = makeKey(keyPath);        
-    // cb(null, _get(key) || []);
+    //TODO: optimize
     var all = [];
     var traverse = (kp)=>{
       this.next(keyPath, kp, opts, (err, next?)=>{
@@ -288,8 +258,8 @@ export class Local implements IStorage {
   next(keyPath: string[], id: string, opts, cb: (err: Error, doc?:IDoc) => void)
   {
     var options = _.defaults(opts, {snapshot: true});
-    var key = makeKey(keyPath);
-    var keyValue = traverseLinks(key);
+    var key = this.makeKey(keyPath);
+    var keyValue = this.traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
 
@@ -305,10 +275,10 @@ export class Local implements IStorage {
       var item = itemKeys[refItem.next];
       if(item.next < 0) return cb(null); //last pointer
 
-      var itemKeyPath = parseKey(item.key);
+      var itemKeyPath = this.parseKey(item.key);
       var op = item.sync;
       if(op !== 'rm' || !options.snapshot){
-        var itemKeyValue = traverseLinks(item.key);
+        var itemKeyValue = this.traverseLinks(item.key);
         if(itemKeyValue){
           var doc = itemKeyValue.value;
           if(!options.snapshot) doc.__op = op;
@@ -321,15 +291,6 @@ export class Local implements IStorage {
       }else{
         this.next(keyPath, item._id || item._cid, opts, cb);
       }
-
-      // var itemKeyPath = parseKey(item.key);
-      // this.fetch(itemKeyPath, (err, doc?)=>{
-      //   var iDoc = {
-      //     keyPath: itemKeyPath,
-      //     doc: doc
-      //   };
-      //   cb(null, iDoc);
-      // });
     }else{
       return cb(Error('reference item not found'));
     }
@@ -338,8 +299,8 @@ export class Local implements IStorage {
 
   deleteItem(keyPath: string[], id: string, opts, cb: (err?: Error) => void)
   {
-    var key = makeKey(keyPath);
-    var keyValue = traverseLinks(key);
+    var key = this.makeKey(keyPath);
+    var keyValue = this.traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
 
@@ -356,7 +317,7 @@ export class Local implements IStorage {
       item.sync = 'rm'; //tombstone
     }
 
-    _put(key, itemKeys);
+    this.store.put(key, itemKeys);
     cb();
   }
   
@@ -365,9 +326,9 @@ export class Local implements IStorage {
     console.log('insert before');
     console.log(itemKeyPath);
     id = id || '##@_end';
-    var key = makeKey(keyPath);
-    var itemKey = makeKey(itemKeyPath);
-    var keyValue = traverseLinks(key);
+    var key = this.makeKey(keyPath);
+    var itemKey = this.makeKey(itemKeyPath);
+    var keyValue = this.traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
     this.initSequence(itemKeys);
@@ -390,14 +351,14 @@ export class Local implements IStorage {
     itemKeys.push(newItem);
     prevItem.next = refItem.prev = itemKeys.length-1;
 
-    _put(key, itemKeys);
+    this.store.put(key, itemKeys);
     cb(null, newItem._cid);
   }
 
   set(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void)
   {
-    var key = makeKey(keyPath);
-    var keyValue = traverseLinks(key);
+    var key = this.makeKey(keyPath);
+    var keyValue = this.traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
 
@@ -418,8 +379,7 @@ export class Local implements IStorage {
         item.sync = 'insync';
         break;
     }
-
-    _put(key, itemKeys);
+    this.store.put(key, itemKeys);
     cb();
   }
 }
