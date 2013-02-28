@@ -480,11 +480,6 @@ export class MongooseStorage implements IStorage {
     }, cb);
   }
 
-  set(keyPath: string[], itemKeyPath: string[], cb: (err?: Error) => void)
-  {
-    cb(Error('operation not supported'));
-  }
-
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
     console.log('delitem');
@@ -495,6 +490,8 @@ export class MongooseStorage implements IStorage {
 
       // this.findContainerOfModel(Model, id, seqName, makeKey(itemKeyPath), (err, container?)=>{
       this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
+          console.log(err);
+          console.log(container);
         if(!container || container.type === '_rip') return cb(Error('Tried to delete a non-existent item'));
         this.removeFromSeq(container._id, cb);
       });
