@@ -510,5 +510,83 @@ describe('Storage Queue', function(){
       });
     });
   });
+
+  describe('Run', function(){
+    var sm  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+    var sm2  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+    var ss = new Gnd.Storage.Socket(socket);
+    var q = new Gnd.Storage.Queue(sm, ss, false);
+    var q2 = new Gnd.Storage.Queue(sm2, ss);
+
+    before(function(done){
+      q.init(function(){
+        done();
+      });
+    });
+
+    beforeEach(function(done){
+      q.clear(function() {
+        done();
+      });
+    });
+    it('changes propagates to other queues on exec()', function(done){
+      q.create(['parade'], {}, function(err, paradeId){
+        var kp = ['parade', paradeId, 'animals'];
+        expect(err).to.not.be.ok();
+        expect(paradeId).to.be.ok();
+        q.create(['animals'], {name:'tiger'}, function(err, id){
+          expect(err).to.not.be.ok();
+          expect(id).to.be.ok();
+          q.insertBefore(kp, null, ['animals', id], {}, function(err){
+            expect(err).to.not.be.ok();
+            function fail(){
+              clearTimeout(t);
+              expect(false).to.be.ok();
+            }
+            var t = setTimeout(function(){
+              q.off('synced:', fail);
+              q2.all(kp, {}, {}, function(err, docs){
+                //q2 should not have the new animal yet
+                expect(err).to.be(null);
+                expect(docs).to.have.property('length', 0);
+                q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                  expect(docs).to.have.property('length', 0);
+                  q.exec();
+                });
+              });
+              q.once('synced:', function(){
+                q.all(kp, {}, {}, function(err, docs){
+                  expect(err).to.not.be.ok();
+                  expect(docs).to.be.ok();
+                  expect(docs).to.have.property('length', 1);
+                  expect(docs[0]).to.have.property('doc');
+                  expect(docs[0].doc).to.have.property('name', 'tiger');
+                  q.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                    expect(docs).to.be.ok();
+                    expect(docs).to.have.property('length', 1);
+                    expect(docs[0]).to.have.property('doc');
+                    expect(docs[0].doc).to.have.property('name', 'tiger');
+                    q2.all(kp, {}, {}, function(err, docs){
+                      //q2 local storage still doesn't have the new animal...
+                      expect(err).to.be(null);
+                      expect(docs).to.have.property('length', 0);
+                      q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                        //... but receives it on resync
+                        expect(docs).to.have.property('length', 1);
+                        expect(docs[0].doc).to.have.property('name', 'tiger');
+                        done();
+                      });
+                    });
+                  });
+                });
+              });
+            }, 100);
+
+            q.on('synced:', fail);
+          });
+        });
+      });
+    });
+  });
 });
 });
