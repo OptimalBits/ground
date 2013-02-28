@@ -22,6 +22,21 @@ describe('ViewModel', function(){
         expect(Gnd.$(el).text()).to.be.eql(name);
       }
     });
+    
+    it('bind to a subproperty', function(){
+      var el = document.createElement('div');
+      Gnd.setAttr(el, 'data-bind', 'text: feline.foo.bar');
+      
+      var feline = new Animal({name: 'tiger', foo: {bar: 'baz'}});
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(Gnd.$(el).text()).to.be.eql('baz');
+      
+      for(var name in ['leopard', 'lion', 'panther']){
+        feline.set('foo.bar', name);
+        expect(Gnd.$(el).text()).to.be.eql(name);
+      }
+    });
 
     it('bind to several attributes', function(){
       var el = document.createElement('div');

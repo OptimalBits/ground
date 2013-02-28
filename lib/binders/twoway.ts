@@ -43,11 +43,13 @@ export class TwoWayBinder implements Binder
     var 
       attrBinding = this.attrBindings[attr],
       attrFormatter = this.attrFormatters[attr],
-      obj = viewModel.resolveContext(_.initial(attrBinding));
+      obj = viewModel.resolveContext(([attrBinding[0]]));
     
     if(obj instanceof Base){
+      //
       // TODO: This join('.') will disapear when we have
       // keypath support in Base as an array.
+      //
       var 
         keypath = _.rest(attrBinding).join('.'),
         modelListener,
