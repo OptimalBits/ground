@@ -45,7 +45,7 @@ export class ViewModel extends Base
   
   constructor(el: Element, 
               context: {}, 
-              formatters?: {}, 
+              formatters?: {[index: string]: (input: string)=>string;},
               binders?: IBinder[])
   {
     super();
