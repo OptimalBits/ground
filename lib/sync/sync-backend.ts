@@ -13,7 +13,6 @@
   models and their IDs.
 */
 
-
 module Gnd.Sync {
 export class SyncHub {
   private pubClient;
@@ -31,13 +30,16 @@ export class SyncHub {
         console.log("Socket %s connected in the Sync Module", socket.id);
         
         socket.on('sync', function(keyPath: string[], cb:(err?: Error) => void){
+          
           console.log("SYNC:"+keyPath);
           console.log(keyPath);
+          
           if(!Array.isArray(keyPath)){
             cb && cb(new TypeError("keyPath must be a string[]"));
           }else{
             var id = keyPath.join(':');
             console.log("ID:"+id)
+            
             if(this.check){
               if (this.check(socket.id, keyPath)){
                 socket.join(id);
@@ -85,7 +87,7 @@ export class SyncHub {
           case 'remove:':
             sio.in(id).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
-        }
+         }
       });
       
       // TODO: Implement "except" to avoid the sender to receive the message it sent
@@ -95,23 +97,23 @@ export class SyncHub {
     }
   }
 
-  update(keyPath: string[], doc:{}){
-    var args = {keyPath:keyPath, doc: doc};
+  update(clientId: string, keyPath: string[], doc:{}){
+    var args = {keyPath:keyPath, doc: doc, clientId: clientId};
     this.pubClient.publish('update:', JSON.stringify(args));
   }
 
-  delete(keyPath){
-    var args = {keyPath:keyPath};
+  delete(clientId: string, keyPath){
+    var args = {keyPath:keyPath, clientId: clientId};
     this.pubClient.publish('delete:', JSON.stringify(args));
   }
 
-  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
-    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds};
+  add(clientId: string, keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
+    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds, clientId: clientId};
     this.pubClient.publish('add:', JSON.stringify(args));
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
-    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds};
+  remove(clientId: string, keyPath: string[], itemsKeyPath: string[], itemIds: string[]){
+    var args = {keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds: itemIds, clientId: clientId};
     this.pubClient.publish('remove:', JSON.stringify(args));
   }
   
