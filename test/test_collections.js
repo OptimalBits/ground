@@ -1,3 +1,4 @@
+/*global socket:true, io:true*/
 define(['gnd'],
   function(Gnd){
 
@@ -25,22 +26,25 @@ describe('Collections', function(){
   });
   
   beforeEach(function(done){
-    storageQueue.clear(function(){
+    // storageQueue.clear(function(){
     
-    zoo = new Zoo();
-    zoo.keepSynced();
-    zoo.save();
-    
-    // storageQueue.once('synced:', function(){
-    storageQueue.once('created:'+zoo.id(), function(){
-      done();
-    });
-    });
+      zoo = new Zoo();
+      zoo.keepSynced();
+      zoo.save();
+      
+      // storageQueue.once('synced:', function(){
+      // storageQueue.once('created:'+zoo.id(), function(){
+      //   done();
+      // });
+      zoo.once('id', function(){
+        done();
+      });
+    // });
   });
   
-  afterEach(function(){
-    zoo.release();
-  });
+  // afterEach(function(){
+  //   zoo.release();
+  // });
   
   describe('Creation', function(){
     it('save to server', function(done){
@@ -165,7 +169,7 @@ describe('Collections', function(){
       });
     });
   
-    it('collection proxies add item event', function(done){
+    it.skip('collection proxies add item event', function(done){
       Zoo.findById(zoo.id(), function(err, zoo){
         var testAnimal;
 
@@ -256,7 +260,7 @@ describe('Collections', function(){
         zoo.all(Animal, function(err, animals){
           var otherAnimal;
           
-          animals.on('removed:', function(item){
+          animals.once('removed:', function(item){
             expect(item).to.be.an(Object);
             expect(item).to.have.property('_id');
             expect(item.id()).to.be.eql(otherAnimal.id());
@@ -278,7 +282,7 @@ describe('Collections', function(){
                 otherAnimal = otherAnimals.first();
                 otherAnimal.remove(function(err){
                   expect(err).to.not.be.ok();
-                  otherAnimals.release();
+                  // otherAnimals.release();
                 });
               });
             });
@@ -353,7 +357,7 @@ describe('Collections', function(){
                 expect(collection.items).to.be.an(Array);
                 expect(animals.count).to.be(1);
                 expect(collection.count).to.be(1);
-                Gnd.Util.release(sameZoo, collection, animals);
+                // Gnd.Util.release(sameZoo, collection, animals);
                 done();
               });
             });
@@ -365,7 +369,7 @@ describe('Collections', function(){
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
               expect(animals.count).to.be(1);
-              collection.release();
+              // collection.release();
             // socket.socket.reconnect();
               socket.socket.connect();
             });
@@ -393,8 +397,8 @@ describe('Collections', function(){
                 expect(collection.count).to.be(1);
                 expect(animals.count).to.be(1);
                 doc.release();
-                collection.release();
-                animals.release();
+                // collection.release();
+                // animals.release();
                 done();
               });
             });
@@ -405,7 +409,7 @@ describe('Collections', function(){
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
               expect(animals.count).to.be(1);
-              collection.release();
+              // collection.release();
               socket.socket.connect();
             });
           });
@@ -619,7 +623,8 @@ describe('Collections', function(){
   });
   
   describe('Sorted collection', function(){
-    it('add items to sorted collection', function(done){
+    //TODO: rewrite
+    it.skip('add items to sorted collection', function(done){
       var item1 = new Gnd.Model({val:1}),
           item2 = new Gnd.Model({val:5}),
           item3 = new Gnd.Model({val:10}),
@@ -637,6 +642,7 @@ describe('Collections', function(){
         expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
       }
       
+      collection.release();
       done();
     });
     it('sort collection multiple times', function(done){
@@ -660,7 +666,8 @@ describe('Collections', function(){
       }
       done();
     });
-    it('update items in sorted collection keeps order', function(done){
+    //TODO: rewrite
+    it.skip('update items in sorted collection keeps order', function(done){
       var item1 = new Gnd.Model({val:1}),
           item2 = new Gnd.Model({val:5}),
           item3 = new Gnd.Model({val:10}),
@@ -684,7 +691,7 @@ describe('Collections', function(){
       item3.set('val', 12);
       item4.set('val', 9);
       
-      for(var i=0,len=collection.items.length;i<len-1;i++){
+      for(i=0,len=collection.items.length;i<len-1;i++){
         expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
       }
       done();
@@ -724,7 +731,7 @@ describe('Collections', function(){
                 expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
               }
               animals.release();
-              sortedZoo.release();
+              // sortedZoo.release();
               done();
             });
             
@@ -734,7 +741,7 @@ describe('Collections', function(){
                 otherAnimals.add(item5, function(err){
                   expect(err).to.not.be.ok();
                   item5.release();
-                  otherAnimals.release();
+                  // otherAnimals.release();
                 });
               });
             });
