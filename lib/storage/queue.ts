@@ -15,7 +15,7 @@ module Gnd.Storage {
   // and a remote Storage.
   //
   
-  interface Command {
+  export interface Command {
     cmd: string;
     keyPath?: string[];
     // refItemKeyPath?: string[];
@@ -409,10 +409,11 @@ export class Queue extends Base implements IStorage
                 this.localStorage.all(keyPath, {}, localOpts, (err?, items?) => {
                   console.log('---------------------resync-----------------');
                   var key = Queue.makeKey(keyPath);
-                  if(this.autosync){
+                  var subQ = <any>(this.remoteStorage);
+                  if(this.autosync || !subQ.once){
                     !err && this.emit('resync:'+key, items);
                   }else{
-                    (<any>this.remoteStorage).once('resync:'+key, (items)=>{
+                    subQ.once('resync:'+key, (items)=>{
                       this.emit('resync:'+key, items);
                     });
                   }
@@ -515,10 +516,11 @@ export class Queue extends Base implements IStorage
                     newKeyPath.push(sid);
                     localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
                       console.log('---created');
-                      if(this.autosync){
+                      var subQ = <any>(this.remoteStorage);
+                      if(this.autosync || !subQ.once){
                         this.emit('created:'+cid, sid);
                       }else{
-                        (<any>remoteStorage).once('created:'+sid, (sid)=>{
+                        subQ.once('created:'+sid, (sid)=>{
                           this.emit('created:'+cid, sid);
                         });
                       }
@@ -556,10 +558,11 @@ export class Queue extends Base implements IStorage
               }else{
                 localStorage.set(keyPath, cid, sid, (err?: Error) => {
                   console.log('inserted item. cid:'+cid+', sid:'+sid);
-                  if(this.autosync){
+                  var subQ = <any>(this.remoteStorage);
+                  if(this.autosync || !subQ.once){
                     this.emit('inserted:'+cid, sid, refId);
                   }else{
-                    (<any>remoteStorage).once('inserted:'+sid, (newSid, refId)=>{
+                    subQ.once('inserted:'+sid, (newSid, refId)=>{
                       localStorage.set(keyPath, sid, newSid, (err?: Error) => {
                         this.emit('inserted:'+cid, newSid, refId);
                       });
@@ -582,11 +585,12 @@ export class Queue extends Base implements IStorage
         }
       } else {        
         // this.emit('synced:', this);
-        if(this.autosync){
+        var subQ = <any>(this.remoteStorage);
+        if(this.autosync || !subQ.once){
           console.log('synced');
           this.emit('synced:', this);
         }else{
-          (<any>this.remoteStorage).once('synced:', ()=>{
+          subQ.once('synced:', ()=>{
             this.emit('synced:', this);
           });
         }
