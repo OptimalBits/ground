@@ -46,7 +46,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
     var memStorage = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
     this._storageQueue = new Gnd.Storage.Queue(memStorage, Model.storageQueue, false);
     
-    var self = this;
+    // var self = this;
     this.items = items || [];
     this.initItems(this.items);
 
