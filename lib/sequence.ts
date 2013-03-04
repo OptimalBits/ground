@@ -28,26 +28,16 @@ export interface ISeqModel {
 export class Sequence extends Base implements Sync.ISynchronizable
 {
   private items: ISeqModel[];
-  
   private _keepSynced: bool = false;
-  // private _added: Model[] = [];
-  private _insertedBefore: ISeqModel[] = [];
-  private _removed: ISeqModel[] = [];
   private _storageQueue: Storage.Queue;
   
-  private updateFn: (model: Model, args) => void;
-  private deleteFn: (kp: string[]) => void;
   private resyncFn: (items: any[]) => void;
+  private updateFn: (args: any) => void;
+  private deleteFn: (kp: string[]) => void;
   
   public model: IModel;
   public parent: Model;
-  public sortByFn: () => number; //public sortByFn: string;
-  public sortOrder: string = 'asc';
-  public filterFn: (item: Model) => bool = null;
   public count: number = 0;
-  
-  // Prototypes for underscore imported methods.
-  public filter: (iterator: (item: any)=>bool) => Model[];
   
   constructor(model: IModel, parent?: Model, items?: Model[])
   {
@@ -57,22 +47,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     this._storageQueue = new Gnd.Storage.Queue(memStorage, Model.storageQueue, false);
     
     var self = this;
-    this.updateFn = function(args){
-      self.emit('updated:', this, args);
-      console.log('seq update');
-      console.log(args);
-    };
-  
-    this.deleteFn = (kp) => {
-      console.log('seq delete');
-      console.log(kp);
-      for(var i = this.items.length-1; i >= 0; i--){
-        if(this.items[i].model.id() === _.last(kp)){
-          this.remove(i, {}, Util.noop);
-        }
-      }
-    };
-  
     this.items = items || [];
     this.initItems(this.items);
 
@@ -83,6 +57,18 @@ export class Sequence extends Base implements Sync.ISynchronizable
       this.resync(items);
     }
 
+    this.updateFn = (args)=>{
+      this.emit('updated:', this, args);
+    };
+
+    this.deleteFn = (kp)=>{
+      for(var i = this.items.length-1; i >= 0; i--){
+        if(this.items[i].model.id() === _.last(kp)){
+          this.remove(i, {}, Util.noop);
+        }
+      }
+    };
+  
     if(parent){
       if(parent.isPersisted()){
         this.listenToResync(Model.storageQueue, true);
@@ -95,20 +81,9 @@ export class Sequence extends Base implements Sync.ISynchronizable
       this.listenToResync(Model.storageQueue, true);
     }
   }
-  
-  destroy(){
-    Util.nextTick(()=>{
-      this.items = null;
-    });
 
-    this.deinitItems(this.items);
-    this._keepSynced && this.endSync();
-    super.destroy();
-  }
-  
   static public create(model: IModel, parent: Model, items: IDoc[]): Sequence;
   static public create(model: IModel, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
-  static public create(model: IModel, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
 
   static public create(model?: IModel, parent?: Model, docs?: IDoc[], cb?): any
   {
@@ -131,12 +106,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
           }
         });
       },
-      'Function Array Function': function(model, items, cb){
-        this.create(model, undefined, items, cb);
-      },
-      'Function Model Function': function(model, parent, cb){
-        this.create(model, parent, [], cb);
-      }
     }).apply(this, arguments);
   } 
   
@@ -145,17 +114,102 @@ export class Sequence extends Base implements Sync.ISynchronizable
     return _.map(items, function(item){return item.id()});
   }
   
+  private deleteItem(id: string, opts, cb)
+  {
+    var idx = -1;
+    _.each(this.items, (item, i)=>{
+      if(item.id === id){
+        idx = i;
+      }
+    });
+
+    if(idx === -1) return cb(); //already deleted
+    this.remove(idx, opts, cb);
+  }
+
+  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): void
+  {
+    if(_.isFunction(opts)){
+      cb = opts;
+      opts = {};
+    }
+    cb = cb || Util.noop;
+
+    this.insertItemBefore(id, item, null, opts, (err) => {
+      !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
+      cb(null);
+    });
+  }
+  
+  private insertItemBefore(refId: string, item: Model, id: string, opts, cb)
+  {
+    var seqItem = {
+      model: item,
+      id: id,
+      pending: !id
+    };
+    var done = (err, id?)=>{
+      seqItem.id = id || seqItem.id;
+      this._storageQueue.once('inserted:'+seqItem.id, (sid)=>{
+        seqItem.id = sid;
+        seqItem.pending = false;
+      });
+      cb(err);
+    }
+
+    var index = this.items.length;
+    _.each(this.items, (item, i)=>{
+      if(item.id === refId){
+        index = i;
+      }
+      if(item.id === id){ //no dupicate CONTAINERS
+        index = -1;
+      }
+    });
+    if(index === -1) return cb(Error('Tried to insert duplicate container'));
+    this.items.splice(index, 0, seqItem);
+
+    this.initItems([seqItem]);
+    
+    this.set('count', this.items.length);
+    this.emit('inserted:', item, index);
+    
+    if(!opts || (opts.nosync !== true)){
+      if(item.isPersisted()){
+        this.insertPersistedItemBefore(refId, item, done);
+      }else{
+        item.save((err) => {
+          if(err) return cb(err);
+          this.insertPersistedItemBefore(refId, item, done);
+        });
+      }
+    }else{
+      cb();
+    }
+  }
+
+  private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
+  {
+    var keyPath = this.getKeyPath();
+    var itemKeyPath = item.getKeyPath();
+    this._storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+  }
+
+  destroy(){
+    Util.nextTick(()=>{
+      this.items = null;
+    });
+
+    this.deinitItems(this.items);
+    this._keepSynced && this.endSync();
+    super.destroy();
+  }
   
   save(cb?: ()=>void): void
   {
     this._storageQueue.exec(()=>{
       cb && cb();
     });
-    // throw Error('not imple');
-    // var keyPath = this.getKeyPath();
-    // var itemsKeyPath = [];
-    
-    //TODO: keep track of insert- and remove operations an replay them on save
   }
 
   push(item: Model, opts?, cb?: (err)=>void): void
@@ -206,86 +260,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     }
   }
 
-  private deleteItem(id: string, opts, cb)
-  {
-    var idx = -1;
-    _.each(this.items, (item, i)=>{
-      if(item.id === id){
-        idx = i;
-      }
-    });
-
-    if(idx === -1) return cb(); //already deleted
-    this.remove(idx, opts, cb);
-  }
-
-  private insertItemBefore(refId: string, item: Model, id: string, opts, cb)
-  {
-    var seqItem = {
-      model: item,
-      id: id || 'pending'
-    };
-    var done = (err, id?)=>{
-      seqItem.id = id || seqItem.id;
-      console.log('inserted locally');
-      this._storageQueue.once('inserted:'+seqItem.id, (sid)=>{
-        console.log('inserted remotely');
-        seqItem.id = sid;
-      });
-      cb(err);
-    }
-
-    var index = this.items.length;
-    _.each(this.items, (item, i)=>{
-      // if(item.id === id || item.id === 'pending'){
-      if(item.id === refId){
-        index = i;
-      }
-      if(item.id === id){ //no dupicate CONTAINERS
-        index = -1;
-      }
-    });
-    if(index === -1) return cb(Error('Tried to insert duplicate container'));
-    this.items.splice(index, 0, seqItem);
-
-    this.initItems([seqItem]);
-    
-    this.set('count', this.items.length);
-    this.emit('inserted:', item, index);
-    
-    // if(this.isKeptSynced()){
-      if(!opts || (opts.nosync !== true)){
-        if(item.isPersisted()){
-          this.insertPersistedItemBefore(refId, item, done);
-        }else{
-          item.save((err) => {
-            if(err) return cb(err);
-            this.insertPersistedItemBefore(refId, item, done);
-          });
-        }
-      }else{
-        cb();
-      }
-    // }else{
-    //   this._insertedBefore.push(seqItem); //TODO: We probably need more items
-    //   cb();
-    // }
-  }
-
-  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): void
-  {
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    cb = cb || Util.noop;
-
-    this.insertItemBefore(id, item, null, opts, (err) => {
-      !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-      cb(null);
-    });
-  }
-  
   getKeyPath(): string[]
   {
     if(this.parent) return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
@@ -306,13 +280,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     return this._keepSynced;
   }
   
-  private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
-  {
-    var keyPath = this.getKeyPath();
-    var itemKeyPath = item.getKeyPath();
-    this._storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
-  }
-
   private startSync()
   {
     this._keepSynced = true;
@@ -339,13 +306,10 @@ export class Sequence extends Base implements Sync.ISynchronizable
     });
 
     this.on('deleteItem:', (id) => {
-      this.deleteItem(id, {nosync: true}, (err?) => {
-        console.log('deleted from remote');
-      });
+      this.deleteItem(id, {nosync: true}, Util.noop);
     });
 
     this._storageQueue.exec((err?)=>{
-      // this.unlistenToResync();
       this._storageQueue = Model.storageQueue;
       this.listenToResync(Model.storageQueue);
     });
@@ -353,33 +317,26 @@ export class Sequence extends Base implements Sync.ISynchronizable
   }
   
   private resync(newItems: any[]){
-    console.log('resync seq');
-    console.log(newItems);
-    console.log(this.items);
     var oldItems = this.items;
     var newIds = _.pluck(newItems, 'id').sort();
     var remainingItems = [];
-    Util.asyncForEach(oldItems, function(item, done){
-      if(item.id !== 'pending' && -1 === _.indexOf(newIds, item.id, true)){
-      //TODO: delete
-          console.log('deleted');
-          done();
+    Util.asyncForEach(oldItems, (item, done)=>{
+      if(!item.pending && -1 === _.indexOf(newIds, item.id, true)){
+        this.deleteItem(item.id, {nosync: true}, (err)=>{
+          done(err);
+        });
       }else{
         remainingItems.push(item);
         done();
       }
     }, function(err){
-      // insert new items
-    console.log('remaining');
-    console.log(remainingItems);
-
       var itemsToInsert = [];
       var i=0;
       var j=0;
       var oldItem, newItem;
       while(i<remainingItems.length){
         oldItem = remainingItems[i];
-        if(oldItem.id !== 'pending'){
+        if(!oldItem.pending){
           newItem = newItems[j];
           if(newItem.id === oldItem.id){
             i++;
@@ -404,10 +361,8 @@ export class Sequence extends Base implements Sync.ISynchronizable
       }
 
       Util.asyncForEach(itemsToInsert, (item, done)=>{
-        console.log('insertBefore');
         (<any>this.model).create(item.newItem, (err, instance?: Model)=>{
           if(instance){
-            console.log('created model');
             this.insertBefore(item.id, instance, {nosync: true}, (err)=>{
               done(err);
             });
@@ -419,8 +374,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
         this.emit('resynced:');
       });
     });
-  // });
-    
   }
   
   private listenToResync(queue: Storage.Queue, once?: bool){
@@ -428,11 +381,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
   }
 
-  // private unlistenToResync(){
-  //   var key = Storage.Queue.makeKey(this.getKeyPath());
-  //   this._storageQueue && this._storageQueue.off('resync:'+key, this.resyncFn);
-  // }
-  
   private endSync()
   {
     Model.syncManager && Model.syncManager.endSync(this);
