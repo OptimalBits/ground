@@ -321,7 +321,7 @@ export class Local implements IStorage {
     cb();
   }
   
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
     console.log('insert before');
     console.log(itemKeyPath);
@@ -352,7 +352,7 @@ export class Local implements IStorage {
     prevItem.next = refItem.prev = itemKeys.length-1;
 
     this.store.put(key, itemKeys);
-    cb(null, newItem._cid);
+    cb(null, newItem._cid, newItem.next !== '##@_end' ? newItem.next : null);
   }
 
   set(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void)

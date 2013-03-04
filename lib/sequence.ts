@@ -15,6 +15,8 @@
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="overload.ts" />
+/// <reference path="storage/local.ts" />
+/// <reference path="storage/store/memory-storage.ts" />
 
 module Gnd {
 
@@ -31,6 +33,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
   // private _added: Model[] = [];
   private _insertedBefore: ISeqModel[] = [];
   private _removed: ISeqModel[] = [];
+  private _storageQueue: Storage.Queue;
   
   private updateFn: (model: Model, args) => void;
   private deleteFn: (kp: string[]) => void;
@@ -49,6 +52,9 @@ export class Sequence extends Base implements Sync.ISynchronizable
   constructor(model: IModel, parent?: Model, items?: Model[])
   {
     super();
+
+    var memStorage = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+    this._storageQueue = new Gnd.Storage.Queue(memStorage, Model.storageQueue, false);
     
     var self = this;
     this.updateFn = function(args){
@@ -62,7 +68,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
       console.log(kp);
       for(var i = this.items.length-1; i >= 0; i--){
         if(this.items[i].model.id() === _.last(kp)){
-          this.remove(i, Util.noop);
+          this.remove(i, {}, Util.noop);
         }
       }
     };
@@ -73,16 +79,20 @@ export class Sequence extends Base implements Sync.ISynchronizable
     this.model = model;
     this.parent = parent;
     
+    this.resyncFn = (items) => {
+      this.resync(items);
+    }
+
     if(parent){
       if(parent.isPersisted()){
-        this.listenToResync();
+        this.listenToResync(Model.storageQueue, true);
       }else{
         parent.once('id', ()=> {
-          this.listenToResync()
+          this.listenToResync(Model.storageQueue, true)
         });
       }
     }else{
-      this.listenToResync();
+      this.listenToResync(Model.storageQueue, true);
     }
   }
   
@@ -136,10 +146,14 @@ export class Sequence extends Base implements Sync.ISynchronizable
   }
   
   
-  save(cb: (err?: Error) => void): void
+  save(cb?: ()=>void): void
   {
-    var keyPath = this.getKeyPath();
-    var itemsKeyPath = [];
+    this._storageQueue.exec(()=>{
+      cb && cb();
+    });
+    // throw Error('not imple');
+    // var keyPath = this.getKeyPath();
+    // var itemsKeyPath = [];
     
     //TODO: keep track of insert- and remove operations an replay them on save
   }
@@ -168,6 +182,9 @@ export class Sequence extends Base implements Sync.ISynchronizable
       cb = opts;
       opts = {};
     }
+    cb = cb || Util.noop;
+    opts = opts || {};
+
     var item = this.items[idx];
 
     if(!item) return cb(Error('index out of bounds'));
@@ -180,24 +197,38 @@ export class Sequence extends Base implements Sync.ISynchronizable
     this.emit('removed:', item.model, idx);
     item.model.release();
     
-    if(this.isKeptSynced() && (!opts || !opts.nosync)){
-      Model.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, cb);
+    // if(this.isKeptSynced() && (!opts || !opts.nosync)){
+    if(!opts || !opts.nosync){
+      this._storageQueue.deleteItem(this.getKeyPath(), item.id, opts, cb);
     }else{
-      this._removed.push(item);
+      // this._removed.push(item);
       cb();
     }
   }
 
-  private insertItemBefore(id: string, item: Model, opts, cb)
+  private deleteItem(id: string, opts, cb)
+  {
+    var idx = -1;
+    _.each(this.items, (item, i)=>{
+      if(item.id === id){
+        idx = i;
+      }
+    });
+
+    if(idx === -1) return cb(); //already deleted
+    this.remove(idx, opts, cb);
+  }
+
+  private insertItemBefore(refId: string, item: Model, id: string, opts, cb)
   {
     var seqItem = {
       model: item,
-      id: 'pending'
+      id: id || 'pending'
     };
-    function done(err, id?){
+    var done = (err, id?)=>{
       seqItem.id = id || seqItem.id;
       console.log('inserted locally');
-      Model.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
+      this._storageQueue.once('inserted:'+seqItem.id, (sid)=>{
         console.log('inserted remotely');
         seqItem.id = sid;
       });
@@ -206,32 +237,39 @@ export class Sequence extends Base implements Sync.ISynchronizable
 
     var index = this.items.length;
     _.each(this.items, (item, i)=>{
-      if(item.id === id) index = i;
+      // if(item.id === id || item.id === 'pending'){
+      if(item.id === refId){
+        index = i;
+      }
+      if(item.id === id){ //no dupicate CONTAINERS
+        index = -1;
+      }
     });
+    if(index === -1) return cb(Error('Tried to insert duplicate container'));
     this.items.splice(index, 0, seqItem);
 
     this.initItems([seqItem]);
     
     this.set('count', this.items.length);
-    this.emit('insertedBefore:', item); //TODO: we probably need more args
+    this.emit('inserted:', item, index);
     
-    if(this.isKeptSynced()){
+    // if(this.isKeptSynced()){
       if(!opts || (opts.nosync !== true)){
         if(item.isPersisted()){
-          this.insertPersistedItemBefore(id, item, done);
+          this.insertPersistedItemBefore(refId, item, done);
         }else{
           item.save((err) => {
             if(err) return cb(err);
-            this.insertPersistedItemBefore(id, item, done);
+            this.insertPersistedItemBefore(refId, item, done);
           });
         }
       }else{
         cb();
       }
-    }else{
-      this._insertedBefore.push(seqItem); //TODO: We probably need more items
-      cb();
-    }
+    // }else{
+    //   this._insertedBefore.push(seqItem); //TODO: We probably need more items
+    //   cb();
+    // }
   }
 
   private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): void
@@ -242,7 +280,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
     }
     cb = cb || Util.noop;
 
-    this.insertItemBefore(id, item, opts, (err) => {
+    this.insertItemBefore(id, item, null, opts, (err) => {
       !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
       cb(null);
     });
@@ -272,7 +310,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
-    Model.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+    this._storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
   }
 
   private startSync()
@@ -290,10 +328,26 @@ export class Sequence extends Base implements Sync.ISynchronizable
     }
     
 
-    this.on('remove:', (itemsKeyPath, itemId) => {
-        //TODO: fix
-        throw Error('no implementation yet');
-      // this.remove(itemId, true, Util.noop);
+    this.on('insertBefore:', (id, itemKeyPath, refId)=>{
+      this.model.findById(itemKeyPath, true, {}, (err: Error, item?: Model): void => {
+        if(item){
+          this.insertItemBefore(refId, item, id, {nosync: true}, (err) => {
+            !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
+          });
+        }
+      });
+    });
+
+    this.on('deleteItem:', (id) => {
+      this.deleteItem(id, {nosync: true}, (err?) => {
+        console.log('deleted from remote');
+      });
+    });
+
+    this._storageQueue.exec((err?)=>{
+      // this.unlistenToResync();
+      this._storageQueue = Model.storageQueue;
+      this.listenToResync(Model.storageQueue);
     });
 
   }
@@ -369,14 +423,15 @@ export class Sequence extends Base implements Sync.ISynchronizable
     
   }
   
-  private listenToResync(){
+  private listenToResync(queue: Storage.Queue, once?: bool){
     var key = Storage.Queue.makeKey(this.getKeyPath());
-    this.resyncFn = (items) => {
-      this.resync(items);
-    }
-    Model.storageQueue &&
-    Model.storageQueue.on('resync:'+key, this.resyncFn);
+    queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
   }
+
+  // private unlistenToResync(){
+  //   var key = Storage.Queue.makeKey(this.getKeyPath());
+  //   this._storageQueue && this._storageQueue.off('resync:'+key, this.resyncFn);
+  // }
   
   private endSync()
   {
@@ -398,8 +453,8 @@ export class Sequence extends Base implements Sync.ISynchronizable
   private deinitItems(items)
   {
     var key = Storage.Queue.makeKey(this.getKeyPath());
-    Model.storageQueue &&
-    Model.storageQueue.off('resync:'+key, this.resyncFn);
+    this._storageQueue &&
+    this._storageQueue.off('resync:'+key, this.resyncFn);
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
       item.model.off('changed:', this.updateFn);

@@ -63,7 +63,8 @@ export class SyncHub {
       subClient.subscribe('delete:');
       subClient.subscribe('add:');
       subClient.subscribe('remove:');
-      subClient.subscribe('push:');
+      subClient.subscribe('insertBefore:');
+      subClient.subscribe('deleteItem:');
       
       subClient.on('message', (channel, msg) => {
         var args = JSON.parse(msg);
@@ -86,9 +87,13 @@ export class SyncHub {
           case 'remove:':
             sio.in(id).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
-          case 'push:':
-          console.log("Emitting PUSH:"+id)
-            sio.in(id).emit('push:', args.keyPath, args.itemKeyPath);
+          case 'insertBefore:':
+            console.log('Emitting inserbbefore'+id)
+            sio.in(id).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
+            break;
+          case 'deleteItem:':
+            console.log('Emitting deleteItem'+id)
+            sio.in(id).emit('deleteItem:', args.keyPath, args.id);
             break;
         }
       });
@@ -121,9 +126,9 @@ export class SyncHub {
   }
   
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[])
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], refId: string)
   {
-    var args = {keyPath: keyPath, id: id, itemKeyPath: itemKeyPath};
+    var args = {keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, refId: refId};
     console.log('insertBefore-synchub');
     console.log(args);
     this.pubClient.publish('insertBefore:', JSON.stringify(args));

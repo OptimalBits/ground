@@ -72,7 +72,16 @@ export class Queue extends Base implements IStorage
     this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
     this.autosync = typeof autosync === 'undefined' ? true : autosync;
+
+    if(!this.autosync){
+      var rs = <any>(this.remoteStorage);
+      rs.on && rs.on('*', ()=>{
+        console.log('subqueue event XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+      });
+    }
   }
+
+  
   
   init(cb:(err?: Error) => void)
   {
@@ -85,8 +94,10 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  exec()
+  exec(cb: (err?: Error)=>void)
   {
+    if(!this.currentTransfer && this.queue.length === 0) return cb();
+    this.once('synced:', cb || Util.noop);
     this.syncFn();
   }
   /*
@@ -396,7 +407,15 @@ export class Queue extends Base implements IStorage
             this.updateLocalSequence(keyPath, {}, remote, (err?)=>{
               if(result){
                 this.localStorage.all(keyPath, {}, localOpts, (err?, items?) => {
-                  !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
+                  console.log('---------------------resync-----------------');
+                  var key = Queue.makeKey(keyPath);
+                  if(this.autosync){
+                    !err && this.emit('resync:'+key, items);
+                  }else{
+                    (<any>this.remoteStorage).once('resync:'+key, (items)=>{
+                      this.emit('resync:'+key, items);
+                    });
+                  }
                 })
               }
             });
@@ -445,9 +464,9 @@ export class Queue extends Base implements IStorage
       }
     });
   }
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string, refId?: string) => void)
   {
-    this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, cid?: string) => {
+    this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, cid?: string, refId?: string) => {
       if(!err){
         this.addCmd({
           cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, cid: cid
@@ -496,7 +515,13 @@ export class Queue extends Base implements IStorage
                     newKeyPath.push(sid);
                     localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
                       console.log('---created');
-                      this.emit('created:'+cid, sid);
+                      if(this.autosync){
+                        this.emit('created:'+cid, sid);
+                      }else{
+                        (<any>remoteStorage).once('created:'+sid, (sid)=>{
+                          this.emit('created:'+cid, sid);
+                        });
+                      }
                       this.updateQueueIds(cid, sid);
                       done();
                     });
@@ -524,14 +549,22 @@ export class Queue extends Base implements IStorage
             var id = obj.id;
             var itemKeyPath = obj.itemKeyPath;
             var cid = obj.cid;
-            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}, (err:Error, sid?: string)=>{
+            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}, (err:Error, sid?: string, refId?: string)=>{
               if(err){
                 console.log('---err');
                 done(err);
               }else{
                 localStorage.set(keyPath, cid, sid, (err?: Error) => {
                   console.log('inserted item. cid:'+cid+', sid:'+sid);
-                  this.emit('inserted:'+cid, sid);
+                  if(this.autosync){
+                    this.emit('inserted:'+cid, sid, refId);
+                  }else{
+                    (<any>remoteStorage).once('inserted:'+sid, (newSid, refId)=>{
+                      localStorage.set(keyPath, sid, newSid, (err?: Error) => {
+                        this.emit('inserted:'+cid, newSid, refId);
+                      });
+                    });
+                  }
                   this.updateQueueIds(cid, sid);
                   done(err, sid);
                 });
@@ -548,8 +581,15 @@ export class Queue extends Base implements IStorage
             break;
         }
       } else {        
-        console.log('synced');
-        this.emit('synced:', this);
+        // this.emit('synced:', this);
+        if(this.autosync){
+          console.log('synced');
+          this.emit('synced:', this);
+        }else{
+          (<any>this.remoteStorage).once('synced:', ()=>{
+            this.emit('synced:', this);
+          });
+        }
       }
     } else{
       console.log('busy with ', this.currentTransfer);

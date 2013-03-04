@@ -458,7 +458,7 @@ export class MongooseStorage implements IStorage {
     }, cb);
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
     // if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
     if(_.isFunction(opts)) cb = opts;
@@ -474,7 +474,9 @@ export class MongooseStorage implements IStorage {
         //   console.log(refContainer);
         //   if(err) return cb(err);
         if(!id) id = end._id;
-          this.insertContainerBefore(Model, modelId, seqName, id, makeKey(itemKeyPath), opts, cb);
+          this.insertContainerBefore(Model, modelId, seqName, id, makeKey(itemKeyPath), opts, (err, newId?)=>{
+            cb(err, newId, id);
+          });
         // });
       });
     }, cb);

@@ -109,11 +109,11 @@ class ProxyStorage implements IStorage {
     });
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
-    this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string) => {
+    this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string, refId?: string) => {
       if(!err){
-        this.syncHub && this.syncHub.insertBefore(keyPath, id, itemKeyPath);
+        this.syncHub && this.syncHub.insertBefore(keyPath, id, itemKeyPath, refId);
       }
       cb(err, id);
     });
