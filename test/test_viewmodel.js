@@ -159,7 +159,7 @@ describe('ViewModel', function(){
       expect(tiger.selected).to.be(false);
       
       // Text input
-      var el = document.createElement('input');
+      el = document.createElement('input');
       el.setAttribute('type', 'text');
       el.checked = false;
       el.setAttribute('data-bind', 'value: tiger.description');

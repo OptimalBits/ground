@@ -17,6 +17,7 @@
 
 /// <reference path="base.ts" />
 /// <reference path="collection.ts" />
+/// <reference path="sequence.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
@@ -30,6 +31,7 @@ export interface IModel
   create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
+  seq(parent: Model, args: {}, bucket: string, cb:(err: Error, items: {model:Model; id:string;}[]) => void);
 }
 
 export class Model extends Base implements Sync.ISynchronizable
@@ -113,8 +115,10 @@ export class Model extends Base implements Sync.ISynchronizable
       create: this.create,
       findById: this.findById,
       all: this.all,
+      seq: this.seq,
       allModels: this.allModels,
       createModels: this.createModels,
+      createSequenceModels: this.createSequenceModels,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
@@ -296,7 +300,7 @@ export class Model extends Base implements Sync.ISynchronizable
     
     Model.removeById(this.getKeyPath(), (err?)=> {
       Model.syncManager && Model.syncManager.endSync(this);
-      this.emit('deleted:', this.id());
+      this.emit('deleted:', this.getKeyPath());//this.id());
       cb(err);
     })    
   }
@@ -361,6 +365,21 @@ export class Model extends Base implements Sync.ISynchronizable
       done(err, models);
     });
   }
+
+  static createSequenceModels(items:IDoc[], done){
+    var models = [];
+    
+    Util.asyncForEach(items, (item, fn)=>{
+      this.create(item.doc, function(err, instance?: Model){
+        if(instance){
+          models.push({model: instance, id: item.id});
+        }
+        fn(err);
+      });
+    }, (err) => {
+      done(err, models);
+    });
+  }
   
   static allModels(cb:(err?: Error, models?: Model[]) => void) {
     Model.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
@@ -412,6 +431,62 @@ export class Model extends Base implements Sync.ISynchronizable
   public all(model: IModel, args, bucket, cb)
   {
     model.all(this, args, bucket, cb);
+  }
+
+  /**
+    Returns the sequence determined by a parent model and
+    the given model class.
+  */
+  static seq(parent: Model, args: {}, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
+  static seq(parent: Model, cb:(err?: Error, sequence?: Sequence) => void);
+  static seq(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, sequence?: Sequence) => void){
+    function allInstances(parent, keyPath, args, cb){
+      // Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
+      // Model.storageQueue.all(keyPath, {}, {}, (err?, docs?) => {
+      //   if(docs){
+      //     _.each(docs, function(doc){_.extend(doc, args)});
+      //     Sequence.create(this, parent, docs, cb);
+      //   }else{
+      //     cb(err);
+      //   }
+      Model.storageQueue.all(keyPath, {}, {}, (err, items?) => {
+        if(items){
+          Sequence.create(this, parent, items, cb);
+          // Util.asyncForEach(keyPaths, (keyPath, fn)=>{
+          //   Model.storageQueue.fetch(keyPath, (err, doc)=>{
+
+          //     _.extend(doc, args);
+          //     docs.push(doc);
+          //     fn(err);
+          //   });
+          // }, (err) => {
+          //   Sequence.create(this, parent, docs, cb);
+          // });
+        }else{
+          cb(err);
+        }
+      });
+    }
+    overload({
+      'Model Array Object Function': function(parent, keyPath, args, cb){
+        allInstances(parent, keyPath, args, cb);
+      },
+      'Model Object String Function': function(parent, args, bucket, cb){
+        var keyPath = parent.getKeyPath();
+        keyPath.push(bucket);
+        allInstances(parent, keyPath, args, cb);
+      },
+      'Model Function': function(parent, cb){
+        var keyPath = parent.getKeyPath();
+        keyPath.push(this.__bucket);
+        allInstances(parent, keyPath, {}, cb);
+      }
+    }).apply(this, arguments);
+  }
+
+  public seq(model: IModel, args, bucket, cb)
+  {
+    model.seq(this, args, bucket, cb);
   }
 }
 

@@ -89,31 +89,34 @@ class ProxyStorage implements IStorage {
     this.storage.find(keyPath, query, options, cb);
   }
 
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void
   {
-    var self = this;
-    this.storage.insert(keyPath, index, doc, function(err?: Error){
+    this.storage.all(keyPath, query, opts, cb);
+  }
+
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  {
+    this.storage.next(keyPath, id, opts, cb);
+  }
+
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
+  {
+    this.storage.deleteItem(keyPath, id, opts, (err?: Error) => {
       if(!err){
-        this.syncHub && self.syncHub.insert(keyPath, index, doc);
+        this.syncHub && this.syncHub.deleteItem(keyPath, id);
       }
       cb(err);
-    })
+    });
   }
 
-  extract(keyPath: string[], index:number, cb: (err: Error, doc?: {}) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
-    var self = this;
-    this.storage.extract(keyPath, index, function(err: Error, doc?: {}){
+    this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string, refId?: string) => {
       if(!err){
-        this.syncHub && self.syncHub.extract(keyPath, index);
+        this.syncHub && this.syncHub.insertBefore(keyPath, id, itemKeyPath, refId);
       }
-      cb(err, doc);
-    })
-  }
-
-  all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void
-  {
-    this.storage.all(keyPath, cb);
+      cb(err, id);
+    });
   }
 }
 

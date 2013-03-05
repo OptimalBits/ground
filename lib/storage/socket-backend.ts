@@ -55,16 +55,17 @@ export class SocketBackend {
       })
     
       // Sequences
-      socket.on('insert', function(keyPath: string[], index:number, doc:{}, cb: (err: string) => void){
-        server.storage.insert(keyPath, index, doc, scb(cb));
+      socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: string, result: {}[]) => void){
+        server.storage.all(keyPath, query, opts, scb(cb));
       });
-    
-      socket.on('extract', function(keyPath: string[], index:number, cb: (err: string, doc?:{}) => void){
-        server.storage.extract(keyPath, index, scb(cb));
+      socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: string, doc?:IDoc) => void){
+        server.storage.next(keyPath, id, opts, scb(cb));
       });
-    
-      socket.on('all', function(keyPath: string[], cb: (err: string, result: {}[]) => void){
-        server.storage.all(keyPath, scb(cb));
+      socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: string) => void){
+        server.storage.deleteItem(keyPath, id, opts, scb(cb));
+      });
+      socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: string, id?: string, refId?: string) => void){
+        server.storage.insertBefore(keyPath, id, itemKeyPath, opts, scb(cb));
       });
     });
   }

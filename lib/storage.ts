@@ -32,11 +32,17 @@ export class StorageError {
   errors, for example, temporal errors (may trigger a retry) versus
   persistent errors (should not retry).
 */
+
+export interface IDoc {
+  id: string;
+  doc: any;
+  keyPath?: string[];
+}
+
 export interface IStorage extends ISetStorage, ISeqStorage {
   //
   // Basic Storage for Models (Follows CRUD semantics)
   //
-  
   create(keyPath: string[], doc: {}, cb: (err: Error, key?: string) => void): void;
   put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
   fetch(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
@@ -57,9 +63,11 @@ export interface ISetStorage {
 //  Sequence Storage (ordered)
 //
 export interface ISeqStorage {
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void);
-  extract(keyPath: string[], index:number, cb: (err: Error, doc?:{}) => void);
-  all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void;
+  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void;
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void);
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void);
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string, refId?: string) => void);
+  meta?(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void);
 }
 
 }
