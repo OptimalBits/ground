@@ -766,6 +766,64 @@ describe('Collections', function(){
     });
   });
   
+  describe('Edge cases', function(){
+    it('works after clearing local storage', function(done){
+      zoo.all(Animal, function(err, animals){
+        expect(err).to.not.be.ok();
+        expect(animals).to.be.an(Object);
+        animals.add((new Animal({name:"tiger"})).autorelease(), function(err){
+          expect(err).to.not.be.ok();
+          storageQueue.once('synced:', function(){
+            expect(err).to.not.be.ok();
+            expect(animals.count).to.be(1);
+            localStorage.clear();
+            zoo.all(Animal, function(err, sameAnimals){
+              expect(err).to.not.be.ok();
+              expect(sameAnimals).to.be.an(Object);
+              expect(sameAnimals.items).to.be.an(Array);
+              expect(sameAnimals.count).to.be(0);
+              sameAnimals.on('resynced:', function(){
+                expect(sameAnimals.count).to.be(1);
+                sameAnimals.release();
+                animals.release();
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+    it('works after clearing remote storage', function(done){
+      zoo.all(Animal, function(err, animals){
+        expect(err).to.not.be.ok();
+        expect(animals).to.be.an(Object);
+        animals.add((new Animal({name:"tiger"})).autorelease(), function(err){
+          expect(err).to.not.be.ok();
+          storageQueue.once('synced:', function(){
+            expect(err).to.not.be.ok();
+            expect(animals.count).to.be(1);
+
+            var animalId = animals.first().id();
+            storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}, function(err){
+              expect(err).to.be(null);
+              zoo.all(Animal, function(err, sameAnimals){
+                expect(err).to.not.be.ok();
+                expect(sameAnimals).to.be.an(Object);
+                expect(sameAnimals.items).to.be.an(Array);
+                expect(sameAnimals.count).to.be(1);
+                sameAnimals.on('resynced:', function(){
+                  expect(sameAnimals.count).to.be(0);
+                  sameAnimals.release();
+                  animals.release();
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
 });
 
 });

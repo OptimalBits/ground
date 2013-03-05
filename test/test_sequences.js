@@ -42,10 +42,12 @@ describe('Sequences', function(){
     Gnd.Model.storageQueue = q1;
     Gnd.Model.syncManager = sm1;
     parade = new Parade();
+    // parade.save(function(){
+      parade.once('id', function(){
+        done();
+      });
+    // });
     parade.save();
-    parade.once('id', function(){
-      done();
-    });
   });
 
   describe('Push', function(){
@@ -384,6 +386,52 @@ describe('Sequences', function(){
                   });
                 });
                 nosyncedAnimals.save();
+              });
+            });
+          });
+        });
+      });
+    });
+    it('works after clearing local storage', function(done){
+      getSequence(parade.id(), sm1, q1, true, function(animals){
+        animals.push((new Animal({name: 'tiger'})).autorelease(), function(err){
+          expect(err).to.be(null);
+          q1.once('synced:', function(){
+            localStorage.clear();
+            getSequence(parade.id(), sm2, q2, true, function(animals2){
+              expect(animals2.count).to.be(1);
+              done();
+            });
+          });
+        });
+      });
+    });
+    it('works after clearing remote storage', function(done){
+      var paradeId = parade.id();
+      Gnd.Model.storageQueue = q1;
+      Gnd.Model.syncManager = sm1;
+      Parade.findById(paradeId, function(err, parade){
+        expect(err).to.be(null);
+        parade.keepSynced();
+        parade.seq(Animal, function(err, animals){
+          expect(err).to.be(null);
+          expect(animals).to.be.an(Object);
+          animals.once('resynced:', function(){
+            animals.push((new Animal({name: 'tiger'})).autorelease(), function(err){
+              expect(err).to.be(null);
+              q1.once('synced:', function(){
+                var animalId = animals.items[0].id;
+                ss1.deleteItem(['parade', paradeId, 'animals'], animalId, {}, function(err){
+                  expect(err).to.be(null);
+                  parade.seq(Animal, function(err, animals2){
+                    expect(err).to.be(null);
+                    expect(animals2.count).to.be(1);
+                    animals.once('resynced:', function(){
+                      expect(animals2.count).to.be(0);
+                      done();
+                    });
+                  });
+                });
               });
             });
           });
