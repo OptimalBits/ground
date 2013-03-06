@@ -1,4 +1,4 @@
-/*global socket:true*/
+/*global socket:true, io:true*/
 define(['gnd'],
   function(Gnd){
 
@@ -512,17 +512,12 @@ describe('Storage Queue', function(){
   });
 
   describe('Run', function(){
+    var socket1 = io.connect('http://localhost:8080', {'force new connection': true});
     var sm  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
     var sm2  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
-    var ss = new Gnd.Storage.Socket(socket);
+    var ss = new Gnd.Storage.Socket(socket1);
     var q = new Gnd.Storage.Queue(sm, ss, false);
     var q2 = new Gnd.Storage.Queue(sm2, ss);
-
-    before(function(done){
-      q.init(function(){
-        done();
-      });
-    });
 
     beforeEach(function(done){
       q.clear(function() {
@@ -532,6 +527,9 @@ describe('Storage Queue', function(){
     it('changes propagates to other queues on exec()', function(done){
       q.create(['parade'], {}, function(err, paradeId){
         var kp = ['parade', paradeId, 'animals'];
+        q.once('created:'+paradeId, function(sid){
+          kp = ['parade', sid, 'animals'];
+        });
         expect(err).to.not.be.ok();
         expect(paradeId).to.be.ok();
         q.create(['animals'], {name:'tiger'}, function(err, id){

@@ -468,13 +468,12 @@ describe('Sequences', function(){
         animals.push(tiger, function(err){
           expect(err).to.be(null);
           animals.once('updated:', function(){
-            expect(animals.first()).to.have.property('legs', 5);
-            animals.release();
-            tiger.release();
-            done();
-          });
-
-          q1.once('synced:', function(){
+            animals.once('updated:', function(){
+              expect(animals.first()).to.have.property('legs', 5);
+              animals.release();
+              tiger.release();
+              done();
+            });
             Animal.findById(tiger.id(), function(err, animal){
               expect(err).to.not.be.ok();
               animal.keepSynced();
@@ -494,7 +493,8 @@ describe('Sequences', function(){
           expect(panther).to.be.an(Object);
           expect(panther).to.have.property('name', 'panther');
 
-          q1.once('synced:', function(){
+          animals.once('updated:', function(){
+          // q1.once('synced:', function(){
             Animal.findById(panther.id(), function(err, animal){
               expect(err).to.not.be.ok();
               animal.keepSynced();
