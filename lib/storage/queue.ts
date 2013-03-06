@@ -560,13 +560,12 @@ export class Queue extends Base implements IStorage
   public clear(cb?: (err?: Error) => void)
   {
     // clearing the queue is a dangerous thing to do. Hence we wait until finished
-    // this.clearCmdQueue(()=>{
-      if(this.currentTransfer){
+      if(this.queue.length > 0){
         this.once('synced:', cb || Util.noop);
+        this.synchronize();
       }else{
         cb && cb();
       }
-    // });
   }
 
   private enqueueCmd(cmd: Command, cb: (err?: Error)=>void)
