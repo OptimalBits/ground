@@ -169,7 +169,7 @@ describe('Collections', function(){
       });
     });
   
-    it.skip('collection proxies add item event', function(done){
+    it('collection proxies add item event', function(done){
       Zoo.findById(zoo.id(), function(err, zoo){
         var testAnimal;
 
@@ -624,26 +624,39 @@ describe('Collections', function(){
   
   describe('Sorted collection', function(){
     //TODO: rewrite
-    it.skip('add items to sorted collection', function(done){
-      var item1 = new Gnd.Model({val:1}),
-          item2 = new Gnd.Model({val:5}),
-          item3 = new Gnd.Model({val:10}),
-          item4 = new Gnd.Model({val:15});
+    it('add items to sorted collection', function(done){
+      var item1 = new Animal({name:'leopard', pos:3}),
+          item2 = new Animal({name:'tiger', pos:6}),
+          item3 = new Animal({name:'lion', pos:2}),
+          item4 = new Animal({name:'panther', pos:8});
           
-      var collection = new Gnd.Collection(Gnd.Model);
-      collection.add(item3);
-      collection.add(item2);
-      collection.add(item4);
-      collection.add(item1);
+      var sortedZoo = new Zoo();
       
-      collection.set('sortByFn', function(item){return item.val;});
+      sortedZoo.save(function(err){
+        expect(err).to.not.be.ok();
       
-      for(var i=0,len=collection.items.length;i<len-1;i++){
-        expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
-      }
+        sortedZoo.keepSynced();
       
-      collection.release();
-      done();
+        sortedZoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
+          expect(animals).to.be.an(Object);
+          
+          animals.set('sortByFn', function(item){return item.pos;});
+          
+          animals.add([item3, item2, item4, item1], function(err){
+            item2.release();
+            item4.release();
+            item1.release();
+            item3.release();
+            for(var i=0,len=animals.items.length;i<len-1;i++){
+              expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
+            }
+            
+            animals.release();
+            done();
+          });
+        });
+      });
     });
     it('sort collection multiple times', function(done){
       var Parent = Gnd.Model.extend('itemparent');
@@ -667,34 +680,49 @@ describe('Collections', function(){
       done();
     });
     //TODO: rewrite
-    it.skip('update items in sorted collection keeps order', function(done){
-      var item1 = new Gnd.Model({val:1}),
-          item2 = new Gnd.Model({val:5}),
-          item3 = new Gnd.Model({val:10}),
-          item4 = new Gnd.Model({val:15});
+    it('update items in sorted collection keeps order', function(done){
+      var item1 = new Animal({name:'leopard', pos:3}),
+          item2 = new Animal({name:'tiger', pos:6}),
+          item3 = new Animal({name:'lion', pos:2}),
+          item4 = new Animal({name:'panther', pos:8});
           
-      var collection = new Gnd.Collection(Gnd.Model);
+      var sortedZoo = new Zoo();
       
-      collection.set('sortByFn', function(item){return item.val;});
+      sortedZoo.save(function(err){
+        expect(err).to.not.be.ok();
       
-      collection.add(item3);
-      collection.add(item2);
-      collection.add(item4);
-      collection.add(item1);
+        sortedZoo.keepSynced();
       
-      for(var i=0,len=collection.items.length;i<len-1;i++){
-        expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
-      }
-      
-      item1.set('val', 7);
-      item2.set('val', 2);
-      item3.set('val', 12);
-      item4.set('val', 9);
-      
-      for(i=0,len=collection.items.length;i<len-1;i++){
-        expect(collection.items[i].val).to.be.below(collection.items[i+1].val);
-      }
-      done();
+        sortedZoo.all(Animal, function(err, animals){
+          expect(err).to.not.be.ok();
+          expect(animals).to.be.an(Object);
+          
+          animals.set('sortByFn', function(item){return item.pos;});
+          
+          animals.add([item3, item2, item4, item1], function(err){
+            for(var i=0,len=animals.items.length;i<len-1;i++){
+              expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
+            }
+            
+            item1.set('pos', 7);
+            item2.set('pos', 2);
+            item3.set('pos', 12);
+            item4.set('pos', 9);
+            
+            for(i=0,len=animals.items.length;i<len-1;i++){
+              expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
+            }
+
+            item2.release();
+            item4.release();
+            item1.release();
+            item3.release();
+
+            animals.release();
+            done();
+          });
+        });
+      });
     });
     
     it('propagated items in sorted collection keeps order', function(done){
@@ -753,17 +781,11 @@ describe('Collections', function(){
   });
   
   describe('Queries', function(){
-    it('find models in collection limiting result', function(done){
-      done();
-    });
+    it('find models in collection limiting result');
 
-    it('find models in collection paginating', function(done){
-      done();
-    });
+    it('find models in collection paginating');
   
-    it('find models in collection sorting and paginating', function(done){
-      done();
-    });
+    it('find models in collection sorting and paginating');
   });
   
   describe('Edge cases', function(){
