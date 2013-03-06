@@ -317,6 +317,7 @@ export class MongooseStorage implements IStorage {
   private initSequence(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
     //TODO: Atomify
     Model.findById(id).exec((err, doc) => {
+      if(err) return cb(err);
       if(doc[name].length < 2){
         var first = new this.listContainer({
           type: '_begin'
