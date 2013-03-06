@@ -96,7 +96,7 @@ export class Queue extends Base implements IStorage
     this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
-        return cb(err, doc);
+        cb(err, doc);
       }
       if(this.useRemote){
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
