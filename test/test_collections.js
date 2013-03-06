@@ -26,20 +26,12 @@ describe('Collections', function(){
   });
   
   beforeEach(function(done){
-    // storageQueue.clear(function(){
-    
       zoo = new Zoo();
       zoo.keepSynced();
       zoo.save();
-      
-      // storageQueue.once('synced:', function(){
-      // storageQueue.once('created:'+zoo.id(), function(){
-      //   done();
-      // });
       zoo.once('id', function(){
         done();
       });
-    // });
   });
   
   // afterEach(function(){
