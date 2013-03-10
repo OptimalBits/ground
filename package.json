@@ -25,6 +25,11 @@
     , "cabinet": ">=0.2.1"
     , "node-uuid": "*"
     , "typescript": "*"
+    , "passport": "*"
+    , "passport-local": "*"
+    , "connect": "*"
+    , "cookie": "*"
+    , "node-uuid": "*"
   },
   "scripts":{
     "test"      : "mocha tests/*"

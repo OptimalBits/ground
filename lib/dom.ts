@@ -290,6 +290,8 @@ export function serialize(obj) {
      str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
   return str.join("&");
 }
+} // Gnd
+
 
 //------------------------------------------------------------------------------
 //
@@ -301,7 +303,7 @@ module Gnd.Ajax
 { 
   export interface AjaxCallback
   {
-    (err?: Error, doc?:{}): void;
+    (err?: Error, doc?:any): void;
   }
   
   export function get(url: string, obj: {}, cb: AjaxCallback)
@@ -371,4 +373,3 @@ module Gnd.Ajax
   }
 } // Ajax
 
-} // Gnd

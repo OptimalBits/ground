@@ -15,7 +15,7 @@
   /cars
   /cars/1234/engines/213/carburetors
   
-  Collections are usually expressed in plurar, where id expresses a specific 
+  Collections are usually expressed in plural, where id expresses a specific 
   element in the collection.
 
 */

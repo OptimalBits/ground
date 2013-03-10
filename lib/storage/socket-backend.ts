@@ -22,14 +22,22 @@ module Gnd {
 export class SocketBackend {
   constructor(socketManager: any, server: Server){
     
-    socketManager.on('connection', function(socket){
-      //var session = Session.getById()
-      var userId;
+    socketManager.on('connection', function(socket){      
       var clientId = socket.id;
+      
+      var sessionId = 
+        server.sessionManager.getSessionId(socket.handshake.headers.cookie);
+      
+      var userId = 'guest';
 
       socket.on('create', function(keyPath: string[], doc: {}, cb: (err: string, key?: string) => void){
-        console.log("CREATUNG");
-        server.create(userId, keyPath, doc, scb(cb));
+        server.sessionManager.getSession(sessionId, function(err?: Error, session?){
+          if(!err){
+            server.create(session.userId, keyPath, doc, scb(cb));
+          }else{
+            cb(err.message);
+          }
+        });
       });
     
       socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: string) => void){

@@ -28,6 +28,8 @@
 /// <reference path="./lib/storage/socket.ts" />
 /// <reference path="./lib/sync/sync.ts" />
 
+/// <reference path="./lib/session.ts" />
+
 /// <reference path="./lib/collection.ts" />
 /// <reference path="./lib/model.ts" />
 

@@ -1,3 +1,4 @@
+"use_strict";
 
 var Gnd = require('../index');
 
@@ -8,8 +9,14 @@ var express = require('express'),
     models = require('./fixtures/mongo_models'),
     redis = require('redis'),
     cabinet = require('cabinet'),
-    staticDir = __dirname + '/../';
+    passport = require('passport'),
+    cookie = require('cookie'),
+    staticDir = __dirname + '/../',
+    oneMinute = 60*1000,
+    uuid = require('node-uuid');
     
+app.use(passport.initialize());
+
 app.use(cabinet(staticDir+'node_modules/mocha', {
   ignore: ['.git', 'node_modules', '*~', 'examples']
 }));
@@ -38,18 +45,75 @@ app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   console.log(url);
 }));
 
-
-
 app.use(express.bodyParser());
 
 var mongooseStorage = new Gnd.MongooseStorage(models);
+
+var sessionManager = new Gnd.SessionManager('testCookie', cookie.parse);
+
 var pubClient = redis.createClient(6379, "127.0.0.1"),
     subClient = redis.createClient(6379, "127.0.0.1");
 
 var syncHub = new Gnd.Sync.SyncHub(pubClient, subClient, sio.sockets);
 
-var gndServer = new Gnd.Server(mongooseStorage, syncHub);
+var gndServer = new Gnd.Server(mongooseStorage, sessionManager, syncHub);
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
+
+
+//
+// Passport based Login
+//
+var LocalStrategy = require('passport-local').Strategy;
+
+passport.use(new LocalStrategy(
+  function(username, password, done) {
+    if (username == 'tester' && password == 'passwd'){
+      done(null, {username: username, sessionId: uuid.v1()});
+    }else{
+      done(null, false);
+    }
+  }
+));
+
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(id, done) {
+  done(null, id);
+});
+
+app.post('/sessions', passport.authenticate('local'), function(req, res) {
+  sessionManager.setSession(req.user.sessionId, req.user, function(err){
+    if(!err){
+      res.send(req.user);
+    }else{
+      res.send(500);
+    }
+  });
+});
+
+app.get('/sessions/:id',  function(req, res) {
+  sessionManager.getSession(req.params.id, function(err, session){
+    if(!err){
+      res.send(session);
+    }else{
+      res.send(err, 400);
+    }
+  })
+});
+
+app.del('/sessions/:id',  function(req, res) {
+  sessionManager.removeSession(req.params.id, function(err){
+    if(!err){
+      res.send(200);
+    }else{
+      res.send(err, 400);
+    }
+  })
+});
+
+
 
 //
 // Ajax APIs used for some unit tests

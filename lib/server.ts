@@ -10,6 +10,7 @@
 /// <reference path="./storage.ts" />
 /// <reference path="./sync/sync-backend.ts" />
 /// <reference path="./rightsmanager.ts" />
+/// <reference path="./sessionmanager.ts" />
 
 /*
   GndServer gndServer = new GndServer(new MongoStorage(...));
@@ -23,12 +24,15 @@ export class Server {
   
   private syncHub: Sync.SyncHub;
   private rm: RightsManager;
+  public sessionManager: SessionManager;
 
   constructor(persistentStorage: IStorage, 
+              sessionManager?: SessionManager,
               syncHub?: Sync.SyncHub,
               rightsManager?: RightsManager)
   {
     this.storage = persistentStorage;
+    this.sessionManager = sessionManager;
     this.syncHub = syncHub;
     this.rm = rightsManager || new RightsManager();
   }
