@@ -22,63 +22,56 @@ module Gnd {
 export class SocketBackend {
   constructor(socketManager: any, server: Server){
     
-    socketManager.on('connection', function(socket){      
+    socketManager.on('connection', function(socket){
       var clientId = socket.id;
       
-      var sessionId = 
-        server.sessionManager.getSessionId(socket.handshake.headers.cookie);
+      server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {
+        // TODO: Error handling.
       
-      var userId = 'guest';
-
-      socket.on('create', function(keyPath: string[], doc: {}, cb: (err: string, key?: string) => void){
-        server.sessionManager.getSession(sessionId, function(err?: Error, session?){
-          if(!err){
-            server.create(session.userId, keyPath, doc, scb(cb));
-          }else{
-            cb(err.message);
-          }
+        socket.on('create', function(keyPath: string[], doc: {}, cb: (err: string, key?: string) => void){
+          server.create(session.userId, keyPath, doc, scb(cb));
         });
-      });
     
-      socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: string) => void){
-        server.put(clientId, userId, keyPath, doc, scb(cb));
-      });
+        socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: string) => void){
+          server.put(clientId, session.userId, keyPath, doc, scb(cb));
+        });
     
-      socket.on('get', function(keyPath: string[], cb: (err?: string, doc?: {}) => void){
-        server.fetch(userId, keyPath, scb(cb));
-      });
+        socket.on('get', function(keyPath: string[], cb: (err?: string, doc?: {}) => void){
+          server.fetch(session.userId, keyPath, scb(cb));
+        });
     
-      socket.on('del', function(keyPath: string[], cb: (err?: string) => void){
-        server.del(clientId, userId, keyPath, scb(cb));
-      });
+        socket.on('del', function(keyPath: string[], cb: (err?: string) => void){
+          server.del(clientId, session.userId, keyPath, scb(cb));
+        });
     
-      // Collections / Sets
-      socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
-        server.add(clientId, userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
-      });
+        // Collections / Sets
+        socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
+          server.add(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
+        });
     
-      socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
-        server.remove(clientId, userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
-      });
+        socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
+          server.remove(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
+        });
 
-      socket.on('find', function(keyPath: string[], query: {}, options: {}, cb: (err: string, result: {}[]) => void){
-        server.find(userId, keyPath, query, options, scb(cb));
-      })
+        socket.on('find', function(keyPath: string[], query: {}, options: {}, cb: (err: string, result: {}[]) => void){
+          server.find(session.userId, keyPath, query, options, scb(cb));
+        });
     
-      // Sequences
-      /*
-      socket.on('insert', function(keyPath: string[], index:number, doc:{}, cb: (err: string) => void){
-        server.insert(userId, keyPath, index, doc, scb(cb));
-      });
+        // Sequences
+        /*
+        socket.on('insert', function(keyPath: string[], index:number, doc:{}, cb: (err: string) => void){
+          server.insert(userId, keyPath, index, doc, scb(cb));
+          });
     
-      socket.on('extract', function(keyPath: string[], index:number, cb: (err: string, doc?:{}) => void){
-        server.extract(keyPath, index, scb(cb));
-      });
+          socket.on('extract', function(keyPath: string[], index:number, cb: (err: string, doc?:{}) => void){
+          server.extract(keyPath, index, scb(cb));
+          });
     
-      socket.on('all', function(keyPath: string[], cb: (err: string, result: {}[]) => void){
-        server.storage.all(keyPath, scb(cb));
-      });
-      */
+          socket.on('all', function(keyPath: string[], cb: (err: string, result: {}[]) => void){
+          server.storage.all(keyPath, scb(cb));
+          });
+          */
+        });
     });
   }
 }
