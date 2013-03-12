@@ -1,4 +1,7 @@
+
 "use_strict";
+
+/*global _:true*/
 
 var Gnd = require('../index');
 
@@ -15,6 +18,7 @@ var express = require('express'),
     oneMinute = 60*1000,
     uuid = require('node-uuid');
     
+
 app.use(passport.initialize());
 
 app.use(cabinet(staticDir+'node_modules/mocha', {
@@ -25,7 +29,7 @@ app.use(cabinet(staticDir+'node_modules/expect.js', {
   ignore: ['.git', 'node_modules', '*~', 'examples']
 }));
 
-app.use(cabinet(staticDir, 
+app.use(cabinet(staticDir,
   {
     ignore: ['.git', 'node_modules', '*~', 'examples', '*.js'],
     typescript: {
@@ -35,7 +39,7 @@ app.use(cabinet(staticDir,
   },
   function(url){
     console.log("FILE Changed:"+url);
-    if(url.indexOf('.ts') != -1){
+    if(url.indexOf('.ts') !== -1){
       sio.sockets.emit('file_changed:', url);
     }
   }
@@ -123,16 +127,32 @@ app.put('/animals/:id', function(req, res){
   console.log(req.body);
   models.animals.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
-    res.send(204)
-  })
-})
+    res.send(204);
+  });
+});
 
 app.put('/zoos/:zooId/animals/:id', function(req, res){
   res.send(204);
-})
+});
+
+app.put('/parade/:seqId/seq/animals/:id', function(req, res){
+  console.log('pushing '+req.params.id+' to '+req.params.seqId);
+  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], null, ['animals', req.params.id], {}, function(err){
+    if(err) throw new Error('Error in test service');
+    res.send(204);
+  });
+});
+
+app.del('/parade/:seqId/seq/animals/:id', function(req, res){
+  console.log('deleting '+req.params.id+' from '+req.params.seqId);
+  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'], req.params.id, {}, function(err){
+    if(err) throw new Error('Error in test service');
+    res.send(204);
+  });
+});
 
 app.del('/zoos/:zooId/animals/:id', function(req, res){
-  models.zoo.findById(req.params.zooId, function(err, zoo){    
+  models.zoo.findById(req.params.zooId, function(err, zoo){
     if (err) {
       throw new Error('Error remove animal:'+req.params.id+' from Zoo:'+req.params.zooId+' '+err);
     } else {
@@ -150,12 +170,12 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
 //
 
 mongoose.connect('mongodb://localhost/testGingerSync', function(){
-  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) { 
+  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
     console.log(result);
     mongoose.disconnect(function(){
       mongoose.connect('mongodb://localhost/testGingerSync');
       //var server = new Server(models, 6379, 'localhost', sio.sockets);
-  
+
       app.listen(8080);
       console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
     });

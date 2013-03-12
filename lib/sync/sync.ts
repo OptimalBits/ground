@@ -104,6 +104,16 @@ export class Manager extends Base {
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'remove:', itemsKeyPath, itemIds);
     });
+
+    socket.on('insertBefore:', (keyPath, id, itemKeyPath, refId) => {
+      var key = keyPathToKey(keyPath);
+      notifyObservers(this.docs[key], 'insertBefore:', id, itemKeyPath, refId);
+    });
+
+    socket.on('deleteItem:', (keyPath, id) => {
+      var key = keyPathToKey(keyPath);
+      notifyObservers(this.docs[key], 'deleteItem:', id);
+    });
   }
   
   init()
@@ -169,13 +179,23 @@ export class Manager extends Base {
   }  
 }
 
-function notifyObservers(observers, message, itemsKeyPath, itemIds){
+function notifyObservers(...args:any[]){
+  var args = Array.prototype.slice.call(arguments, 0);
+  var observers = _.first(args);
   if(observers){
     for(var i=0; i<observers.length; i++){
-      observers[i].emit(message, itemsKeyPath, itemIds);
+      observers[i].emit.apply(observers[i], _.rest(args));
     }
   }
 }
+// 
+// function notifyObservers(observers, message, itemsKeyPath, itemIds){
+//   if(observers){
+//     for(var i=0; i<observers.length; i++){
+//       observers[i].emit(message, itemsKeyPath, itemIds);
+//     }
+//   }
+// }
 
 function keyPathToKey(keyPath: string[]){
   return keyPath.join(':');

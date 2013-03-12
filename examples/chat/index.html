@@ -78,14 +78,14 @@
         
         // Helper function to render templates
         function renderTemplate(tmplName) {
-          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
-          Gnd.$$('body').innerHTML = template();
+          var template = _.template(Gnd.$('#' + tmplName).html());
+          Gnd.$('body').innerHTML = template();
         }
 
         // Helper function to render templates
         function renderTemplate(tmplName) {
-          var template = _.template(Gnd.$$('#' + tmplName).innerHTML);
-          Gnd.$$('body').innerHTML = template();
+          var template = _.template(Gnd.$('#' + tmplName).html());
+          Gnd.$('body').innerHTML = template();
         }
 
         // Routing
@@ -166,7 +166,7 @@
                 vmRoom.set('name', '');
                 // Focus on inputbox
                 Gnd.Util.nextTick(function() {
-                  Gnd.$$('#roomname').focus();
+                  Gnd.$('#roomname').focus();
                 });
               }
 
@@ -180,7 +180,7 @@
 
               // Create a ViewModel and bind it to the dom
               var viewModel = new Gnd.ViewModel(
-                Gnd.$$('#main'),
+                Gnd.$('#main'),
                 {
                   newRoom: vmRoom,
                   rooms: rooms,
@@ -220,7 +220,7 @@
 
                 // Set focus to inputbox
                 Gnd.Util.nextTick(function() {
-                  Gnd.$$('#msgbox').focus();
+                  Gnd.$('#msgbox').focus();
                 });
               };
 
@@ -235,7 +235,7 @@
 
               // Create a ViewModel and bind it to the dom
               var viewModel = new Gnd.ViewModel(
-                Gnd.$$('#chatroom'),
+                Gnd.$('#chatroom'),
                 {
                   messages: messages,
                   currentMsg: currentMsg,

@@ -54,19 +54,24 @@ export class Socket implements IStorage {
     Gnd.Util.safeEmit(this.socket, 'find', keyPath, query, options, cb);
   }
   
-  insert(keyPath: string[], index:number, doc:{}, cb: (err: Error) => void)
+  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void
   {
-    Gnd.Util.safeEmit(this.socket, 'insert', keyPath, index, doc, cb);
+    Gnd.Util.safeEmit(this.socket, 'all', keyPath, query, opts, cb);
   }
   
-  extract(keyPath: string[], index:number, cb: (err: Error) => void)
+  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    Gnd.Util.safeEmit(this.socket, 'extract', keyPath, index, cb);
+    Gnd.Util.safeEmit(this.socket, 'next', keyPath, id, opts, cb);
   }
-  
-  all(keyPath: string[], cb: (err: Error, result: any[]) => void) : void
+
+  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
-    Gnd.Util.safeEmit(this.socket, 'all', keyPath, cb);
+    Gnd.Util.safeEmit(this.socket, 'deleteItem', keyPath, id, opts, cb);
+  }
+
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  {
+    Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts, cb);
   }
 }
 }

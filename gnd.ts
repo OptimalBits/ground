@@ -26,6 +26,9 @@
 /// <reference path="./lib/storage/queue.ts" />
 /// <reference path="./lib/storage/local.ts" />
 /// <reference path="./lib/storage/socket.ts" />
+/// <reference path="./lib/storage/store/store.ts" />
+/// <reference path="./lib/storage/store/local-storage.ts" />
+/// <reference path="./lib/storage/store/memory-storage.ts" />
 /// <reference path="./lib/sync/sync.ts" />
 
 /// <reference path="./lib/session.ts" />
