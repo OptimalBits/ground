@@ -412,10 +412,12 @@ component to simplify persistence and synchronization. The server component is d
 to scale easily thanks to [Redis](http://redis.io) which is used as a pub sub system
 between different nodes running the ground server component.
 
-Besides models there are also ***collections***. A collection is a special object
-also derived from gnd.Base that keeps a collection of models. By using this class, 
-a collection of models can be kept synchronized against other instances in other remote
-clients using a central server with ground server component.
+Besides models there are also ***collections*** and ***sequences***.
+A collection is a special object also derived from gnd.Base that keeps a collection 
+of models whereas a Sequence is an ordered list of Models. Models, Collections and
+Sequences are lass, a collection of models can be kept synchronized
+against other instances in other remote clients using a central server with ground
+server component.
 
 Lets provide a few simple examples:
       
@@ -521,6 +523,47 @@ Often times a collection is a *subcollection*, i.e., it is a collection part of 
 
 Subcollections is a powerfull concept that allows us to define very complex hierarchies of models and collections.
 
+##Sequences
+
+Sequences provides a convenient way to represent a list of model instances. A sequence can be kept synchronized across many clients and is implemented as a Commutative Replicated Data Type (CRDT) meaning that all operations are commutative. This means tha sequences will eventually converge to a common state even when multiple client simultaneously modifies the same sequence.
+
+A sequence is instantiated by using the *seq* function on a model:
+
+    // Get the animals sequence
+    parade.seq(Animal, function(err, animals){
+      
+      // Push a model to the back of the sequence
+      animals.push((new Animal({name: 'tiger')).autorelease(), function(err){
+
+      });
+
+      // Unshift a model to the front of the sequence
+      animals.unshift((new Animal({name: 'lion')).autorelease(), function(err){
+
+      });
+
+      // Insert a model at index 1 of the sequence
+      animals.insert(1, (new Animal({name: 'panther')).autorelease(), function(err){
+
+      });
+
+      // Remove the model at index 2 from the sequence
+      animals.remove(1, function(err){
+
+      });
+    });
+
+Sequences also provide a number of functional methods for traversing the sequence items such as *each*, *pluck*, *first*, *last* etc. To traverse all items in a sequence you could do:
+    // Get the animals sequence
+    parade.seq(Animal, function(err, animals){
+      animals.each(function(animal){
+        console.log(animal.name);
+      });
+    });
+
+Sequences *retains* all the items that are part of it. So if we for example add a item to a collection, we can safely 
+(and often we must to avoid leaks) release it. The collection will release the object automatically if that item is removed 
+from it later or if the collection is destroyed.
 
 ##Events
 
