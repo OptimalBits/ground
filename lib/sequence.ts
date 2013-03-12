@@ -413,7 +413,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
 }
 
 //
-// Underscore methods that we want to implement on the Collection.
+// Underscore methods that we want to implement on the Sequence
 //
 var methods = 
   ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
