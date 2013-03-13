@@ -24,7 +24,7 @@
 //import _ = module('underscore');
 
 /// <reference path="./lib/server.ts" />
-/// <reference path="./lib/storage/sessionmanager.ts" />
+/// <reference path="./lib/sessionmanager.ts" />
 /// <reference path="./lib/storage/socket-backend.ts" />
 /// <reference path="./lib/storage/mongoose-backend.ts" />
 
