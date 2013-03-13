@@ -7,7 +7,7 @@
 */
 
 /// <reference path="../server.ts" />
-/// <reference path="../third/socket.io.d.ts" />
+/// <reference path="../../third/socket.io.d.ts" />
 
 function scb(cb){
   return function(){
@@ -25,9 +25,12 @@ export class SocketBackend {
     socketManager.on('connection', function(socket){
       var clientId = socket.id;
       
-      server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {
-        // TODO: Error handling.
+      // TODO: Use socket.io authentication mechanism to guarantee there is a session?
       
+      server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {    
+        
+        if (!session) return;
+        
         socket.on('create', function(keyPath: string[], doc: {}, cb: (err: string, key?: string) => void){
           server.create(session.userId, keyPath, doc, scb(cb));
         });
@@ -59,16 +62,16 @@ export class SocketBackend {
         
         // Sequences
         socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: string, result: {}[]) => void){
-          server.all(keyPath, query, opts, scb(cb));
+          server.all(session.userId, keyPath, query, opts, scb(cb));
         });
         socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: string, doc?:IDoc) => void){
-          server.next(keyPath, id, opts, scb(cb));
+          server.next(session.userId, keyPath, id, opts, scb(cb));
         });
         socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: string) => void){
-          server.deleteItem(keyPath, id, opts, scb(cb));
+          server.deleteItem(clientId, session.userId, keyPath, id, opts, scb(cb));
         });
         socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: string, id?: string, refId?: string) => void){
-          server.insertBefore(keyPath, id, itemKeyPath, opts, scb(cb));
+          server.insertBefore(clientId, session.userId, keyPath, id, itemKeyPath, opts, scb(cb));
         });
       });
     });
