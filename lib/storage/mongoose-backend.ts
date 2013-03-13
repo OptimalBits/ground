@@ -69,16 +69,23 @@ export class MongooseStorage implements IStorage {
   private models : any;
   private sync: any;
   private listContainer: any;
+  private transaction: any;
   
   constructor(models, sync){
     this.models = models;
     this.sync = sync;
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: {type: String},
-      prev: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
+      // prev: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      // keyPath: [{ type: String}],
+      pending: [{ type: mongoose.Schema.ObjectId, ref: 'Transaction' }],
       modelId: { type: String}
+    }));
+
+    this.transaction = mongoose.model('Transaction', new mongoose.Schema({
+      type: {type: String},
+      id: { type: mongoose.Schema.ObjectId },
+      state: { type: String}
     }));
   }
   
@@ -325,7 +332,7 @@ export class MongooseStorage implements IStorage {
         first.save((err, first)=>{
           var last = new this.listContainer({
             type: '_end',
-            prev: first._id
+            // prev: first._id
           });
           last.save((err, last)=>{
             first.next = last._id;
@@ -349,32 +356,52 @@ export class MongooseStorage implements IStorage {
   private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err:Error, id?: string)=>void)
   {
     //TODO: Atomify
-    this.listContainer.findById(id)
-      .exec((err, doc)=>{
-        if(err) return cb(err);
-        var prevId = doc.prev;
-        var newContainer = new this.listContainer({
-          prev: prevId,
-          next: id,
-          modelId: itemKey
-        });
-        newContainer.save((err, newContainer)=>{
-          //TODO: parallellize
-          this.listContainer.update({_id: prevId}, {next: newContainer._id}, (err)=>{
-            this.listContainer.update({_id: id}, {prev: newContainer._id}, (err)=>{
-              var delta = {};
-              delta[name] = newContainer._id;
-              Model.update(
-                {_id: modelId},
-                { $push: delta },
-                (err)=>{
-                  cb(err, newContainer._id);
-                }
-              );
+    // create a transaction
+    // var transaction = new this.transaction({
+    //   type: 'insertBefore',
+    //   id: id,
+    //   state: 'initial'
+    // });
+    // transaction.save((err, t)=>{ //necessary?
+    //   if(err) return cb(err);
+    //   this.transaction.update({_id: t._id}, {$set:{state:'pending'}}, (err)=>{
+
+    //   this.listContainer.findById(id)
+    //     .exec((err, doc)=>{
+    //       if(err) return cb(err);
+          // var prevId = doc.prev;
+
+          var newContainer = new this.listContainer({
+            // prev: prevId,
+            next: id,
+            modelId: itemKey
+          });
+          newContainer.save((err, newContainer)=>{
+            if(err) return cb(err);
+            //TODO: parallellize
+            this.listContainer.update({next: id}, {next: newContainer._id}, (err)=>{
+              if(err){
+                // rollback
+                newContainer.remove();
+                return cb(err);
+              }
+              // this.listContainer.update({_id: id}, {prev: newContainer._id}, (err)=>{
+                var delta = {};
+                delta[name] = newContainer._id;
+                Model.update(
+                  {_id: modelId},
+                  { $push: delta },
+                  (err)=>{
+                    cb(err, newContainer._id);
+                  }
+                );
+              // });
             });
           });
-        });
-      });
+
+      //     });
+      //   });
+      // });
   }
 
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
