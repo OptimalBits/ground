@@ -104,6 +104,9 @@ export class Server {
     });
   }
 
+  //
+  // Collection
+  //
   add(clientId: string, userId: string, keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
   {
     this.rm.checkRights(userId, keyPath, Rights.PUT, (err?, allowed?) => {
@@ -150,6 +153,63 @@ export class Server {
       }
     });
   }
+  
+  //
+  // Sequences
+  //
+  all(userId: string, keyPath: string[], query: {}, opts: {}, cb: (err?: Error, result?: IDoc[]) => void) : void
+  {
+    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+      if(allowed){
+        this.storage.all(keyPath, query, opts, cb);
+      }else{
+        cb(err);
+      }
+    });
+  }
+  
+  next(userId: string, keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  {
+    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+      if(allowed){
+        this.storage.next(keyPath, id, opts, cb);
+      }else{
+        cb(err);
+      }
+    });
+  }
+
+  deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
+  {
+    this.rm.checkRights(userId, keyPath, Rights.DEL, (err?, allowed?) => {
+      if(allowed){
+        this.storage.deleteItem(keyPath, id, opts, (err?: Error) => {
+          if(!err){
+            this.syncHub && this.syncHub.deleteItem(clientId, keyPath, id);
+          }
+          cb(err);
+        });
+      }else{
+        cb(err);
+      }
+    });
+  }
+
+  insertBefore(clientId: string, userId: string, keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  {
+    this.rm.checkRights(userId, keyPath, Rights.PUT, (err?, allowed?) => {
+      if(allowed){
+        this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string, refId?: string) => {
+          if(!err){
+            this.syncHub && this.syncHub.insertBefore(clientId, keyPath, id, itemKeyPath, refId);
+          }
+          cb(err, id);
+        });
+      }else{
+        cb(err);
+      }
+    });
+  }  
 }
 
 /*
