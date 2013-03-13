@@ -38,7 +38,6 @@ declare module "underscore" {
 }
 
 module Gnd {
-import mongoose = module('mongoose');
  
 function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
@@ -67,12 +66,11 @@ export interface IMongooseModel extends GndModel {
 
 export class MongooseStorage implements IStorage {
   private models : any;
-  private sync: any;
   private listContainer: any;
   
-  constructor(models, sync){
+  constructor(models, mongoose){
     this.models = models;
-    this.sync = sync;
+    
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: {type: String},
       prev: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
