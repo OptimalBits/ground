@@ -16,8 +16,8 @@ var express = require('express'),
     cookie = require('cookie'),
     staticDir = __dirname + '/../',
     oneMinute = 60*1000,
-    uuid = require('node-uuid');
-    
+    uuid = require('node-uuid'),
+    Cookies = require('cookies');
 
 app.use(passport.initialize());
 
@@ -51,9 +51,11 @@ app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
 
 app.use(express.bodyParser());
 
-var mongooseStorage = new Gnd.MongooseStorage(models);
+var mongooseStorage = new Gnd.MongooseStorage(models, mongoose);
+var TEST_COOKIE = 'testCookie';
 
-var sessionManager = new Gnd.SessionManager('testCookie', cookie.parse);
+//var sessionManager = new Gnd.SessionManager(TEST_COOKIE, cookie.parse);
+var sessionManager = new Gnd.SessionManager();
 
 var pubClient = redis.createClient(6379, "127.0.0.1"),
     subClient = redis.createClient(6379, "127.0.0.1");
@@ -72,7 +74,7 @@ var LocalStrategy = require('passport-local').Strategy;
 passport.use(new LocalStrategy(
   function(username, password, done) {
     if (username == 'tester' && password == 'passwd'){
-      done(null, {username: username, sessionId: uuid.v1()});
+      done(null, {username: username, userId: '1234'});
     }else{
       done(null, false);
     }
@@ -88,7 +90,11 @@ passport.deserializeUser(function(id, done) {
 });
 
 app.post('/sessions', passport.authenticate('local'), function(req, res) {
-  sessionManager.setSession(req.user.sessionId, req.user, function(err){
+  cookies = new Cookies(req, res);
+  var sessionId = uuid.v1()
+  cookies.set(TEST_COOKIE, sessionId);
+  
+  sessionManager.setSession(sessionId, req.user, function(err){
     if(!err){
       res.send(req.user);
     }else{
@@ -97,18 +103,19 @@ app.post('/sessions', passport.authenticate('local'), function(req, res) {
   });
 });
 
-app.get('/sessions/:id',  function(req, res) {
-  sessionManager.getSession(req.params.id, function(err, session){
+app.get('/sessions',  function(req, res) {  
+  sessionManager.getSession(req.headers.cookie, function(err, session){
+    console.log(err);
     if(!err){
-      res.send(session);
+      res.send({username: session.username}, 200);
     }else{
       res.send(err, 400);
     }
   })
 });
 
-app.del('/sessions/:id',  function(req, res) {
-  sessionManager.removeSession(req.params.id, function(err){
+app.del('/sessions',  function(req, res) {
+  sessionManager.removeSession(req.headers.cookie, function(err){
     if(!err){
       res.send(200);
     }else{
@@ -116,7 +123,6 @@ app.del('/sessions/:id',  function(req, res) {
     }
   })
 });
-
 
 
 //
