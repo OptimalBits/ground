@@ -1,4 +1,5 @@
 define(['gnd'], function(Gnd){
+"use strict";
 
 describe('View', function(){
   
@@ -19,4 +20,3 @@ describe('View', function(){
 });
 
 });
-
