@@ -44,9 +44,8 @@ export class Sequence extends Base implements Sync.ISynchronizable
     super();
 
     var memStorage = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
-    this._storageQueue = new Gnd.Storage.Queue(memStorage, Model.storageQueue, false);
+    this._storageQueue = new Gnd.Storage.Queue(memStorage, using.storageQueue, false);
     
-    // var self = this;
     this.items = items || [];
     this.initItems(this.items);
 
@@ -71,14 +70,14 @@ export class Sequence extends Base implements Sync.ISynchronizable
   
     if(parent){
       if(parent.isPersisted()){
-        this.listenToResync(Model.storageQueue, true);
+        this.listenToResync(using.storageQueue, true);
       }else{
         parent.once('id', ()=> {
-          this.listenToResync(Model.storageQueue, true)
+          this.listenToResync(using.storageQueue, true)
         });
       }
     }else{
-      this.listenToResync(Model.storageQueue, true);
+      this.listenToResync(using.storageQueue, true);
     }
   }
 
@@ -310,8 +309,8 @@ export class Sequence extends Base implements Sync.ISynchronizable
     });
 
     this._storageQueue.exec((err?)=>{
-      this._storageQueue = Model.storageQueue;
-      this.listenToResync(Model.storageQueue);
+      this._storageQueue = using.storageQueue;
+      this.listenToResync(using.storageQueue);
     });
 
   }
@@ -329,7 +328,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
         remainingItems.push(item);
         done();
       }
-    }, function(err){
+    }, (err) => {
       var itemsToInsert = [];
       var i=0;
       var j=0;

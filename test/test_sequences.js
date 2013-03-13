@@ -1,30 +1,42 @@
 /*global socket:true, io:true*/
-define(['gnd'],
-  function(Gnd){
+define(['gnd'], function(Gnd){
+"use strict";
 
 localStorage.clear();
 
 describe('Sequences', function(){
   var Animal = Gnd.Model.extend('animals');
   var Parade = Gnd.Model.extend('parade');
-
-  var socket1 = io.connect('http://localhost:8080', {'force new connection': true});
-  var sl1  = new Gnd.Storage.Local();
-  var ss1 = new Gnd.Storage.Socket(socket1);
-  var q1  = new Gnd.Storage.Queue(sl1, ss1);
-  var sm1 = new Gnd.Sync.Manager(socket1);
-
-  var socket2 = io.connect('http://localhost:8080', {'force new connection': true});
-  var sl2  = new Gnd.Storage.Local();
-  var ss2 = new Gnd.Storage.Socket(socket2);
-  var q2  = new Gnd.Storage.Queue(sl2, ss2);
-  var sm2 = new Gnd.Sync.Manager(socket2);
-
+  
   var parade;
+  
+  var socket1, sl1, ss1, q1, sm1;
+  var socket2, sl2, ss2, q2, sm2;
+  
+  before(function(done){
+    socket1 = io.connect('http://localhost:8080', {'force new connection': true});
+    sl1  = new Gnd.Storage.Local();
+    ss1 = new Gnd.Storage.Socket(socket1);
+    q1  = new Gnd.Storage.Queue(sl1, ss1);
+    sm1 = new Gnd.Sync.Manager(socket1);
+
+    socket2 = io.connect('http://localhost:8080', {'force new connection': true});
+    sl2  = new Gnd.Storage.Local();
+    ss2 = new Gnd.Storage.Socket(socket2);
+    q2  = new Gnd.Storage.Queue(sl2, ss2);
+    sm2 = new Gnd.Sync.Manager(socket2);
+    
+    socket1.on('connect', function(){
+      socket2.on('connect', function(){
+        done();
+      })
+    });
+  });
 
   function getSequence(paradeId, sm, sq, keepSynced, cb){
-    Gnd.Model.storageQueue = sq;
+    Gnd.using.storageQueue = sq;
     Gnd.Model.syncManager = sm;
+    
     Parade.findById(paradeId, function(err, parade){
       expect(err).to.be(null);
       if(keepSynced) parade.keepSynced();
@@ -39,7 +51,7 @@ describe('Sequences', function(){
   }
 
   beforeEach(function(done){
-    Gnd.Model.storageQueue = q1;
+    Gnd.using.storageQueue = q1;
     Gnd.Model.syncManager = sm1;
     parade = new Parade();
     // parade.save(function(){
@@ -408,7 +420,7 @@ describe('Sequences', function(){
     });
     it('works after clearing remote storage', function(done){
       var paradeId = parade.id();
-      Gnd.Model.storageQueue = q1;
+      Gnd.using.storageQueue = q1;
       Gnd.Model.syncManager = sm1;
       Parade.findById(paradeId, function(err, parade){
         expect(err).to.be(null);

@@ -1,27 +1,33 @@
-define(['gnd', 'jquery'],
-  function(Gnd, $){
+define(['gnd'], function(Gnd){
+"use strict";
   
 localStorage.clear();
 
 describe('Model', function(){
-  var storageLocal  = new Gnd.Storage.Local();
-  var storageSocket = new Gnd.Storage.Socket(socket);
-  var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
-
   var syncManager = new Gnd.Sync.Manager(socket);
   
+  var storageQueue;
+  
   var Animal = Gnd.Model.extend('animals');
-  var animal = new Animal();
+  var animal;
   
   before(function(done){
-    Gnd.Model.storageQueue = storageQueue;
+    var storageLocal  = new Gnd.Storage.Local();
+    var storageSocket = new Gnd.Storage.Socket(socket);
+    
+    Gnd.use.storageQueue(storageLocal, storageSocket);
+  
+    animal = new Animal();
+    
+    storageQueue = Gnd.using.storageQueue;
     Gnd.Model.syncManager = syncManager;
     
     storageQueue.init(function(){
-      animal.save();
       storageQueue.once('synced:', function(){
         done();
       });
+      
+      animal.save();
     });
   });
   

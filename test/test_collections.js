@@ -1,15 +1,11 @@
 /*global socket:true, io:true*/
-define(['gnd'],
-  function(Gnd){
+define(['gnd'], function(Gnd){
+"use strict";
 
 localStorage.clear();
   
 describe('Collections', function(){
-  var storageLocal  = new Gnd.Storage.Local();
-  var storageSocket = new Gnd.Storage.Socket(socket);
-  var storageQueue  = new Gnd.Storage.Queue(storageLocal, storageSocket);
-
-  var syncManager = new Gnd.Sync.Manager(socket);
+  var syncManager, storageSocket, storageQueue;
 
   var
     Animal = Gnd.Model.extend('animals'),
@@ -17,7 +13,16 @@ describe('Collections', function(){
     zoo;
   
   before(function(done){
-    Gnd.Model.storageQueue = storageQueue;
+    var storageLocal  = new Gnd.Storage.Local();
+    storageSocket = new Gnd.Storage.Socket(socket);
+  
+    syncManager = new Gnd.Sync.Manager(socket);
+  
+    Gnd.use.storage.remote(storageSocket);
+    Gnd.use.storage.local(storageLocal);
+    
+    storageQueue = Gnd.using.storageQueue;
+    
     Gnd.Model.syncManager = syncManager;
     
     storageQueue.init(function(){
@@ -161,7 +166,7 @@ describe('Collections', function(){
       });
     });
   
-    it('collection proxies add item event', function(done){
+    it.skip('collection proxies add item event', function(done){
       Zoo.findById(zoo.id(), function(err, zoo){
         var testAnimal;
 
@@ -184,10 +189,7 @@ describe('Collections', function(){
                 expect(err).to.not.be.ok();
                 animal.keepSynced();
                 
-                animal.on('resynced:', function(){
-                  animal.set('legs', 5);
-                  animal.release();
-                
+                animal.on('resynced:', function(){                
                   animals.on('updated:', function(model, args){
                     expect(args).to.be.an(Object);
                     expect(args.legs).to.be(5);
@@ -195,7 +197,9 @@ describe('Collections', function(){
                     // zoo.release();
                     done();
                   });
-                
+                  
+                  animal.set('legs', 5);
+                  animal.release(); 
                 });
               });
             });

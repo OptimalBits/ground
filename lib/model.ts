@@ -54,11 +54,11 @@ export class Model extends Base implements Sync.ISynchronizable
   private _cid: string;
   private _id: string;
   
+  private _storageQueue: Storage.Queue;
+  
   public _initial: bool = true;
   
-  
   static syncManager: Sync.Manager;
-  static storageQueue: Storage.Queue;
   
   constructor(args: {}, bucket: string){
     super();
@@ -72,20 +72,24 @@ export class Model extends Base implements Sync.ISynchronizable
       this._dirty = true;
     });
     
+    this._storageQueue = 
+      using.storageQueue || new Storage.Queue(using.memStorage);
+    
     var listenToResync = () => {
-      Model.storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
+      this._storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
         // NOTE: If the model is "dirty", we could have a conflict
         this.set(doc, {nosync: true});
         this.emit('resynced:');
       });
     }
     
-    if(Model.storageQueue){
-      if(this.isPersisted()){
+    if(this.isPersisted()){
         listenToResync();
-      }else{
-        this.once('id', listenToResync);
-      }
+    }else{
+      this.once('id', listenToResync);
+      this._storageQueue.once('created:'+this.id(), (id) => {
+        this.id(id);
+      });
     }
   }
   
@@ -135,9 +139,29 @@ export class Model extends Base implements Sync.ISynchronizable
         this.fromJSON(args, (err, instance) => {
           if(instance){
             keepSynced && instance.keepSynced();
+            instance.init(() => {
+              cb(null, instance);
+            })
+          }else{
+            cb(err);
+          }
+        })
+      },
+      'Object Function': function(args, cb){
+        this.create(args, false, cb);
+      }
+    }).apply(this, arguments);
+  }
+  /*
+  {
+    overload({
+      'Object Boolean Function': function(args, keepSynced, cb){
+        this.fromJSON(args, (err, instance) => {
+          if(instance){
+            keepSynced && instance.keepSynced();
             if(!instance.isPersisted()){
               var id = instance.id();
-              Model.storageQueue.once('created:'+id, (id) => {
+              using.storageQueue.once('created:'+id, (id) => {
                 instance.id(id);
               });
             }
@@ -154,12 +178,13 @@ export class Model extends Base implements Sync.ISynchronizable
       }
     }).apply(this, arguments);
   }
+  */
   
   static findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void)
   {
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
-        Model.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
+        using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
           if(doc){
             _.extend(doc, args);
             this.create(doc, keepSynced, cb);
@@ -193,7 +218,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static removeById(keypathOrId, cb?: (err?: Error) => void){
     var keypath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
 
-    Model.storageQueue.del(keypath, (err: Error) => {
+    using.storageQueue.del(keypath, (err: Error) => {
       cb(err);
     });
   }
@@ -277,15 +302,15 @@ export class Model extends Base implements Sync.ISynchronizable
     
     if(this._initial){
       args['_initial'] = this._initial = false;
-      Model.storageQueue.once('created:'+id, (id) => {
+      this._storageQueue.once('created:'+id, (id) => {
         this.id(id);
       });
-      Model.storageQueue.create([bucket], args, (err?, id?) => {
+      this._storageQueue.create([bucket], args, (err?, id?) => {
         // this._cid ? id ?
         cb(err);
       });
     }else{
-      Model.storageQueue.put([bucket, id], args, (err)=>{
+      this._storageQueue.put([bucket, id], args, (err)=>{
         if(!err){
           this.emit('updated:', this, args);
         }
@@ -382,7 +407,7 @@ export class Model extends Base implements Sync.ISynchronizable
   }
   
   static allModels(cb:(err?: Error, models?: Model[]) => void) {
-    Model.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
+    using.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
       if(docs){
         this.createModels(docs, cb);
       }else{
@@ -402,7 +427,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
   static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
       var allInstances = (parent, keyPath, args, cb) => {
-      Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
+      using.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
         if(docs){
           _.each(docs, function(doc){_.extend(doc, args)});
           Collection.create(this, parent, docs, cb);
@@ -440,28 +465,10 @@ export class Model extends Base implements Sync.ISynchronizable
   static seq(parent: Model, args: {}, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent: Model, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, sequence?: Sequence) => void){
-    function allInstances(parent, keyPath, args, cb){
-      // Model.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
-      // Model.storageQueue.all(keyPath, {}, {}, (err?, docs?) => {
-      //   if(docs){
-      //     _.each(docs, function(doc){_.extend(doc, args)});
-      //     Sequence.create(this, parent, docs, cb);
-      //   }else{
-      //     cb(err);
-      //   }
-      Model.storageQueue.all(keyPath, {}, {}, (err, items?) => {
+    var allInstances = (parent, keyPath, args, cb) => {
+      using.storageQueue.all(keyPath, {}, {}, (err, items?) => {
         if(items){
           Sequence.create(this, parent, items, cb);
-          // Util.asyncForEach(keyPaths, (keyPath, fn)=>{
-          //   Model.storageQueue.fetch(keyPath, (err, doc)=>{
-
-          //     _.extend(doc, args);
-          //     docs.push(doc);
-          //     fn(err);
-          //   });
-          // }, (err) => {
-          //   Sequence.create(this, parent, docs, cb);
-          // });
         }else{
           cb(err);
         }

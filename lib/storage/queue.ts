@@ -10,6 +10,8 @@
 
 module Gnd.Storage {
   
+  var QUEUE_STORAGE_KEY = 'meta@taskQueue'
+  
   //
   // The Queue needs a local storage (based on HTML5 local storage, IndexedDB, WebSQL, etc)
   // and a remote Storage.
@@ -28,7 +30,6 @@ module Gnd.Storage {
     oldItemIds?: string[];
     fn?: (cb:()=>void)=>void; //for sync tasks
   }
-  
   
 /**
   Storage Queue
@@ -71,17 +72,12 @@ export class Queue extends Base implements IStorage
     this.useRemote = !!this.remoteStorage;
     this.syncFn = _.bind(this.synchronize, this);
     this.autosync = typeof autosync === 'undefined' ? true : autosync;
-
   }
   
   init(cb:(err?: Error) => void)
   {
-    this.getQueuedCmds((err, queue?)=>{
-      if(!err){
-        this.queue = queue || [];
-      }
-      cb(err);
-    });
+    this.loadQueue();
+    cb();
   }
   
   exec(cb: (err?: Error)=>void)
@@ -305,9 +301,8 @@ export class Queue extends Base implements IStorage
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
         args['_cid'] = args['_cid'] || cid;
-        this.addCmd({cmd:'create', keyPath: keyPath, args: args}, (err?) => {
-          cb(err, cid);
-        });
+        this.addCmd({cmd:'create', keyPath: keyPath, args: args});
+        cb(err, cid);
       }else{
         cb(err);
       }
@@ -318,10 +313,9 @@ export class Queue extends Base implements IStorage
   {
     this.localStorage.put(keyPath, args, (err?) => {
       if(!err){
-        this.addCmd({cmd:'update', keyPath: keyPath, args: args}, cb);
-      }else{
-        cb(err);
+        this.addCmd({cmd:'update', keyPath: keyPath, args: args});
       }
+      cb(err);
     });
   }
   
@@ -329,10 +323,9 @@ export class Queue extends Base implements IStorage
   {
     this.localStorage.del(keyPath, (err?) => {
       if(!err){
-        this.addCmd({cmd:'delete', keyPath: keyPath}, cb);
-      }else{
-        cb(err);
+        this.addCmd({cmd:'delete', keyPath: keyPath});
       }
+      cb(err);
     });
   }
   
@@ -340,12 +333,9 @@ export class Queue extends Base implements IStorage
   {
     this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}, (err) => {
       if(!err){
-        this.addCmd({
-          cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
-        }, cb);
-      }else{
-        cb(err);
+        this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds});
       }
+      cb(err);
     });
   }
   
@@ -355,10 +345,9 @@ export class Queue extends Base implements IStorage
       if(!err){
         this.addCmd({
           cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
-        }, cb);
-      }else{
-        cb(err);
+        });
       }
+      cb(err);
     });
   }
   
@@ -420,23 +409,17 @@ export class Queue extends Base implements IStorage
   {
     this.localStorage.deleteItem(keyPath, id, opts, (err?) => {
       if(!err){
-        this.addCmd({
-          cmd:'deleteItem', keyPath: keyPath, id: id
-        }, cb);
-      }else{
-        cb(err);
+        this.addCmd({cmd:'deleteItem', keyPath: keyPath, id: id});
       }
+      cb(err);
     });
   }
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string, refId?: string) => void)
   {
     this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, cid?: string, refId?: string) => {
       if(!err){
-        this.addCmd({
-          cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, cid: cid
-        }, (err?)=>{
-          cb(err, cid);
-        });
+        this.addCmd({cmd:'insertBefore', keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, cid: cid});
+        cb(err, cid);
       }else{
         cb(err);
       }
@@ -567,55 +550,43 @@ export class Queue extends Base implements IStorage
         cb && cb();
       }
   }
-
-  private enqueueCmd(cmd: Command, cb: (err?: Error)=>void)
+  
+  private loadQueue()
   {
-    var q = JSON.parse(localStorage['meta@taskQueue'] || '[]');
-    q.push(cmd);
-    localStorage['meta@taskQueue'] = JSON.stringify(q);
-    cb();
+    this.queue = JSON.parse(localStorage[QUEUE_STORAGE_KEY] || '[]');
   }
-  private dequeueCmd(cb: (err: Error, cmd?: Command)=>void)
+  
+  private saveQueue()
   {
-    var q = JSON.parse(localStorage['meta@taskQueue'] || '[]');
-    var cmd = q.shift();
-    localStorage['meta@taskQueue'] = JSON.stringify(q);
-    cb(null, cmd);
+    localStorage[QUEUE_STORAGE_KEY] = JSON.stringify(this.queue);
   }
-  private getQueuedCmds(cb: (err: Error, queue?: Command[])=>void)
+  
+  private enqueueCmd(cmd: Command)
   {
-    var q = JSON.parse(localStorage['meta@taskQueue'] || '[]');
-    cb(null, q);
+    this.queue.push(cmd);
+    this.autosync && this.saveQueue();
   }
-  private clearCmdQueue(cb: (err?: Error)=>void)
-  {
-    localStorage['meta@taskQueue'] = JSON.stringify([]);
-    cb();
+  private dequeueCmd(): Command
+  {  
+    var cmd = this.queue.shift();
+    this.autosync && this.saveQueue();
+    return cmd;
   }
   private fireOnEmptyQueue(fn: (cb)=>void)
   {
     if(this.queue.length > 0){
       this.once('synced:', fn);
-      this.addCmd({cmd:'syncTask', fn: fn}, (err?) => {
-
-      });
+      this.addCmd({cmd:'syncTask', fn: fn});
     }else{
       fn(Util.noop);
     }
   }
-    
-  private addCmd(cmd: Command, cb:(err?: Error)=>void)
+
+  private addCmd(cmd: Command)
   {
     if(this.useRemote){
-      this.enqueueCmd(cmd, (err?)=>{
-        if(!err){
-          this.queue.push(cmd);
-          this.autosync && this.synchronize();
-        }
-        cb(err);
-      });
-    }else{
-      cb();
+      this.enqueueCmd(cmd);
+      this.autosync && this.synchronize();
     }
   }
 
@@ -623,57 +594,54 @@ export class Queue extends Base implements IStorage
   {
     this.currentTransfer = null;
     var storage = this.localStorage;
+    var syncFn = this.syncFn;
     
-    if(!err){ // || (err.status >= 400 && err.status < 500)){
-      var 
-        syncFn = _.bind(this.synchronize, this);
-      
-      this.queue.shift();
+    if(!err){ // || (err.status >= 400 && err.status < 500)){ 
       //
       // Note: since we cannot have an atomic operation for updating the server and the
       // execution queue, the same command could be executed 2 or more times in 
       // some hazardous scenarios (if the browser crashes after updating the server
       // and before the local storage). revisions should fix this problem.
       //
-      this.dequeueCmd((err, cmd?)=>{
-        if(!cmd) return;
-        var opts = {insync: true};
+      var cmd = this.dequeueCmd();
+      if(!cmd) return;
+      
+      var opts = {insync: true};
         
-        switch(cmd.cmd){
-          case 'add':
-            storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
-              storage.add(cmd.keyPath, 
-                          cmd.itemsKeyPath, 
-                          cmd.itemIds,
-                          opts, (err?) => {
-                Util.nextTick(syncFn);
-              });
-            });
-            break;
-          case 'remove': 
-            storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
-              storage.remove(cmd.keyPath, 
-                             cmd.itemsKeyPath, 
-                             cmd.itemIds,
-                             opts, (err?) =>{
-                Util.nextTick(syncFn);
-              });
-            });
-            break;
-          case 'insertBefore':
-            storage.meta(cmd.keyPath, cmd.id, null, (err?) =>{
+      switch(cmd.cmd){
+        case 'add':
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.add(cmd.keyPath, 
+                        cmd.itemsKeyPath, 
+                        cmd.itemIds,
+                        opts, (err?) => {
               Util.nextTick(syncFn);
             });
-            break;
-          case 'deleteItem':
-            storage.meta(cmd.keyPath, cmd.id, null, (err?) =>{
+          });
+          break;
+        case 'remove': 
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+            storage.remove(cmd.keyPath, 
+                           cmd.itemsKeyPath, 
+                           cmd.itemIds,
+                           opts, (err?) =>{
               Util.nextTick(syncFn);
             });
-            break;
-          default:
+          });
+          break;
+        case 'insertBefore':
+          storage.meta(cmd.keyPath, cmd.id, null, (err?) =>{
             Util.nextTick(syncFn);
-        }
-      });
+          });
+          break;
+        case 'deleteItem':
+          storage.meta(cmd.keyPath, cmd.id, null, (err?) =>{
+            Util.nextTick(syncFn);
+          });
+          break;
+        default:
+          Util.nextTick(syncFn);
+      }
     }else{
       // throw err; //TODO: handle
     }

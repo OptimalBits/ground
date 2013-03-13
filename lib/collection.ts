@@ -21,16 +21,13 @@ module Gnd {
 export class Collection extends Base implements Sync.ISynchronizable
 {
   public items: Model[];
-  private _storageQueue: Storage.Queue;
-  
-  private _keepSynced: bool = false;
-  // private _added: Model[] = [];
-  // private _removed: Model[] = [];
-  private _formatters: any[];
-  
+  private storageQueue: Storage.Queue;
+    
   private updateFn: (model: Model, args) => void;
   private deleteFn: (model: Model) => void;
   private resyncFn: (items: any[]) => void;
+  
+  private _keepSynced: bool = false;
   
   public model: IModel;
   public parent: Model;
@@ -46,8 +43,9 @@ export class Collection extends Base implements Sync.ISynchronizable
   {
     super();
     
-    var memStorage = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
-    this._storageQueue = new Gnd.Storage.Queue(memStorage, Model.storageQueue, false);
+    this.storageQueue = 
+      new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
+      
     var self = this;
     this.updateFn = function(args){
       if(self.sortByFn){
@@ -83,14 +81,14 @@ export class Collection extends Base implements Sync.ISynchronizable
     
     if(parent){
       if(parent.isPersisted()){
-        this.listenToResync(Model.storageQueue, true);
+        this.listenToResync(using.storageQueue, true);
       }else{
         parent.once('id', ()=> {
-          this.listenToResync(Model.storageQueue, true);
+          this.listenToResync(using.storageQueue, true);
         });
       }
     }else{
-      this.listenToResync(Model.storageQueue, true);
+      this.listenToResync(using.storageQueue, true);
     }
   }
   
@@ -152,41 +150,9 @@ export class Collection extends Base implements Sync.ISynchronizable
   
   save(cb: (err?: Error) => void): void
   {
-    this._storageQueue.exec(()=>{
+    this.storageQueue.exec(()=>{
       cb && cb();
     });
-    // var keyPath = this.getKeyPath();
-    // var itemsKeyPath = [];
-    // 
-    // if(this._removed.length){
-    //   itemsKeyPath = _.initial(this._removed[0].getKeyPath());
-    // }else if(this._added.length){
-    //   itemsKeyPath = _.initial(this._added[0].getKeyPath());
-    // }
-    // var itemIds = Collection.getItemIds(this._removed);
-    // Model.storageQueue.remove(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
-    //   if(!err){
-    //     this._removed = []
-    //     Util.asyncForEach(this.items, (item, cb) => {
-    //       item.save(cb);
-    //     }, (err) => {
-    //       if((!err)&&(this._added.length > 0)){
-    //         itemIds = Collection.getItemIds(this._added);
-    //         
-    //         Model.storageQueue.add(keyPath, itemsKeyPath, itemIds, (err?: Error) => {
-    //           if(!err){
-    //             this._added = [];
-    //           }
-    //           cb(err);
-    //         });
-    //       }else{
-    //         cb(err);
-    //       }
-    //     });
-    //   }else{
-    //     cb(err);
-    //   }
-    // })
   }
   
   add(items: Model[], opts?, cb?: (err)=>void): void
@@ -197,7 +163,7 @@ export class Collection extends Base implements Sync.ISynchronizable
     }
     Util.asyncForEach(items, (item, done) => {
       this.addItem(item, opts, (err) => {
-        !err && this._keepSynced && !item._keepSynced && item.keepSynced();
+        !err && this._keepSynced && !item.keepSynced && item.keepSynced();
         done(err);
       });
     }, cb || Util.noop);
@@ -238,14 +204,10 @@ export class Collection extends Base implements Sync.ISynchronizable
         this.emit('removed:', item, index);
         item.release();
         
-        // if(this.isKeptSynced() && (!opts || !opts.nosync)){
         if(!opts || !opts.nosync){
           var itemKeyPath = _.initial(item.getKeyPath());
-          // Model.storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
-          this._storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
+          this.storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
           return;
-        // }else{
-        //   this._removed.push(itemId);
         }
       }
       done();
@@ -270,13 +232,6 @@ export class Collection extends Base implements Sync.ISynchronizable
     this['set']('sortOrder', this.sortOrder == 'asc' ? 'desc' : 'asc');
   }
   
-  setFormatters(formatters){
-    this._formatters = formatters;
-    this['each'](function(item){
-      item.format(formatters);
-    });
-  }
-  
   filtered(result: (err: Error, models?: Model[])=>void)
   {
     if(this.filterFn){
@@ -291,43 +246,12 @@ export class Collection extends Base implements Sync.ISynchronizable
     return this.filterFn ? this.filterFn(item) : true;
   } 
   
-  /*
-  filtered(optionalItem){
-    var items = this.items;
-    if(this.filterFn && this.filterData){
-      var data = this.filterData || '';
-      
-      if(optionalItem){
-        return this.filterFn(optionalItem, data, this.filterFields);
-      }else{
-        var filtered = [], item;
-        for(var i=0, len=items.length;i<len;i++){
-          item = items[i];
-          if(this.filterFn(items[i], data, this.filterFields || _.keys(item))){
-            filtered.push(items[i]);
-          }
-        }
-        return filtered;
-      }
-    }else{
-      return optionalItem || items;
-    }
-  }
-  */
-  
-  // DEPRECATED.
-  reverse()
-  {
-    this.items.reverse();
-    return this;
-  }
-  
   private addPersistedItem(item: Model, cb:(err?: Error) => void): void
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = _.initial(item.getKeyPath());
     
-    this._storageQueue.add(keyPath, itemKeyPath, [item.id()], cb);
+    this.storageQueue.add(keyPath, itemKeyPath, [item.id()], cb);
   }
 
   private addItem(item, opts, cb)
@@ -345,25 +269,20 @@ export class Collection extends Base implements Sync.ISynchronizable
     this.set('count', this.items.length);
     this.emit('added:', item);
     
-    // if(this.isKeptSynced()){
-      if(!opts || (opts.nosync !== true)){
-        if(item.isPersisted()){
-          this.addPersistedItem(item, cb);
-        }else{
-          item.save((err) => {
-            if(!err){
-              this.addPersistedItem(item, Util.noop);
-            }
-            cb(err);
-          });
-        }
+    if(!opts || (opts.nosync !== true)){
+      if(item.isPersisted()){
+        this.addPersistedItem(item, cb);
       }else{
-        cb();
+        item.save((err) => {
+          if(!err){
+            this.addPersistedItem(item, Util.noop);
+          }
+          cb(err);
+        });
       }
-    // }else{
-    //   this._added.push(item);
-    //   cb();
-    // }
+    }else{
+      cb();
+    }
   }
   
   // This function feel a bit hacky
@@ -406,9 +325,9 @@ export class Collection extends Base implements Sync.ISynchronizable
       this.remove(itemId, true, Util.noop);
     });
 
-    this._storageQueue.exec((err?)=>{
-      this._storageQueue = Model.storageQueue;
-      this.listenToResync(Model.storageQueue);
+    this.storageQueue.exec((err?)=>{
+      this.storageQueue = using.storageQueue;
+      this.listenToResync(using.storageQueue);
     });
   }
   
@@ -445,8 +364,6 @@ export class Collection extends Base implements Sync.ISynchronizable
   
   private listenToResync(queue: Storage.Queue, once?: bool){
     var key = Storage.Queue.makeKey(this.getKeyPath());
-    // Model.storageQueue &&
-    // Model.storageQueue.on('resync:'+key, this.resyncFn);
     queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
   }
   
@@ -470,8 +387,7 @@ export class Collection extends Base implements Sync.ISynchronizable
   private deinitItems(items)
   {
     var key = Storage.Queue.makeKey(this.getKeyPath());
-    this._storageQueue &&
-    this._storageQueue.off('resync:'+key, this.resyncFn);
+    this.storageQueue.off('resync:'+key, this.resyncFn);
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];
       item.off('changed:', this.updateFn);

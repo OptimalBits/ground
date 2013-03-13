@@ -14,6 +14,9 @@
 
 /// <reference path="../third/underscore.browser.d.ts" />
 /// <reference path="storage.ts" />
+/// <reference path="storage/local.ts" />
+/// <reference path="storage/store/memory-storage.ts" />
+/// <reference path="storage/queue.ts" />
 
 module Gnd
 {
@@ -23,7 +26,9 @@ module Gnd
       return _.template(str);
     },
     localStorage: null,
-    remoteStorage: null
+    remoteStorage: null,
+    storageQueue: null,
+    memStorage: (new Storage.Local(new Storage.Store.MemoryStore())),
   }
   
   function Using() {
@@ -47,10 +52,17 @@ module Gnd
     storage: {
       local: function(storage: IStorage){
         using.localStorage = storage;
+        using.storageQueue = new Gnd.Storage.Queue(storage, using.remoteStorage);
       },
       remote: function(storage: IStorage){
         using.remoteStorage = storage;
+        if(using.localStorage){
+          using.storageQueue = new Gnd.Storage.Queue(using.localQueue, storage);
+        }
       }
+    },
+    storageQueue: function(localStorage: IStorage, remoteStorage: IStorage){
+      using.storageQueue = new Gnd.Storage.Queue(localStorage, remoteStorage);
     }
   }
 }
