@@ -533,17 +533,17 @@ A sequence is instantiated by using the *seq* function on a model:
     parade.seq(Animal, function(err, animals){
       
       // Push a model to the back of the sequence
-      animals.push((new Animal({name: 'tiger')).autorelease(), function(err){
+      animals.push((new Animal({name: 'tiger'}).autorelease(), function(err){
 
       });
 
       // Unshift a model to the front of the sequence
-      animals.unshift((new Animal({name: 'lion')).autorelease(), function(err){
+      animals.unshift((new Animal({name: 'lion'}).autorelease(), function(err){
 
       });
 
       // Insert a model at index 1 of the sequence
-      animals.insert(1, (new Animal({name: 'panther')).autorelease(), function(err){
+      animals.insert(1, (new Animal({name: 'panther'}).autorelease(), function(err){
 
       });
 
@@ -554,6 +554,7 @@ A sequence is instantiated by using the *seq* function on a model:
     });
 
 Sequences also provide a number of functional methods for traversing the sequence items such as *each*, *pluck*, *first*, *last* etc. To traverse all items in a sequence you could do:
+
     // Get the animals sequence
     parade.seq(Animal, function(err, animals){
       animals.each(function(animal){
