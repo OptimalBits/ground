@@ -7,7 +7,7 @@
   Features:
     - Persistent browser sessions.
     - Automatic outlogging (by timeout). (http://www.nczonline.net/blog/2009/06/02/detecting-if-the-user-is-idle-with-javascript-and-yui-3/)
-    - Anonymous sessions.
+    - Switch users.
     - Passport enabled.
 */
 
@@ -38,12 +38,17 @@ export class Session extends Base
     Ajax.post(Session.url, {username: loginId, password:passwd}, cb);
   }
   
-  static logout(sessionId: string, cb: (err?: Error) =>void)
+  static swap(loginId: string, passwd: string, cb: (err?: Error, session?: string)=>void)
+  {
+    Ajax.put(Session.url, {username: loginId, password:passwd}, cb);
+  }
+  
+  static logout(cb: (err?: Error) =>void)
   {
     Ajax.del(Session.url, {}, cb);
   }
 
-  static authenticated(sessionId: string, cb: (err?: Error, session?: string) => void)
+  static authenticated(cb: (err?: Error, session?: string) => void)
   {
     Ajax.get(Session.url, {}, cb);
   }
