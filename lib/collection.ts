@@ -39,6 +39,9 @@ export class Collection extends Base implements Sync.ISynchronizable
   // Prototypes for underscore imported methods.
   public filter: (iterator: (item: any)=>bool) => Model[];
   
+  // TODO: Support for anonymous collections
+  // constructor(items: {}[]) // i.e. new Collection(Model); add(new Model({..}))
+  
   constructor(model: IModel, parent?: Model, items?: Model[])
   {
     super();
