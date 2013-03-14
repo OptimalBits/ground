@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2011-2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2011-2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 /**
