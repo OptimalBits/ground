@@ -67,16 +67,22 @@ export interface IMongooseModel extends GndModel {
 export class MongooseStorage implements IStorage {
   private models : any;
   private listContainer: any;
+  private transaction: any;
   
   constructor(models, mongoose){
     this.models = models;
     
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: {type: String},
-      prev: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      // keyPath: [{ type: String}],
+      pending: [{ type: mongoose.Schema.ObjectId, ref: 'Transaction' }],
       modelId: { type: String}
+    }));
+
+    this.transaction = mongoose.model('Transaction', new mongoose.Schema({
+      type: {type: String},
+      id: { type: mongoose.Schema.ObjectId },
+      state: { type: String}
     }));
   }
   
@@ -240,32 +246,6 @@ export class MongooseStorage implements IStorage {
       });
   }
   
-  private findContainerOfModel(Model: IMongooseModel, id, name, modelId, cb:(err: Error, container?)=>void){
-    switch(modelId) {
-      case '##@_begin':
-        // this.initSequence(Model, id, name, (err, begin?, end?) => {
-        this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
-          cb(err, begin);
-        });
-        break;
-      case '##@_end':
-        // this.initSequence(Model, id, name, (err, begin?, end?) => {
-        this.findEndPoints(Model, id, name, (err, begin?, end?)=>{
-          cb(err, end);
-        });
-        break;
-      default:
-    Model.findById(id).exec((err, doc) => {
-      this.listContainer.find()
-        .where('_id').in(doc[name])
-        .where('modelId').equals(modelId)
-        .exec((err, docs)=>{
-          if(docs.length !== 1) return cb(Error('no unique container found for model')); 
-          cb(err, docs[0]);
-        });
-    });
-    }
-  }
   private findContainer(Model: IMongooseModel, modelId, name, id, cb:(err: Error, container?)=>void){
     if(!id){
       this.findEndPoints(Model, modelId, name, (err, begin?, end?)=>{
@@ -313,7 +293,6 @@ export class MongooseStorage implements IStorage {
   }
 
   private initSequence(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
-    //TODO: Atomify
     Model.findById(id).exec((err, doc) => {
       if(err) return cb(err);
       if(doc[name].length < 2){
@@ -323,7 +302,6 @@ export class MongooseStorage implements IStorage {
         first.save((err, first)=>{
           var last = new this.listContainer({
             type: '_end',
-            prev: first._id
           });
           last.save((err, last)=>{
             first.next = last._id;
@@ -346,38 +324,34 @@ export class MongooseStorage implements IStorage {
 
   private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err:Error, id?: string)=>void)
   {
-    //TODO: Atomify
-    this.listContainer.findById(id)
-      .exec((err, doc)=>{
-        if(err) return cb(err);
-        var prevId = doc.prev;
-        var newContainer = new this.listContainer({
-          prev: prevId,
-          next: id,
-          modelId: itemKey
-        });
-        newContainer.save((err, newContainer)=>{
-          //TODO: parallellize
-          this.listContainer.update({_id: prevId}, {next: newContainer._id}, (err)=>{
-            this.listContainer.update({_id: id}, {prev: newContainer._id}, (err)=>{
-              var delta = {};
-              delta[name] = newContainer._id;
-              Model.update(
-                {_id: modelId},
-                { $push: delta },
-                (err)=>{
-                  cb(err, newContainer._id);
-                }
-              );
-            });
-          });
-        });
+    var newContainer = new this.listContainer({
+      next: id,
+      modelId: itemKey
+    });
+    newContainer.save((err, newContainer)=>{
+      if(err) return cb(err);
+
+      this.listContainer.update({next: id}, {next: newContainer._id}, (err)=>{
+        if(err){
+          // rollback
+          newContainer.remove();
+          return cb(err);
+        }
+        var delta = {};
+        delta[name] = newContainer._id;
+        Model.update(
+          {_id: modelId},
+          { $push: delta },
+          (err)=>{
+            cb(err, newContainer._id);
+          }
+        );
       });
+    });
   }
 
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
   {
-    //TODO: refactor (performance)
     var all = [];
     var traverse = (id)=>{
       this.next(keyPath, id, opts, (err, next?)=>{
@@ -417,13 +391,11 @@ export class MongooseStorage implements IStorage {
           }
         });
       });
-      // });
     }, cb);
   }
 
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
-    // if(!refItemKeyPath) refItemKeyPath = ['##', '_end'];
     if(_.isFunction(opts)) cb = opts;
 
     this.getModel(keyPath, (Model) => {
