@@ -8,7 +8,6 @@
   all the rights over models, collections and sequences.
 */
 
-
 module Gnd {
 
 export enum Rights {
@@ -23,23 +22,141 @@ export interface Acl
   isAllowed(userId: string, resource: string, permissions: string, cb: (err, allowed) => void): void;
 }
 
+export interface Callback {
+  (err?: Error) : void;
+}
+
+export interface CreateRule {
+  (userId: string, keypath: string[], doc: any, cb: Callback): void;
+}
+
+export interface DeleteRule {
+  (userId: string, keypath: string[], cb: Callback): void;
+}
+
+export interface PutRule {
+  (userId: string, keypath: string[], doc: any, cb: Callback): void;
+}
+
+export interface AddRule {
+  (userId: string, 
+   keyPath: string[],
+   itemsKeyPath: string[],
+   itemIds:string[],
+   cb: Callback): void;
+}
+
+export interface RemoveRule {
+  (userId: string,
+   keyPath: string[], 
+   itemsKeyPath: string[], 
+   itemIds:string[],
+   cb: Callback): void;
+}
+
 export interface Rules
 {
-  create?: any;
-  del?: any;
-  put?: any;
-  add?: any;
-  remove?: any;
+  create?: {[index: string]: CreateRule;};
+  put?: {[index: string]: PutRule;};
+  del?: {[index: string]: DeleteRule;};
+  add?: {[index: string]: AddRule;};
+  remove?: {[index: string]: RemoveRule;};
+}
+
+export class RulesManager 
+{
+  private rules: Rules;
+  private acl: Acl;
+  
+  constructor(acl: Acl, rules: Rules){
+    this.rules = rules;
+    this.acl = acl;
+  }
+  
+  applyCreate(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
+  {
+    var rule = <CreateRule>this.matchRule(this.rules.create, keyPath);
+    if(rule){
+      return rule.call(this.acl, arguments);
+    }
+    cb();
+  }
+
+  applyPut(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
+  {
+    var rule = <PutRule>this.matchRule(this.rules.put, keyPath);
+    if(rule){
+      return rule.call(this.acl, arguments);
+    }
+    cb();
+  }
+  
+  applyDel(userId: string, keyPath: string[], cb:(err?: Error) => void)
+  {
+    var rule = <DeleteRule>this.matchRule(this.rules.del, keyPath);
+    if(rule){
+      return rule.apply(this.acl, arguments);
+    }
+    cb();
+  }
+  
+  applyAdd(userId: string, 
+           keyPath: string[],
+           itemsKeyPath: string[],
+           itemIds:string[], 
+           cb:(err?: Error) => void)
+  {
+    var rule = <AddRule>this.matchRule(this.rules.add, keyPath);
+    if(rule){
+      return rule.apply(this.acl, arguments);
+    }
+    cb();
+  }
+  
+  applyRemove(userId: string,
+              keyPath: string[],
+              itemsKeyPath: string[],
+              itemIds:string[],
+              cb:(err?: Error) => void)
+  {
+    var rule = <RemoveRule>this.matchRule(this.rules.remove, keyPath);
+    if(rule){
+      return rule(userId, keyPath, itemsKeyPath, itemIds, cb);
+    }
+    cb();
+  }
+
+  private matchRule(rules: {}, keyPath: string[])
+  {
+    if(rules){
+      var patterns = Object.keys(rules);
+    
+      for(var i=0; i<patterns.length; i++){
+        var pattern = patterns[i].split('/');
+        if (pattern.length == keyPath.length){
+          for(var j=0; j<keyPath.length; j++){
+            if(keyPath[j] == pattern[j]){
+              return rules[patterns[i]];
+            }
+          }
+        }
+      }
+      return rules['*'];
+    }
+  }
 }
 
 export class RightsManager 
 {
   private acl: Acl;
-  private rules: Rules;
+  private rulesManager: RulesManager;
   
   constructor(acl?: Acl, rules?: Rules){
     this.acl = acl;
-    this.rules = rules;
+    
+    if(rules){
+      this.rulesManager = new RulesManager(acl, rules);
+    }
   }
   
   checkRights(userId: string, 
@@ -64,21 +181,27 @@ export class RightsManager
   
   create(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
   {
-    if(!this.acl) {
+    if(this.rulesManager){
+      this.rulesManager.applyCreate(userId, keyPath, doc, cb);
+    }else{
       cb();
     }
   }
   
   put(userId: string, keyPath: string[], doc: any, cb: (err?: Error) => void)
   {
-    if(!this.acl) {
+    if(this.rulesManager){
+      this.rulesManager.applyPut(userId, keyPath, doc, cb);
+    }else{
       cb();
     }
   }
   
   del(userId: string, keyPath: string[], cb: (err?: Error) => void)
   {
-    if(!this.acl) {
+    if(this.rulesManager){
+      this.rulesManager.applyDel(userId, keyPath, cb);
+    }else{
       cb();
     }
   }
@@ -89,7 +212,9 @@ export class RightsManager
       itemIds:string[],
       cb: (err?: Error) => void)
   {
-    if(!this.acl) {
+    if(this.rulesManager){
+      this.rulesManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds, cb);
+    }else{
       cb();
     }
   }
@@ -100,9 +225,11 @@ export class RightsManager
          itemIds:string[], 
          cb: (err?: Error) => void)
   {
-    if(!this.acl) {
+    if(this.rulesManager){
+      this.rulesManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds, cb);
+    }else{
       cb();
-    }
+    }    
   }
 }
 
