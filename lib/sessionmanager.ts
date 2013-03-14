@@ -99,7 +99,6 @@ export class MemorySessionStore implements ISessionStore
   load(sessionId: string, cb: (err?: Error, session?: {}) => void)
   {
     var session = this.sessions[sessionId];
-    console.log("SESSION="+session);
     if(session){
       this.touch(sessionId);
       cb(null, session);
