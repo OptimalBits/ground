@@ -7,6 +7,7 @@
 */
 
 /// <reference path="../server.ts" />
+/// <reference path="../error.ts" />
 /// <reference path="../../third/socket.io.d.ts" />
 
 function scb(cb){
@@ -29,48 +30,59 @@ export class SocketBackend {
       
       server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {    
         
-        if (!session) return;
-        
-        socket.on('create', function(keyPath: string[], doc: {}, cb: (err: string, key?: string) => void){
+        socket.on('create', function(keyPath: string[], doc: {}, cb: (err: ServerError, key?: string) => void){
+          console.log(clientId+"TRYING TO CREATE");
+          console.log("SESSION:"+session);
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.create(session.userId, keyPath, doc, scb(cb));
         });
     
-        socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: string) => void){
+        socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: ServerError) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.put(clientId, session.userId, keyPath, doc, scb(cb));
         });
     
-        socket.on('get', function(keyPath: string[], cb: (err?: string, doc?: {}) => void){
+        socket.on('get', function(keyPath: string[], cb: (err?: ServerError, doc?: {}) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.fetch(session.userId, keyPath, scb(cb));
         });
     
-        socket.on('del', function(keyPath: string[], cb: (err?: string) => void){
+        socket.on('del', function(keyPath: string[], cb: (err?: ServerError) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.del(clientId, session.userId, keyPath, scb(cb));
         });
     
         // Collections / Sets
-        socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
+        socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.add(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
         });
     
-        socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: string) => void){
+        socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.remove(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
         });
 
-        socket.on('find', function(keyPath: string[], query: {}, options: {}, cb: (err: string, result: {}[]) => void){
+        socket.on('find', function(keyPath: string[], query: {}, options: {}, cb: (err: ServerError, result?: {}[]) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.find(session.userId, keyPath, query, options, scb(cb));
         });
         
         // Sequences
-        socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: string, result: {}[]) => void){
+        socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: ServerError, result?: {}[]) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.all(session.userId, keyPath, query, opts, scb(cb));
         });
-        socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: string, doc?:IDoc) => void){
+        socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: ServerError, doc?:IDoc) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.next(session.userId, keyPath, id, opts, scb(cb));
         });
-        socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: string) => void){
+        socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: ServerError) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);;
           server.deleteItem(clientId, session.userId, keyPath, id, opts, scb(cb));
         });
-        socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: string, id?: string, refId?: string) => void){
+        socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: ServerError, id?: string, refId?: string) => void){
+          if(!session) return cb(ServerError.INVALID_SESSION);
           server.insertBefore(clientId, session.userId, keyPath, id, itemKeyPath, opts, scb(cb));
         });
       });
