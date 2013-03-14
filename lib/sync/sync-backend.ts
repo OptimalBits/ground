@@ -14,7 +14,7 @@
 */
 
 module Gnd.Sync {
-export class SyncHub {
+export class Hub {
   private pubClient;
   
   constructor(pubClient, subClient, sockets, sio)

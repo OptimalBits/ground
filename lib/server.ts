@@ -22,13 +22,13 @@ module Gnd {
 export class Server {
   public storage: IStorage;
   
-  private syncHub: Sync.SyncHub;
+  private syncHub: Sync.Hub;
   private rm: RightsManager;
   public sessionManager: SessionManager;
 
   constructor(persistentStorage: IStorage, 
               sessionManager?: SessionManager,
-              syncHub?: Sync.SyncHub,
+              syncHub?: Sync.Hub,
               rightsManager?: RightsManager)
   {
     this.storage = persistentStorage;
@@ -40,7 +40,6 @@ export class Server {
   create(userId: string, keyPath: string[], doc: any, cb:(err: Error, key?: string) => void)
   {
     this.rm.checkRights(userId, keyPath, Rights.CREATE, (err?, allowed?) => {
-      console.log("ALLOWED?"+allowed)
       if(allowed){
         this.storage.create(keyPath, doc, (err, id?) => {
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
