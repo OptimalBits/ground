@@ -6,6 +6,7 @@
   Storage Queue
 */
 
+/// <reference path="../error.ts" />
 /// <reference path="../storage.ts" />
 
 module Gnd.Storage {
@@ -428,7 +429,7 @@ export class Queue extends Base implements IStorage
   
   synchronize()
   {
-    var done = _.bind(this.success, this);
+    var done = _.bind(this.completed, this);
     
     if (!this.currentTransfer){
       if (this.queue.length){
@@ -590,7 +591,7 @@ export class Queue extends Base implements IStorage
     }
   }
 
-  private success(err: Error)
+  private completed(err: Error)
   {
     this.currentTransfer = null;
     var storage = this.localStorage;
@@ -611,7 +612,7 @@ export class Queue extends Base implements IStorage
       switch(cmd.cmd){
         case 'add':
           storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
-            storage.add(cmd.keyPath, 
+            storage.add(cmd.keyPath,
                         cmd.itemsKeyPath, 
                         cmd.itemIds,
                         opts, (err?) => {
@@ -624,7 +625,7 @@ export class Queue extends Base implements IStorage
             storage.remove(cmd.keyPath, 
                            cmd.itemsKeyPath, 
                            cmd.itemIds,
-                           opts, (err?) =>{
+                           opts, (err?) => {
               Util.nextTick(syncFn);
             });
           });
@@ -643,7 +644,14 @@ export class Queue extends Base implements IStorage
           Util.nextTick(syncFn);
       }
     }else{
-      // throw err; //TODO: handle
+      switch(parseInt(err.message)){
+        case ServerError.INVALID_SESSION:
+          // Discard command
+          var cmd = this.dequeueCmd();
+          this.emit('error:', err);
+          Util.nextTick(syncFn);
+          break;
+      }
     }
   }
 
