@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2011-2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2011-2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 /**
@@ -10,13 +10,14 @@
   automatic client<->server synchronization.
   
   Events:
-  
+
 */
+
+/// <reference path="using.ts" />
+
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="overload.ts" />
-/// <reference path="storage/local.ts" />
-/// <reference path="storage/store/memory-storage.ts" />
 
 module Gnd {
 
@@ -107,7 +108,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
         });
       },
     }).apply(this, arguments);
-  } 
+  }
   
   static private getItemIds(items: Model[])
   {
