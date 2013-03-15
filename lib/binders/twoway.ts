@@ -57,7 +57,7 @@ export class TwoWayBinder implements Binder
         
       var format = () => {
         return attrFormatter ? 
-          attrFormatter(obj.get(keypath)) : obj.get(keypath);
+          attrFormatter.call(obj, obj.get(keypath)) : obj.get(keypath);
       }
         
       if(attr === 'text'){
