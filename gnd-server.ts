@@ -27,6 +27,7 @@
 /// <reference path="./lib/sessionmanager.ts" />
 /// <reference path="./lib/storage/socket-backend.ts" />
 /// <reference path="./lib/storage/mongoose-backend.ts" />
+/// <reference path="./lib/task.ts" />
 
 declare var define;
 declare var exports;
