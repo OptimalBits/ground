@@ -10,12 +10,15 @@
       , "email" : "info@optimalbits.com"
     }
   , "files": ["dist"]
+  , "bin" : { "gnd" : "./bin/gnd.js" }
   , "dependencies": {
       "hiredis": "0.1.14"
     , "redis": "0.8.1"
     , "underscore": "1.3.1"
     , "socket.io": "0.9.10"
     , "acl": "*"
+    , "commander": "*"
+    , "mkdirp": "*"
   },
   "devDependencies": {
       "mocha": "*"

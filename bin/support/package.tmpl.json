@@ -1,0 +1,25 @@
+{
+    "name": "GroundApplication"
+  , "version": "1.0.0"
+  , "description": "Ground Application"
+  , "homepage": "http://gnd.io"
+  , "dependencies": {
+      "gnd": "*"
+    , "acl": "*"
+    , "cabinet": "*"
+    , "express": "2.5.11"
+    , "hiredis": "0.1.14"
+    , "redis": "0.8.1"
+    , "mongoose": "*"
+    , "underscore": "1.3.1"
+    , "socket.io": "0.9.10"
+  },
+  "devDependencies": {
+      "mocha": "*"
+    , "expect.js": "*"
+  },
+  "scripts":{
+      "test"      : "mocha tests/*"
+    , "start"     : "node server.js"
+  }
+}
