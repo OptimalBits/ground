@@ -1,6 +1,6 @@
 {
     "name": "gnd"
-  , "version": "0.1.2"
+  , "version": "0.2.0"
   , "description": "Ground Web Development Framework"
   , "homepage": "http://gnd.io"
   , "keywords": ["MVC", "MVVC", "framework"]
