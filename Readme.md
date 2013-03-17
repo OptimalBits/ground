@@ -20,6 +20,7 @@ Ground is written in [Typescript](http://www.typescriptlang.org/), for modularit
 - Models, Collections with property **bindings**, **persistence** and client-server **synchronization**.
 - **offline** support.
 - *Declarative Bindings* for easily connecting views and models.
+- Sessions and rights managements support.
 
 
 ##Philosophy
