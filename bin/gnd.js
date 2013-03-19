@@ -69,10 +69,10 @@ function createApplication(dst, opts, cb)
   
   var filesToCopy = {
     'support/config.tmpl.js': '/config.js',
-    'support/index.tmpl.html': '/index.html',
     'support/server.tmpl.js': '/server.js',
     'support/package.tmpl.json': '/package.json',
     'support/test_main.tmpl.js': '/test/main.js',
+    'support/index.tmpl.html': '/app/index.html',
     'support/app.tmpl.js': '/app/app.js',
     'support/models.tmpl.js': '/models/models.js',
     'support/README.tmpl.md': '/README.md'
