@@ -17,7 +17,7 @@ Ground is written in [Typescript](http://www.typescriptlang.org/), for modularit
 
 - Designed and optimized for Node.js servers.
 - Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
-- Models, Collections with property **bindings**, **persistence** and client-server **synchronization**.
+- Models, Collections and Sequences with property **bindings**, **persistence** and client-server **synchronization**.
 - **offline** support.
 - *Declarative Bindings* for easily connecting views and models.
 - Sessions and rights managements support.
@@ -42,8 +42,28 @@ Ground is provided both as a set of typescript classes, and as a javascript AMD 
 
 Install Ground by using npm:
 
-    npm install gnd
+    npm install gnd -g
     
+    
+
+##Command line
+
+Ground provides a command line tool that can be used to generate the skeleton of a ground application. This is a very convenient way to start playing with the framework with a minimum effort. For example:
+
+    gnd myapplication
+    
+Will generate a ground application in the directory myapplication. Enter in the directory and execute:
+
+    npm install
+    
+This will install all the required dependencies, then just fire the server with the application:
+
+    node server.js
+
+The hello world application is available at 
+
+    http://localhost:8080
+
 
 #Demos
 
