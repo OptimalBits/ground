@@ -1,5 +1,37 @@
 curl(['gnd'], function(Gnd){
 'use strict';
+
+//
+// Establish a socket.io connection.
+//
+var socket = io.connect('http://localhost:8080');
+
+//
+// Create Local and Remote storages
+//
+var localStorage = new Gnd.Storage.Local();
+var remoteStorage = new Gnd.Storage.Socket(socket);
+
+//
+// Configure the storage queue.
+//
+Gnd.use.storageQueue(localStorage, remoteStorage);
+
+//
+// Configure the sync manager.
+//
+//var syncManager = new Gnd.Sync.Manager(socket);
+Gnd.use.syncManager(socket);
+
+// 
+// Listen to available routes. Only used for selecting filters
+//
+Gnd.Route.listen(function(req) {
+  req.get(function() {
+      
+  })
+})
+
 /*
   var TODOLIST_ID = "GndTodoApp";
   var Todo = Gnd.Model.extend('todos');
