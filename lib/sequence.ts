@@ -179,7 +179,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
       if(item.isPersisted()){
         this.insertPersistedItemBefore(refId, item, done);
       }else{
-        item.save((err) => {
+        item.save((err?) => {
           if(err) return cb(err);
           this.insertPersistedItemBefore(refId, item, done);
         });
