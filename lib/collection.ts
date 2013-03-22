@@ -23,9 +23,14 @@ export class Collection extends Base implements Sync.ISynchronizable
   public items: Model[];
   private storageQueue: Storage.Queue;
     
+  // Even handlers
   private updateFn: (model: Model, args) => void;
   private deleteFn: (model: Model) => void;
   private resyncFn: (items: any[]) => void;
+  
+  // Links
+  private linkFn: (evt: string, item: Model, fields?: string[]) => void;
+  private linkTarget: Collection;
   
   private _keepSynced: bool = false;
   
@@ -100,8 +105,11 @@ export class Collection extends Base implements Sync.ISynchronizable
       this.items = null;
     });
 
+    this.unlink();
+    
     this._keepSynced && this.endSync();
     this.deinitItems(this.items);
+
     super.destroy();
   }
   
@@ -248,6 +256,49 @@ export class Collection extends Base implements Sync.ISynchronizable
   {
     return this.filterFn ? this.filterFn(item) : true;
   } 
+  
+  /*
+    link
+    
+    Links the collection to target one, listening to added, removed and
+    updated event. Besides that, when link is called the first time, it
+    generated added events for all the items in the target collection.
+    
+    Note: a collection can only link to one target collection, although
+    many collections can link to the same target.
+  */
+  link(target: Collection, 
+       fn: (evt: string, item: Model, fields?: string[]) => void)
+  {
+    if(this.linkFn){
+      this.unlink();
+    }
+    
+    this.linkFn = fn;
+    this.linkTarget = target;
+    target
+      .on('added:', (item)=>{
+        fn('added:', item);
+      })
+      .on('removed:', (item)=>{
+        fn('removed:', item);
+      })
+      .on('updated:', (item, fields)=>{
+        fn('added:', item, fields);
+      });
+    target['each']((item)=>{
+      fn('added:', item);
+    });
+  }
+  
+  unlink()
+  {
+    var fn = this.linkFn;
+    if(fn){
+      this.linkTarget.off('added:', fn).off('removed:', fn).off('updated:', fn);
+      this.linkFn = null;
+    }
+  }
   
   private addPersistedItem(item: Model, cb:(err?: Error) => void): void
   {
