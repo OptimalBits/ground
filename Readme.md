@@ -25,10 +25,9 @@ Ground is written in [Typescript](http://www.typescriptlang.org/), for modularit
 
 ##Philosophy
 
-The philosophy of Ground is to focus on *performance* and *simplicity*. It should be a complete Web framework 
-that is fun to use, that uses efficiently the newest web browser technologies, and that relies on Node.js server technology to 
-provide scalability and synchronization. It tries to be un-orthodox in some areas, like providing a hierarchical 
-routing system or only relaying on socket.io for communication instead of AJAX.
+The philosophy of Ground is to focus on *performance* and *simplicity*. We wrote the complex code so that you don't. 
+
+It should be a complete Web framework that is fun to use, that uses efficiently the newest web browser technologies, and that relies on Node.js server technology to provide scalability and synchronization. It provides some innovations such as hierarchical routes and bi-directional client / server communication.
 
 
 ##Dependencies
@@ -43,7 +42,6 @@ Ground is provided both as a set of typescript classes, and as a javascript AMD 
 Install Ground by using npm:
 
     npm install gnd -g
-    
     
 
 ##Command line
