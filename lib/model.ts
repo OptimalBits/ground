@@ -21,6 +21,7 @@
 /// <reference path="overload.ts" />
 /// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
+/// <reference path="using.ts" />
 
 module Gnd {
 
@@ -85,6 +86,7 @@ export class Model extends Base implements Sync.ISynchronizable
     
     if(this.isPersisted()){
         listenToResync();
+        this._initial = false;
     }else{
       this.once('id', listenToResync);
       this._storageQueue.once('created:'+this.id(), (id) => {
@@ -276,11 +278,9 @@ export class Model extends Base implements Sync.ISynchronizable
     return this.__bucket;
   }
   
-  save(cb?: (err: Error) => void)
+  save(cb?: (err?: Error) => void)
   {
-    if(this._dirty){
-      this.update(this.toArgs(), cb);
-    }
+    this.update(this.toArgs(), cb);
   }
   
   //
@@ -292,13 +292,14 @@ export class Model extends Base implements Sync.ISynchronizable
 
       update(args)
   */
-  update(args: {}, cb?: (err: Error) => void)
+  update(args: {}, cb?: (err?: Error) => void)
   {
     var
       bucket = this.__bucket,
       id = this.id();
     
     cb = cb || (err?: Error)=>{};
+    if(!this._dirty) return cb();
     
     if(this._initial){
       args['_initial'] = this._initial = false;
