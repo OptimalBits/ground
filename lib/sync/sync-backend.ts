@@ -17,7 +17,7 @@ module Gnd.Sync {
 export class Hub {
   private pubClient;
   
-  constructor(pubClient, subClient, sockets, sio)
+  constructor(pubClient, subClient?, sockets?, sio?)
   {    
     this.pubClient = pubClient;
     
@@ -74,7 +74,7 @@ export class Hub {
         console.log("MESSAGE:"+channel);
         console.log(msg);
         console.log("ID:"+id);
-        switch(channel) 
+        switch(channel)
         {
           case 'update:':
             sio.in(id).emit('update:', args.keyPath, args.doc);
