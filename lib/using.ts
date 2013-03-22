@@ -31,7 +31,7 @@ module Gnd
     memStorage: (new Storage.Local(new Storage.Store.MemoryStore())),
   }
   
-  function Using() {
+  export function Using() {
 
     if (Using.prototype._instance) {
       return Using.prototype._instance;
