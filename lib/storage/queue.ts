@@ -217,7 +217,7 @@ export class Queue extends Base implements IStorage
         function findItem(items, itemToFind){
           return _.find(items, function(item){
               return (item._cid === itemToFind._cid || 
-                      item._cid === itemToFind._id);
+                      item._id === itemToFind._id);
           });
         }
         
