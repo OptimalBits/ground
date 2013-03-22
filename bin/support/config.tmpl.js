@@ -16,16 +16,16 @@ var env = process.env
   , prefix = 'GND'; 
 
 module.exports = {
-  APP_PORT: _('APP_PORT') || 8080,
+  APP_PORT: _('APP_PORT', 8080),
   
-  REDIS_PORT: _('REDIS_PORT') || 6379,
-  REDIS_ADDR: _('REDIS_ADDR') || '127.0.0.1',
+  REDIS_PORT: _('REDIS_PORT', 6379),
+  REDIS_ADDR: _('REDIS_ADDR', '127.0.0.1'),
   
-  MONGODB_URI: _('MONGODB_PORT') || 'mongodb://localhost/ground',
+  MONGODB_URI: _('MONGODB_URI', 'mongodb://localhost/ground'),
   
-  COOKIE: _('COOKIE') || 'gnd-cookie',
+  COOKIE: _('COOKIE', 'gnd-cookie'),
 }
 
-function _(variable){
-  return env[prefix+'_'+variable];
+function _(variable, default){
+  return env[prefix+'_'+variable] || default;
 }
