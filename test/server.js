@@ -215,8 +215,8 @@ mongoose.connect('mongodb://localhost/testGingerSync', function(){
     mongoose.disconnect(function(){
       mongoose.connect('mongodb://localhost/testGingerSync');
 
-      app.listen(8080);
-      appSessions.listen(8081);
+      app.listen(10000);
+      appSessions.listen(9999);
       console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
     });
   });
