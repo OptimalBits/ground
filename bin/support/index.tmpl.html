@@ -5,31 +5,31 @@
    
   <script type="text/javascript">
     curl = {
-           baseUrl: '/',
-           paths:{
-             css:'/assets/css',
-             tmpl:'/assets/templates'
-           },
-           packages: {
-             'gnd': {
-                path: 'lib/',
-                main: 'gnd',
-                lib: ''
-              },
-              'underscore':{
-                path:'lib/',
-                main:'underscore'
-              },
-            }
-       };
+      baseUrl: '/',
+      paths:{
+        css:'/assets/css',
+        tmpl:'/assets/templates'
+      },
+      packages: {
+        'gnd': {
+          path: 'lib/',
+          main: 'gnd',
+        },
+        'underscore':{
+          path:'lib/',
+          main:'underscore'
+        },
+      }
+    };
   </script>
+  
   <script src="lib/curl.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
  
   <script>
   curl(['app'], function(){
     console.log("Application Loaded");
-  })
+  });
   </script>
 </head>
 
