@@ -16,7 +16,7 @@ var env = process.env
   , prefix = 'GND'; 
 
 module.exports = {
-  APP_PORT: _('APP_PORT', 8080),
+  APP_PORT: _('APP_PORT', 0),
   
   REDIS_PORT: _('REDIS_PORT', 6379),
   REDIS_ADDR: _('REDIS_ADDR', '127.0.0.1'),
