@@ -15,7 +15,6 @@ var Gnd = require('gnd')
 app.use(cabinet(path.join(__dirname, 'app'), {
   ignore: ['.git', 'node_modules', '*~'],
   files: {
-    '/index.html': path.join(__dirname, 'index.html'),
     '/lib/gnd.js': Gnd.lib,
     '/lib/curl.min.js': Gnd.third.curl
   }
@@ -33,4 +32,4 @@ var mongooseStorage = new Gnd.MongooseStorage(models, mongoose)
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 
 app.listen(config.APP_PORT);
-console.log("Express server listening on port %d", config.APP_PORT);
+console.log("Started server at port: %d in %s mode", app.address().port, app.settings.env);
