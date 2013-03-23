@@ -1,19 +1,6 @@
 /**
-   Ground Web Framework v0.1.1
-
-   Features:
-   - Lightweight, High Performance and Modular design.
-   - Hierarchical Routing System.
-   - Property bindings.
-   - Models and Collections with persistence and automatic client / server synchronization.
-   - Declarative Bindings.
-   - Undo/Redo Manager.
-   - Canvas View.
-
-   Dependencies:
-   - LoDash
-
-   (c) 2011-2013 OptimalBits - Licensed as MIT.
+   Ground Web Framework (c) 2011-2013 OptimalBits - Licensed as MIT.
+   
 */
 
 /// <reference path="./lib/using.ts" />
@@ -33,6 +20,7 @@
 
 /// <reference path="./lib/session.ts" />
 
+/// <reference path="./lib/sequence.ts" />
 /// <reference path="./lib/collection.ts" />
 /// <reference path="./lib/model.ts" />
 
