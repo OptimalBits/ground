@@ -4,7 +4,7 @@ curl(['gnd'], function(Gnd){
 //
 // Establish a socket.io connection.
 //
-var socket = io.connect('http://localhost:8080');
+var socket = io.connect();
 
 //
 // Create Local and Remote storages
@@ -28,7 +28,7 @@ Gnd.use.syncManager(socket);
 //
 Gnd.Route.listen(function(req) {
   req.get(function() {
-      
+    // Handle routes
   })
 })
 
