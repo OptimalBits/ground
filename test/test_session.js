@@ -7,7 +7,7 @@ describe('Session', function(){
   var storageLocal;
   
   function socketConnect(done){
-    var socket1 = io.connect('http://localhost:8081', {'force new connection': true});
+    var socket1 = io.connect('http://localhost:9999', {'force new connection': true});
     socket1.on('connect', function(){
       
       var storageRemote = new Gnd.Storage.Socket(socket1);

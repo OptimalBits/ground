@@ -376,7 +376,7 @@ describe('Model', function(){
       
       storageQueue.once('synced:', function(){
         var obj = {legs:7};
-        Gnd.Ajax.put('http://localhost:8080/animals/'+tempAnimal.id(), obj, function(err, res) {
+        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj, function(err, res) {
           socket.socket.disconnect();
           socket.socket.connect();
         });

@@ -391,7 +391,7 @@ describe('Storage Queue', function(){
           expect(id).to.be.ok();
           storage.once('created:'+id, function(sid){
             socket.disconnect();
-            Gnd.Ajax.put('http://localhost:8080/parade/'+keyPath[1]+'/seq/animals/'+sid, null, function(err, res) {
+            Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null, function(err, res) {
               socket.once('connect', function(){
                 storage.all(keyPath, {}, {}, function(err, docs){
                   expect(err).to.not.be.ok();
@@ -461,7 +461,7 @@ describe('Storage Queue', function(){
           expect(err).to.be(null);
           expect(item).to.be.an(Object);
           socket.disconnect();
-          Gnd.Ajax.del('http://localhost:8080/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
+          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
             socket.once('connect', function(){
               storage.all(keyPath, {}, {}, function(err, docs){
                 expect(err).to.not.be.ok();
@@ -512,7 +512,7 @@ describe('Storage Queue', function(){
   });
 
   describe('Run', function(){
-    var socket1 = io.connect('http://localhost:8080', {'force new connection': true});
+    var socket1 = io.connect('/', {'force new connection': true});
     var sm  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
     var sm2  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
     var ss = new Gnd.Storage.Socket(socket1);

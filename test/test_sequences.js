@@ -14,13 +14,13 @@ describe('Sequences', function(){
   var socket2, sl2, ss2, q2, sm2;
   
   before(function(done){
-    socket1 = io.connect('http://localhost:8080', {'force new connection': true});
+    socket1 = io.connect('/', {'force new connection': true});
     sl1  = new Gnd.Storage.Local();
     ss1 = new Gnd.Storage.Socket(socket1);
     q1  = new Gnd.Storage.Queue(sl1, ss1);
     sm1 = new Gnd.Sync.Manager(socket1);
 
-    socket2 = io.connect('http://localhost:8080', {'force new connection': true});
+    socket2 = io.connect('/', {'force new connection': true});
     sl2  = new Gnd.Storage.Local();
     ss2 = new Gnd.Storage.Socket(socket2);
     q2  = new Gnd.Storage.Queue(sl2, ss2);
