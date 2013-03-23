@@ -5,11 +5,11 @@
   <link rel="stylesheet" href="mocha.css" />
   <script src="expect.js"></script>
   <script src="mocha.js"></script>
-  <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+  <script src="socket.io/socket.io.js"></script>
   
   <script type="text/javascript">
     curl = {
-           baseUrl: 'http://localhost:8080/',
+           baseUrl: '/',
            packages: {
              'jquery': {
                path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
@@ -19,106 +19,67 @@
                path:'https://raw.github.com/amdjs/underscore/master/',
                main:'underscore-min'
              },
-             'ginger': {
-               path: 'http://localhost:8080/',
-               main: 'ginger',
-               lib: ''
-             },
              'gnd': {
-                path: 'http://localhost:8080/',
                 main: 'gnd.ts?',
-                lib: ''
-            },
+             },
              'util': {
-                path: 'http://localhost:8080/lib',
                 main: 'util.ts?',
-                lib: ''
-            },
-            'route': {
-               path: 'http://localhost:8080/lib',
+             },
+             'route': {
                main: 'route.ts?',
-               lib: ''
              },
              'task': {
-               path: 'http://localhost:8080/lib',
                main: 'task.ts?',
-               lib: ''
              },
              'event': {
-               path: 'http://localhost:8080/lib',
                main: 'event.ts?',
-               lib: ''
              },
              'base': {
-               path: 'http://localhost:8080/lib',
                main: 'base.ts?',
-               lib: ''
              },
              'undo': {
-               path: 'http://localhost:8080/lib',
                main: 'undo.ts?',
-               lib: ''
              },
              'cache': {
-               path: 'http://localhost:8080/lib',
                main: 'cache.ts?',
-               lib: ''
              },
              'overload': {
-               path: 'http://localhost:8080/lib',
                main: 'overload.ts?',
-               lib: ''
              },
              'storage': {
-               path: 'http://localhost:8080/lib',
                main: 'storage.ts?',
-               lib: ''
              },
              'local': {
-               path: 'http://localhost:8080/lib/storage',
                main: 'local.ts?',
-               lib: ''
              },
              'memory': {
-               path: 'lib/storage',
                main: 'memory.ts?',
-               lib: ''
              },
              'socket': {
-               path: 'lib/storage',
                main: 'socket.ts?',
-               lib: ''
              },
              'storage/socket': {
-               path: 'lib/storage',
                main: 'qwesocketqwe.ts?',
-               lib: ''
              },
              'model': {
-               path: 'http://localhost:8080/lib',
                main: 'model.ts?',
-               lib: ''
              },
              'collection': {
-               path: 'http://localhost:8080/lib',
                main: 'collection.ts?',
-               lib: ''
              },
              'sync': {
-               path: 'http://localhost:8080/lib/sync',
                main: 'sync.ts?',
-               lib: ''
              }
            }
        };
   </script>
   
-  <script src="http://localhost:8080/curl.js"></script>
+  <script src="curl.js"></script>
   
   <script>
     mocha.setup('bdd')
   
-    var socket = io.connect('http://localhost:8080');
+    var socket = io.connect();
     socket.once('connect', function(){
       socket.on('file_changed:', function(url){
         document.location.reload(true)
