@@ -18,6 +18,7 @@
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="overload.ts" />
+/// <reference path="container.ts" />
 
 module Gnd {
 
@@ -26,37 +27,18 @@ export interface ISeqModel {
   id: string;
 };
 
-export class Sequence extends Base implements Sync.ISynchronizable
-{
-  private items: ISeqModel[];
-  private storageQueue: Storage.Queue;
-  
-  private resyncFn: (items: any[]) => void;
+export class Sequence extends Container
+{ 
   private updateFn: (args: any) => void;
   private deleteFn: (kp: string[]) => void;
   
-  private _keepSynced: bool = false;
-  
-  public model: IModel;
-  public parent: Model;
   public count: number = 0;
   
-  constructor(model: IModel, parent?: Model, items?: Model[])
+  constructor(model: IModel, parent?: Model, items?: ISeqModel[])
   {
-    super();
+    super(model, parent, items);
     
-    this.storageQueue = 
-      new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
-    
-    this.items = items || [];
     this.initItems(this.items);
-
-    this.model = model;
-    this.parent = parent;
-    
-    this.resyncFn = (items) => {
-      this.resync(items);
-    }
 
     this.updateFn = (args)=>{
       this.emit('updated:', this, args);
@@ -69,19 +51,7 @@ export class Sequence extends Base implements Sync.ISynchronizable
         }
       }
     };
-  
-    if(parent){
-      if(parent.isPersisted()){
-        this.listenToResync(using.storageQueue, true);
-      }else{
-        parent.once('id', ()=> {
-          this.listenToResync(using.storageQueue, true)
-        });
-      }
-    }else{
-      this.listenToResync(using.storageQueue, true);
-    }
-  }
+  };
 
   static public create(model: IModel, parent: Model, items: IDoc[]): Sequence;
   static public create(model: IModel, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
@@ -108,11 +78,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
         });
       },
     }).apply(this, arguments);
-  }
-  
-  static private getItemIds(items: Model[])
-  {
-    return _.map(items, function(item){return item.id()});
   }
   
   private deleteItem(id: string, opts, cb)
@@ -196,23 +161,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
   }
 
-  destroy(){
-    Util.nextTick(()=>{
-      this.items = null;
-    });
-
-    this.deinitItems(this.items);
-    this._keepSynced && this.endSync();
-    super.destroy();
-  }
-  
-  save(cb?: ()=>void): void
-  {
-    this.storageQueue.exec(()=>{
-      cb && cb();
-    });
-  }
-
   push(item: Model, opts?, cb?: (err)=>void): void
   {
     this.insertBefore(null, item, opts, cb);
@@ -260,40 +208,10 @@ export class Sequence extends Base implements Sync.ISynchronizable
       cb();
     }
   }
-
-  getKeyPath(): string[]
-  {
-    if(this.parent) return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
-    return [this.model.__bucket];
-  }
-
-  keepSynced(): void
-  {  
-    this.startSync();
-  
-    _.map(this.items,(item) => {
-      item.model.keepSynced();
-    });
-  }
-  
-  isKeptSynced(): bool
-  {
-    return this._keepSynced;
-  }
   
   private startSync()
   {
-    this._keepSynced = true;
-    
-    if(this.parent && Model.syncManager){
-      if(this.parent.isPersisted()){
-        Model.syncManager.startSync(this);
-      }else{
-        this.parent.on('id', () => {
-          Model.syncManager.startSync(this);
-        });
-      }
-    }
+    super.startSync();
     
     this.on('insertBefore:', (id, itemKeyPath, refId)=>{
       this.model.findById(itemKeyPath, true, {}, (err: Error, item?: Model): void => {
@@ -308,12 +226,6 @@ export class Sequence extends Base implements Sync.ISynchronizable
     this.on('deleteItem:', (id) => {
       this.deleteItem(id, {nosync: true}, Util.noop);
     });
-
-    this.storageQueue.exec((err?)=>{
-      this.storageQueue = using.storageQueue;
-      this.listenToResync(using.storageQueue);
-    });
-
   }
   
   private resync(newItems: any[]){
@@ -375,20 +287,10 @@ export class Sequence extends Base implements Sync.ISynchronizable
       });
     });
   }
-  
-  private listenToResync(queue: Storage.Queue, once?: bool){
-    var key = Storage.Queue.makeKey(this.getKeyPath());
-    queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
-  }
 
-  private endSync()
-  {
-    Model.syncManager && Model.syncManager.endSync(this);
-    this._keepSynced = false;
-  }
-  
+  // TODO: use initItems and deinitItems from Container class.
   private initItems(items)
-  {  
+  {
     items = _.isArray(items)? items:[items];
     for (var i=0,len=items.length; i<len;i++){
       var item = items[i];

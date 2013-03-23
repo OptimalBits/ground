@@ -15,27 +15,20 @@
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="overload.ts" />
+/// <reference path="container.ts" />
 
 module Gnd {
 
-export class Collection extends Base implements Sync.ISynchronizable
-{
-  public items: Model[];
-  private storageQueue: Storage.Queue;
-    
+export class Collection extends Container
+{    
   // Even handlers
   private updateFn: (model: Model, args) => void;
   private deleteFn: (model: Model) => void;
-  private resyncFn: (items: any[]) => void;
   
   // Links
   private linkFn: (evt: string, item: Model, fields?: string[]) => void;
   private linkTarget: Collection;
-  
-  private _keepSynced: bool = false;
-  
-  public model: IModel;
-  public parent: Model;
+    
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   public filterFn: (item: Model) => bool = null;
@@ -49,35 +42,22 @@ export class Collection extends Base implements Sync.ISynchronizable
   
   constructor(model: IModel, parent?: Model, items?: Model[])
   {
-    super();
+    super(model, parent, items);
     
-    this.storageQueue = 
-      new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
-      
-    var self = this;
+    var _this = this;
     this.updateFn = function(args){
-      if(self.sortByFn){
-        var index = self['indexOf'](this);
-        self.items.splice(index, 1);
-        self.sortedAdd(<Model>this);
+      if(_this.sortByFn){
+        var index = _this['indexOf'](this);
+        _this.items.splice(index, 1);
+        _this.sortedAdd(<Model>this);
       }
-      self.emit('updated:', this, args);
+      _this.emit('updated:', this, args);
     };
-  
+    
     this.deleteFn = (itemId)=>{
       this.remove(itemId, false, Util.noop);
     };
 
-    this.resyncFn = (items) => {
-      this.resync(items);
-    }
-  
-    this.items = items || [];
-    this.initItems(this.items);
-
-    this.model = model;
-    this.parent = parent;
-    
     this.on('sortByFn sortOrder', (fn) => {
       var oldItems = this.items;
       if(this.sortByFn){
@@ -87,29 +67,11 @@ export class Collection extends Base implements Sync.ISynchronizable
       this.emit('sorted:', this.items, oldItems);
     });
     
-    if(parent){
-      if(parent.isPersisted()){
-        this.listenToResync(using.storageQueue, true);
-      }else{
-        parent.once('id', ()=> {
-          this.listenToResync(using.storageQueue, true);
-        });
-      }
-    }else{
-      this.listenToResync(using.storageQueue, true);
-    }
+    this.initItems(this.items);
   }
   
   destroy(){
-    Util.nextTick(()=>{
-      this.items = null;
-    });
-
     this.unlink();
-    
-    this._keepSynced && this.endSync();
-    this.deinitItems(this.items);
-
     super.destroy();
   }
   
@@ -145,24 +107,12 @@ export class Collection extends Base implements Sync.ISynchronizable
         this.create(model, parent, [], cb);
       }
     }).apply(this, arguments);
-  } 
-  
-  static private getItemIds(items: Model[])
-  {
-    return _.map(items, function(item){return item.id()});
   }
   
   findById(id)
   {
     return this['find']((item) => {
       return item.id() == id
-    });
-  }
-  
-  save(cb: (err?: Error) => void): void
-  {
-    this.storageQueue.exec(()=>{
-      cb && cb();
     });
   }
   
@@ -178,12 +128,6 @@ export class Collection extends Base implements Sync.ISynchronizable
         done(err);
       });
     }, cb || Util.noop);
-  }
-  
-  getKeyPath(): string[]
-  {
-    if(this.parent) return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
-    return [this.model.__bucket];
   }
 
   remove(itemIds, opts, cb){
@@ -223,20 +167,6 @@ export class Collection extends Base implements Sync.ISynchronizable
       }
       done();
     }, cb);
-  }
-  
-  keepSynced(): void
-  {  
-    this.startSync();
-  
-    this['map']((item) => {
-      item.keepSynced()
-    });
-  }
-  
-  isKeptSynced(): bool
-  {
-    return this._keepSynced;
   }
   
   toggleSortOrder(){
@@ -351,8 +281,9 @@ export class Collection extends Base implements Sync.ISynchronizable
     
   private startSync()
   {
+    super.startSync();
+    /*
     this._keepSynced = true;
-    
     if(this.parent && Model.syncManager){
       if(this.parent.isPersisted()){
         Model.syncManager.startSync(this);
@@ -362,6 +293,7 @@ export class Collection extends Base implements Sync.ISynchronizable
         });
       }
     }
+    */
     
     this.on('add:', (itemsKeyPath, itemIds) => {
       Util.asyncForEach(itemIds, (itemId: string, done) => {
@@ -379,10 +311,12 @@ export class Collection extends Base implements Sync.ISynchronizable
       this.remove(itemId, true, Util.noop);
     });
 
+    /*
     this.storageQueue.exec((err?)=>{
       this.storageQueue = using.storageQueue;
       this.listenToResync(using.storageQueue);
     });
+    */
   }
   
   private resync(items: any[]){
@@ -414,17 +348,6 @@ export class Collection extends Base implements Sync.ISynchronizable
         });
       }
     });
-  }
-  
-  private listenToResync(queue: Storage.Queue, once?: bool){
-    var key = Storage.Queue.makeKey(this.getKeyPath());
-    queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
-  }
-  
-  private endSync()
-  {
-    Model.syncManager && Model.syncManager.endSync(this);
-    this._keepSynced = false;
   }
   
   private initItems(items)
