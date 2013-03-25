@@ -761,28 +761,28 @@ Storage._findById= function(key, cb){
     cb(new Error('No local object available'));  
   }
 }
-Storage.all = function(bucket, parent){ //OBSOLETE?
-  var collection = []
-  var keys = Storage._subCollectionKeys(bucket, parent)
-  if(keys){
-    for (var i=0, len=keys.length;i<len;i++){
-      var obj = localCache.getItem(keys[i]);
-      if(obj){
-        collection.push(JSON.parse(obj))
-      }else{
-        localCache.removeItem(keys[i])
-      }
-    }
-  }else{
-    for (var i=0, len=localStorage.length;i<len;i++){
-      var key = localStorage.key(i)
-      if(key.split('@')[0] === bucket){
-        collection.push(JSON.parse(localStorage[key]))
-      }
-    }
-  }
-  return collection
-}
+// Storage.all = function(bucket, parent){ //OBSOLETE?
+//   var collection = []
+//   var keys = Storage._subCollectionKeys(bucket, parent)
+//   if(keys){
+//     for (var i=0, len=keys.length;i<len;i++){
+//       var obj = localCache.getItem(keys[i]);
+//       if(obj){
+//         collection.push(JSON.parse(obj))
+//       }else{
+//         localCache.removeItem(keys[i])
+//       }
+//     }
+//   }else{
+//     for (var i=0, len=localStorage.length;i<len;i++){
+//       var key = localStorage.key(i)
+//       if(key.split('@')[0] === bucket){
+//         collection.push(JSON.parse(localStorage[key]))
+//       }
+//     }
+//   }
+//   return collection
+// }
 
 // Note: This works because Storage is not asynchronous (and atomic).
 // Missing error reporting.
@@ -1438,7 +1438,7 @@ var Cache = ginger.Base.extend({
   getItem:function(key){
     var old = this.map[key], value;
     if(old){
-      value = ls[this._key(key, old.time)];
+      value = ls.getItem(this._key(key, old.time));
       this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
@@ -1452,7 +1452,7 @@ var Cache = ginger.Base.extend({
     if(this._makeRoom(requested)){
       this.size += requested;
     
-      ls[this._key(key, time)] = value;
+      ls.setItem(this._key(key, time), value);
 
       if(old){
         // Avoid remove the set item
@@ -1489,7 +1489,7 @@ var Cache = ginger.Base.extend({
   },
   _remove:function(key, timestamp){
     var key = this._key(key,timestamp);
-    delete ls[key];
+    ls.removeItem(key);
   },
   _populate:function(){
     var i, len, key, s, k, size;
@@ -1498,7 +1498,7 @@ var Cache = ginger.Base.extend({
     for (i=0, len=ls.length;i<len;i++){
       key = ls.key(i);
       if (key.indexOf('|') != -1){
-        size = ls[key].length;
+        size = ls.getItem(key).length;
         s = key.split('|');
         // avoid possible duplicated keys due to previous error
         k = s[0];
@@ -1543,7 +1543,7 @@ var Queue = ginger.Base.extend({
     var self = this;
     self.super(Queue);
   
-    var savedQueue = ls.storageQueue;
+    var savedQueue = ls.getItem('storageQueue');
     
     self._queue = (savedQueue && JSON.parse(savedQueue)) || [];
     self._createList = {};
@@ -1559,7 +1559,7 @@ var Queue = ginger.Base.extend({
   add:function(obj){
     //OPTIMIZATION: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
     this._queue.push(obj);
-    ls.storageQueue = JSON.stringify(this._queue);
+    ls.setItem('storageQueue', JSON.stringify(this._queue));
   },
   createCmd:function(transport, bucket, id, args){
     this.add({cmd:'create',bucket:bucket,id:id,args:args,transport:transport});
@@ -1585,7 +1585,7 @@ var Queue = ginger.Base.extend({
         obj.items = newId;
       }
     });
-    ls.storageQueue = JSON.stringify(this._queue);
+    ls.setItem('storageQueue', JSON.stringify(this._queue));
   },
   success:function(err) {
     this._currentTransfer = null;
@@ -1594,7 +1594,7 @@ var Queue = ginger.Base.extend({
       
       // Note: since we cannot have an atomic operation for updating the server and the
       // execution queue, the same command could be executed 2 or more times.
-      ls.storageQueue = JSON.stringify(this._queue);
+      ls.setItem('storageQueue', JSON.stringify(this._queue));
       nextTick(_.bind(this.synchronize, this));
     }
   },
@@ -2018,11 +2018,11 @@ var Model = ginger.Model = Base.extend(function Model(args){
         findById : function(id, cb){
           self.create(Storage.findById(bucket, id), cb)
         },
-        // OBSOLETE?
-        all: function(cb, parent){
-          var collection = Storage.all(bucket, parent)
-          Collection.instantiate(self, parent, collection, cb)
-        },
+        // // OBSOLETE?
+        // all: function(cb, parent){
+        //   var collection = Storage.all(bucket, parent)
+        //   Collection.instantiate(self, parent, collection, cb)
+        // },
         first: function(cb, parent){
           self.create(Storage.first(bucket, parent), cb);
         }
