@@ -73,6 +73,18 @@ if (!Object.create) {
 //
 
 var ginger = {
+  plugins : {
+    ls : localStorage
+  },
+  use : function(kind, plugin){
+    switch(kind){
+      case 'localStorage':
+        this.plugins.ls = plugin;
+        localCache = ginger.localCache = new Cache();
+        storageQueue = new Queue();
+      break;
+    }
+  },
   noop : function(){},
   assert : function(cond, msg){
     if(!cond){
@@ -1420,10 +1432,10 @@ Base.prototype.isDestroyed = function(){
   This cache is converted to an array and sorted when room
   is needed. This conversion is a candidate for optimization.
 */
-var ls = localStorage;
 
 var Cache = ginger.Base.extend({
   constructor : function Cache(maxSize){ 
+    this._ls = ginger.plugins.ls;
     this.super(Cache);
     this._populate();
     this._maxSize = maxSize || 5*1024*1024;
@@ -1438,7 +1450,7 @@ var Cache = ginger.Base.extend({
   getItem:function(key){
     var old = this.map[key], value;
     if(old){
-      value = ls.getItem(this._key(key, old.time));
+      value = this._ls.getItem(this._key(key, old.time));
       this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
@@ -1452,7 +1464,7 @@ var Cache = ginger.Base.extend({
     if(this._makeRoom(requested)){
       this.size += requested;
     
-      ls.setItem(this._key(key, time), value);
+      this._ls.setItem(this._key(key, time), value);
 
       if(old){
         // Avoid remove the set item
@@ -1489,16 +1501,16 @@ var Cache = ginger.Base.extend({
   },
   _remove:function(key, timestamp){
     var key = this._key(key,timestamp);
-    ls.removeItem(key);
+    this._ls.removeItem(key);
   },
   _populate:function(){
     var i, len, key, s, k, size;
     this.size = 0;
     this.map = {};
-    for (i=0, len=ls.length;i<len;i++){
-      key = ls.key(i);
+    for (i=0, len=this._ls.length;i<len;i++){
+      key = this._ls.key(i);
       if (key.indexOf('|') != -1){
-        size = ls.getItem(key).length;
+        size = this._ls.getItem(key).length;
         s = key.split('|');
         // avoid possible duplicated keys due to previous error
         k = s[0];
@@ -1531,9 +1543,6 @@ var Cache = ginger.Base.extend({
   }
 });
 
-// We can only have one local cache.
-var localCache = ginger.localCache = new Cache();
-
 //------------------------------------------------------------------------------
 // Local Model Queue
 // This Object is used...
@@ -1543,7 +1552,8 @@ var Queue = ginger.Base.extend({
     var self = this;
     self.super(Queue);
   
-    var savedQueue = ls.getItem('storageQueue');
+    this._ls = ginger.plugins.ls;
+    var savedQueue = this._ls.getItem('storageQueue');
     
     self._queue = (savedQueue && JSON.parse(savedQueue)) || [];
     self._createList = {};
@@ -1559,7 +1569,7 @@ var Queue = ginger.Base.extend({
   add:function(obj){
     //OPTIMIZATION: MERGE UPDATES FOR A GIVEN ID TOGETHER INTO ONE UPDATE.
     this._queue.push(obj);
-    ls.setItem('storageQueue', JSON.stringify(this._queue));
+    this._ls.setItem('storageQueue', JSON.stringify(this._queue));
   },
   createCmd:function(transport, bucket, id, args){
     this.add({cmd:'create',bucket:bucket,id:id,args:args,transport:transport});
@@ -1585,7 +1595,7 @@ var Queue = ginger.Base.extend({
         obj.items = newId;
       }
     });
-    ls.setItem('storageQueue', JSON.stringify(this._queue));
+    this._ls.setItem('storageQueue', JSON.stringify(this._queue));
   },
   success:function(err) {
     this._currentTransfer = null;
@@ -1594,7 +1604,7 @@ var Queue = ginger.Base.extend({
       
       // Note: since we cannot have an atomic operation for updating the server and the
       // execution queue, the same command could be executed 2 or more times.
-      ls.setItem('storageQueue', JSON.stringify(this._queue));
+      this._ls.setItem('storageQueue', JSON.stringify(this._queue));
       nextTick(_.bind(this.synchronize, this));
     }
   },
@@ -3642,7 +3652,7 @@ Views.ToolTip = Views.PopUp.extend({
 // Singletones
 //
 //------------------------------------------------------------------------------
-
+var localCache = ginger.localCache = new Cache();
 var storageQueue = new Queue();
 
 return ginger
