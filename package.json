@@ -1,16 +1,31 @@
 {
     "name": "gnd"
-  , "version": "0.2.3"
+  , "version": "0.2.5"
+  , "engines": {
+      "node": ">=0.6.10"
+   }
   , "description": "Ground Web Development Framework"
+  , "author": "Manuel Astudillo <manuel@optimabits.com>"
+  , "contributors": [
+    {
+      "name": "Aron Kornhall",
+      "email": "aron@optimalbits.com"
+    }
+  ]
+  , "main": "./index.js"
   , "homepage": "http://gnd.io"
+  , "license" : "MIT" 
   , "keywords": ["MVC", "MVVC", "framework"]
+  , "repository" :
+    { "type" : "git"
+    , "url" : "https://github.com/OptimalBits/ground.git"
+    }
   , "bugs": 
     { "url" : 
         "https://github.com/OptimalBits/ground/issues"
       , "email" : "info@optimalbits.com"
     }
   , "files": ["dist"]
-  , "bin" : { "gnd" : "bin/gnd.js" }
   , "dependencies": {
       "hiredis": "0.1.14"
     , "redis": "0.8.1"
