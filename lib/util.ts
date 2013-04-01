@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 
@@ -182,8 +182,19 @@ export function asyncForEachSeries(arr, fn, cb){
       }
     });
   };
-  iterate();  
+  iterate();
 }
+
+export function inherits(ctor, superCtor){
+  ctor._super = superCtor;
+  if(Object.create){
+    ctor.prototype = Object.create(superCtor.prototype);
+  }else{
+    function F(){}
+    F.prototype = superCtor;
+    ctor.prototype = new F();
+  }
+};
 
 export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
   var methods;
