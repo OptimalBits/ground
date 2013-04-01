@@ -111,9 +111,8 @@ export class Model extends Base implements Sync.ISynchronizable
       _this.call(this, args, bucket || _bucket);
     }; 
     
-    __.prototype = this.prototype;
-    __.prototype._super = this;
-
+    Util.inherits(__, this);
+    
     // Copy Models static methods
     _.extend(__, {
       __bucket: bucket,
