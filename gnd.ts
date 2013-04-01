@@ -5,6 +5,7 @@
 
 /// <reference path="./lib/using.ts" />
 /// <reference path="./lib/util.ts" />
+/// <reference path="./lib/timer.ts" />
 /// <reference path="./lib/overload.ts" />
 /// <reference path="./lib/task.ts" />
 /// <reference path="./lib/base.ts" />
