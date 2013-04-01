@@ -10,7 +10,7 @@
       , "email" : "info@optimalbits.com"
     }
   , "files": ["dist"]
-  , "bin" : { "gnd" : "./bin/gnd.js" }
+  , "bin" : { "gnd" : "bin/gnd.js" }
   , "dependencies": {
       "hiredis": "0.1.14"
     , "redis": "0.8.1"
