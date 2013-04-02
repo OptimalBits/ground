@@ -13,6 +13,8 @@
     }
   ]
   , "main": "./index.js"
+  , "bin" : { "gnd" : "./bin/gnd.js" }
+  , "files": ["index.js", "gnd.ts", "gnd-server.ts", "dist", "bin", "lib", "third"]
   , "homepage": "http://gnd.io"
   , "license" : "MIT" 
   , "keywords": ["MVC", "MVVC", "framework"]
@@ -25,7 +27,6 @@
         "https://github.com/OptimalBits/ground/issues"
       , "email" : "info@optimalbits.com"
     }
-  , "files": ["dist"]
   , "dependencies": {
       "hiredis": "0.1.14"
     , "redis": "0.8.1"
