@@ -6,13 +6,13 @@
   
   Define routes hierarchically creating views by rendering templates at
   the specified DOM nodes in the hierarchy.
-  
 */
 
 /// <reference path="base.ts" />
 /// <reference path="task.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="dom.ts" />
+/// <reference path="using.ts" />
 
 /// <reference path="../third/underscore.browser.d.ts" />
 
@@ -51,7 +51,11 @@ interface Route {
   listen: (root: String, cb: ()=>void) => void;
 };
 
-var interval;
+var interval, 
+    req, 
+    routeHandler, 
+    basepath,
+    historyApi = !!(window.history && window.history.pushState);
 
 export function listen(root, cb) {
   if(_.isFunction(root)){
@@ -59,83 +63,92 @@ export function listen(root, cb) {
     root = '/';
   }
   
-  var 
-    req, 
-    fn = function(){
-      var url = location.hash.replace(/^#!?/, '');
-      if(!req || (req.url !== url)){
-        req && req.queue.cancel();
-      
-        req = new Request(url, req && req.nodes || []);
-        
-        //
-        // Starts the recursive route traversing
-        // (TODO: improve this copy paste stuff...
-        //
-        var index = req.index;
-        
-        cb(req);
-        
-        if(index == req.index){
-          req.isNotFound = true;
-          req.queue.end();
-        }
-        
-        req.queue.wait(function(isCancelled){
-          if(req.isNotFound){
-            if(req.notFoundFn){
-              req.index = 1;
-              req.initNode('body');
-              req.notFoundFn.call(req, req);
-              var queue = new TaskQueue();
-              enqueueNode(queue, req.node())
-            }else{
-              console.log('Undefined route:'+location.hash);
-              return;
-            }
-          }
-        });
-      }
-    }
-
-  if (location.hash === '') {
-    if (root) {
-      location.hash = '!' + root;
-    }
-  }else{
-    fn();
+  routeHandler = cb;
+  basepath = location['origin'] + root;
+  
+  // Listen to all link clicks.
+  $("body").on('click', handleClickUrl);
+  
+  if(historyApi){
+    window.addEventListener("popstate", handlePopState);
   }
+  
+  executeRoute(root, cb);
+}
 
-  if ('onhashchange' in window) {
-    window.onhashchange = fn;
-  } else {
-    interval = setInterval(fn, 50);
+function handleClickUrl(evt){
+  var target = evt.target;
+  if(target.nodeName.toLowerCase() === "a"){
+    evt.preventDefault();
+    
+    var url = target.href;
+    
+    // check if url is within the basepath
+    if(url.indexOf(basepath) === 0){
+      url = url.substring(basepath.length);
+      redirect(url);
+    }
+  }
+}
+
+function handlePopState(evt){
+  routeHandler && executeRoute(location.pathname, routeHandler);
+}
+
+function executeRoute(url, routeHandler){
+  if(!req || (req.url !== url)){
+    req && req.queue.cancel();
+  
+    req = new Request(url, req && req.nodes || []);
+    
+    //
+    // Starts the recursive route traversing
+    //
+    var index = req.index;
+    
+    routeHandler(req);
+    
+    if(req){
+      if(req.index == index ){
+        req.isNotFound = true;
+        req.queue.end();
+      }
+    
+      req.queue.wait(function(isCancelled){
+        if(req.isNotFound){
+          if(req.notFoundFn){
+            req.index = 1;
+            req.initNode('body');
+            req.notFoundFn.call(req, req);
+            var queue = new TaskQueue();
+            enqueueNode(queue, req.node())
+          }else{
+            console.log('Undefined route:'+url);
+            return;
+          }
+        }
+      });
+    }
   }
 }
 
 export function stop(){
-  if(interval){
-    clearInterval(interval);
-    interval = null;
-  }
-  if ('onhashchange' in window) {
-    window.onhashchange = null;
-  }
+  req = routeHandler = null;
+  $("body").off('click', handleClickUrl);
+  window.removeEventListener("popstate", handlePopState);
 }
 
-export function redirect(url) {
-  // TODO: Investigate if we should wait until current route is totally resolved or not...
-  // The issue is that the new route execution may assume there is a certain node tree
-  // but if we just cancel the previous execution this tree may not be there...
-  location.hash = url;
-  if ('onhashchange' in window) {
-    $(window).trigger('onhashchange');
+export function redirect(url){
+  if (historyApi){
+    history.pushState(null, null, url)
+  } else{
+    location.hash = '#!'+ url;
   }
+  routeHandler && executeRoute(url, routeHandler);
 }
 
 /**
   Parses A query string and returns an object with key, value pairs.
-
 */
 var parseQuery = function(queryString : string){
   if(queryString){

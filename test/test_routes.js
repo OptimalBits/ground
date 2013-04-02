@@ -9,10 +9,13 @@ var route = Gnd.Route;
 
 // Helpers
 var goToUrl = function(url){
+  /*
   location.hash = url;
   if ('onhashchange' in window) {
     $(window).trigger('onhashchange');
   }
+  */
+  Gnd.Route.redirect(url);
 }
 
 describe('Routes', function(){
@@ -23,8 +26,10 @@ describe('simple routes', function(){
     goToUrl('');
     route.listen(function(req){
       req.get(function(){
-        route.stop();
-        done();
+        req.after(function(){
+          route.stop();
+          done();
+        });
       });
     });
   });
@@ -227,7 +232,9 @@ describe('simple routes', function(){
               onceFoo ++;
             })
             req.get('bar', '#bar', function(){
-              goToUrl('/test/foo/qux');
+              req.after(function(){
+                goToUrl('/test/foo/qux');
+              });
             });
             req.get('qux','#qux', function(){
               expect(onceTest).to.be.equal(1);
