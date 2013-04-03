@@ -14,6 +14,7 @@ program
   .usage('[options] path')
   .option('-s, --sessions', 'add session support')
   .option('-r, --rights', 'add rights management support')
+  .option('-a, --addon', 'create an Add-On')
   .option('-b, --verbose', 'show useful information')
   .option('-f, --force', 'force on non-empty directory')
   .parse(process.argv);
