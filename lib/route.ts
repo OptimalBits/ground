@@ -54,9 +54,8 @@ interface Route {
 var interval, 
     req, 
     routeHandler, 
-    basepath,
-    historyApi = !!(window.history && window.history.pushState);
-
+    basepath;
+    
 export function listen(root, cb) {
   if(_.isFunction(root)){
     cb = root;
@@ -64,30 +63,44 @@ export function listen(root, cb) {
   }
   
   routeHandler = cb;
-  basepath = location['origin'] + root;
+  basepath = location['origin'] + '/' + Util.trim(root);
   
   // Listen to all link clicks.
-  $("body").on('click', handleClickUrl);
+  $("document").on('click', handleClickUrl);
   
-  if(historyApi){
+  if(using.historyApi){
     window.addEventListener("popstate", handlePopState);
   }
-  
-  executeRoute(root, cb);
+  var url = getRelativeUrl(location.href);
+  executeRoute(url, cb);
+}
+
+function findLink(el: HTMLElement): any{
+  while(el && el !== document.body){
+     if(el.tagName.toLowerCase() === "a"){
+       return el;
+     }
+     el = el.parentElement;
+  }
 }
 
 function handleClickUrl(evt){
-  var target = evt.target;
-  if(target.nodeName.toLowerCase() === "a"){
-    evt.preventDefault();
-    
-    var url = target.href;
+  var link = findLink(evt.target || evt.srcElement);
+  if(link){
+    var url = link.href;
     
     // check if url is within the basepath
-    if(url.indexOf(basepath) === 0){
-      url = url.substring(basepath.length);
+    if(url = getRelativeUrl(url)){
+      evt.preventDefault();
       redirect(url);
     }
+  }
+}
+
+function getRelativeUrl(url: string){
+  if(url.indexOf(basepath) === 0){
+    url = url.substring(basepath.length).replace(/^#!?/, '');
+    return url;
   }
 }
 
@@ -139,7 +152,7 @@ export function stop(){
 }
 
 export function redirect(url){
-  if (historyApi){
+  if (using.historyApi){
     history.pushState(null, null, url)
   } else{
     location.hash = '#!'+ url;
