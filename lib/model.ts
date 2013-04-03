@@ -108,7 +108,13 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     var _this = this;
     function __(args, _bucket) {
+      var constructor = this.constructor;
       _this.call(this, args, bucket || _bucket);
+      
+      // Call constructor if different from Model constructor.
+      if(constructor && (_this != constructor)){
+        constructor.call(this, args);
+      }
     }; 
     
     Util.inherits(__, this);
