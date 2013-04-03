@@ -61,8 +61,8 @@ module Gnd
         case '<':
           push([makeElement(selector)]);
           break;
-        default: 
-          push(context.getElementsByTagName(selector));
+        default:
+          push(selector != 'document' ? context.getElementsByTagName(selector) : [document]);
       }
     }else{
       push([selectorOrElement]);
