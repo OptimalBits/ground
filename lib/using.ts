@@ -29,6 +29,7 @@ module Gnd
     remoteStorage: null,
     storageQueue: null,
     memStorage: (new Storage.Local(new Storage.Store.MemoryStore())),
+    historyApi: !!(window.history && window.history.pushState)
   }
   
   export function Using() {
@@ -63,6 +64,9 @@ module Gnd
     },
     storageQueue: function(localStorage: IStorage, remoteStorage: IStorage){
       using.storageQueue = new Gnd.Storage.Queue(localStorage, remoteStorage);
+    },
+    historyApi: function(use: bool){
+      using.historyApi = use;
     }
   }
 }
