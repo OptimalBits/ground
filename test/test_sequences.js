@@ -74,6 +74,8 @@ describe('Sequences', function(){
               expect(err).to.not.be.ok();
               expect(syncedAnimals).to.be.an(Object);
               expect(syncedAnimals.count).to.be(1);
+              syncedAnimals.release();
+              nosyncedAnimals.release();
               done();
             });
             nosyncedAnimals.save();
