@@ -20,7 +20,6 @@ module Gnd
 {
   export class Container extends Base implements Sync.ISynchronizable
   {
-    public items: any[];
     public storageQueue: Storage.Queue;
   
     // Event Handlers
@@ -28,7 +27,9 @@ module Gnd
     private deleteFn: (model: Model) => void;
     
     public resyncFn: (items: any[]) => void;
-  
+    
+    // --
+    
     public _keepSynced: bool = false;
     
     // Abstract
@@ -37,6 +38,9 @@ module Gnd
     public model: IModel;
     public parent: Model;
     public count: number = 0;
+    
+    // Protected
+    public items: any[];
     
     static private getItemIds(items: Model[])
     {
@@ -78,7 +82,7 @@ module Gnd
       });
 
       this._keepSynced && this.endSync();
-      this.deinitItems(this.items);
+      this.deinitItems(this.getItems());
       super.destroy();
     }
     
@@ -137,12 +141,19 @@ module Gnd
       this._keepSynced = false;
     }
     
+    public getItems(): Model[]
+    {
+      return this.items;
+    }
+    
     private listenToResync(queue: Storage.Queue, once?: bool){
       var key = Storage.Queue.makeKey(this.getKeyPath());
       queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
     }
     
-    private initItems(items)
+    public initItems(item: Model);
+    public initItems(items: Model[]);
+    public initItems(items)
     {
       items = _.isArray(items)? items:[items];
       for (var i=0,len=items.length; i<len;i++){
@@ -153,7 +164,9 @@ module Gnd
       }
     }
   
-    private deinitItems(items)
+    public deinitItems(item: Model);
+    public deinitItems(items: Model[]);
+    public deinitItems(items)
     {
       var key = Storage.Queue.makeKey(this.getKeyPath());
       this.storageQueue.off('resync:'+key, this.resyncFn);

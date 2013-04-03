@@ -38,7 +38,7 @@ export class Sequence extends Container
   {
     super(model, parent, items);
     
-    this.initItems(this.items);
+    this.initItems(this.getItems());
 
     this.updateFn = (args)=>{
       this.emit('updated:', this, args);
@@ -135,7 +135,7 @@ export class Sequence extends Container
     if(index === -1) return cb(Error('Tried to insert duplicate container'));
     this.items.splice(index, 0, seqItem);
 
-    this.initItems([seqItem]);
+    this.initItems(seqItem.model);
     
     this.set('count', this.items.length);
     this.emit('inserted:', item, index);
@@ -193,6 +193,7 @@ export class Sequence extends Container
     if(!item) return cb(Error('index out of bounds'));
     this.items.splice(idx, 1);
     
+    // Why can't we use deinitItems here?
     item.model.off('changed:', this.updateFn);
     item.model.off('deleted:', this.deleteFn);
     
@@ -207,6 +208,11 @@ export class Sequence extends Container
       // this._removed.push(item);
       cb();
     }
+  }
+  
+  public getItems(): Model[]
+  {
+    return _.pluck(this.items, 'model');
   }
   
   private startSync()
@@ -286,30 +292,6 @@ export class Sequence extends Container
         this.emit('resynced:');
       });
     });
-  }
-
-  // TODO: use initItems and deinitItems from Container class.
-  private initItems(items)
-  {
-    items = _.isArray(items)? items:[items];
-    for (var i=0,len=items.length; i<len;i++){
-      var item = items[i];
-      item.model.retain();
-      item.model.on('changed:', this.updateFn);
-      item.model.on('deleted:', this.deleteFn);
-    }
-  }
-  
-  private deinitItems(items)
-  {
-    var key = Storage.Queue.makeKey(this.getKeyPath());
-    this.storageQueue.off('resync:'+key, this.resyncFn);
-    for (var i=0,len=items.length; i<len;i++){
-      var item = items[i];
-      item.model.off('changed:', this.updateFn);
-      item.model.off('deleted:', this.deleteFn);
-      item.model.release();
-    }
   }
 }
 
