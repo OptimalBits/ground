@@ -23,7 +23,7 @@ module Gnd {
   The timer will emit a ended: event when the timer has reached its duration,
   and 'stopped:' if the timer was stopped by the user.
 */
-class Timer extends Base
+export class Timer extends Base
 {
   public time: number;
   
