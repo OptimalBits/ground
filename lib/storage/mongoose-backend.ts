@@ -91,8 +91,12 @@ export class MongooseStorage implements IStorage {
     this.getModel(keyPath, function(Model){
       var instance = new Model(doc);
       instance.save(function(err, doc){
-        doc.__rev = 0;
-        cb(err, doc._id);
+        if(!err){
+          doc.__rev = 0;
+          cb(err, doc._id);
+        }else{
+          cb(err);
+        }
       });
     }, cb);
   }
@@ -100,7 +104,7 @@ export class MongooseStorage implements IStorage {
   put(keyPath: string[], doc: any, cb: (err?: Error) => void): void
   {
     this.getModel(keyPath, function(Model){
-//      Model.findByIdAndUpdate(_.last(keyPath), {$set: doc, $inc: doc.__rev}, (err, oldDoc) => {
+    // Model.findByIdAndUpdate(_.last(keyPath), {$set: doc, $inc: doc.__rev}, (err, oldDoc) => {
       Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
         // Note: isEqual should only check the properties present in doc!
         if(!err && !_.isEqual(doc, oldDoc)){
