@@ -268,20 +268,20 @@ describe('Model', function(){
       storageQueue.once('synced:', function(){
         expect(elephant._persisted).to.be.ok();
         expect(elephant).to.have.property('_id');
-        Animal.findById(elephant._id, function(err, otherElephant){
+        Animal.findById(elephant._id, true, function(err, otherElephant){
           expect(err).to.not.be.ok();
           expect(otherElephant).to.be.ok();
           
-          otherElephant.keepSynced();
+          otherElephant.on('resynced:', function(){
+            elephant.once('changed:', function(doc){
+              expect(elephant.legs).to.be(5);
+              elephant.release();
+              otherElephant.release();
+              done();
+            });
           
-          elephant.once('changed:', function(doc){
-            expect(elephant.legs).to.be(5);
-            elephant.release();
-            otherElephant.release();
-            done();
+            otherElephant.set('legs', 5);
           });
-          
-          otherElephant.set('legs', 5);
         });
       });
     });
