@@ -42,6 +42,7 @@ export class Server {
     this.rm.checkRights(userId, keyPath, Rights.CREATE, (err?, allowed?) => {
       if(allowed){
         this.storage.create(keyPath, doc, (err, id?) => {
+          if(err) return cb(err);
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
           this.rm.create(userId, newKeyPath, doc, (err?) => {
             cb(err, id);
