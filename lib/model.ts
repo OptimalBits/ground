@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2011-2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2011-2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 /**
@@ -11,11 +11,13 @@
   
   Events:
   
+  'updated:', emitted when the model has been updated.
+  'resynced:', emitted when the model has been resynced.
   'deleted:', emitted when a model has been deleted.
-  
 */
 
 /// <reference path="base.ts" />
+/// <reference path="promise.ts" />
 /// <reference path="collection.ts" />
 /// <reference path="sequence.ts" />
 /// <reference path="overload.ts" />
@@ -24,6 +26,77 @@
 /// <reference path="using.ts" />
 
 module Gnd {
+
+/**
+  ModelDepot
+
+  Singleton class that keeps all the instanced models. This is fundamental
+  for the synchronization mechanism to work properly 
+  so that only one instance of every model exists at a given time.
+*/
+class ModelDepot
+{
+  private models = {};
+    
+  getModel(ModelClass: IModel, keyPath: string[], keepSynced: bool, args: {})
+  {
+    var key = this.key(keyPath);
+    var modelPromise = this.models[key];
+    if(!modelPromise){
+      modelPromise = new Promise();
+      this.setPromise(keyPath, modelPromise);
+      
+      using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
+        if(doc){
+          ModelClass.create(doc, keepSynced, (err?, instance?)=>{
+            instance && instance.set(args);
+            modelPromise.resolve(err, instance);
+          });
+        }else{
+          modelPromise.resolve(err);
+        }
+      });
+    }
+    return modelPromise;
+  }
+  
+  getPromise(keyPath: string[]){
+    return this.models[this.key(keyPath)];
+  }
+  
+  key(keyPath: string[])
+  {
+    return keyPath.join('/');
+  }
+  
+  setPromise(keyPath: string[], modelPromise: Promise)
+  {
+    var key = this.key(keyPath);
+    var models = this.models;
+    models[key] = modelPromise;
+    
+    modelPromise.then((err, model) =>{
+      if(model){
+        var keyPathLocal = this.key([model.bucket(), model.cid()]);
+        var keyPathRemote = this.key([model.bucket(), model.id()]);
+        models[keyPathLocal] = models[keyPathRemote] = modelPromise;
+        
+        model.on('destroy: deleted:', () => {
+          delete models[keyPathLocal];
+          delete models[keyPathRemote];
+          delete models[key]; // should be redundant...
+        });
+      }else{
+        delete models[key];
+      }
+    });
+  }
+}
+
+//
+// global singleton.
+//
+var modelDepot = new ModelDepot();
 
 export interface IModel 
 {
@@ -93,6 +166,17 @@ export class Model extends Base implements Sync.ISynchronizable
         this.id(id);
       });
     }
+    
+    // 
+    // Store in model depot.
+    //
+    var keyPath = this.getKeyPath();
+    var promise = modelDepot.getPromise(keyPath);
+    if(!promise){
+      promise = new Promise();
+      modelDepot.setPromise(keyPath, promise);
+    }
+    promise.resolve(null, this);
   }
   
   /**
@@ -148,7 +232,7 @@ export class Model extends Base implements Sync.ISynchronizable
             keepSynced && instance.keepSynced();
             instance.init(() => {
               cb(null, instance);
-            })
+            });
           }else{
             cb(err);
           }
@@ -159,38 +243,13 @@ export class Model extends Base implements Sync.ISynchronizable
       }
     }).apply(this, arguments);
   }
-  /*
-  {
-    overload({
-      'Object Boolean Function': function(args, keepSynced, cb){
-        this.fromJSON(args, (err, instance) => {
-          if(instance){
-            keepSynced && instance.keepSynced();
-            if(!instance.isPersisted()){
-              var id = instance.id();
-              using.storageQueue.once('created:'+id, (id) => {
-                instance.id(id);
-              });
-            }
-            instance.init(() => {
-              cb(null, instance);
-            })
-          }else{
-            cb(err);
-          }
-        })
-      },
-      'Object Function': function(args, cb){
-        this.create(args, false, cb);
-      }
-    }).apply(this, arguments);
-  }
-  */
   
   static findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void)
   {
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
+        modelDepot.getModel(this, keyPath, keepSynced, args).then(cb);
+        /*
         using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
           if(doc){
             _.extend(doc, args);
@@ -199,6 +258,7 @@ export class Model extends Base implements Sync.ISynchronizable
             cb(err);
           }
         });
+        */
         return this;
       },
       'String Boolean Object Function': function(id, keepSynced, args, cb){
@@ -224,7 +284,7 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   static removeById(keypathOrId, cb?: (err?: Error) => void){
     var keypath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
-
+    
     using.storageQueue.del(keypath, (err: Error) => {
       cb(err);
     });
@@ -256,6 +316,11 @@ export class Model extends Base implements Sync.ISynchronizable
       this.emit('id', id);
     }
     return this._id || this._cid;
+  }
+  
+  cid(): string
+  {
+    return this._cid;
   }
   
   getName(): string
@@ -316,6 +381,11 @@ export class Model extends Base implements Sync.ISynchronizable
         cb(err);
       });
     }else{
+      // It may be the case that we are not yet persisted, if so, we should
+      // wait until we get persisted before we try to update the storage
+      // although we will never get the event anyways, and besides we should
+      // update the localStorage in any case...
+      // Hopefully a singleton Model will solve this problems...
       this._storageQueue.put([bucket, id], args, (err)=>{
         if(!err){
           this.emit('updated:', this, args);
@@ -331,9 +401,9 @@ export class Model extends Base implements Sync.ISynchronizable
     
     Model.removeById(this.getKeyPath(), (err?)=> {
       Model.syncManager && Model.syncManager.endSync(this);
-      this.emit('deleted:', this.getKeyPath());//this.id());
+      this.emit('deleted:', this.getKeyPath());
       cb(err);
-    })    
+    })
   }
     
   keepSynced()
@@ -351,7 +421,7 @@ export class Model extends Base implements Sync.ISynchronizable
     }else{
       this.once('id', startSync);
     }
-  
+    
     this.on('changed:', (doc, options) => {
       if(!options || ((!options.nosync) && !_.isEqual(doc, options.doc))){
         this.update(doc);
