@@ -299,6 +299,13 @@ export class Queue extends Base implements IStorage
     
   create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
   {
+    // We need a mechanism to guarantee the order of element in the queue,
+    // since create is asynchronous, it could happen that a put cmd
+    // ends before the create command for a given model, creating 
+    // storage problems...
+    // On the other hand, first adding Cmd and then creating in storage
+    // could result in remoteStorage completing before localStorage
+    // with other hazzards as result...
     this.localStorage.create(keyPath, args, (err, cid?) => {
       if(!err){
         args['_cid'] = args['_cid'] || cid;
@@ -452,9 +459,7 @@ export class Queue extends Base implements IStorage
               remoteStorage.create(keyPath, args, (err?, sid?) => {
 
                 var localKeyPath = keyPath.concat(cid);
-                if(err){
-                  done(err);
-                }else{
+                if(sid){
                   localStorage.put(localKeyPath, {_persisted:true, _id: sid}, (err?: Error) => {
                     var newKeyPath = _.initial(localKeyPath);
                     newKeyPath.push(sid);
@@ -471,6 +476,8 @@ export class Queue extends Base implements IStorage
                       done();
                     });
                   });
+                }else{
+                  done(err || new Error("Create: no server id for keypath:"+keyPath));
                 }
               });
             })(args['_cid'], args);
@@ -644,13 +651,19 @@ export class Queue extends Base implements IStorage
           Util.nextTick(syncFn);
       }
     }else{
+      console.log("Queue error:"+err);
+      
       switch(parseInt(err.message)){
         case ServerError.INVALID_SESSION:
+        case ServerError.DOCUMENT_NOT_FOUND:
+        case ServerError.MODEL_NOT_FOUND:
           // Discard command
           var cmd = this.dequeueCmd();
           this.emit('error:', err);
           Util.nextTick(syncFn);
           break;
+        default:
+        // Shouldn't we try to synchronize again?
       }
     }
   }
@@ -668,8 +681,9 @@ export class Queue extends Base implements IStorage
     });
     
     //
-    // TODO: Serialize after updating Ids
+    // Serialize after updating Ids
     //
+    this.saveQueue()
   }
 }
 
