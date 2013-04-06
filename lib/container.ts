@@ -28,6 +28,12 @@ module Gnd
     
     public resyncFn: (items: any[]) => void;
     
+    //
+    public filterFn: (item: Model) => bool = null;
+
+    // Prototypes for underscore imported methods.
+    public filter: (iterator: (item: any)=>bool) => Model[];
+    
     // --
     
     public _keepSynced: bool = false;
@@ -112,6 +118,20 @@ module Gnd
     {
       return this._keepSynced;
     }
+    
+    filtered(result: (err: Error, models?: Model[])=>void)
+    {
+      if(this.filterFn){
+        result(null, this.filter(this.filterFn));
+      }else{
+        result(null, this.items);
+      }
+    }
+  
+    isFiltered(item: Model): bool
+    {
+      return this.filterFn ? this.filterFn(item) : true;
+    } 
     
     // protected
     public startSync()

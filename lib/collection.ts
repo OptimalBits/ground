@@ -31,11 +31,6 @@ export class Collection extends Container
     
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
-  public filterFn: (item: Model) => bool = null;
-  public count: number = 0;
-  
-  // Prototypes for underscore imported methods.
-  public filter: (iterator: (item: any)=>bool) => Model[];
   
   // TODO: Support for anonymous collections
   // constructor(items: {}[]) // i.e. new Collection(Model); add(new Model({..}))
@@ -172,20 +167,6 @@ export class Collection extends Container
   toggleSortOrder(){
     this['set']('sortOrder', this.sortOrder == 'asc' ? 'desc' : 'asc');
   }
-  
-  filtered(result: (err: Error, models?: Model[])=>void)
-  {
-    if(this.filterFn){
-      result(null, this.filter(this.filterFn));
-    }else{
-      result(null, this.items);
-    }
-  }
-  
-  isFiltered(item: Model): bool
-  {
-    return this.filterFn ? this.filterFn(item) : true;
-  } 
   
   /*
     link
