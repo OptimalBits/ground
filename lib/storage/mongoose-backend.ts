@@ -20,6 +20,7 @@
 
 */
 /// <reference path="../storage.ts" />
+/// <reference path="../error.ts" />
 
 declare module 'mongoose' {
   export class Schema {
@@ -90,7 +91,7 @@ export class MongooseStorage implements IStorage {
   {
     this.getModel(keyPath, function(Model){
       var instance = new Model(doc);
-      instance.save(function(err, doc){
+      instance.save(function(err, doc){  
         if(!err){
           doc.__rev = 0;
           cb(err, doc._id);
@@ -134,7 +135,7 @@ export class MongooseStorage implements IStorage {
         if(doc){
           cb(err, doc);
         }else{
-          cb(err || new Error("Document not found"));
+          cb(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND));
         }
       });
     }, cb);
@@ -440,7 +441,7 @@ export class MongooseStorage implements IStorage {
     if(collection in this.models){
       cb(this.models[collection], this.models[keyPath[last]]);
     }else{
-      errCb(new Error("Model not found"));
+      errCb(new Error(''+ServerError.MODEL_NOT_FOUND));
     }
   }
   
