@@ -48,7 +48,7 @@ export class EachBinder implements Binder
     // Use createDocumentFragment http://ejohn.org/blog/dom-documentfragments/
     // Basically, first add all items to the fragment, then add the fragment.
     // 
-    if(collection instanceof Collection){
+    if(collection instanceof Container){
       this.collection = collection;
       
       parent.removeChild(el);
