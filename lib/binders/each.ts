@@ -150,7 +150,7 @@ export class EachBinder implements Binder
       this.updatedListener = refresh;
       
       collection
-        .on('added:', this.addedListener)
+        .on('added: inserted:', this.addedListener)
         .on('removed:', this.removedListener)
         .on('filterFn sorted: updated:', this.updatedListener);
     }else{
@@ -159,7 +159,7 @@ export class EachBinder implements Binder
   }
 
   unbind(){
-    this.collection.off('added:', this.addedListener);
+    this.collection.off('added: inserted:', this.addedListener);
     this.collection.off('removed:', this.removedListener);
     this.collection.off('filterFn sorted: updated:', this.updatedListener);
     
