@@ -31,9 +31,7 @@ export class Sequence extends Container
 { 
   private updateFn: (args: any) => void;
   private deleteFn: (kp: string[]) => void;
-  
-  public count: number = 0;
-  
+    
   constructor(model: IModel, parent?: Model, items?: ISeqModel[])
   {
     super(model, parent, items);
