@@ -286,7 +286,6 @@ Example:
 #Classes
 
 
-
 ##Base
 
 
@@ -418,6 +417,14 @@ Reference count proves to be an important mechanism in order to avoid memory lea
 and dangling event listeners, which could otherwise lead to strange side effects and
 suboptimal memory usage. So in order to keep the system clean, always call *release*
 on the objects that are not going to be used any more.
+
+##Promise
+
+Ground provides a ver minimal Promise implementation that follows [Promise /A+](http://promises-aplus.github.com/promises-spec).
+
+<a href="http://promises-aplus.github.com/promises-spec"><img src="http://promises-aplus.github.com/promises-spec/assets/logo-small.png" alt="Promises/A+ logo" align="right" /></a>
+
+TODO: Examples:
 
 
 ## Models
