@@ -51,6 +51,7 @@
     , "cookie": "*"
     , "node-uuid": "*"
     , "cookies": "*"
+    , "promises-aplus-tests": "*"
   },
   "scripts":{
     "test"      : "mocha tests/*"

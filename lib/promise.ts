@@ -9,39 +9,88 @@
 
 module Gnd {
   
+function isPromise(promise){
+  return (promise instanceof Object) && (promise.then instanceof Function);
+}
+
 export class Promise {
-  callbacks : any[] = [];
-  resolved : any[];
-  isAborted : bool;
+  fulfilledFns : any[] = [];
+  rejectedFns: any[] = [];
+  value : any;
+  reason: Error;
+  isFulfilled : bool;
   
-  then(cb){
-    if(this.resolved){
-      this.fire(cb);
-    }else{
-      this.callbacks.push(cb);
+  then(onFulfilled: (value: any) => any, onRejected?: (reason: Error) => any){
+    var promise = new Promise();
+    
+    var wrapper = (fn, reject?: bool) => {
+      if(!(fn instanceof Function)){
+        fn = (value) => {
+          if(reject) throw(value); 
+          return value
+        };
+      }
+
+      return (value) => {
+        Util.nextTick(() => {
+          try{
+            var result = fn(value);
+            if(isPromise(result)){
+              result.then(function(val){
+                promise.resolve(val);
+              }, function(err){
+                promise.reject(err);
+              });
+            }else{
+              promise.resolve(result);
+            }
+          }catch(err){
+            promise.reject(err);
+          }
+        });
+      }
     }
+    
+    if(!_.isUndefined(this.value)){
+      this.fire(wrapper(onFulfilled), this.value);
+    }else if(!_.isUndefined(this.reason)){
+      this.fire(wrapper(onRejected, true), this.reason);
+    }else{   
+      this.fulfilledFns.push(wrapper(onFulfilled));
+      this.rejectedFns.push(wrapper(onRejected, true));
+    }
+    
+    return promise;
   }
   
-  resolve(...args:any[]){
-    if(this.isAborted) return;
-    this.resolved = args;
-    this.fireCallbacks(); 
+  resolve(value?:any){
+    if(this.isFulfilled) return;
+    this.abort();
+    
+    this.value = value || null;
+    this.fireCallbacks(this.fulfilledFns, value);
+  }
+  
+  reject(reason: Error){
+    if(this.isFulfilled) return;
+    this.abort();
+    
+    this.reason = reason || null;
+    this.fireCallbacks(this.rejectedFns, reason);
   }
   
   abort(){
-    this.isAborted = true;
+    this.isFulfilled = true;
   }
   
-  private fire(cb){
-    cb.apply(this, this.resolved);
+  private fire(cb, value){
+    return cb.call(this, value);
   }
   
-  private fireCallbacks(){
-    var len = this.callbacks.length;
-    if(len>0){
-      for(var i=0;i<len;i++){
-        this.fire(this.callbacks[i]);
-      }
+  private fireCallbacks(callbacks, value){
+    var len = callbacks.length;
+    for(var i=0;i<len;i++){
+      this.fire(callbacks[i], value);
     }
   }
 }
