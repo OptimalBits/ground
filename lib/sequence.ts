@@ -122,14 +122,14 @@ export class Sequence extends Container
     }
 
     var index = this.items.length;
-    _.each(this.items, (item, i)=>{
-      if(item.id === refId){
+    for(var i=0; i<this.items.length; i++){
+      if(this.items[i].id === id){ //no dupicate CONTAINERS
+        index = -1;
+        break;
+      }else if(this.items[i].id === refId){
         index = i;
       }
-      if(item.id === id){ //no dupicate CONTAINERS
-        index = -1;
-      }
-    });
+    };
     if(index === -1) return cb(Error('Tried to insert duplicate container'));
     this.items.splice(index, 0, seqItem);
 
