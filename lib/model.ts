@@ -48,12 +48,16 @@ class ModelDepot
       
       using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
         if(doc){
-          ModelClass.create(doc, keepSynced, (err?, instance?)=>{
-            instance && instance.set(args);
-            modelPromise.resolve(err, instance);
+          ModelClass.create(doc, keepSynced, (err?, instance?) => {
+            if(instance){
+              instance.set(args);
+              modelPromise.resolve(instance);
+            }else{
+              modelPromise.reject(err);
+            }
           });
         }else{
-          modelPromise.resolve(err);
+          modelPromise.reject(err);
         }
       });
     }
@@ -75,20 +79,18 @@ class ModelDepot
     var models = this.models;
     models[key] = modelPromise;
     
-    modelPromise.then((err, model) =>{
-      if(model){
-        var keyPathLocal = this.key([model.bucket(), model.cid()]);
-        var keyPathRemote = this.key([model.bucket(), model.id()]);
-        models[keyPathLocal] = models[keyPathRemote] = modelPromise;
+    modelPromise.then((model) => {
+      var keyPathLocal = this.key([model.bucket(), model.cid()]);
+      var keyPathRemote = this.key([model.bucket(), model.id()]);
+      models[keyPathLocal] = models[keyPathRemote] = modelPromise;
         
-        model.on('destroy: deleted:', () => {
-          delete models[keyPathLocal];
-          delete models[keyPathRemote];
-          delete models[key]; // should be redundant...
-        });
-      }else{
-        delete models[key];
-      }
+      model.on('destroy: deleted:', () => {
+        delete models[keyPathLocal];
+        delete models[keyPathRemote];
+        delete models[key]; // should be redundant...
+      });
+    }, (err) => {
+      delete models[key];
     });
   }
 }
@@ -176,7 +178,7 @@ export class Model extends Base implements Sync.ISynchronizable
       promise = new Promise();
       modelDepot.setPromise(keyPath, promise);
     }
-    promise.resolve(null, this);
+    promise.resolve(this);
   }
   
   /**
@@ -248,18 +250,11 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
-        modelDepot.getModel(this, keyPath, keepSynced, args).then(cb);
-        /*
-        using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
-          if(doc){
-            _.extend(doc, args);
-            this.create(doc, keepSynced, cb);
-          }else{
-            cb(err);
-          }
+        return modelDepot.getModel(this, keyPath, keepSynced, args).then((model)=>{
+          cb(null, model);
+        }, (err) => {
+          cb(err);
         });
-        */
-        return this;
       },
       'String Boolean Object Function': function(id, keepSynced, args, cb){
         return this.findById([this.__bucket, id], keepSynced, args, cb);
