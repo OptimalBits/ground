@@ -30,7 +30,8 @@ Zoo.statics.add = function(id, setName, itemIds, cb){
 
 var Parade = new Schema({
   _cid: {type: String},
-  animals: [{ type: Schema.ObjectId, ref: 'Animal' }]
+  animals: [{ type: Schema.ObjectId, ref: 'Animal' }],
+  animals2: [{ type: Schema.ObjectId, ref: 'Animal' }]
 });
 
 Parade.statics.add = function(id, setName, itemIds, cb){
