@@ -80,11 +80,11 @@ export class MongooseStorage implements IStorage {
       modelId: { type: String}
     }));
 
-    this.transaction = mongoose.model('Transaction', new mongoose.Schema({
-      type: {type: String},
-      id: { type: mongoose.Schema.ObjectId },
-      state: { type: String}
-    }));
+    // this.transaction = mongoose.model('Transaction', new mongoose.Schema({
+    //   type: {type: String},
+    //   id: { type: mongoose.Schema.ObjectId },
+    //   state: { type: String}
+    // }));
   }
   
   create(keyPath: string[], doc: any, cb: (err: Error, key?: string) => void): void
@@ -311,9 +311,11 @@ export class MongooseStorage implements IStorage {
           last.save((err, last)=>{
             first.next = last._id;
             first.save((err, first)=>{
+              var delta = {};
+              delta[name] = [first._id, last._id];
               Model.update(
                 {_id: id},
-                { animals: [first._id, last._id] },
+                delta,
                 (err)=>{
                   cb(null, first, last);
                 }
