@@ -20,6 +20,16 @@ export class Promise {
   reason: Error;
   isFulfilled : bool;
   
+  constructor(value?: any)
+  {
+    if(value instanceof Error){
+      this.reject(value);
+    }else if(value){
+      this.resolve(value);
+    }
+  }
+  
+  then(onFulfilled: any, onRejected?: any);
   then(onFulfilled: (value: any) => any, onRejected?: (reason: Error) => any){
     var promise = new Promise();
     
