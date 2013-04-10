@@ -35,9 +35,9 @@ export class Collection extends Container
   // TODO: Support for anonymous collections
   // constructor(items: {}[]) // i.e. new Collection(Model); add(new Model({..}))
   
-  constructor(model: IModel, parent?: Model, items?: Model[])
+  constructor(model: IModel, seqName: string, parent?: Model, items?: Model[])
   {
-    super(model, parent, items);
+    super(model, seqName, parent, items);
     
     var _this = this;
     this.updateFn = function(args){
@@ -70,15 +70,15 @@ export class Collection extends Container
     super.destroy();
   }
   
-  static public create(model: IModel, parent: Model, items: Model[]): Collection;
-  static public create(model: IModel, parent: Model, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
-  static public create(model: IModel, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
+  static public create(model: IModel, collectionName: string, parent: Model, items: Model[]): Collection;
+  static public create(model: IModel, collectionName: string, parent: Model, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
+  static public create(model: IModel, collectionName: string, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
 
-  static public create(model?: IModel, parent?: Model, docs?: {}[], cb?): any
+  static public create(model?: IModel, collectionName?: string, parent?: Model, docs?: {}[], cb?): any
   {
     return overload({
-      'Function Model Array': function(model, parent, models){
-        var collection = new Collection(model, parent, models);
+      'Function String Model Array': function(model, collectionName, parent, models){
+        var collection = new Collection(model, collectionName, parent, models);
         Util.release(models);
         if(parent && parent.isKeptSynced()){
           collection.keepSynced()
@@ -86,20 +86,20 @@ export class Collection extends Container
         collection.count = models.length;
         return collection;
       },
-      'Function Model Array Function': function(model, parent, items, cb){
+      'Function String Model Array Function': function(model, collectionName, parent, items, cb){
         model.createModels(items, (err?: Error, models?: Model[])=>{
           if(err){
             cb(err)
           }else{
-            cb(err, this.create(model, parent, models));
+            cb(err, this.create(model, collectionName, parent, models));
           }
         });
       },
-      'Function Array Function': function(model, items, cb){
-        this.create(model, undefined, items, cb);
+      'Function String Array Function': function(model, collectionName, items, cb){
+        this.create(model, collectionName, undefined, items, cb);
       },
-      'Function Model Function': function(model, parent, cb){
-        this.create(model, parent, [], cb);
+      'Function String Model Function': function(model, collectionName, parent, cb){
+        this.create(model, collectionName, parent, [], cb);
       }
     }).apply(this, arguments);
   }

@@ -32,9 +32,9 @@ export class Sequence extends Container
   private updateFn: (args: any) => void;
   private deleteFn: (kp: string[]) => void;
     
-  constructor(model: IModel, parent?: Model, items?: ISeqModel[])
+  constructor(model: IModel, seqName: string, parent?: Model, items?: ISeqModel[])
   {
-    super(model, parent, items);
+    super(model, seqName, parent, items);
     
     this.initItems(this.getItems());
 
@@ -51,14 +51,13 @@ export class Sequence extends Container
     };
   };
 
-  static public create(model: IModel, parent: Model, items: IDoc[]): Sequence;
-  static public create(model: IModel, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
-
-  static public create(model?: IModel, parent?: Model, docs?: IDoc[], cb?): any
+  static public create(model: IModel, seqName: string, parent: Model, items: IDoc[]): Sequence;
+  static public create(model: IModel, seqName: string, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
+  static public create(model?: IModel, seqName?: string, parent?: Model, docs?: IDoc[], cb?): any
   {
     return overload({
-      'Function Model Array': function(model, parent, models){
-        var sequence = new Sequence(model, parent, models);
+      'Function String Model Array': function(model, seqName, parent, models){
+        var sequence = new Sequence(model, seqName, parent, models);
         Util.release(_.pluck(models, 'model'));
         if(parent && parent.isKeptSynced()){
           sequence.keepSynced()
@@ -66,12 +65,12 @@ export class Sequence extends Container
         sequence.count = models.length;
         return sequence;
       },
-      'Function Model Array Function': function(model, parent, items, cb){
+      'Function String Model Array Function': function(model, seqName, parent, items, cb){
         model.createSequenceModels(items, (err?: Error, models?: IDoc[])=>{
           if(err){
             cb(err)
           }else{
-            cb(err, this.create(model, parent, models));
+            cb(err, this.create(model, seqName, parent, models));
           }
         });
       },
@@ -123,7 +122,7 @@ export class Sequence extends Container
 
     var index = this.items.length;
     for(var i=0; i<this.items.length; i++){
-      if(this.items[i].id === id){ //no dupicate CONTAINERS
+      if(id && this.items[i].id === id){ //no dupicate CONTAINERS
         index = -1;
         break;
       }else if(this.items[i].id === refId){
@@ -199,11 +198,9 @@ export class Sequence extends Container
     this.emit('removed:', item.model, idx);
     item.model.release();
     
-    // if(this.isKeptSynced() && (!opts || !opts.nosync)){
     if(!opts || !opts.nosync){
       this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, cb);
     }else{
-      // this._removed.push(item);
       cb();
     }
   }

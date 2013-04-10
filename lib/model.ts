@@ -494,6 +494,7 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   // static all(args: {}//, bucket: string, cb:(err?: Error, items?: Model[]) => void);
 
+  //TODO:rename bucket to something else
   static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, collection?: Collection) => void);
   static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
   static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
@@ -501,7 +502,7 @@ export class Model extends Base implements Sync.ISynchronizable
       using.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
         if(docs){
           _.each(docs, function(doc){_.extend(doc, args)});
-          Collection.create(this, parent, docs, cb);
+          Collection.create(this, _.last(keyPath), parent, docs, cb);
         }else{
           cb(err);
         }
@@ -533,13 +534,15 @@ export class Model extends Base implements Sync.ISynchronizable
     Returns the sequence determined by a parent model and
     the given model class.
   */
+  //TODO:rename bucket to something else
   static seq(parent: Model, args: {}, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent: Model, cb:(err?: Error, sequence?: Sequence) => void);
+  static seq(parent: Model, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, sequence?: Sequence) => void){
     var allInstances = (parent, keyPath, args, cb) => {
       using.storageQueue.all(keyPath, {}, {}, (err, items?) => {
         if(items){
-          Sequence.create(this, parent, items, cb);
+          Sequence.create(this, _.last(keyPath), parent, items, cb);
         }else{
           cb(err);
         }
@@ -553,6 +556,11 @@ export class Model extends Base implements Sync.ISynchronizable
         var keyPath = parent.getKeyPath();
         keyPath.push(bucket);
         allInstances(parent, keyPath, args, cb);
+      },
+      'Model String Function': function(parent, bucket, cb){
+        var keyPath = parent.getKeyPath();
+        keyPath.push(bucket);
+        allInstances(parent, keyPath, {}, cb);
       },
       'Model Function': function(parent, cb){
         var keyPath = parent.getKeyPath();
