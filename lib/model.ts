@@ -73,22 +73,39 @@ class ModelDepot
     return keyPath.join('/');
   }
   
-  setPromise(keyPath: string[], modelPromise: Promise)
+  setModel(model: Model, promise?: Promise)
+  { 
+    var models = this.models;
+    
+    promise = promise || new Promise(model);
+        
+    models[this.key(model.getKeyPath())] = promise;
+    
+    if(!model.isPersisted()){
+      model.once('id', () => {
+        models[this.key(model.getKeyPath())] = promise;
+      });
+    }
+    
+    model.once('destroy: deleted:', () => {
+      var keyPathLocal  = this.key([model.bucket(), model.cid()]);
+      var keyPathRemote = this.key([model.bucket(), model.id()]);
+      
+      delete models[keyPathLocal];
+      delete models[keyPathRemote];
+    });
+        
+    return promise;
+  }
+  
+  setPromise(keyPath: string[], promise: Promise)
   {
     var key = this.key(keyPath);
     var models = this.models;
-    models[key] = modelPromise;
+    models[key] = promise;
     
-    modelPromise.then((model) => {
-      var keyPathLocal = this.key([model.bucket(), model.cid()]);
-      var keyPathRemote = this.key([model.bucket(), model.id()]);
-      models[keyPathLocal] = models[keyPathRemote] = modelPromise;
-        
-      model.on('destroy: deleted:', () => {
-        delete models[keyPathLocal];
-        delete models[keyPathRemote];
-        delete models[key]; // should be redundant...
-      });
+    promise.then((model) => {
+      this.setModel(model, promise);
     }, (err) => {
       delete models[key];
     });
@@ -150,9 +167,19 @@ export class Model extends Base implements Sync.ISynchronizable
     
     this._storageQueue = 
       using.storageQueue || new Storage.Queue(using.memStorage);
+      
+    // 
+    // Store in model depot.
+    //
+    if(!modelDepot.getPromise(this.getKeyPath())){
+      modelDepot.setModel(this);
+    }else{
+      throw new Error("Cannot create two instances of the same model!");
+    }
     
     var listenToResync = () => {
-      this._storageQueue.on('resync:'+Storage.Queue.makeKey(this.getKeyPath()), (doc: {}) => {
+      var keyPath = this.getKeyPath();
+      this._storageQueue.on('resync:'+Storage.Queue.makeKey(keyPath), (doc: {}) => {
         // NOTE: If the model is "dirty", we could have a conflict
         this.set(doc, {nosync: true});
         this.emit('resynced:');
@@ -168,17 +195,6 @@ export class Model extends Base implements Sync.ISynchronizable
         this.id(id);
       });
     }
-    
-    // 
-    // Store in model depot.
-    //
-    var keyPath = this.getKeyPath();
-    var promise = modelDepot.getPromise(keyPath);
-    if(!promise){
-      promise = new Promise();
-      modelDepot.setPromise(keyPath, promise);
-    }
-    promise.resolve(this);
   }
   
   /**
@@ -251,7 +267,7 @@ export class Model extends Base implements Sync.ISynchronizable
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
         return modelDepot.getModel(this, keyPath, keepSynced, args).then((model)=>{
-          cb(null, model);
+          cb(null, model.retain());
         }, (err) => {
           cb(err);
         });
@@ -272,17 +288,11 @@ export class Model extends Base implements Sync.ISynchronizable
   }
   
   /**
-    Removes a model from the storage. 
-    
-    Note: If there are instances of the removed model, they will not be destructed
-    by calling this method.
+    Removes a model from the storage.
   */
   static removeById(keypathOrId, cb?: (err?: Error) => void){
-    var keypath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
-    
-    using.storageQueue.del(keypath, (err: Error) => {
-      cb(err);
-    });
+    var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
+    using.storageQueue.del(keyPath, cb);
   }
   
   static fromJSON(args, cb){
@@ -392,7 +402,7 @@ export class Model extends Base implements Sync.ISynchronizable
 
   remove(cb?: (err?: Error) => void)
   {
-    cb = cb || (err?: Error)=>{};
+    cb = cb || Util.noop;
     
     Model.removeById(this.getKeyPath(), (err?)=> {
       Model.syncManager && Model.syncManager.endSync(this);
