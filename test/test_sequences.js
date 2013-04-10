@@ -33,14 +33,19 @@ describe('Sequences', function(){
     });
   });
 
-  function getSequence(paradeId, sm, sq, keepSynced, cb){
+  function getSequence(paradeId, sm, sq, keepSynced, seqName, cb){
+    if(!cb){
+      cb = seqName;
+      seqName = 'animals';
+    }
+
     Gnd.using.storageQueue = sq;
     Gnd.Model.syncManager = sm;
     
     Parade.findById(paradeId, function(err, parade){
       expect(err).to.be(null);
       if(keepSynced) parade.keepSynced();
-      parade.seq(Animal, function(err, animals){
+      parade.seq(Animal, seqName, function(err, animals){
         expect(err).to.be(null);
         expect(animals).to.be.an(Object);
         animals.once('resynced:', function(){
@@ -444,6 +449,65 @@ describe('Sequences', function(){
                       expect(animals2.count).to.be(0);
                       done();
                     });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+    it('other sequence name', function(done){
+      getSequence(parade.id(), sm2, q2, false, 'animals2', function(nosyncedAnimals){
+        nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
+            expect(nosyncedAnimals.count).to.be(2);
+            q2.once('synced:', function(){
+              getSequence(parade.id(), sm2, q2, true, 'animals2', function(syncedAnimals){
+                expect(syncedAnimals.count).to.be(2);
+                syncedAnimals.once('resynced:', function(){
+                  //TODO: when sequences are singletons resynced will never be called
+                  expect(syncedAnimals.count).to.be(2);
+                  done();
+                });
+              });
+            });
+            nosyncedAnimals.save();
+          });
+        });
+      });
+    });
+    it('multi sequences', function(done){
+      getSequence(parade.id(), sm2, q2, false, 'animals', function(nosyncedAnimals){
+        getSequence(parade.id(), sm2, q2, false, 'animals2', function(nosyncedAnimals2){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+            expect(err).to.be(null);
+            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
+              expect(err).to.be(null);
+              nosyncedAnimals2.push((new Animal({name:"duck"})).autorelease(), function(err){
+                expect(err).to.be(null);
+                nosyncedAnimals2.push((new Animal({name:"goose"})).autorelease(), function(err){
+                  expect(err).to.be(null);
+                  nosyncedAnimals2.push((new Animal({name:"turkey"})).autorelease(), function(err){
+                    expect(err).to.be(null);
+                    expect(nosyncedAnimals.count).to.be(2);
+                    expect(nosyncedAnimals2.count).to.be(3);
+                    q2.once('synced:', function(){
+                      getSequence(parade.id(), sm2, q2, true, 'animals', function(syncedAnimals){
+                        getSequence(parade.id(), sm2, q2, true, 'animals2', function(syncedAnimals2){
+                          expect(syncedAnimals.count).to.be(2);
+                          expect(syncedAnimals2.count).to.be(3);
+                          syncedAnimals2.once('resynced:', function(){
+                            //TODO: when sequences are singletons resynced will never be called
+                            expect(syncedAnimals.count).to.be(2);
+                            expect(syncedAnimals2.count).to.be(3);
+                            done();
+                          });
+                        });
+                      });
+                    });
+                    nosyncedAnimals.save();
+                    nosyncedAnimals2.save();
                   });
                 });
               });

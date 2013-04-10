@@ -45,6 +45,8 @@ module Gnd
     public parent: Model;
     public count: number = 0;
     
+    private containerName: string;
+    
     // Protected
     public items: any[];
     
@@ -53,9 +55,11 @@ module Gnd
       return _.map(items, function(item){return item.id()});
     }
     
-    constructor(model: IModel, parent?: Model, items?: any[])
+    constructor(model: IModel, containerName: string, parent?: Model, items?: any[])
     {
       super();
+
+      this.containerName = containerName;
       
       this.storageQueue = 
         new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
@@ -101,7 +105,7 @@ module Gnd
     
     getKeyPath(): string[]
     {
-      if(this.parent) return [this.parent.bucket(), this.parent.id(), this.model.__bucket];
+      if(this.parent) return [this.parent.bucket(), this.parent.id(), this.containerName];
       return [this.model.__bucket];
     }
     

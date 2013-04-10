@@ -76,14 +76,7 @@ export class MongooseStorage implements IStorage {
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: {type: String},
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      pending: [{ type: mongoose.Schema.ObjectId, ref: 'Transaction' }],
       modelId: { type: String}
-    }));
-
-    this.transaction = mongoose.model('Transaction', new mongoose.Schema({
-      type: {type: String},
-      id: { type: mongoose.Schema.ObjectId },
-      state: { type: String}
     }));
   }
   
@@ -251,9 +244,18 @@ export class MongooseStorage implements IStorage {
       });
   }
   
-  private findContainer(Model: IMongooseModel, modelId, name, id, cb:(err: Error, container?)=>void){
+/*
+Sequences
+A sequence is represented as a linked list of listContainers. Every listContainer has
+a reference to the next listContainer and to the model instance it refers to. A
+listContainer may also have a type attribute:
+  _begin: dummy container before the first real item in the sequence
+  _end: dummy container after the last real item in the sequence
+  _rip: 'tombstone' element that has been deleted from the sequence
+*/
+  private findContainer(ParentModel: IMongooseModel, parentId, name, id, cb:(err: Error, container?)=>void){
     if(!id){
-      this.findEndPoints(Model, modelId, name, (err, begin?, end?)=>{
+      this.findEndPoints(ParentModel, parentId, name, (err, begin?, end?)=>{
         cb(err, begin);
       });
     }else{
@@ -267,8 +269,8 @@ export class MongooseStorage implements IStorage {
     }
   }
 
-  private findEndPoints(Model: IMongooseModel, modelId, name, cb:(err: Error, begin?, end?)=>void){
-    Model.findById(modelId).exec((err, doc) => {
+  private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
+    ParentModel.findById(parentId).exec((err, doc) => {
       if(err) return cb(err);
       this.listContainer.find()
         .where('_id').in(doc[name])
@@ -297,8 +299,8 @@ export class MongooseStorage implements IStorage {
     );
   }
 
-  private initSequence(Model: IMongooseModel, id, name, cb:(err: Error, begin?, end?)=>void){
-    Model.findById(id).exec((err, doc) => {
+  private initSequence(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
+    ParentModel.findById(parentId).exec((err, doc) => {
       if(err) return cb(err);
       if(doc[name].length < 2){
         var first = new this.listContainer({
@@ -311,9 +313,11 @@ export class MongooseStorage implements IStorage {
           last.save((err, last)=>{
             first.next = last._id;
             first.save((err, first)=>{
-              Model.update(
-                {_id: id},
-                { animals: [first._id, last._id] },
+              var delta = {};
+              delta[name] = [first._id, last._id];
+              ParentModel.update(
+                {_id: parentId},
+                delta,
                 (err)=>{
                   cb(null, first, last);
                 }
@@ -322,21 +326,21 @@ export class MongooseStorage implements IStorage {
           });
         });
       }else{
-        this.findEndPoints(Model, id, name, cb);
+        this.findEndPoints(ParentModel, parentId, name, cb);
       }
     });
   }
 
-  private insertContainerBefore(Model:IMongooseModel, modelId, name, id, itemKey, opts, cb: (err:Error, id?: string)=>void)
+  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts, cb: (err:Error, id?: string)=>void)
   {
     var newContainer = new this.listContainer({
-      next: id,
+      next: nextId,
       modelId: itemKey
     });
     newContainer.save((err, newContainer)=>{
       if(err) return cb(err);
 
-      this.listContainer.update({next: id}, {next: newContainer._id}, (err)=>{
+      this.listContainer.update({next: nextId}, {next: newContainer._id}, (err)=>{
         if(err){
           // rollback
           newContainer.remove();
@@ -344,8 +348,8 @@ export class MongooseStorage implements IStorage {
         }
         var delta = {};
         delta[name] = newContainer._id;
-        Model.update(
-          {_id: modelId},
+        ParentModel.update(
+          {_id: parentId},
           { $push: delta },
           (err)=>{
             cb(err, newContainer._id);
@@ -371,13 +375,13 @@ export class MongooseStorage implements IStorage {
 
   next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.getModel(keyPath, (Model) => {
-      var modelId = keyPath[keyPath.length-2];
+    this.getModel(keyPath, (ParentModel) => {
+      var parentId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
+      this.findContainer(ParentModel, parentId, seqName, id, (err, container?)=>{
         if(!id && !container) return cb(null); //empty sequence
-        this.findContainer(Model, modelId, seqName, container.next, (err, container?)=>{
+        this.findContainer(ParentModel, parentId, seqName, container.next, (err, container?)=>{
         //TODO:Err handling
           if(container.type === '_rip'){ //tombstone
             this.next(keyPath, container._id, opts, cb);
@@ -403,12 +407,12 @@ export class MongooseStorage implements IStorage {
   {
     if(_.isFunction(opts)) cb = opts;
 
-    this.getModel(keyPath, (Model) => {
+    this.getModel(keyPath, (ParentModel) => {
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
-      this.initSequence(Model, modelId, seqName, (err, begin?, end?) => {
+      this.initSequence(ParentModel, modelId, seqName, (err, begin?, end?) => {
         if(!id) id = end._id;
-        this.insertContainerBefore(Model, modelId, seqName, id, makeKey(itemKeyPath), opts, (err, newId?)=>{
+        this.insertContainerBefore(ParentModel, modelId, seqName, id, makeKey(itemKeyPath), opts, (err, newId?)=>{
           cb(err, newId, id);
         });
       });
@@ -417,11 +421,11 @@ export class MongooseStorage implements IStorage {
 
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
-    this.getModel(keyPath, (Model) => {
+    this.getModel(keyPath, (ParentModel) => {
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainer(Model, modelId, seqName, id, (err, container?)=>{
+      this.findContainer(ParentModel, modelId, seqName, id, (err, container?)=>{
         if(!container || container.type === '_rip') return cb(Error('Tried to delete a non-existent item'));
         this.removeFromSeq(container._id, cb);
       });
@@ -447,13 +451,13 @@ export class MongooseStorage implements IStorage {
   
   private getSequence(keyPath: string[], cb: (err: Error, seqDoc?: any, seq?: any[]) => void): void
   {
-     this.getModel(_.initial(keyPath, 2), function(Model){
+     this.getModel(_.initial(keyPath, 2), (ParentModel)=>{
       var seqName = _.last(keyPath);
-      var id = keyPath[keyPath.length-2];
-      Model
-        .findById(id)
+      var parentId = keyPath[keyPath.length-2];
+      ParentModel
+        .findById(parentId)
         .select(seqName)
-        .exec(function(err, seqDoc){
+        .exec((err, seqDoc)=>{
           if(!err){
             cb(err, seqDoc, seqDoc[seqName]);
           }else{
