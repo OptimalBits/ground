@@ -19,14 +19,13 @@ describe('Sequences', function(){
     ss1 = new Gnd.Storage.Socket(socket1);
     q1  = new Gnd.Storage.Queue(sl1, ss1);
     sm1 = new Gnd.Sync.Manager(socket1);
-
-    socket2 = io.connect('/', {'force new connection': true});
-    sl2  = new Gnd.Storage.Local();
-    ss2 = new Gnd.Storage.Socket(socket2);
-    q2  = new Gnd.Storage.Queue(sl2, ss2);
-    sm2 = new Gnd.Sync.Manager(socket2);
     
     socket1.on('connect', function(){
+      socket2 = io.connect('/', {'force new connection': true});
+      sl2  = new Gnd.Storage.Local();
+      ss2 = new Gnd.Storage.Socket(socket2);
+      q2  = new Gnd.Storage.Queue(sl2, ss2);
+      sm2 = new Gnd.Sync.Manager(socket2);
       socket2.on('connect', function(){
         done();
       })
@@ -56,6 +55,7 @@ describe('Sequences', function(){
   }
 
   beforeEach(function(done){
+    console.log('before');
     Gnd.using.storageQueue = q1;
     Gnd.Model.syncManager = sm1;
     parade = new Parade();
@@ -543,50 +543,49 @@ describe('Sequences', function(){
     it('update item propagates to the same item in a sequence', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
         var tiger = new Animal({name: 'tiger'});
+        animals.once('inserted:', function(){
+          animals.once('updated:', function(){
+            expect(animals.first()).to.have.property('legs', 5);
+            animals.release();
+            tiger.release();
+            done();
+          });
+          Animal.findById(tiger.id(), function(err, animal){
+            expect(err).to.not.be.ok();
+            animal.keepSynced();
+            animal.set('legs', 5);
+            animal.release();
+          });
+        });
         animals.push(tiger, function(err){
           expect(err).to.be(null);
-          animals.once('updated:', function(){
-            animals.once('updated:', function(){
-              expect(animals.first()).to.have.property('legs', 5);
-              animals.release();
-              tiger.release();
-              done();
-            });
-            Animal.findById(tiger.id(), function(err, animal){
-              expect(err).to.not.be.ok();
-              animal.keepSynced();
-              animal.set('legs', 5);
-              animal.release();
-            });
-          });
         });
       });
     });
 
     it('sequence proxies update item event', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
-        animals.push((new Animal({name:"panther"})).autorelease(), function(err){
+        animals.once('inserted:', function(){
           var panther = animals.find(function(item){ return item.name==='panther'; });
 
           expect(panther).to.be.an(Object);
           expect(panther).to.have.property('name', 'panther');
-
-          animals.once('updated:', function(){
-            Animal.findById(panther.id(), function(err, animal){
-              expect(err).to.not.be.ok();
-              animal.keepSynced();
-
-              animal.set('legs', 5);
-              animal.release();
-
-              animals.once('updated:', function(model, args){
-                expect(args).to.be.an(Object);
-                expect(args.legs).to.be(5);
-                animals.release();
-                done();
-              });
+          Animal.findById(panther.id(), function(err, animal){
+            expect(err).to.not.be.ok();
+            animal.keepSynced();
+            animals.once('updated:', function(model, args){
+              expect(args).to.be.an(Object);
+              expect(args.legs).to.be(5);
+              animals.release();
+              done();
             });
+            animal.set('legs', 5);
+            animal.release();
           });
+        });
+
+        animals.push((new Animal({name:"panther"})).autorelease(), function(err){
+          expect(err).to.not.be.ok();
         });
       });
     });
