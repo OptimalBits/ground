@@ -1,44 +1,40 @@
 define(['gnd'], function(Gnd){
 
-describe('Tasks and Promises', function(){
+describe('Promises', function(){
   it('create and resolve a promise', function(done){  
     var promise = new Gnd.Promise();
     
-    promise.then(function(val0, val1){
-      expect(arguments.length).to.be(2);
-      expect(val0).to.be(42);
-      expect(val1).to.be(32);
+    promise.then(function(val){
+      expect(arguments.length).to.be(1);
+      expect(val).to.be(42);
       done()
     });
-    promise.resolve(42,32);
+    promise.resolve(42);
   });
   
   it('create and resolve a promise with multiple listeners', function(done){  
     var promise = new Gnd.Promise();
     var counter = 3;
-    promise.then(function(val0, val1){
-      expect(arguments.length).to.be(2);
-      expect(val0).to.be(42);
-      expect(val1).to.be(32);
+    promise.then(function(val){
+      expect(arguments.length).to.be(1);
+      expect(val).to.be(42);
       counter--;
       if(counter==0) done();
     });
-    promise.then(function(val0, val1){
-      expect(arguments.length).to.be(2);
-      expect(val0).to.be(42);
-      expect(val1).to.be(32);
+    promise.then(function(val){
+      expect(arguments.length).to.be(1);
+      expect(val).to.be(42);
       counter--;
       if(counter==0) done();
     });
-    promise.then(function(val0, val1){
-      expect(arguments.length).to.be(2);
-      expect(val0).to.be(42);
-      expect(val1).to.be(32);
+    promise.then(function(val){
+      expect(arguments.length).to.be(1);
+      expect(val).to.be(42);
       counter--;
       if(counter==0) done();
     });
     
-    promise.resolve(42,32);
+    promise.resolve(42);
   });
   
   it('create a promise, resolve first listen after', function(done){  
@@ -71,6 +67,92 @@ describe('Tasks and Promises', function(){
     });
   });
   
+  it('listen before and after rejection', function(done){  
+    var promise = new Gnd.Promise();
+    var counter = 2;
+    
+    promise.then(function(val){
+      expect(true).to.be(false);
+    }, function(err){
+      expect(err).to.be(42);
+      counter --;
+      if(counter==0) done();
+    });
+    
+    promise.reject(42);
+    
+    promise.then(function(val){
+      expect(true).to.be(false);
+    }, function(err){
+      expect(err).to.be(42);
+      counter --;
+      if(counter==0) done();
+    });
+  });
+  
+  it('then returns a promise that resolves a value', function(done){  
+    var promise = new Gnd.Promise();
+    var counter = 2;
+    
+    var promise2 = promise.then(function(val){
+      expect(val).to.be(42);
+      return 50;
+    }, function(err){
+      expect(true).to.be(false);
+    });
+    
+    promise.resolve(42);
+    
+    promise2.then(function(val){
+       expect(val).to.be(50);
+       done();
+    });
+  });
+  
+  it('then returns a promise that resolves a promise', function(done){  
+    var promise = new Gnd.Promise();
+    var promise3 = new Gnd.Promise();
+    
+    var promise2 = promise.then(function(val){
+      expect(val).to.be(42);
+      return promise3;
+    }, function(err) {
+      expect(true).to.be(false);
+    });
+    
+    promise.resolve(42);
+    
+    promise2.then(function(val){
+      expect(val).to.be(50);
+      done();
+    });
+    
+    promise3.resolve(50);
+  });
+  
+  it('then callbacks are called asynchronously', function(done){  
+    var promise = new Gnd.Promise();
+    var end = false;
+    
+    var promise2 = promise.then(function(val){
+      expect(end).to.be(true);
+      expect(val).to.be(42);
+      return 50;
+    }, function(err){
+      expect(true).to.be(false);
+    });
+    
+    promise.resolve(42);
+    
+    promise2.then(function(val){
+       expect(end).to.be(true);
+       expect(val).to.be(50);
+       done();
+    })
+    
+    end = true;   
+  });
+  
   it('aborted promise does not trigger then after resolution', function(){  
     var promise = new Gnd.Promise();
     
@@ -81,22 +163,23 @@ describe('Tasks and Promises', function(){
     promise.abort();
     promise.resolve();
   });
-  
+
   it('simple promise queue with 2 promises triggers after second', function(){
     var promise1 = new Gnd.Promise(), promise2 = new Gnd.Promise();
     var queue = new Gnd.PromiseQueue(promise1, promise2);
     
     var triggered = false;
     queue.then(function(){
-      triggered = true;
+      expect(triggered).to.be(true);
     });
-    promise1.resolve();
-    expect(triggered).to.be(false);
     
+    promise1.resolve();
     promise2.resolve();
-    expect(triggered).to.be(true);
+    triggered = true;
   });
-  
+});
+
+describe('Tasks', function(){
   it('Task queue with a few elements executes in order', function(done){  
     var queue = new Gnd.TaskQueue();
     
