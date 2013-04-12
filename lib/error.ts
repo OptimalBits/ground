@@ -13,6 +13,7 @@ module Gnd {
  
   export enum ServerError {
     INVALID_SESSION = 1,
+    INVALID_ID,
     MODEL_NOT_FOUND,
     DOCUMENT_NOT_FOUND,
     STORAGE_ERROR,
