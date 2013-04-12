@@ -72,17 +72,19 @@ module Gnd
       this.resyncFn = (items) => {
         this.resync(items);
       }
-  
-      if(parent){
-        if(parent.isPersisted()){
-          this.listenToResync(using.storageQueue, true);
+      
+      if(using.storageQueue){
+        if(parent){
+          if(parent.isPersisted()){
+            this.listenToResync(using.storageQueue, true);
+          }else{
+            parent.once('id', ()=> {
+              this.listenToResync(using.storageQueue, true)
+            });
+          }
         }else{
-          parent.once('id', ()=> {
-            this.listenToResync(using.storageQueue, true)
-          });
+          this.listenToResync(using.storageQueue, true);
         }
-      }else{
-        this.listenToResync(using.storageQueue, true);
       }
     }
     
