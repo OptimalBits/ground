@@ -65,8 +65,10 @@ describe('Collections', function(){
       zoo.all(Animal, function(err, animals){
         expect(err).to.not.be.ok();
         expect(animals).to.be.an(Object);
-
-        animals.add((new Animal({name:"tiger"})).autorelease(), function(err){
+        
+        var tiger = new Animal({name:"tiger"});
+        animals.add(tiger, function(err){
+          tiger.release();
           expect(err).to.not.be.ok();
           storageQueue.once('synced:', function(){
             
@@ -78,7 +80,7 @@ describe('Collections', function(){
                 expect(err).to.not.be.ok();
                 expect(sameAnimals).to.be.an(Object);
                 expect(sameAnimals.items).to.be.an(Array);
-              //expect(sameAnimals.count).to.be(1); // Outcommented until fix for Resync.
+                expect(sameAnimals.count).to.be(1);
                 expect(animals.count).to.be(1);
                                 
                 sameAnimals.on('resynced:', function(){
@@ -217,7 +219,7 @@ describe('Collections', function(){
           expect(err).to.not.be.ok();
           expect(animals).to.be.an(Object);
           
-          animals.add(new Animal({name:"gorilla"}), function(err){
+          animals.add((new Animal({name:"gorilla"})).autorelease(), function(err){
             expect(err).to.not.be.ok();
           
             var animal = animals.first();
@@ -291,7 +293,7 @@ describe('Collections', function(){
       });
     });
   
-    it('remove item with collections', function(done){
+    it.skip('remove item with collections', function(done){
       done();
     });
 
@@ -323,7 +325,7 @@ describe('Collections', function(){
       done();
     });
     
-    it('find items are cached');
+    it.skip('find items are cached');
       // IMPLEMENT: Items that are "finded" from the server should be
       // cached for offline usage.
   
@@ -492,7 +494,7 @@ describe('Collections', function(){
     //  An item is added from a collection on the server, when we come back online
     //  the local cache should be updated with the removed item.
     //
-    it('serverside add item while offline');
+    it.skip('serverside add item while offline');
     
     
     it('removed item from collection online is not available offline', function(done){
@@ -572,7 +574,11 @@ describe('Collections', function(){
                     expect(err).to.not.be.ok();
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.count).to.be(1);
-                  
+                    
+                   /* setTimeout(function(){
+                      expect(emptyZoo.count).to.be(0);
+                    }, 1000);
+                    */
                     emptyZoo.once('resynced:', function(){
                       expect(emptyZoo.count).to.be(0);
                     
@@ -664,7 +670,7 @@ describe('Collections', function(){
           item3 = new Item({ val : 10, val2 : 3 , val3 : 12 }),
           item4 = new Item({ val : 15, val2 : 2 , val3 : 13 });
       
-      var itemcollection = new Gnd.Collection(Item, parent, [item1,item2,item3,item4]);
+      var itemcollection = new Gnd.Collection(Item, 'items', parent, [item1,item2,item3,item4]);
       
       itemcollection.set('filterByFn', function(item){return item.val = 10;});
       itemcollection.set('filterByFn', function(item){return item.val = 15;});
@@ -777,11 +783,11 @@ describe('Collections', function(){
   });
   
   describe('Queries', function(){
-    it('find models in collection limiting result');
+    it.skip('find models in collection limiting result');
 
-    it('find models in collection paginating');
+    it.skip('find models in collection paginating');
   
-    it('find models in collection sorting and paginating');
+    it.skip('find models in collection sorting and paginating');
   });
   
   describe('Edge cases', function(){

@@ -5,6 +5,7 @@ localStorage.clear();
 
 describe('Model', function(){
   var syncManager = new Gnd.Sync.Manager(socket);
+  syncManager.init();
   
   var storageQueue;
   
@@ -95,8 +96,8 @@ describe('Model', function(){
         expect(doc).to.have.property('_id');
         expect(doc.id()).to.eql(animal.id());
         doc.keepSynced();
-        doc.set({legs:4, tail:true});
         otherAnimal = doc;
+        doc.set({legs:4, tail:true});
       });
     });
     
@@ -120,12 +121,8 @@ describe('Model', function(){
             expect(thirdFox).to.have.property('name', secondFox.name);
             
             thirdFox.keepSynced();
-            
-            thirdFox.on('destroy:', function(){
-              secondFox.set('legs', 3);
-            });
-            
             thirdFox.release();
+            secondFox.set('legs', 3);
           });
         });
       });
@@ -187,7 +184,7 @@ describe('Model', function(){
     //
     // Simulate a disconnect in the middle of an emit.
     //
-    it('disconnect', function(done){
+    it.skip('disconnect', function(done){
       var otherAnimal;
       animal.off();
       
@@ -259,7 +256,30 @@ describe('Model', function(){
     //  instances.
     
     it('keepSynced before save', function(done){
-      var elephant = new Animal({legs:4});
+      var elephant = new Animal({name: 'elephant', legs:4});
+      elephant.keepSynced();
+      elephant.save(function(err){
+        expect(err).to.not.be.ok();
+      });
+      
+      Animal.findById(elephant.id(), true, function(err, otherElephant){
+        expect(err).to.not.be.ok();
+        expect(otherElephant).to.be.ok();
+        expect(otherElephant).to.be(elephant);
+          
+        elephant.once('changed:', function(doc){
+          expect(elephant.legs).to.be(5);
+          elephant.release();
+          otherElephant.release();
+          done();
+        });
+          
+        otherElephant.set('legs', 5);
+      });
+    });
+    
+    it('keepSynced before save (waiting for sync)', function(done){
+      var elephant = new Animal({name: 'elephant', legs:4});
       elephant.keepSynced();
       elephant.save(function(err){
         expect(err).to.not.be.ok();
@@ -271,8 +291,9 @@ describe('Model', function(){
         Animal.findById(elephant._id, true, function(err, otherElephant){
           expect(err).to.not.be.ok();
           expect(otherElephant).to.be.ok();
+          expect(otherElephant).to.be(elephant);
           
-          otherElephant.on('resynced:', function(){
+          //otherElephant.on('resynced:', function(){
             elephant.once('changed:', function(doc){
               expect(elephant.legs).to.be(5);
               elephant.release();
@@ -281,7 +302,7 @@ describe('Model', function(){
             });
           
             otherElephant.set('legs', 5);
-          });
+            //});
         });
       });
     });
@@ -357,7 +378,7 @@ describe('Model', function(){
     //  A model is deleted while being offline, as soon as we get back
     //  online the client must delete the object.
     //
-    it('serverside delete while offline', function(done){
+    it.skip('serverside delete while offline', function(done){
       // TO IMPLEMENT;
       done();
     });
@@ -367,12 +388,11 @@ describe('Model', function(){
     // updated as soon as we get online.
     // (Note: we do not handle conflicts yet).
     //
-    it('serverside update while offline', function(done){
+    it.skip('serverside update while offline', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider'});
-      tempAnimal.save(function(){
-        tempAnimal.keepSynced();
-      });
+      tempAnimal.keepSynced();
+      tempAnimal.save();
       
       storageQueue.once('synced:', function(){
         var obj = {legs:7};
