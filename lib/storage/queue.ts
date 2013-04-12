@@ -245,7 +245,8 @@ export class Queue extends Base implements IStorage
           !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
         });
         
-        storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}, (err?) => {
+        storage.remove(keyPath, itemKeyPath, itemsToRemove, 
+          {insync:true}, (err?) => {
           if(!err){
             Util.asyncForEach(newItems, (doc, done) => {
               var elemKeyPath = itemKeyPath.concat(doc._id);
@@ -505,7 +506,7 @@ export class Queue extends Base implements IStorage
             remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}, done);
             break;
           case 'remove':
-            remoteStorage.remove(keyPath, itemsKeyPath, itemIds, {}, done);
+            remoteStorage.remove(keyPath, itemsKeyPath, _.unique(itemIds), {}, done);
             break;
           case 'insertBefore':
             var id = obj.id;
