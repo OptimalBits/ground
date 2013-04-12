@@ -10,25 +10,28 @@
   automatic client<->server synchronization.
   
   Events:
-  
 */
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="container.ts" />
+/// <reference path="mutex.ts" />
 
 module Gnd {
 
 export class Collection extends Container
-{    
+{
   // Even handlers
   private updateFn: (model: Model, args) => void;
   private deleteFn: (model: Model) => void;
   
+  // Mutex
+  private resyncMutex: Mutex = new Mutex();
+  
   // Links
   private linkFn: (evt: string, item: Model, fields?: string[]) => void;
   private linkTarget: Collection;
-    
+
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   
@@ -152,13 +155,14 @@ export class Collection extends Container
         
         this.set('count', items.length);
         this.emit('removed:', item, index);
-        item.release();
         
         if(!opts || !opts.nosync){
           var itemKeyPath = _.initial(item.getKeyPath());
-          this.storageQueue.remove(keyPath, itemKeyPath, [item.id()], done);
+          this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()], done);
           return;
         }
+        
+        item.release();
       }
       done();
     }, cb);
@@ -263,18 +267,6 @@ export class Collection extends Container
   private startSync()
   {
     super.startSync();
-    /*
-    this._keepSynced = true;
-    if(this.parent && Model.syncManager){
-      if(this.parent.isPersisted()){
-        Model.syncManager.startSync(this);
-      }else{
-        this.parent.on('id', () => {
-          Model.syncManager.startSync(this);
-        });
-      }
-    }
-    */
     
     this.on('add:', (itemsKeyPath, itemIds) => {
       Util.asyncForEach(itemIds, (itemId: string, done) => {
@@ -291,67 +283,44 @@ export class Collection extends Container
     this.on('remove:', (itemsKeyPath, itemId) => {
       this.remove(itemId, true, Util.noop);
     });
-
-    /*
-    this.storageQueue.exec((err?)=>{
-      this.storageQueue = using.storageQueue;
-      this.listenToResync(using.storageQueue);
-    });
-    */
   }
   
   private resync(items: any[]){
-    var 
-      itemsToRemove = [],
-      itemsToAdd = items.slice(0);
+    this.resyncMutex.enter((done)=>{
+      var 
+        itemsToRemove = [],
+        itemsToAdd = []; //items.slice(0); // copy items array
       
-    this['each'](function(item){
-      var id = item.id(), shouldRemove = true;
-      for(var i=0; i<items.length; i++){
-        if(id == items[i]._id){
-          item.set(items[i], {nosync: true});
-          shouldRemove = false;
-          break;
-        }
-      }
-      shouldRemove && itemsToRemove.push(id);
-    });
-    
-    this.remove(itemsToRemove, {nosync: true}, (err) => {
-      if(!err){
-        //TODO: Is there a better way?
-        (<any>this.model).createModels(itemsToAdd, (err, models) => {
-          if(!err){
-            this.add(models, {nosync: true}, (err) => {
-              this.emit('resynced:');
-            });
+      this['each'](function(item){
+        var id = item.id(), shouldRemove = true;
+        for(var i=0; i<items.length; i++){
+          if(id == items[i]._id){
+            item.set(items[i], {nosync: true});
+            shouldRemove = false;
+            break;
           }
-        });
-      }
+        }
+        shouldRemove && itemsToRemove.push(id);
+      });
+    
+      _.each(items, (item) => {
+        if(!this.findById(item._id)) itemsToAdd.push(item);
+      })
+    
+      this.remove(itemsToRemove, {nosync: true}, (err) => {
+        if(!err){
+          //TODO: Is there a better way?
+          (<any>this.model).createModels(_.unique(itemsToAdd), (err, models) => {
+            if(!err){
+              this.add(models, {nosync: true}, (err) => {
+                this.emit('resynced:');
+                done(); // Done with this mutex.
+              });
+            }
+          });
+        }
+      });
     });
-  }
-  
-  private initItems(items)
-  {  
-    items = _.isArray(items)? items:[items];
-    for (var i=0,len=items.length; i<len;i++){
-      var item = items[i];
-      item.retain();
-      item.on('changed:', this.updateFn);
-      item.on('deleted:', this.deleteFn);
-    }
-  }
-  
-  private deinitItems(items)
-  {
-    var key = Storage.Queue.makeKey(this.getKeyPath());
-    this.storageQueue.off('resync:'+key, this.resyncFn);
-    for (var i=0,len=items.length; i<len;i++){
-      var item = items[i];
-      item.off('changed:', this.updateFn);
-      item.off('deleted:', this.deleteFn);
-      item.release();
-    }
   }
 }
 
