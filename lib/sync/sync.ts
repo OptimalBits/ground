@@ -60,12 +60,11 @@ export class Manager extends Base {
           }
         });
         
-        // OBSOLETE if done according to new 'sync'
-        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath(), (err, doc) => {
+        // OBSOLETE? if done according to new 'sync'
+        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath(), (err, newdoc) => {
           if(!err){
-            //doc && (delete doc.cid); // Hack needed since cid is almost always outdated in server.
             for(var i=0, len=docs.length; i<len; i++){
-              docs[i].set(doc, {nosync: true});
+              docs[i].set(newdoc, {nosync: true});
               //docs[i].id(id);
             }
             // TODO: we probably should update locally...
@@ -188,14 +187,6 @@ function notifyObservers(...args:any[]){
     }
   }
 }
-// 
-// function notifyObservers(observers, message, itemsKeyPath, itemIds){
-//   if(observers){
-//     for(var i=0; i<observers.length; i++){
-//       observers[i].emit(message, itemsKeyPath, itemIds);
-//     }
-//   }
-// }
 
 function keyPathToKey(keyPath: string[]){
   return keyPath.join(':');
