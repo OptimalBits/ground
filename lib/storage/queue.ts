@@ -8,6 +8,7 @@
 
 /// <reference path="../error.ts" />
 /// <reference path="../storage.ts" />
+/// <reference path="../promise.ts" />
 
 module Gnd.Storage {
   
@@ -88,12 +89,14 @@ export class Queue extends Base implements IStorage
     this.syncFn();
   }
   
-  fetch(keyPath: string[], cb)
+  fetch(keyPath: string[], cb?): Promise
   {
+    var promise = new Promise();
     this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
-        cb(err, doc);
+        promise.resolve(doc);
+        cb && cb(err, doc);
       }
       if(this.useRemote){
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
@@ -108,12 +111,21 @@ export class Queue extends Base implements IStorage
             });
             this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
           }
-          !doc && cb(err, docRemote);
+          if(!doc){
+            if(!err){
+              promise.resolve(doc);
+            }else{
+              promise.reject(err);
+            }
+            cb && cb(err, docRemote);
+          }
         });
       }else if(!doc){
-        cb(err);
+        promise.reject(err);
+        cb && cb(err);
       }
     });
+    return promise;
   }
 
   private updateLocalSequence(keyPath: string[], 
