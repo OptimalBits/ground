@@ -653,7 +653,20 @@ export class Queue extends Base implements IStorage
     }else{
       console.log("Queue error:"+err);
       
-      switch(parseInt(err.message)){
+      // HACK
+      if(err.message == 'Invalid ObjectId'){
+        err.message = ''+ServerError.INVALID_ID;
+      }
+      
+      var errCode;
+      if(err.message == 'Invalid ObjectId'){
+        errCode = ServerError.INVALID_ID;
+      }else{
+        errCode = parseInt(err.message);
+      }
+      
+      switch(errCode){
+        case ServerError.INVALID_ID:
         case ServerError.INVALID_SESSION:
         case ServerError.DOCUMENT_NOT_FOUND:
         case ServerError.MODEL_NOT_FOUND:
