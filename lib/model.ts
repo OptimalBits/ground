@@ -38,30 +38,49 @@ class ModelDepot
 {
   private models = {};
     
-  getModel(ModelClass: IModel, keyPath: string[], keepSynced: bool, args: {})
+  getModel(ModelClass: IModel, args: {}, keepSynced: bool, cb: (err?, model?) => void);
+  getModel(ModelClass: IModel, args: {}, keepSynced: bool, keyPath: string[], cb: (err?, model?) => void);
+  getModel(ModelClass: IModel, args: {}, keepSynced: bool, keyPath?, cb?)
   {
-    var key = this.key(keyPath);
-    var modelPromise = this.models[key];
-    if(!modelPromise){
-      modelPromise = new Promise();
-      this.setPromise(keyPath, modelPromise);
-      
-      using.storageQueue.fetch(keyPath, (err?, doc?: {}) => {
-        if(doc){
-          ModelClass.create(doc, keepSynced, (err?, instance?) => {
-            if(instance){
-              instance.set(args);
-              modelPromise.resolve(instance);
-            }else{
-              modelPromise.reject(err);
-            }
-          });
-        }else{
-          modelPromise.reject(err);
-        }
+    var create = (args) => {
+      return ModelClass.fromJSON(args).then((instance) => {
+        keepSynced && instance.keepSynced();
+        return instance.init().then(()=>{
+          return instance.autorelease();
+        });
       });
     }
-    return modelPromise;
+    
+    if(_.isFunction(keyPath)){
+      cb = keyPath;
+      keyPath = undefined;
+    }
+    
+    var fetch: bool = true;
+    if(!keyPath){
+      fetch = false;
+      keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
+    }
+    var key = this.key(keyPath);
+    var promise = this.models[key];
+    if(!promise){
+      if(fetch){
+        promise = using.storageQueue.fetch(keyPath).then((doc: {}) => {
+          create(doc).then((instance: Model) => {
+            instance.set(args);
+            return instance;
+          });
+        });
+      }else{
+        promise = create(args);
+      }
+      this.setPromise(keyPath, promise);
+    }
+    // Use callback to guarantee that the model has been retained.
+    promise.then((model) => {
+      model.retain();
+      cb(null, model);
+    }, cb);
   }
   
   getPromise(keyPath: string[]){
@@ -78,23 +97,28 @@ class ModelDepot
     var models = this.models;
     
     promise = promise || new Promise(model);
-        
-    models[this.key(model.getKeyPath())] = promise;
+  
+    var remoteKeyPath;
+    var localKeyPath = this.key([model.bucket(), model.cid()]);
     
-    if(!model.isPersisted()){
-      model.once('id', () => {
-        models[this.key(model.getKeyPath())] = promise;
-      });
+    models[localKeyPath] = promise;
+    
+    var setRemote = () => {
+      remoteKeyPath = this.key(model.getKeyPath());
+      models[remoteKeyPath] = promise;
+    }
+    
+    if(!model.isPersisted()) {
+      model.once('id',setRemote);
+    }else{
+      setRemote();
     }
     
     model.once('destroy: deleted:', () => {
-      var keyPathLocal  = this.key([model.bucket(), model.cid()]);
-      var keyPathRemote = this.key([model.bucket(), model.id()]);
-      
-      delete models[keyPathLocal];
-      delete models[keyPathRemote];
+      delete models[localKeyPath];
+      remoteKeyPath && delete models[remoteKeyPath];
     });
-        
+
     return promise;
   }
   
@@ -121,7 +145,8 @@ export interface IModel
 {
   new (args: {}, bucket: string): Model;
   __bucket: string;
-  create(args: {}, keepSynced: bool, cb: (err: Error, instance?: Model) => void): void;
+  create(args: {}, keepSynced: bool, cb?: (err: Error, instance?: Model) => void): Promise;
+  fromJSON(args: {}): Promise;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   all(parent: Model, args: {}, bucket: string, cb:(err: Error, items: Model[]) => void);
   seq(parent: Model, args: {}, bucket: string, cb:(err: Error, items: {model:Model; id:string;}[]) => void);
@@ -229,8 +254,6 @@ export class Model extends Base implements Sync.ISynchronizable
       findById: this.findById,
       all: this.all,
       seq: this.seq,
-      allModels: this.allModels,
-      createModels: this.createModels,
       createSequenceModels: this.createSequenceModels,
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
@@ -239,25 +262,26 @@ export class Model extends Base implements Sync.ISynchronizable
     return __;
   }
 
-  static create(args: {}, cb: (err: Error, instance?: Model) => void): void;
-  static create(args: {}, keepSynced: bool, cb: (err?: Error, instance?: Model) => void): void;
-  static create(args: {}, keepSynced?: bool, cb?: (err?: Error, instance?: Model) => void): void
+  // TODO: Create must first try to find the model in the depot,
+  // and "merge" the args argument with the model properties from the depot.
+  // if not available it instantiate it and save it in the depot.  
+  static create(args: {}, cb?: (err: Error, instance?: Model) => void): Promise;
+  static create(args: {}, keepSynced: bool, cb?: (err?: Error, instance?: Model) => void): Promise;
+  static create(args: {}, keepSynced?: bool, cb?: (err?: Error, instance?: Model) => void): Promise
   {
-    overload({
+    return overload({
       'Object Boolean Function': function(args, keepSynced, cb){
-        this.fromJSON(args, (err, instance) => {
-          if(instance){
-            keepSynced && instance.keepSynced();
-            instance.init(() => {
-              cb(null, instance);
-            });
-          }else{
-            cb(err);
-          }
-        })
+        modelDepot.getModel(this, args, keepSynced, cb);
+        /*
+        var promise = modelDepot.getModel(this, args, keepSynced);
+        promise.then((instance) => {
+          cb(null, instance);
+        }, cb);
+        return promise;
+        */
       },
       'Object Function': function(args, cb){
-        this.create(args, false, cb);
+        return this.create(args, false, cb);
       }
     }).apply(this, arguments);
   }
@@ -266,11 +290,14 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     return overload({
       'Array Boolean Object Function': function(keyPath, keepSynced, args, cb){
-        return modelDepot.getModel(this, keyPath, keepSynced, args).then((model)=>{
+        modelDepot.getModel(this, args, keepSynced, keyPath, cb);
+        /*
+        return modelDepot.getModel(this, args, keepSynced, keyPath).then((model)=>{
           cb(null, model.retain());
         }, (err) => {
           cb(err);
         });
+        */
       },
       'String Boolean Object Function': function(id, keepSynced, args, cb){
         return this.findById([this.__bucket, id], keepSynced, args, cb);
@@ -295,12 +322,15 @@ export class Model extends Base implements Sync.ISynchronizable
     using.storageQueue.del(keyPath, cb);
   }
   
-  static fromJSON(args, cb){
-    cb(null, new this(args));
+  static fromJSON(args, cb?): Promise
+  {
+    cb && cb(null, new this(args));
+    return new Promise(new this(args));
   }
   
-  static fromArgs(args, cb){
-    this.fromJson(args, cb);
+  static fromArgs(args, cb): Promise
+  {
+    return this.fromJSON(args, cb);
   }
   
   destroy(): void
@@ -309,8 +339,10 @@ export class Model extends Base implements Sync.ISynchronizable
     super.destroy();
   }
   
-  init(fn){
-    fn(this)
+  init(fn): Promise
+  {
+    fn && fn(this)
+    return new Promise(this);
   }
   
   id(id?: string): string 
@@ -336,6 +368,11 @@ export class Model extends Base implements Sync.ISynchronizable
   getKeyPath(): string[]
   {
     return [this.__bucket, this.id()];
+  }
+  
+  getLocalKeyPath(): string[]
+  {
+    return [this.__bucket, this.cid()];
   }
   
   isKeptSynced(): bool
@@ -455,22 +492,6 @@ export class Model extends Base implements Sync.ISynchronizable
     }
     return args
   }
-  
-  
-  static createModels(docs, done){
-    var models = [];
-    
-    Util.asyncForEach(docs, (args, fn)=>{
-      this.create(args, function(err, instance?: Model){
-        if(instance){
-          models.push(instance);
-        }
-        fn(err);
-      });
-    }, (err) => {
-      done(err, models);
-    });
-  }
 
   static createSequenceModels(items:IDoc[], done){
     var models = [];
@@ -487,32 +508,19 @@ export class Model extends Base implements Sync.ISynchronizable
     });
   }
   
-  static allModels(cb:(err?: Error, models?: Model[]) => void) {
-    using.storageQueue.find([this.__bucket], {}, {}, (err?, docs?) => {
-      if(docs){
-        this.createModels(docs, cb);
-      }else{
-        cb(err);
-      }
-    });
-  }
-
   /**
-    Returns all the instances of collection determined by a parent model and
-    the given model class.
-    (Should we deprecate this in favor of a keyPath based method?)
+    Creates a collection filled with models according to the given parameters.
   */
-  // static all(args: {}//, bucket: string, cb:(err?: Error, items?: Model[]) => void);
-
-  //TODO:rename bucket to something else
   static all(parent: Model, args: {}, bucket: string, cb:(err?: Error, collection?: Collection) => void);
   static all(parent: Model, cb:(err?: Error, collection?: Collection) => void);
   static all(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, collection?: Collection) => void){
-      var allInstances = (parent, keyPath, args, cb) => {
+    var allInstances = (parent, keyPath, args, cb) => {
       using.storageQueue.find(keyPath, {}, {}, (err?, docs?) => {
         if(docs){
           _.each(docs, function(doc){_.extend(doc, args)});
-          Collection.create(this, _.last(keyPath), parent, docs, cb);
+          Collection.create(this, _.last(keyPath), parent, docs).then((collection)=>{
+            cb(err, collection);
+          })
         }else{
           cb(err);
         }
@@ -544,7 +552,6 @@ export class Model extends Base implements Sync.ISynchronizable
     Returns the sequence determined by a parent model and
     the given model class.
   */
-  //TODO:rename bucket to something else
   static seq(parent: Model, args: {}, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent: Model, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent: Model, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);

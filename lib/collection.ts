@@ -35,12 +35,9 @@ export class Collection extends Container
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   
-  // TODO: Support for anonymous collections
-  // constructor(items: {}[]) // i.e. new Collection(Model); add(new Model({..}))
-  
-  constructor(model: IModel, seqName: string, parent?: Model, items?: Model[])
+  constructor(model: IModel, collectionName: string, parent?: Model, items?: Model[])
   {
-    super(model, seqName, parent, items);
+    super(model, collectionName, parent, items);
     
     var _this = this;
     this.updateFn = function(args){
@@ -66,45 +63,33 @@ export class Collection extends Container
     });
     
     this.initItems(this.items);
+    
+    if(parent && parent.isKeptSynced()){
+      this.keepSynced()
+    }
   }
   
   destroy(){
     this.unlink();
     super.destroy();
   }
-  
-  static public create(model: IModel, collectionName: string, parent: Model, items: Model[]): Collection;
-  static public create(model: IModel, collectionName: string, parent: Model, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
-  static public create(model: IModel, collectionName: string, docs: {}[], cb: (err?: Error, collection?: Collection) => void);
 
-  static public create(model?: IModel, collectionName?: string, parent?: Model, docs?: {}[], cb?): any
+  init(docs: {}[])
   {
-    return overload({
-      'Function String Model Array': function(model, collectionName, parent, models){
-        var collection = new Collection(model, collectionName, parent, models);
-        Util.release(models);
-        if(parent && parent.isKeptSynced()){
-          collection.keepSynced()
-        }
-        collection.count = models.length;
-        return collection;
-      },
-      'Function String Model Array Function': function(model, collectionName, parent, items, cb){
-        model.createModels(items, (err?: Error, models?: Model[])=>{
-          if(err){
-            cb(err)
-          }else{
-            cb(err, this.create(model, collectionName, parent, models));
-          }
-        });
-      },
-      'Function String Array Function': function(model, collectionName, items, cb){
-        this.create(model, collectionName, undefined, items, cb);
-      },
-      'Function String Model Function': function(model, collectionName, parent, cb){
-        this.create(model, collectionName, parent, [], cb);
-      }
-    }).apply(this, arguments);
+    var promise = new Promise();
+    this.resync(docs, ()=>{
+      promise.resolve(this);
+    });
+    return promise;
+  }
+  
+  static public create(model: IModel, 
+                       collectionName: string, 
+                       parent: Model, 
+                       docs: {}[]): Promise
+  {
+    var collection = new Collection(model, collectionName, parent);
+    return collection.init(docs);
   }
   
   findById(id)
@@ -285,7 +270,21 @@ export class Collection extends Container
     });
   }
   
-  private resync(items: any[]){
+  private createModels(docs, done){
+    var models = [];
+    
+    Util.asyncForEach(docs, (args, fn) => {
+      (<any>this.model).create(args, function(err, instance?: Model){
+        instance && models.push(instance);
+        fn(err);
+      });
+    }, (err) => {
+      done(err, models);
+    });
+  }
+  
+  private resync(items: any[], finished?: ()=>void)
+  {
     this.resyncMutex.enter((done)=>{
       var 
         itemsToRemove = [],
@@ -310,11 +309,12 @@ export class Collection extends Container
       this.remove(itemsToRemove, {nosync: true}, (err) => {
         if(!err){
           //TODO: Is there a better way?
-          (<any>this.model).createModels(_.unique(itemsToAdd), (err, models) => {
+          this.createModels(_.unique(itemsToAdd), (err, models) => {
             if(!err){
               this.add(models, {nosync: true}, (err) => {
                 this.emit('resynced:');
                 done(); // Done with this mutex.
+                finished && finished();
               });
             }
           });
