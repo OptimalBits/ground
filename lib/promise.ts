@@ -74,7 +74,7 @@ export class Promise {
   
   resolve(value?:any): Promise
   {
-    if(this.isFulfilled) return;
+    if(this.isFulfilled) throw new Error("Cannot resolved a fulfilled promise");
     this.abort();
     
     this.value = value || null;
@@ -84,7 +84,7 @@ export class Promise {
   
   reject(reason: Error): Promise
   {
-    if(this.isFulfilled) return;
+    if(this.isFulfilled) throw new Error("Cannot resolved a fulfilled promise");
     this.abort();
     
     this.reason = reason || null;
