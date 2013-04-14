@@ -15,7 +15,7 @@
 var env = process.env
   , prefix = 'GND'; 
 
-module.exports = {
+var config = {
   APP_PORT: _('APP_PORT', 0),
   
   REDIS_PORT: _('REDIS_PORT', 6379),
@@ -24,8 +24,13 @@ module.exports = {
   MONGODB_URI: _('MONGODB_URI', 'mongodb://localhost/ground'),
   
   COOKIE: _('COOKIE', 'gnd-cookie'),
+  MODE: _('MODE', 'development')
 }
 
-function _(variable, default){
-  return env[prefix+'_'+variable] || default;
+config.DEVELOPMENT = _('DEVELOPMENT', config.MODE === 'development');
+
+function _(variable, defaultValue){
+  return env[prefix+'_'+variable] || defaultValue;
 }
+
+module.exports = config;

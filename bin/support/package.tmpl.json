@@ -7,11 +7,10 @@
       "gnd": "*"
     , "acl": "*"
     , "cabinet": "*"
-    , "express": "2.5.11"
-    , "hiredis": "0.1.14"
-    , "redis": "0.8.1"
+    , "connect": "*"
+    , "redis": "*"
     , "mongoose": "*"
-    , "underscore": "1.3.1"
+    , "underscore": "*"
     , "socket.io": "0.9.10"
   },
   "devDependencies": {

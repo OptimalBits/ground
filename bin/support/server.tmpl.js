@@ -4,8 +4,8 @@ var Gnd = require('gnd')
   , config = require('./config')
   , models = require('./models/models')
   , cabinet = require('cabinet') 
-  , express = require('express')
-  , app = express.createServer()
+  , http = require('http')
+  , app = require('connect')()
   , sio = require('socket.io').listen(app)
   , redis = require('redis')
   , mongoose = require('mongoose')
@@ -31,5 +31,6 @@ var mongooseStorage = new Gnd.MongooseStorage(models, mongoose)
                                
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 
-app.listen(config.APP_PORT);
-console.log("Started server at port: %d in %s mode", app.address().port, app.settings.env);
+var server = http.createServer(app).listen(config.APP_PORT);
+console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
+
