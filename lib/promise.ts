@@ -13,6 +13,8 @@ function isPromise(promise){
   return (promise instanceof Object) && (promise.then instanceof Function);
 }
 
+// TODO: Use local event queue to guarantee that all callbacks are called 
+// in the same turn in the proper order.
 export class Promise {
   fulfilledFns : any[] = [];
   rejectedFns: any[] = [];
@@ -40,14 +42,13 @@ export class Promise {
           return value
         };
       }
-      // TODO: Lift nexttick higher up.
       return (value) => {
         try{
           var result = fn(value);
           if(isPromise(result)){
-            result.then(function(val){
+            result.then((val) => { 
               promise.resolve(val);
-            }, function(err){
+            }, (err) =>{
               promise.reject(err);
             });
           }else{
@@ -55,15 +56,15 @@ export class Promise {
           }
         }catch(err){
           promise.reject(err);
-          console.log(err);
+          console.log(err.stack);
         }
       }
     }
     
     if(!_.isUndefined(this.value)){
-      this.fireNext(wrapper(onFulfilled), this.value);
+      this.fire(wrapper(onFulfilled), this.value);
     }else if(!_.isUndefined(this.reason)){
-      this.fireNext(wrapper(onRejected, true), this.reason);
+      this.fire(wrapper(onRejected, true), this.reason);
     }else{   
       this.fulfilledFns.push(wrapper(onFulfilled));
       this.rejectedFns.push(wrapper(onRejected, true));
@@ -72,9 +73,14 @@ export class Promise {
     return promise;
   }
   
+  resolveOrReject(err?: Error, value?: any){
+    if(err) this.reject(err);
+    else this.resolve(value);
+  }
+  
   resolve(value?:any): Promise
   {
-    if(this.isFulfilled) throw new Error("Cannot resolved a fulfilled promise");
+    if(this.isFulfilled) return;
     this.abort();
     
     this.value = value || null;
@@ -84,7 +90,7 @@ export class Promise {
   
   reject(reason: Error): Promise
   {
-    if(this.isFulfilled) throw new Error("Cannot resolved a fulfilled promise");
+    if(this.isFulfilled) return;
     this.abort();
     
     this.reason = reason || null;
@@ -97,11 +103,11 @@ export class Promise {
   }
   
   private fireNext(cb, value){
-    //var stack = (new Error())['stack'];
+    var stack = (new Error())['stack'];
      
-    //Util.nextTick(() => {
+    Util.nextTick(() => {
       cb.call(this, value);
-    //});
+    });
   }
   
   private fire(cb, value){
