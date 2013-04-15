@@ -59,7 +59,7 @@ var interval,
 export function listen(root, cb) {
   if(_.isFunction(root)){
     cb = root;
-    root = '/';
+    root = '';
   }
   
   routeHandler = cb;
@@ -332,7 +332,7 @@ class Request {
       
       if(prev && 
          (prev.component === components[i]) && 
-         (prevLen < len || prev.selector != prevNext.selector || i < len-1)){
+         (prevLen < len || (prevNext && prev.selector != prevNext.selector) || i < len-1)){
         self.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
