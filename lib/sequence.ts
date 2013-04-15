@@ -90,7 +90,7 @@ export class Sequence extends Container
     this.remove(idx, opts, cb);
   }
 
-  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): void
+  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): Promise
   {
     if(_.isFunction(opts)){
       cb = opts;
@@ -98,14 +98,16 @@ export class Sequence extends Container
     }
     cb = cb || Util.noop;
 
-    this.insertItemBefore(id, item, null, opts, (err) => {
+    return this.insertItemBefore(id, item, null, opts, (err?) => {
       !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
       cb(null);
     });
   }
   
-  private insertItemBefore(refId: string, item: Model, id: string, opts, cb)
+  private insertItemBefore(refId: string, item: Model, id: string, opts, cb): Promise
   {
+    var promise = new Gnd.Promise();
+    
     var seqItem = {
       model: item,
       id: id,
@@ -118,6 +120,7 @@ export class Sequence extends Container
         seqItem.pending = false;
       });
       cb(err);
+      promise.resolveOrReject(err);
     }
 
     var index = this.items.length;
@@ -129,7 +132,12 @@ export class Sequence extends Container
         index = i;
       }
     };
-    if(index === -1) return cb(Error('Tried to insert duplicate container'));
+    
+    if(index === -1){
+      var err = Error('Tried to insert duplicate container');
+      cb(err);
+      return promise.reject(err);
+    }  
     this.items.splice(index, 0, seqItem);
 
     this.initItems(seqItem.model);
@@ -142,13 +150,18 @@ export class Sequence extends Container
         this.insertPersistedItemBefore(refId, item, done);
       }else{
         item.save((err?) => {
-          if(err) return cb(err);
+          if(err){
+            cb(err);
+            return promise.reject(err);
+          } 
           this.insertPersistedItemBefore(refId, item, done);
         });
       }
     }else{
       cb();
+      promise.resolve();
     }
+    return promise;
   }
 
   private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
@@ -169,11 +182,11 @@ export class Sequence extends Container
     this.insertBefore(firstId, item, opts, cb);
   }
 
-  insert(idx: number, item: Model, opts?, cb?: (err)=>void): void
+  insert(idx: number, item: Model, opts?, cb?: (err)=>void): Promise
   {
     var seqItem = this.items[idx];
     var id = seqItem ? seqItem.id : null;
-    this.insertBefore(id, item, opts, cb);
+    return this.insertBefore(id, item, opts, cb);
   }
 
   remove(idx: number, opts?, cb?: (err?)=>void): void

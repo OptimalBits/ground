@@ -175,9 +175,7 @@ export class Model extends Base implements Sync.ISynchronizable
   private _storageQueue: Storage.Queue;
   
   public _initial: bool = true;
-  
-  static syncManager: Sync.Manager;
-  
+    
   constructor(args: {}, bucket: string){
     super();
         
@@ -322,26 +320,24 @@ export class Model extends Base implements Sync.ISynchronizable
     using.storageQueue.del(keyPath, cb);
   }
   
-  static fromJSON(args, cb?): Promise
+  static fromJSON(args): Promise
   {
-    cb && cb(null, new this(args));
     return new Promise(new this(args));
   }
   
-  static fromArgs(args, cb): Promise
+  static fromArgs(args): Promise
   {
-    return this.fromJSON(args, cb);
+    return this.fromJSON(args);
   }
   
   destroy(): void
   {
-    Model.syncManager && Model.syncManager.endSync(this);
+    using.syncManager && using.syncManager.endSync(this);
     super.destroy();
   }
   
-  init(fn): Promise
+  init(): Promise
   {
-    fn && fn(this)
     return new Promise(this);
   }
   
@@ -390,9 +386,9 @@ export class Model extends Base implements Sync.ISynchronizable
     return this.__bucket;
   }
   
-  save(cb?: (err?: Error) => void)
+  save(cb?: (err?: Error) => void): Promise
   {
-    this.update(this.toArgs(), cb);
+    return this.update(this.toArgs(), cb);
   }
   
   //
@@ -404,14 +400,19 @@ export class Model extends Base implements Sync.ISynchronizable
 
       update(args)
   */
-  update(args: {}, cb?: (err?: Error) => void)
+  update(args: {}, cb?: (err?: Error) => void): Promise
   {
     var
       bucket = this.__bucket,
-      id = this.id();
+      id = this.id(),
+      promise = new Gnd.Promise();
     
-    cb = cb || (err?: Error)=>{};
-    if(!this._dirty) return cb();
+    cb = cb || Gnd.Util.noop;
+    
+    if(!this._dirty){
+      cb();
+      return promise.resolve();
+    } 
     
     if(this._initial){
       args['_initial'] = this._initial = false;
@@ -421,6 +422,7 @@ export class Model extends Base implements Sync.ISynchronizable
       this._storageQueue.create([bucket], args, (err?, id?) => {
         // this._cid ? id ?
         cb(err);
+        promise.resolveOrReject(err);
       });
     }else{
       // It may be the case that we are not yet persisted, if so, we should
@@ -433,8 +435,10 @@ export class Model extends Base implements Sync.ISynchronizable
           this.emit('updated:', this, args);
         }
         cb(err);
+        promise.resolveOrReject(err);
       });
     }
+    return promise;
   }
 
   remove(cb?: (err?: Error) => void)
@@ -442,7 +446,7 @@ export class Model extends Base implements Sync.ISynchronizable
     cb = cb || Util.noop;
     
     Model.removeById(this.getKeyPath(), (err?)=> {
-      Model.syncManager && Model.syncManager.endSync(this);
+      using.syncManager && using.syncManager.endSync(this);
       this.emit('deleted:', this.getKeyPath());
       cb(err);
     })
@@ -455,7 +459,7 @@ export class Model extends Base implements Sync.ISynchronizable
     this._keepSynced = true;
     
     var startSync = () => {
-      Model.syncManager && Model.syncManager.startSync(this);
+      using.syncManager && using.syncManager.startSync(this);
     }
   
     if (this.isPersisted()){
@@ -557,39 +561,45 @@ export class Model extends Base implements Sync.ISynchronizable
   static seq(parent: Model, bucket: string, cb:(err?: Error, sequence?: Sequence) => void);
   static seq(parent?: Model, args?: {}, bucket?: string, cb?:(err?: Error, sequence?: Sequence) => void){
     var allInstances = (parent, keyPath, args, cb) => {
+      var promise = new Promise();
       using.storageQueue.all(keyPath, {}, {}, (err, items?) => {
         if(items){
-          Sequence.create(this, _.last(keyPath), parent, items, cb);
+          Sequence.create(this, _.last(keyPath), parent, items, (err?, res?)=>{
+            err && promise.reject(err);
+            !err && promise.resolve(res);
+            cb(err, res);
+          });
         }else{
           cb(err);
         }
+        err && promise.reject(err);
       });
+      return promise;
     }
-    overload({
+    return overload({
       'Model Array Object Function': function(parent, keyPath, args, cb){
-        allInstances(parent, keyPath, args, cb);
+        return allInstances(parent, keyPath, args, cb);
       },
       'Model Object String Function': function(parent, args, bucket, cb){
         var keyPath = parent.getKeyPath();
         keyPath.push(bucket);
-        allInstances(parent, keyPath, args, cb);
+        return allInstances(parent, keyPath, args, cb);
+      },
+      'Model Object String': function(parent, args, bucket){
+        return this.seq(parent, args, bucket, Util.noop);
       },
       'Model String Function': function(parent, bucket, cb){
-        var keyPath = parent.getKeyPath();
-        keyPath.push(bucket);
-        allInstances(parent, keyPath, {}, cb);
+        return this.seq(parent, {}, bucket, cb);
       },
       'Model Function': function(parent, cb){
-        var keyPath = parent.getKeyPath();
-        keyPath.push(this.__bucket);
-        allInstances(parent, keyPath, {}, cb);
+        return allInstances(parent, {}, this.__bucket, cb);
       }
     }).apply(this, arguments);
   }
 
-  public seq(model: IModel, args, bucket, cb)
+  public seq(model: IModel, args, bucket, cb): Promise
   {
-    model.seq(this, args, bucket, cb);
+    return model.seq(this, args, bucket, cb);
   }
 }
 

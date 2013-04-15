@@ -99,8 +99,9 @@ export class Collection extends Container
     });
   }
   
-  add(items: Model[], opts?, cb?: (err)=>void): void
+  add(items: Model[], opts?, cb?: (err)=>void): Promise
   {
+    var promise = new Promise();
     if(_.isFunction(opts)){
       cb = opts;
       opts = {};
@@ -110,7 +111,11 @@ export class Collection extends Container
         !err && this._keepSynced && !item.keepSynced && item.keepSynced();
         done(err);
       });
-    }, cb || Util.noop);
+    }, (err)=>{
+      cb && cb(err);
+      promise.resolveOrReject(err);
+    });
+    return promise;
   }
 
   remove(itemIds, opts, cb){
@@ -288,7 +293,7 @@ export class Collection extends Container
     this.resyncMutex.enter((done)=>{
       var 
         itemsToRemove = [],
-        itemsToAdd = []; //items.slice(0); // copy items array
+        itemsToAdd = [];
       
       this['each'](function(item){
         var id = item.id(), shouldRemove = true;
