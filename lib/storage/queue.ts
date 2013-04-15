@@ -613,7 +613,6 @@ export class Queue extends Base implements IStorage
 
   private completed(err: Error)
   {
-    this.currentTransfer = null;
     var storage = this.localStorage;
     var syncFn = this.syncFn;
     
@@ -692,6 +691,8 @@ export class Queue extends Base implements IStorage
         // Shouldn't we try to synchronize again?
       }
     }
+    
+    this.currentTransfer = null;
   }
 
   private updateQueueIds(oldId, newId)
