@@ -16,7 +16,8 @@ app.use(cabinet(path.join(__dirname, 'app'), {
   ignore: ['.git', 'node_modules', '*~'],
   files: {
     '/lib/gnd.js': Gnd.lib,
-    '/lib/curl.min.js': Gnd.third.curl
+    '/lib/curl.js': Gnd.third.curl,
+    '/lib/underscore.js': Gnd.third.underscore
   }
 }));
 

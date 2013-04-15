@@ -1,4 +1,4 @@
-curl(['gnd'], function(Gnd){
+define(['gnd'], function(Gnd){
 'use strict';
 
 //
@@ -7,21 +7,20 @@ curl(['gnd'], function(Gnd){
 var socket = io.connect();
 
 //
+// Configure the sync manager.
+//
+Gnd.use.syncManager(socket);
+
+//
 // Create Local and Remote storages
 //
 var localStorage = new Gnd.Storage.Local();
 var remoteStorage = new Gnd.Storage.Socket(socket);
 
 //
-// Configure the storage queue.
+// Configure the synchronization queue.
 //
 Gnd.use.storageQueue(localStorage, remoteStorage);
-
-//
-// Configure the sync manager.
-//
-//var syncManager = new Gnd.Sync.Manager(socket);
-Gnd.use.syncManager(socket);
 
 // 
 // Listen to available routes. Only used for selecting filters
