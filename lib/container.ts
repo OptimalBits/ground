@@ -144,12 +144,12 @@ module Gnd
     {
       this._keepSynced = true;
     
-      if(this.parent && Model.syncManager){
+      if(this.parent && using.syncManager){
         if(this.parent.isPersisted()){
-          Model.syncManager.startSync(this);
+          using.syncManager.startSync(this);
         }else{
           this.parent.on('id', () => {
-            Model.syncManager.startSync(this);
+            using.syncManager.startSync(this);
           });
         }
       }
@@ -163,7 +163,7 @@ module Gnd
     // protected
     public endSync()
     {
-      Model.syncManager && Model.syncManager.endSync(this);
+      using.syncManager && using.syncManager.endSync(this);
       this._keepSynced = false;
     }
     
