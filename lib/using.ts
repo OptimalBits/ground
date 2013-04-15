@@ -9,7 +9,7 @@
   This module exports a global "using" object that is used through the framework
   for configurables. For example it can be used to configure which template
   engine to use, or which storage modules.
-  
+
 */
 
 /// <reference path="../third/underscore.browser.d.ts" />
@@ -17,6 +17,7 @@
 /// <reference path="storage/local.ts" />
 /// <reference path="storage/store/memory-storage.ts" />
 /// <reference path="storage/queue.ts" />
+/// <reference path="sync/sync.ts" />
 
 module Gnd
 {
@@ -67,6 +68,10 @@ module Gnd
     },
     historyApi: function(use: bool){
       using.historyApi = use;
+    },
+    syncManager: function(socket){
+      using.syncManager = new Sync.Manager(socket);
+      using.syncManager.init();
     }
   }
 }

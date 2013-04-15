@@ -39,7 +39,7 @@ describe('Sequences', function(){
     }
 
     Gnd.using.storageQueue = sq;
-    Gnd.Model.syncManager = sm;
+    Gnd.using.syncManager = sm;
     
     Parade.findById(paradeId, function(err, parade){
       expect(err).to.be(null);
@@ -57,7 +57,7 @@ describe('Sequences', function(){
   beforeEach(function(done){
     console.log('before');
     Gnd.using.storageQueue = q1;
-    Gnd.Model.syncManager = sm1;
+    Gnd.using.syncManager = sm1;
     parade = new Parade();
     // parade.save(function(){
       parade.once('id', function(){
@@ -428,7 +428,7 @@ describe('Sequences', function(){
     it('works after clearing remote storage', function(done){
       var paradeId = parade.id();
       Gnd.using.storageQueue = q1;
-      Gnd.Model.syncManager = sm1;
+      Gnd.using.syncManager = sm1;
       Parade.findById(paradeId, function(err, parade){
         expect(err).to.be(null);
         parade.keepSynced();

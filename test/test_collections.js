@@ -5,7 +5,7 @@ define(['gnd'], function(Gnd){
 localStorage.clear();
   
 describe('Collections', function(){
-  var syncManager, storageSocket, storageQueue;
+  var storageSocket, storageQueue;
 
   var
     Animal = Gnd.Model.extend('animals'),
@@ -16,14 +16,12 @@ describe('Collections', function(){
     var storageLocal  = new Gnd.Storage.Local();
     storageSocket = new Gnd.Storage.Socket(socket);
   
-    syncManager = new Gnd.Sync.Manager(socket);
+    Gnd.use.syncManager(socket);
   
     Gnd.use.storage.remote(storageSocket);
     Gnd.use.storage.local(storageLocal);
     
     storageQueue = Gnd.using.storageQueue;
-    
-    Gnd.Model.syncManager = syncManager;
     
     storageQueue.init(function(){
         done();

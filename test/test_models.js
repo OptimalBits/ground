@@ -4,8 +4,7 @@ define(['gnd'], function(Gnd){
 localStorage.clear();
 
 describe('Model', function(){
-  var syncManager = new Gnd.Sync.Manager(socket);
-  syncManager.init();
+  Gnd.use.syncManager(socket);
   
   var storageQueue;
   
@@ -21,7 +20,6 @@ describe('Model', function(){
     animal = new Animal();
     
     storageQueue = Gnd.using.storageQueue;
-    Gnd.Model.syncManager = syncManager;
     
     storageQueue.init(function(){
       storageQueue.once('synced:', function(){
