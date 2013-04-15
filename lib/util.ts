@@ -45,9 +45,27 @@ export function release(objs){
   });
 };
 
-export function nextTick(fn){
-  setTimeout(fn, 0);
-};
+//
+// http://jsperf.com/test002/5
+//
+declare var process;
+
+var nextTick;
+if((typeof process !== 'undefined') && (process.nextTick)){
+  nextTick = process.nextTick;
+}else{
+  nextTick = function(fn){
+    var script = <HTMLScriptElement>document.createElement('script');
+    script.onload = function() {
+      document.body.removeChild(script);
+      fn();
+    }
+    script.src = 'data:text/javascript,';
+    document.body.appendChild(script);
+  }
+}
+
+export var nextTick;
 
 export function trim(str: string){
   return str.replace(/^\s+|\s+$/g,'');
@@ -206,7 +224,6 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
     methods = subclass(parent.prototype);
     d = methods.constructor;
   }
-    
   function __() { this.constructor = d; }
   __.prototype = parent.prototype;
   d.prototype = new __();
