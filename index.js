@@ -9,5 +9,6 @@ module.exports.map = path.join(__dirname, 'dist/gnd.js.map');
 module.exports.debug = path.join(__dirname, 'dist/gnd.js');
 
 module.exports.third = {
-  curl: path.join(__dirname, 'third/curl.js')
+  curl: path.join(__dirname, 'third/curl.js'),
+  underscore: path.join(__dirname, 'third/underscore.js')
 }
