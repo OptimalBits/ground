@@ -66,7 +66,7 @@ class ModelDepot
     if(!promise){
       if(fetch){
         promise = using.storageQueue.fetch(keyPath).then((doc: {}) => {
-          create(doc).then((instance: Model) => {
+          return create(doc).then((instance: Model) => {
             instance.set(args);
             return instance;
           });
