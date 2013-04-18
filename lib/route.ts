@@ -68,10 +68,13 @@ export function listen(root, cb) {
   // Listen to all link clicks.
   $("document").on('click', handleClickUrl);
   
+  var url;
   if(using.historyApi){
     window.addEventListener("popstate", handlePopState);
+    url = getRelativeUrl(location.href);
+  }else{
+    url = location.hash.replace(/^#!?/, '');
   }
-  var url = getRelativeUrl(location.href);
   executeRoute(url, cb);
 }
 
