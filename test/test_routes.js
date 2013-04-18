@@ -8,6 +8,8 @@ var route = Gnd.Route;
 //
 
 // Helpers
+Gnd.use.historyApi(false);
+
 var goToUrl = function(url){
   /*
   location.hash = url;
