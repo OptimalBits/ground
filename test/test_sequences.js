@@ -41,11 +41,9 @@ describe('Sequences', function(){
     Gnd.using.storageQueue = sq;
     Gnd.using.syncManager = sm;
     
-    Parade.findById(paradeId, function(err, parade){
-      expect(err).to.be(null);
+    Parade.findById(paradeId).then(function(parade){
       if(keepSynced) parade.keepSynced();
-      parade.seq(Animal, seqName, function(err, animals){
-        expect(err).to.be(null);
+      parade.seq(Animal, seqName).then( function(animals){
         expect(animals).to.be.an(Object);
         animals.once('resynced:', function(){
           cb(animals);
@@ -71,7 +69,7 @@ describe('Sequences', function(){
     it('one item', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(nosyncedAnimals.count).to.be(1);
             expect(nosyncedAnimals.first()).to.have.property('name', 'tiger');
@@ -91,9 +89,9 @@ describe('Sequences', function(){
     it('many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
-            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
-              nosyncedAnimals.push((new Animal({name:"lion"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease()).then(function(err){
+              nosyncedAnimals.push((new Animal({name:"lion"})).autorelease()).then(function(err){
                 expect(nosyncedAnimals.count).to.be(3);
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'tiger');
@@ -123,7 +121,7 @@ describe('Sequences', function(){
     it('one item', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(nosyncedAnimals.count).to.be(1);
             expect(nosyncedAnimals.last()).to.have.property('name', 'tiger');
@@ -142,9 +140,9 @@ describe('Sequences', function(){
     it('many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease(), function(err){
-            nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease(), function(err){
-              nosyncedAnimals.unshift((new Animal({name:"lion"})).autorelease(), function(err){
+          nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease()).then(function(err){
+              nosyncedAnimals.unshift((new Animal({name:"lion"})).autorelease()).then(function(err){
                 expect(nosyncedAnimals.count).to.be(3);
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'tiger');
@@ -174,7 +172,7 @@ describe('Sequences', function(){
     it('one item', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(nosyncedAnimals.count).to.be(1);
             expect(nosyncedAnimals.last()).to.have.property('name', 'tiger');
@@ -193,9 +191,9 @@ describe('Sequences', function(){
     it('many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
-            nosyncedAnimals.insert(0, (new Animal({name:"panther"})).autorelease(), function(err){
-              nosyncedAnimals.insert(1, (new Animal({name:"lion"})).autorelease(), function(err){
+          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.insert(0, (new Animal({name:"panther"})).autorelease()).then(function(err){
+              nosyncedAnimals.insert(1, (new Animal({name:"lion"})).autorelease()).then(function(err){
                 expect(nosyncedAnimals.count).to.be(3);
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'tiger');
@@ -225,7 +223,7 @@ describe('Sequences', function(){
     it('one item', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(syncedAnimals.count).to.be(0);
             expect(nosyncedAnimals.count).to.be(1);
@@ -236,7 +234,7 @@ describe('Sequences', function(){
               expect(syncedAnimals.count).to.be(1);
               expect(nosyncedAnimals.count).to.be(1);
               expect(syncedAnimals.last()).to.have.property('name', 'tiger');
-              nosyncedAnimals.remove(0, function(err){
+              nosyncedAnimals.remove(0).then(function(err){
                 expect(syncedAnimals.count).to.be(1);
                 expect(nosyncedAnimals.count).to.be(0);
                 syncedAnimals.once('removed:', function(){
@@ -254,9 +252,9 @@ describe('Sequences', function(){
     it('many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
-            nosyncedAnimals.insert(0, (new Animal({name:"panther"})).autorelease(), function(err){
-              nosyncedAnimals.insert(1, (new Animal({name:"lion"})).autorelease(), function(err){
+          nosyncedAnimals.insert(0, (new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.insert(0, (new Animal({name:"panther"})).autorelease()).then(function(err){
+              nosyncedAnimals.insert(1, (new Animal({name:"lion"})).autorelease()).then(function(err){
                 expect(nosyncedAnimals.count).to.be(3);
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'tiger');
@@ -270,15 +268,15 @@ describe('Sequences', function(){
                         expect(animal).to.have.property('name', a[i]);
                       });
 
-                      nosyncedAnimals.remove(2, function(err){
-                        nosyncedAnimals.remove(0, function(err){
+                      nosyncedAnimals.remove(2).then(function(err){
+                        nosyncedAnimals.remove(0).then(function(err){
                           expect(syncedAnimals.count).to.be(3);
                           expect(nosyncedAnimals.count).to.be(1);
                           syncedAnimals.once('removed:', function(){
                             syncedAnimals.once('removed:', function(){
                               expect(syncedAnimals.count).to.be(1);
                               expect(syncedAnimals.first()).to.have.property('name', 'lion');
-                              nosyncedAnimals.remove(0, function(err){
+                              nosyncedAnimals.remove(0).then(function(err){
                                 syncedAnimals.once('removed:', function(){
                                   expect(syncedAnimals.count).to.be(0);
                                   done();
@@ -305,11 +303,11 @@ describe('Sequences', function(){
   describe('End Points', function(){
     it('First', function(done){
       getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-        nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease(), function(err){
+        nosyncedAnimals.unshift((new Animal({name:"tiger"})).autorelease()).then(function(err){
           expect(nosyncedAnimals.first()).to.have.property('name', 'tiger');
-          nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease(), function(err){
+          nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease()).then(function(err){
             expect(nosyncedAnimals.first()).to.have.property('name', 'panther');
-            nosyncedAnimals.unshift((new Animal({name:"lion"})).autorelease(), function(err){
+            nosyncedAnimals.unshift((new Animal({name:"lion"})).autorelease()).then(function(err){
               expect(nosyncedAnimals.first()).to.have.property('name', 'lion');
               expect(nosyncedAnimals.count).to.be(3);
               done();
@@ -320,11 +318,11 @@ describe('Sequences', function(){
     });
     it('Last', function(done){
       getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-        nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+        nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
           expect(nosyncedAnimals.last()).to.have.property('name', 'tiger');
-          nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"panther"})).autorelease()).then(function(err){
             expect(nosyncedAnimals.last()).to.have.property('name', 'panther');
-            nosyncedAnimals.push((new Animal({name:"lion"})).autorelease(), function(err){
+            nosyncedAnimals.push((new Animal({name:"lion"})).autorelease()).then(function(err){
               expect(nosyncedAnimals.last()).to.have.property('name', 'lion');
               expect(nosyncedAnimals.count).to.be(3);
               done();
@@ -339,13 +337,13 @@ describe('Sequences', function(){
     it('insert after insert', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(nosyncedAnimals.count).to.be(1);
             syncedAnimals.once('inserted:', function(item, index){
               expect(item).to.have.property('name', 'tiger');
               expect(index).to.be(0);
               expect(syncedAnimals.first()).to.have.property('name', 'tiger');
-              nosyncedAnimals.insert(0, (new Animal({name:'cat'})).autorelease(), function(err){
+              nosyncedAnimals.insert(0, (new Animal({name:'cat'})).autorelease()).then(function(err){
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'cat');
                   expect(index).to.be(0);
@@ -366,9 +364,9 @@ describe('Sequences', function(){
     it('after inserting many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
         getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
-            nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease(), function(err){
-              nosyncedAnimals.insert(1,(new Animal({name:"lion"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.unshift((new Animal({name:"panther"})).autorelease()).then(function(err){
+              nosyncedAnimals.insert(1,(new Animal({name:"lion"})).autorelease()).then(function(err){
                 expect(nosyncedAnimals.count).to.be(3);
                 syncedAnimals.once('inserted:', function(item, index){
                   expect(item).to.have.property('name', 'tiger');
@@ -389,7 +387,7 @@ describe('Sequences', function(){
                       nosyncedAnimals.each(function(animal, i){
                         expect(animal).to.have.property('name', a[i]);
                       });
-                      nosyncedAnimals.insert(2, (new Animal({name:'cat'})).autorelease(), function(err){
+                      nosyncedAnimals.insert(2, (new Animal({name:'cat'})).autorelease()).then(function(err){
                         syncedAnimals.once('inserted:', function(item, index){
                           expect(item).to.have.property('name', 'cat');
                           expect(index).to.be(2);
@@ -413,8 +411,7 @@ describe('Sequences', function(){
     });
     it('works after clearing local storage', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
-        animals.push((new Animal({name: 'tiger'})).autorelease(), function(err){
-          expect(err).to.be(null);
+        animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
           q1.once('synced:', function(){
             localStorage.clear();
             getSequence(parade.id(), sm2, q2, true, function(animals2){
@@ -429,21 +426,17 @@ describe('Sequences', function(){
       var paradeId = parade.id();
       Gnd.using.storageQueue = q1;
       Gnd.using.syncManager = sm1;
-      Parade.findById(paradeId, function(err, parade){
-        expect(err).to.be(null);
+      Parade.findById(paradeId).then(function(parade){
         parade.keepSynced();
-        parade.seq(Animal, function(err, animals){
-          expect(err).to.be(null);
+        parade.seq(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           animals.once('resynced:', function(){
-            animals.push((new Animal({name: 'tiger'})).autorelease(), function(err){
-              expect(err).to.be(null);
+            animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
               q1.once('synced:', function(){
                 var animalId = animals.items[0].id;
                 ss1.deleteItem(['parade', paradeId, 'animals'], animalId, {}, function(err){
                   expect(err).to.be(null);
-                  parade.seq(Animal, function(err, animals2){
-                    expect(err).to.be(null);
+                  parade.seq(Animal).then(function(animals2){
                     expect(animals2.count).to.be(1);
                     animals.once('resynced:', function(){
                       expect(animals2.count).to.be(0);
@@ -459,8 +452,8 @@ describe('Sequences', function(){
     });
     it('other sequence name', function(done){
       getSequence(parade.id(), sm2, q2, false, 'animals2', function(nosyncedAnimals){
-        nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
-          nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
+        nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
+          nosyncedAnimals.push((new Animal({name:"panther"})).autorelease()).then(function(err){
             expect(nosyncedAnimals.count).to.be(2);
             q2.once('synced:', function(){
               getSequence(parade.id(), sm2, q2, true, 'animals2', function(syncedAnimals){
@@ -480,15 +473,15 @@ describe('Sequences', function(){
     it('multi sequences', function(done){
       getSequence(parade.id(), sm2, q2, false, 'animals', function(nosyncedAnimals){
         getSequence(parade.id(), sm2, q2, false, 'animals2', function(nosyncedAnimals2){
-          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.be(null);
-            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease(), function(err){
+            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease()).then(function(err){
               expect(err).to.be(null);
-              nosyncedAnimals2.push((new Animal({name:"duck"})).autorelease(), function(err){
+              nosyncedAnimals2.push((new Animal({name:"duck"})).autorelease()).then(function(err){
                 expect(err).to.be(null);
-                nosyncedAnimals2.push((new Animal({name:"goose"})).autorelease(), function(err){
+                nosyncedAnimals2.push((new Animal({name:"goose"})).autorelease()).then(function(err){
                   expect(err).to.be(null);
-                  nosyncedAnimals2.push((new Animal({name:"turkey"})).autorelease(), function(err){
+                  nosyncedAnimals2.push((new Animal({name:"turkey"})).autorelease()).then(function(err){
                     expect(err).to.be(null);
                     expect(nosyncedAnimals.count).to.be(2);
                     expect(nosyncedAnimals2.count).to.be(3);
@@ -522,9 +515,9 @@ describe('Sequences', function(){
     it('each', function(done){
       var a = ['tiger', 'ant', 'dog'];
       getSequence(parade.id(), sm2, q2, false, function(animals){
-        animals.push((new Animal({name:a[0]})).autorelease(), function(err){
-          animals.push((new Animal({name:a[1]})).autorelease(), function(err){
-            animals.push((new Animal({name:a[2]})).autorelease(), function(err){
+        animals.push((new Animal({name:a[0]})).autorelease()).then(function(err){
+          animals.push((new Animal({name:a[1]})).autorelease()).then(function(err){
+            animals.push((new Animal({name:a[2]})).autorelease()).then(function(err){
               expect(animals.count).to.be(3);
               expect(err).to.not.be.ok();
 
@@ -550,15 +543,14 @@ describe('Sequences', function(){
             tiger.release();
             done();
           });
-          Animal.findById(tiger.id(), function(err, animal){
-            expect(err).to.not.be.ok();
+          Animal.findById(tiger.id()).then(function(animal){
             animal.keepSynced();
             animal.set('legs', 5);
             animal.release();
           });
         });
-        animals.push(tiger, function(err){
-          expect(err).to.be(null);
+        animals.push(tiger).error(function(err){
+          expect(err).to.not.be.ok();
         });
       });
     });
@@ -570,8 +562,7 @@ describe('Sequences', function(){
 
           expect(panther).to.be.an(Object);
           expect(panther).to.have.property('name', 'panther');
-          Animal.findById(panther.id(), function(err, animal){
-            expect(err).to.not.be.ok();
+          Animal.findById(panther.id()).then(function(animal){
             animal.keepSynced();
             animals.once('updated:', function(model, args){
               expect(args).to.be.an(Object);
@@ -584,7 +575,7 @@ describe('Sequences', function(){
           });
         });
 
-        animals.push((new Animal({name:"panther"})).autorelease(), function(err){
+        animals.push((new Animal({name:"panther"})).autorelease()).error(function(err){
           expect(err).to.not.be.ok();
         });
       });
@@ -595,18 +586,16 @@ describe('Sequences', function(){
     it('delete item propagates to the same item in a sequence', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
         var tiger = new Animal({name: 'tiger'});
-        animals.push(tiger, function(err){
-          expect(err).to.be(null);
+        animals.push(tiger).then(function(){
           expect(animals.count).to.be(1);
           animals.once('removed:', function(){
             expect(animals.count).to.be(0);
             done();
           });
           q1.once('synced:', function(){
-            Animal.findById(tiger.id(), function(err, animal){
-              expect(err).to.not.be.ok();
+            Animal.findById(tiger.id()).then(function(animal){
               animal.keepSynced();
-              animal.remove(function(err){
+              animal.remove().then(function(){
                 animal.release();
               });
             });
@@ -626,7 +615,7 @@ describe('Sequences', function(){
             expect(synced2.count).to.be(1);
             done();
           });
-          synced2.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          synced2.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(synced2.count).to.be(1);
             expect(synced2.first()).to.have.property('name', 'tiger');
@@ -642,7 +631,7 @@ describe('Sequences', function(){
             expect(synced1.count).to.be(1);
             done();
           });
-          synced2.insert(0, (new Animal({name:"tiger"})).autorelease(), function(err){
+          synced2.insert(0, (new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(synced2.count).to.be(1);
             expect(synced2.first()).to.have.property('name', 'tiger');
@@ -659,7 +648,7 @@ describe('Sequences', function(){
             // expect(synced2.count).to.be(0); // fails until synchub has implemented "except"
             done();
           });
-          synced2.push((new Animal({name:"tiger"})).autorelease(), function(err){
+          synced2.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(synced1.count).to.be(0);
             expect(synced2.count).to.be(1);

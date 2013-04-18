@@ -50,7 +50,7 @@ export class Collection extends Container
     };
     
     this.deleteFn = (itemId)=>{
-      this.remove(itemId, false, Util.noop);
+      this.remove(itemId, false);
     };
 
     this.on('sortByFn sortOrder', (fn) => {
@@ -73,24 +73,6 @@ export class Collection extends Container
     this.unlink();
     super.destroy();
   }
-
-  init(docs: {}[])
-  {
-    var promise = new Promise();
-    this.resync(docs, ()=>{
-      promise.resolve(this);
-    });
-    return promise;
-  }
-  
-  static public create(model: IModel, 
-                       collectionName: string, 
-                       parent: Model, 
-                       docs: {}[]): Promise
-  {
-    var collection = new Collection(model, collectionName, parent);
-    return collection.init(docs);
-  }
   
   findById(id)
   {
@@ -99,34 +81,25 @@ export class Collection extends Container
     });
   }
   
-  add(items: Model[], opts?, cb?: (err)=>void): Promise
+  add(items: Model[], opts?): Promise
   {
-    var promise = new Promise();
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    Util.asyncForEach(items, (item, done) => {
-      this.addItem(item, opts, (err) => {
-        !err && this._keepSynced && !item.keepSynced && item.keepSynced();
-        done(err);
+    opts = opts || {};
+
+    return Promise.map(items, (item)=>{
+      return this.addItem(item, opts).then(()=>{
+        this._keepSynced && !item.keepSynced && item.keepSynced();
       });
-    }, (err)=>{
-      cb && cb(err);
-      promise.resolveOrReject(err);
     });
-    return promise;
   }
 
-  remove(itemIds, opts, cb){
+  remove(itemIds, opts): Promise
+  {
     var 
+      promise = new Promise(),
       items = this.items,
       keyPath = this.getKeyPath();
     
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
+    opts = opts || {};
     
     Util.asyncForEach(itemIds, (itemId, done) => {
       var index, item, len = items.length;
@@ -155,7 +128,10 @@ export class Collection extends Container
         item.release();
       }
       done();
-    }, cb);
+    }, (err)=>{
+      promise.resolveOrReject(err);
+    });
+    return promise;
   }
   
   toggleSortOrder(){
@@ -205,17 +181,21 @@ export class Collection extends Container
     }
   }
   
-  private addPersistedItem(item: Model, cb:(err?: Error) => void): void
+  private addPersistedItem(item: Model): Promise
   {
+    var promise = new Promise();
     var keyPath = this.getKeyPath();
     var itemKeyPath = _.initial(item.getKeyPath());
     
-    this.storageQueue.add(keyPath, itemKeyPath, [item.id()], cb);
+    this.storageQueue.add(keyPath, itemKeyPath, [item.id()], (err)=>{
+      promise.resolveOrReject(err);
+    });
+    return promise;
   }
 
-  private addItem(item, opts, cb)
+  private addItem(item: Model, opts): Promise
   {
-    if(this.findById(item.id())) return cb();
+    if(this.findById(item.id())) return;
     
     if(this.sortByFn){
       this.sortedAdd(item);
@@ -230,18 +210,14 @@ export class Collection extends Container
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
-        this.addPersistedItem(item, cb);
+        return this.addPersistedItem(item);
       }else{
-        item.save((err) => {
-          if(!err){
-            this.addPersistedItem(item, Util.noop);
-          }
-          cb(err);
+        return item.save().then(()=>{
+          return this.addPersistedItem(item);
         });
       }
-    }else{
-      cb();
     }
+    return new Promise(true);
   }
   
   // This function feel a bit hacky
@@ -259,37 +235,24 @@ export class Collection extends Container
     super.startSync();
     
     this.on('add:', (itemsKeyPath, itemIds) => {
-      Util.asyncForEach(itemIds, (itemId: string, done) => {
+      Promise.map(itemIds, (itemId: string)=>{
         if(!this.findById(itemId)){
-          this.model.findById(itemsKeyPath.concat(itemId), true, {}, (err: Error, item?: Model): void => {
-            if(item){
-              this.addItem(item, {nosync: true}, done);
-            }
+          return this.model.findById(itemsKeyPath.concat(itemId), true, {}).then((item)=>{
+            return this.addItem(item, {nosync: true});
           });
         }
-      }, Util.noop);
+        return new Promise(true);
+      });
     });
 
     this.on('remove:', (itemsKeyPath, itemId) => {
-      this.remove(itemId, true, Util.noop);
+      this.remove(itemId, true);
     });
   }
   
-  private createModels(docs, done){
-    var models = [];
-    
-    Util.asyncForEach(docs, (args, fn) => {
-      (<any>this.model).create(args, function(err, instance?: Model){
-        instance && models.push(instance);
-        fn(err);
-      });
-    }, (err) => {
-      done(err, models);
-    });
-  }
-  
-  private resync(items: any[], finished?: ()=>void)
+  private resync(items: any[]): Promise
   {
+    var promise = new Promise();
     this.resyncMutex.enter((done)=>{
       var 
         itemsToRemove = [],
@@ -311,21 +274,19 @@ export class Collection extends Container
         if(!this.findById(item._id)) itemsToAdd.push(item);
       })
     
-      this.remove(itemsToRemove, {nosync: true}, (err) => {
-        if(!err){
-          //TODO: Is there a better way?
-          this.createModels(_.unique(itemsToAdd), (err, models) => {
-            if(!err){
-              this.add(models, {nosync: true}, (err) => {
-                this.emit('resynced:');
-                done(); // Done with this mutex.
-                finished && finished();
-              });
-            }
+      this.remove(itemsToRemove, {nosync: true}).then(() => {
+        Promise.map(_.unique(itemsToAdd), (args) => {
+          return (<any>this.model).create(args);
+        }).then((models)=>{
+          this.add(models, {nosync: true}).then(()=> {
+            this.emit('resynced:');
+            done();
+            promise.resolve();
           });
-        }
+        });
       });
     });
+    return promise;
   }
 }
 

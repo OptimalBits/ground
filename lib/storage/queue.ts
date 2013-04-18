@@ -82,21 +82,26 @@ export class Queue extends Base implements IStorage
     cb();
   }
   
-  exec(cb: (err?: Error)=>void)
+  exec()
   {
-    if(!this.currentTransfer && this.queue.length === 0) return cb();
-    this.once('synced:', cb || Util.noop);
+    var promise = new Promise();
+    if(!this.currentTransfer && this.queue.length === 0){
+      return promise.resolve();
+    } 
+    this.once('synced:', ()=>{
+      promise.resolve();
+    });
     this.syncFn();
+    return promise;
   }
   
-  fetch(keyPath: string[], cb?): Promise
+  fetch(keyPath: string[]): Promise
   {
     var promise = new Promise();
     this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){            
         doc['_id'] = _.last(keyPath);
         promise.resolve(doc);
-        cb && cb(err, doc);
       }
       if(this.useRemote){
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
@@ -112,17 +117,11 @@ export class Queue extends Base implements IStorage
             this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
           }
           if(!doc){
-            if(!err){
-              promise.resolve(doc);
-            }else{
-              promise.reject(err);
-            }
-            cb && cb(err, docRemote);
+            promise.resolveOrReject(err, docRemote);
           }
         });
       }else if(!doc){
         promise.reject(err);
-        cb && cb(err);
       }
     });
     return promise;
@@ -283,12 +282,14 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err?: Error, result?: any[]) => void): void
+  find(keyPath: string[], query: {}, options: {}): Promise
   {
+    var promise = new Promise();
+    
     var localOpts = _.extend({snapshot:true}, options);
     this.localStorage.find(keyPath, query, localOpts, (err?, result?) => {
       if(result){
-        cb(err, result);
+        promise.resolve(result);
       }
       
       if(this.useRemote){
@@ -302,12 +303,13 @@ export class Queue extends Base implements IStorage
               }
             });
           }
-          !result && cb(err, remote);
+          !result && promise.resolveOrReject(err, remote);
         });
       }else if(!result){
-        cb(err);
+        promise.reject(err);
       }
     });
+    return promise;
   }
     
   create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
@@ -372,17 +374,18 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
+  all(keyPath: string[], query: {}, opts: {}): Promise
   {
+    var promise = new Promise();
     var localOpts = _.extend({snapshot:true}, {});
     this.localStorage.all(keyPath, query, opts, (err?, result?) => {
       if(result){
-        cb(err, result);
+        promise.resolve(result);
       }
       
       if(!this.useRemote){
-        cb(err);
-      }else{ 
+        promise.reject(err);
+      }else{
         // TODO: what if keyPath is local (same for find())
         this.remoteStorage.all(keyPath, query, opts, (err?, remote?) => {
           if(!err){
@@ -402,10 +405,11 @@ export class Queue extends Base implements IStorage
               }
             });
           }
-          !result && cb(err, remote);
+          !result && promise.resolveOrReject(err, remote);
         });
       }
     });
+    return promise;
   }
 
   //TODO: do we need next
@@ -611,7 +615,7 @@ export class Queue extends Base implements IStorage
     }
   }
 
-  private completed(err: Error)
+  private completed(err?: Error)
   {
     var storage = this.localStorage;
     var syncFn = this.syncFn;

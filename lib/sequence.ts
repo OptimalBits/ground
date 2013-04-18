@@ -45,39 +45,17 @@ export class Sequence extends Container
     this.deleteFn = (kp)=>{
       for(var i = this.items.length-1; i >= 0; i--){
         if(this.items[i].model.id() === _.last(kp)){
-          this.remove(i, {}, Util.noop);
+          this.remove(i);
         }
       }
     };
+    
+    if(parent && parent.isKeptSynced()){
+      this.keepSynced()
+    }
   };
 
-  static public create(model: IModel, seqName: string, parent: Model, items: IDoc[]): Sequence;
-  static public create(model: IModel, seqName: string, parent: Model, items: IDoc[], cb: (err?: Error, sequence?: Sequence) => void);
-  static public create(model?: IModel, seqName?: string, parent?: Model, docs?: IDoc[], cb?): any
-  {
-    return overload({
-      'Function String Model Array': function(model, seqName, parent, models){
-        var sequence = new Sequence(model, seqName, parent, models);
-        Util.release(_.pluck(models, 'model'));
-        if(parent && parent.isKeptSynced()){
-          sequence.keepSynced()
-        }
-        sequence.count = models.length;
-        return sequence;
-      },
-      'Function String Model Array Function': function(model, seqName, parent, items, cb){
-        model.createSequenceModels(items, (err?: Error, models?: IDoc[])=>{
-          if(err){
-            cb(err)
-          }else{
-            cb(err, this.create(model, seqName, parent, models));
-          }
-        });
-      },
-    }).apply(this, arguments);
-  }
-  
-  private deleteItem(id: string, opts, cb)
+  private deleteItem(id: string, opts): Promise
   {
     var idx = -1;
     _.each(this.items, (item, i)=>{
@@ -86,25 +64,20 @@ export class Sequence extends Container
       }
     });
 
-    if(idx === -1) return cb(); //already deleted
-    this.remove(idx, opts, cb);
+    if(idx === -1) return new Promise(this); //already deleted
+    return this.remove(idx, opts);
   }
 
-  private insertBefore(id: string, item: Model, opts?, cb?: (err)=>void): Promise
+  private insertBefore(id: string, item: Model, opts?): Promise
   {
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    cb = cb || Util.noop;
+    opts = opts || {};
 
-    return this.insertItemBefore(id, item, null, opts, (err?) => {
-      !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-      cb(null);
+    return this.insertItemBefore(id, item, null, opts).then(() => {
+      this._keepSynced && !item.isKeptSynced() && item.keepSynced();
     });
   }
   
-  private insertItemBefore(refId: string, item: Model, id: string, opts, cb): Promise
+  private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
   {
     var promise = new Gnd.Promise();
     
@@ -113,14 +86,13 @@ export class Sequence extends Container
       id: id,
       pending: !id
     };
-    var done = (err, id?)=>{
+    
+    var done = (id)=>{
       seqItem.id = id || seqItem.id;
       this.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
         seqItem.id = sid;
         seqItem.pending = false;
       });
-      cb(err);
-      promise.resolveOrReject(err);
     }
 
     var index = this.items.length;
@@ -134,10 +106,9 @@ export class Sequence extends Container
     };
     
     if(index === -1){
-      var err = Error('Tried to insert duplicate container');
-      cb(err);
-      return promise.reject(err);
-    }  
+      return promise.reject(Error('Tried to insert duplicate container'));
+    }
+    
     this.items.splice(index, 0, seqItem);
 
     this.initItems(seqItem.model);
@@ -147,60 +118,56 @@ export class Sequence extends Container
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
-        this.insertPersistedItemBefore(refId, item, done);
+        return this.insertPersistedItemBefore(refId, item).then(done);
       }else{
-        item.save((err?) => {
-          if(err){
-            cb(err);
-            return promise.reject(err);
-          } 
-          this.insertPersistedItemBefore(refId, item, done);
+        return item.save().then(()=>{
+          return this.insertPersistedItemBefore(refId, item).then(done);
         });
       }
     }else{
-      cb();
-      promise.resolve();
+      return promise.resolve();
     }
+  }
+
+  private insertPersistedItemBefore(id: string, item: Model): Promise
+  {
+    var promise = new Promise();
+    var keyPath = this.getKeyPath();
+    var itemKeyPath = item.getKeyPath();
+    this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, (err?, id?) =>{
+      promise.resolveOrReject(err, id);
+    });
     return promise;
   }
 
-  private insertPersistedItemBefore(id: string, item: Model, cb:(err: Error, id?: string) => void): void
+  push(item: Model, opts?): Promise
   {
-    var keyPath = this.getKeyPath();
-    var itemKeyPath = item.getKeyPath();
-    this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, cb);
+    return this.insertBefore(null, item, opts);
   }
 
-  push(item: Model, opts?, cb?: (err)=>void): void
+  unshift(item: Model, opts?): Promise
   {
-    this.insertBefore(null, item, opts, cb);
+    var firstId = this.items.length > 0 ? _.first(this.items).id : null;
+    return this.insertBefore(firstId, item, opts);
   }
 
-  unshift(item: Model, opts?, cb?: (err)=>void): void
-  {
-    var firstId = this.items.length>0 ? _.first(this.items).id : null;
-    this.insertBefore(firstId, item, opts, cb);
-  }
-
-  insert(idx: number, item: Model, opts?, cb?: (err)=>void): Promise
+  insert(idx: number, item: Model, opts?): Promise
   {
     var seqItem = this.items[idx];
     var id = seqItem ? seqItem.id : null;
-    return this.insertBefore(id, item, opts, cb);
+    return this.insertBefore(id, item, opts);
   }
 
-  remove(idx: number, opts?, cb?: (err?)=>void): void
+  remove(idx: number, opts?): Promise
   {
-    if(_.isFunction(opts)){
-      cb = opts;
-      opts = {};
-    }
-    cb = cb || Util.noop;
+    var promise = new Promise();
     opts = opts || {};
 
     var item = this.items[idx];
 
-    if(!item) return cb(Error('index out of bounds'));
+    if(!item){
+      return promise.reject(Error('index out of bounds'));
+    } 
     this.items.splice(idx, 1);
     
     // Why can't we use deinitItems here?
@@ -212,10 +179,29 @@ export class Sequence extends Container
     item.model.release();
     
     if(!opts || !opts.nosync){
-      this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, cb);
+      this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, (err?)=>{
+        promise.resolveOrReject(err);
+      });
     }else{
-      cb();
+      promise.resolve();
     }
+    return promise;
+  }
+  
+  move(startIdx: number, endIdx: number, opts?): Promise
+  {
+    var srcItem = this.items[startIdx];
+
+    if(srcItem){
+      endIdx = startIdx < endIdx ? endIdx + 1 : endIdx;
+  
+      var targetId = endIdx < this.items.length ? this.items[endIdx].id : null;
+      srcItem.model.retain();
+      return this.remove(startIdx).then(()=>{
+        return this.insertBefore(targetId, srcItem.model, opts);
+      });
+    }
+    return new Promise(new Error("Invalid indexes:"+startIdx+", "+endIdx));
   }
   
   public getItems(): Model[]
@@ -228,38 +214,37 @@ export class Sequence extends Container
     super.startSync();
     
     this.on('insertBefore:', (id, itemKeyPath, refId)=>{
-      this.model.findById(itemKeyPath, true, {}, (err: Error, item?: Model): void => {
-        if(item){
-          this.insertItemBefore(refId, item, id, {nosync: true}, (err) => {
-            !err && this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-          });
-        }
+      this.model.findById(itemKeyPath, true, {}).then((item)=>{
+        this.insertItemBefore(refId, item, id, {nosync: true}).then(()=> {
+          this._keepSynced && !item.isKeptSynced() && item.keepSynced();
+        });
       });
     });
 
     this.on('deleteItem:', (id) => {
-      this.deleteItem(id, {nosync: true}, Util.noop);
+      this.deleteItem(id, {nosync: true});
     });
   }
   
-  private resync(newItems: any[]){
+  private resync(newItems: any[])
+  {
     var oldItems = this.items;
     var newIds = _.pluck(newItems, 'id').sort();
     var remainingItems = [];
-    Util.asyncForEach(oldItems, (item, done)=>{
+    
+    return Promise.map(oldItems, (item)=>{
       if(!item.pending && -1 === _.indexOf(newIds, item.id, true)){
-        this.deleteItem(item.id, {nosync: true}, (err)=>{
-          done(err);
-        });
+        return this.deleteItem(item.id, {nosync: true});
       }else{
         remainingItems.push(item);
-        done();
+        return new Promise(true);
       }
-    }, (err) => {
+    }).then(()=>{
       var itemsToInsert = [];
       var i=0;
       var j=0;
       var oldItem, newItem;
+      
       while(i<remainingItems.length){
         oldItem = remainingItems[i];
         if(!oldItem.pending){
@@ -277,6 +262,7 @@ export class Sequence extends Container
           i++;
         }
       }
+      
       while(j<newItems.length){
         newItem = newItems[j];
         itemsToInsert.push({
@@ -285,20 +271,17 @@ export class Sequence extends Container
         });
         j++;
       }
-
-      Util.asyncForEach(itemsToInsert, (item, done)=>{
-        (<any>this.model).create(item.newItem, (err, instance?: Model)=>{
-          if(instance){
-            this.insertBefore(item.id, instance, {nosync: true}, (err)=>{
-              done(err);
-            });
-          }else{
-            done(err);
-          }
-        });
-      }, (err)=>{
-        this.emit('resynced:');
+      
+      return Promise.map(itemsToInsert, (item)=>{
+         return (<any>this.model).create(item.newItem).then((instance)=>{
+           return this.insertBefore(item.id, instance, {nosync: true});
+         });
       });
+      
+    }).then(()=>{
+      this.emit('resynced:');
+    }, (err)=>{
+      console.log("Error resyncing sequence:"+err);
     });
   }
 }

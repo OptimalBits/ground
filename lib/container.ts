@@ -18,6 +18,11 @@
 
 module Gnd 
 {
+  export interface IContainer
+  {
+    new (model: IModel, containerName: string, parent?: Model, items?: any[]): Container;
+  }
+  
   export class Container extends Base implements Sync.ISynchronizable
   {
     public storageQueue: Storage.Queue;
@@ -39,7 +44,10 @@ module Gnd
     public _keepSynced: bool = false;
     
     // Abstract
-    private resync(items: any[]){};
+    private resync(items: any[]): Promise 
+    {
+      return new Promise(true);
+    };
   
     public model: IModel;
     public parent: Model;
@@ -53,6 +61,16 @@ module Gnd
     static private getItemIds(items: Model[])
     {
       return _.map(items, function(item){return item.id()});
+    }
+    
+    static public create(ContainerClass: IContainer,
+                         model: IModel, 
+                         collectionName: string, 
+                         parent: Model, 
+                         docs: {}[]): Promise
+    {
+      var container = new ContainerClass(model, collectionName, parent);
+      return container.init(docs);
     }
     
     constructor(model: IModel, containerName: string, parent?: Model, items?: any[])
@@ -98,11 +116,14 @@ module Gnd
       super.destroy();
     }
     
-    save(cb?: ()=>void): void
+    init(docs: {}[]): Promise
     {
-      this.storageQueue.exec(()=>{
-        cb && cb();
-      });
+      return this.resync(docs).then(()=>{return this});
+    }
+    
+    save(): Promise
+    {
+      return this.storageQueue.exec();
     }
     
     getKeyPath(): string[]
@@ -130,7 +151,7 @@ module Gnd
       if(this.filterFn){
         result(null, this.filter(this.filterFn));
       }else{
-        result(null, this.items);
+        result(null, this.getItems());
       }
     }
   
@@ -154,7 +175,7 @@ module Gnd
         }
       }
     
-      this.storageQueue.exec((err?)=>{
+      this.storageQueue.exec().then(()=>{
         this.storageQueue = using.storageQueue;
         this.listenToResync(using.storageQueue);
       });

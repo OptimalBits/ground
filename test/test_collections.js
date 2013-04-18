@@ -45,10 +45,8 @@ describe('Collections', function(){
     it('save to server', function(done){
       var zoo = new Zoo();
       
-      zoo.save(function(err){
-        expect(err).to.not.be.ok();
-        zoo.all(Animal, function(err, animals){
-          expect(err).to.not.be.ok();
+      zoo.save().then(function(){
+        zoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           expect(animals.count).to.be(0);
           animals.release();
@@ -60,22 +58,18 @@ describe('Collections', function(){
 
   describe('Addition', function(){
     it('add item to collection', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger, function(err){
+        animals.add(tiger).then(function(){
           tiger.release();
-          expect(err).to.not.be.ok();
           storageQueue.once('synced:', function(){
             
-            Zoo.findById(zoo.id(), function(err, sameZoo){
-              expect(err).to.not.be.ok();
+            Zoo.findById(zoo.id()).then(function(sameZoo){
               expect(sameZoo).to.be.an(Object);
             
-              sameZoo.all(Animal, function(err, sameAnimals){
-                expect(err).to.not.be.ok();
+              sameZoo.all(Animal).then(function(sameAnimals){
                 expect(sameAnimals).to.be.an(Object);
                 expect(sameAnimals.items).to.be.an(Array);
                 expect(sameAnimals.count).to.be(1);
@@ -97,10 +91,10 @@ describe('Collections', function(){
     });
   
     it('add item to collection propagates to other collections', function(done){
-      Zoo.findById(zoo.id(), function(err, mirrorZoo){
+      Zoo.findById(zoo.id()).then(function(mirrorZoo){
         mirrorZoo.keepSynced();
       
-        zoo.all(Animal, function(err, animals){
+        zoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           animals.on('added:', function(instance){
             expect(instance).to.have.property('name');
@@ -113,12 +107,10 @@ describe('Collections', function(){
             done();
           });
 
-          mirrorZoo.all(Animal, function(err, animals){
-            expect(err).to.not.be.ok();
+          mirrorZoo.all(Animal).then(function(animals){
             expect(animals).to.be.an(Object);
             var fox = new Animal({name:'fox'});
-            animals.add(fox, function(err){
-              expect(err).to.not.be.ok();
+            animals.add(fox).then(function(){
               //animals.release();
             });
             fox.release();
@@ -130,17 +122,15 @@ describe('Collections', function(){
 
   describe('Updating', function(){
     it('update item propagates to the same item in a collection', function(done){
-      Zoo.findById(zoo.id(), function(err, zoo){
-        expect(err).to.eql(null);
+      Zoo.findById(zoo.id()).then(function(zoo){
         expect(zoo).to.not.be(undefined);
         
         zoo.keepSynced();
                 
-        zoo.all(Animal, function(err, animals){
+        zoo.all(Animal).then(function(animals){
           
           var leopard = new Animal({name:"leopard"});
-          animals.add(leopard, function(err){
-            
+          animals.add(leopard).then(function(){
             expect(leopard).to.be.an(Object);
             expect(leopard.name).to.be.eql('leopard');
         
@@ -154,8 +144,7 @@ describe('Collections', function(){
             });
         
             storageQueue.once('synced:', function(){
-              Animal.findById(leopard.id(), function(err, animal){
-                expect(err).to.not.be.ok();
+              Animal.findById(leopard.id()).then(function(animal){
                 animal.keepSynced();
                 leopard.set('legs', 5);
                 animal.release();
@@ -175,9 +164,9 @@ describe('Collections', function(){
       
         zoo.keepSynced();
                 
-        zoo.all(Animal, function(err, animals){
+        zoo.all(Animal).then(function(animals){
           
-          animals.add((new Animal({name:"panther"})).autorelease(), function(err){
+          animals.add((new Animal({name:"panther"})).autorelease()).then(function(){
 
             var panther = animals.find(function(item){ return item.name==='panther'; });
 
@@ -210,16 +199,13 @@ describe('Collections', function(){
   });
   describe('Remove', function(){
     it('remove item from collection', function(done){
-      Zoo.findById(zoo.id(), function(err, zoo){
+      Zoo.findById(zoo.id()).then(function(zoo){
         zoo.keepSynced();
         
-        zoo.all(Animal, function(err, animals){
-          expect(err).to.not.be.ok();
+        zoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           
-          animals.add((new Animal({name:"gorilla"})).autorelease(), function(err){
-            expect(err).to.not.be.ok();
-          
+          animals.add((new Animal({name:"gorilla"})).autorelease()).then(function(){
             var animal = animals.first();
             expect(animal).to.be.an(Object);
             animals.remove(animal.id());
@@ -227,11 +213,9 @@ describe('Collections', function(){
             var found = animals.find(function(item){return item.id() === animal.id();});
             expect(found).to.be(undefined);
           
-            animals.save(function(err){
-              expect(err).to.not.be.ok();
-              
-              zoo.all(Animal, function(err, otherAnimals){
-                expect(err).to.not.be.ok();
+            animals.save().then(function(){
+                            
+              zoo.all(Animal).then(function(otherAnimals){
                 expect(otherAnimals).to.be.an(Object);
 
                 var found = otherAnimals.find(function(item){return item.id() === animal.id();});
@@ -250,10 +234,10 @@ describe('Collections', function(){
     });
     
     it('collection proxies delete item event', function(done){
-      Zoo.findById(zoo.id(), function(err, zoo){
+      Zoo.findById(zoo.id()).then(function(zoo){
         zoo.keepSynced();
         
-        zoo.all(Animal, function(err, animals){
+        zoo.all(Animal).then(function(animals){
           var otherAnimal;
           
           animals.once('removed:', function(item){
@@ -266,26 +250,23 @@ describe('Collections', function(){
           });
           
           storageQueue.once('synced:', function(){
-            Zoo.findById(zoo.id(), function(err, anotherZoo){
-              expect(err).to.not.be.ok();
+            Zoo.findById(zoo.id()).then(function(anotherZoo){
               expect(anotherZoo).to.be.an(Object);
               
               anotherZoo.keepSynced();
-              anotherZoo.all(Animal, function(err, otherAnimals){
-                expect(err).to.not.be.ok();
+              anotherZoo.all(Animal).then(function(otherAnimals){
                 expect(otherAnimals).to.be.an(Object);
                 
                 otherAnimal = otherAnimals.first();
-                otherAnimal.remove(function(err){
-                  expect(err).to.not.be.ok();
+                otherAnimal.remove().then(function(){
                   // otherAnimals.release();
                 });
               });
             });
           });
           
-          animals.add(new Animal({name:"koala"}), function(err){
-            expect(err).to.not.be.ok();
+          animals.add(new Animal({name:"koala"})).then(function(){
+
           });
         });
       });
@@ -299,16 +280,16 @@ describe('Collections', function(){
   
   describe('Delete', function(){
     it('delete item that is part of a collection', function(done){
-      Zoo.findById(zoo.id(), function(err, zoo){
+      Zoo.findById(zoo.id()).then(function(zoo){
         zoo.keepSynced();
-        zoo.all(Animal, function(err, animals){
+        zoo.all(Animal).then(function(animals){
           var tiger = new Animal({name:"tiger"});
           animals.once('removed:', function(item){
             expect(item).to.be.eql(tiger);
             done();
           });
           
-          animals.add(tiger, function(err){
+          animals.add(tiger).then(function(){
             tiger.remove();
           });
         });
@@ -328,27 +309,21 @@ describe('Collections', function(){
       // cached for offline usage.
   
     it('add item to collection being offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
           
         socket.disconnect();
           
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger, function(err){
+        animals.add(tiger).then(function(){
           tiger.release();
             
-          expect(err).to.not.be.ok();
-            
-          Zoo.findById(zoo.id(), function(err, sameZoo){
-            expect(err).to.not.be.ok();
+          Zoo.findById(zoo.id()).then(function(sameZoo){
             expect(sameZoo).to.be.an(Object);
               
             storageQueue.once('synced:', function(){
               // Check that the collection has been synced in server.
-              sameZoo.all(Animal, function(err, collection){
-                    
-                expect(err).to.be(null);
+              sameZoo.all(Animal).then(function(collection){
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
                 expect(animals.count).to.be(1);
@@ -359,8 +334,7 @@ describe('Collections', function(){
             });
               
             // Check that the collection is available locally.
-            sameZoo.all(Animal, function(err, collection){
-              expect(err).to.not.be.ok();
+            sameZoo.all(Animal).then(function(collection){
               expect(collection).to.be.an(Object);
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
@@ -376,18 +350,14 @@ describe('Collections', function(){
     
     it('add item to collection being offline 2', function(done){
       socket.disconnect();
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.be(null);
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
           
-        animals.add(new Animal({name:"tiger"}), function(err){
-          expect(err).to.be(null);
-          Zoo.findById(zoo.id(), function(err, doc){
-            expect(err).to.be(null);
+        animals.add(new Animal({name:"tiger"})).then(function(){
+          Zoo.findById(zoo.id()).then(function(doc){
             expect(doc).to.be.an(Object);
             storageQueue.once('synced:', function(){
-              doc.all(Animal, function(err, collection){
-                expect(err).to.be(null);
+              doc.all(Animal).then(function(collection){
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
                 expect(collection.count).to.be(1);
@@ -399,8 +369,7 @@ describe('Collections', function(){
               });
             });
 
-            doc.all(Animal, function(err, collection){
-              expect(err).to.be(null);
+            doc.all(Animal).then(function(collection){
               expect(collection).to.be.an(Object);
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
@@ -414,27 +383,22 @@ describe('Collections', function(){
     });
   
     it('remove item while offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).not.to.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
           
-        animals.add(new Animal({name:"lion"}), function(err){
-          expect(err).not.to.be.ok();
+        animals.add(new Animal({name:"lion"})).then(function(){
           expect(animals.count).to.be(1);
             
           socket.disconnect();
             
-          animals.remove(animals.first().id(), function(err){
-            expect(err).not.to.be.ok();
+          animals.remove(animals.first().id()).then(function(){
             expect(animals.count).to.be(0);
 
-            Zoo.findById(zoo.id(), function(err, sameZoo){
-              expect(err).to.not.be.ok();
+            Zoo.findById(zoo.id()).then(function(sameZoo){
               expect(sameZoo).to.be.an(Object);
                 
               storageQueue.once('synced:', function(){
-                sameZoo.all(Animal, function(err, collection){
-                  expect(err).not.to.be.ok();
+                sameZoo.all(Animal).then(function(collection){
                   expect(collection).to.be.an(Object);
                   expect(collection.items).to.be.an(Array);
                   expect(collection.count).to.be(0);
@@ -450,8 +414,7 @@ describe('Collections', function(){
                 });
               });
                 
-              sameZoo.all(Animal, function(err, collection){
-                expect(err).not.to.be.ok();
+              sameZoo.all(Animal).then(function(collection){
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
                 expect(collection.count).to.be(0);
@@ -464,17 +427,14 @@ describe('Collections', function(){
     });
     
     it('add item to collection online is available offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger, function(err){
-          expect(err).to.not.be.ok();
-          
+        animals.add(tiger).then(function(){
+                    
           socket.disconnect();
             
-          zoo.all(Animal, function(err, offlineAnimals){
-            expect(err).to.not.be.ok();
+          zoo.all(Animal).then(function(offlineAnimals){
             expect(offlineAnimals).to.be.an(Object);
               
             var offlineTiger = offlineAnimals.first();
@@ -496,15 +456,11 @@ describe('Collections', function(){
     
     
     it('removed item from collection online is not available offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger, function(err){
-          expect(err).to.not.be.ok();
-            
-          zoo.all(Animal, function(err, onlineAnimals){
-            expect(err).to.not.be.ok();
+        animals.add(tiger).then(function(){            
+          zoo.all(Animal).then(function(onlineAnimals){
             expect(onlineAnimals).to.be.an(Object);
               
             var onlineTiger = onlineAnimals.first();
@@ -512,12 +468,10 @@ describe('Collections', function(){
             expect(onlineTiger).to.be.an(Object);
             expect(onlineTiger.id()).to.be.equal(tiger.id());
               
-            onlineAnimals.remove(onlineTiger.id(), function(err){
-              expect(err).to.not.be.ok();
+            onlineAnimals.remove(onlineTiger.id()).then(function(){
               socket.disconnect();
                 
-              zoo.all(Animal, function(err, offlineAnimals){
-                expect(err).to.not.be.ok();
+              zoo.all(Animal).then(function(offlineAnimals){
                 expect(offlineAnimals).to.be.an(Object);
                   
                 var offlineTiger = offlineAnimals.findById(onlineTiger.id());
@@ -540,19 +494,16 @@ describe('Collections', function(){
     //
     
     it('serverside remove item while offline', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger, function(err){
-          expect(err).to.not.be.ok();
+        animals.add(tiger).then(function(){
           expect(animals.count).to.be(1);
             
           storageQueue.once('synced:', function(){
             expect(animals.count).to.be(1);
             
-            zoo.all(Animal, function(err, onlineAnimals){
-              expect(err).to.not.be.ok();
+            zoo.all(Animal).then(function(onlineAnimals){
               expect(onlineAnimals).to.be.an(Object);
               expect(onlineAnimals.count).to.be(1);
               
@@ -568,8 +519,7 @@ describe('Collections', function(){
                   // The server has deleted the model, but we do not know it yet.
                   // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
                   
-                  zoo.all(Animal, function(err, emptyZoo){
-                    expect(err).to.not.be.ok();
+                  zoo.all(Animal).then(function(emptyZoo){
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.count).to.be(1);
                     
@@ -584,8 +534,7 @@ describe('Collections', function(){
                   
                       socket.disconnect();
                   
-                      zoo.all(Animal, function(err, emptyZoo){
-                        expect(err).to.not.be.ok();
+                      zoo.all(Animal).then(function(emptyZoo){
                         expect(emptyZoo).to.be.an(Object);
                         expect(emptyZoo.count).to.be(0);
                     
@@ -632,18 +581,15 @@ describe('Collections', function(){
           
       var sortedZoo = new Zoo();
       
-      sortedZoo.save(function(err){
-        expect(err).to.not.be.ok();
-      
+      sortedZoo.save().then(function(){      
         sortedZoo.keepSynced();
       
-        sortedZoo.all(Animal, function(err, animals){
-          expect(err).to.not.be.ok();
+        sortedZoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           
           animals.set('sortByFn', function(item){return item.pos;});
           
-          animals.add([item3, item2, item4, item1], function(err){
+          animals.add([item3, item2, item4, item1]).then(function(){
             item2.release();
             item4.release();
             item1.release();
@@ -688,18 +634,16 @@ describe('Collections', function(){
           
       var sortedZoo = new Zoo();
       
-      sortedZoo.save(function(err){
-        expect(err).to.not.be.ok();
+      sortedZoo.save().then(function(){
       
         sortedZoo.keepSynced();
       
-        sortedZoo.all(Animal, function(err, animals){
-          expect(err).to.not.be.ok();
+        sortedZoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           
           animals.set('sortByFn', function(item){return item.pos;});
           
-          animals.add([item3, item2, item4, item1], function(err){
+          animals.add([item3, item2, item4, item1]).then(function(){
             for(var i=0,len=animals.items.length;i<len-1;i++){
               expect(animals.items[i].pos).to.be.below(animals.items[i+1].pos);
             }
@@ -733,18 +677,15 @@ describe('Collections', function(){
           
       var sortedZoo = new Zoo();
       
-      sortedZoo.save(function(err){
-        expect(err).to.not.be.ok();
-      
+      sortedZoo.save().then(function(){
         sortedZoo.keepSynced();
       
-        sortedZoo.all(Animal, function(err, animals){
-          expect(err).to.not.be.ok();
+        sortedZoo.all(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
           
           animals.set('sortByFn', function(item){return item.pos;});
           
-          animals.add([item3, item2, item4, item1], function(err){
+          animals.add([item3, item2, item4, item1]).then(function(){
             item2.release();
             item4.release();
             item1.release();
@@ -764,10 +705,9 @@ describe('Collections', function(){
             });
             
             storageQueue.once('synced:', function(){
-              sortedZoo.all(Animal, function(err, otherAnimals){
+              sortedZoo.all(Animal).then(function(otherAnimals){
                 var item5 = new Animal({name:'cheetah', pos:10});
-                otherAnimals.add(item5, function(err){
-                  expect(err).to.not.be.ok();
+                otherAnimals.add(item5).then(function(){
                   item5.release();
                   // otherAnimals.release();
                 });
@@ -790,17 +730,13 @@ describe('Collections', function(){
   
   describe('Edge cases', function(){
     it('works after clearing local storage', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
-        animals.add((new Animal({name:"tiger"})).autorelease(), function(err){
-          expect(err).to.not.be.ok();
+        animals.add((new Animal({name:"tiger"})).autorelease()).then(function(){
           storageQueue.once('synced:', function(){
-            expect(err).to.not.be.ok();
             expect(animals.count).to.be(1);
             localStorage.clear();
-            zoo.all(Animal, function(err, sameAnimals){
-              expect(err).to.not.be.ok();
+            zoo.all(Animal).then(function(sameAnimals){
               expect(sameAnimals).to.be.an(Object);
               expect(sameAnimals.items).to.be.an(Array);
               expect(sameAnimals.count).to.be(0);
@@ -816,20 +752,16 @@ describe('Collections', function(){
       });
     });
     it('works after clearing remote storage', function(done){
-      zoo.all(Animal, function(err, animals){
-        expect(err).to.not.be.ok();
+      zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
-        animals.add((new Animal({name:"tiger"})).autorelease(), function(err){
-          expect(err).to.not.be.ok();
+        animals.add((new Animal({name:"tiger"})).autorelease()).then(function(){
           storageQueue.once('synced:', function(){
-            expect(err).to.not.be.ok();
             expect(animals.count).to.be(1);
 
             var animalId = animals.first().id();
             storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}, function(err){
               expect(err).to.be(null);
-              zoo.all(Animal, function(err, sameAnimals){
-                expect(err).to.not.be.ok();
+              zoo.all(Animal).then(function(sameAnimals){
                 expect(sameAnimals).to.be.an(Object);
                 expect(sameAnimals.items).to.be.an(Array);
                 expect(sameAnimals.count).to.be(1);

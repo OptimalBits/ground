@@ -204,8 +204,7 @@ describe('Storage Queue', function(){
           storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
             storage.once('synced:', function() {
-              storage.all(keyPath, {}, {}, function(err, docs) {
-                expect(err).to.not.be.ok();
+              storage.all(keyPath, {}, {}).then(function(docs){
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 0);
                 done();
@@ -243,8 +242,7 @@ describe('Storage Queue', function(){
         });
       });
       it('all gets all...', function(done){
-        storage.all(keyPath, {}, {}, function(err, docs){
-          expect(err).to.not.be.ok();
+        storage.all(keyPath, {}, {}).then(function(docs){
           expect(docs).to.be.ok();
           expect(docs).to.have.property('length', 3);
           expect(docs[0]).to.have.property('doc');
@@ -262,8 +260,7 @@ describe('Storage Queue', function(){
           expect(item).to.be.ok();
           storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
-            storage.all(keyPath, {}, {}, function(err, docs){
-              expect(err).to.not.be.ok();
+            storage.all(keyPath, {}, {}).then(function(docs){
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 2);
               expect(docs[0]).to.have.property('doc');
@@ -281,8 +278,7 @@ describe('Storage Queue', function(){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}, function(err){
             expect(err).to.not.be.ok();
-            storage.all(keyPath, {}, {}, function(err, docs){
-              expect(err).to.not.be.ok();
+            storage.all(keyPath, {}, {}).then(function(docs){
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 4);
               expect(docs[0]).to.have.property('doc');
@@ -325,8 +321,7 @@ describe('Storage Queue', function(){
       });
       it('items are cached when going offline', function(done){
         socket.disconnect();
-        storage.all(keyPath, {}, {}, function(err, docs){
-          expect(err).to.not.be.ok();
+        storage.all(keyPath, {}, {}).then(function(docs){
           expect(docs).to.be.ok();
           expect(docs).to.have.property('length', 2);
           expect(docs[0]).to.have.property('doc');
@@ -346,8 +341,7 @@ describe('Storage Queue', function(){
             expect(err).to.not.be.ok();
 
             storage.once('synced:', function(){
-              storage.all(keyPath, {}, {}, function(err, docs){
-                expect(err).to.not.be.ok();
+              storage.all(keyPath, {}, {}).then(function(docs){
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 3);
                 expect(docs[0]).to.have.property('doc');
@@ -370,8 +364,7 @@ describe('Storage Queue', function(){
               });
             });
 
-            storage.all(keyPath, {}, {}, function(err, docs){
-              expect(err).to.not.be.ok();
+            storage.all(keyPath, {}, {}).then(function(docs){
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 3);
               expect(docs[0]).to.have.property('doc');
@@ -393,8 +386,7 @@ describe('Storage Queue', function(){
             socket.disconnect();
             Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null, function(err, res) {
               socket.once('connect', function(){
-                storage.all(keyPath, {}, {}, function(err, docs){
-                  expect(err).to.not.be.ok();
+                storage.all(keyPath, {}, {}).then(function(docs){
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 2);
                   expect(docs[0]).to.have.property('doc');
@@ -429,8 +421,7 @@ describe('Storage Queue', function(){
             expect(err).to.not.be.ok();
 
             storage.once('synced:', function(){
-              storage.all(keyPath, {}, {}, function(err, docs){
-                expect(err).to.not.be.ok();
+              storage.all(keyPath, {}, {}).then(function(docs){
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 1);
                 expect(docs[0]).to.have.property('doc');
@@ -445,8 +436,7 @@ describe('Storage Queue', function(){
               });
             });
 
-            storage.all(keyPath, {}, {}, function(err, docs){
-              expect(err).to.not.be.ok();
+            storage.all(keyPath, {}, {}).then(function(docs){
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 1);
               expect(docs[0]).to.have.property('doc');
@@ -463,8 +453,7 @@ describe('Storage Queue', function(){
           socket.disconnect();
           Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
             socket.once('connect', function(){
-              storage.all(keyPath, {}, {}, function(err, docs){
-                expect(err).to.not.be.ok();
+              storage.all(keyPath, {}, {}).then(function(docs){
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 2);
                 expect(docs[0]).to.have.property('doc');

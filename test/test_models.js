@@ -44,8 +44,7 @@ describe('Model', function(){
   
   describe('findById', function(){
     it('finds the animal', function(done){
-      Animal.findById(animal.id(), function(err, doc){
-        expect(err).to.not.be.ok();
+      Animal.findById(animal.id()).then(function(doc){
         expect(doc).to.be.ok();
         expect(doc.id()).to.equal(animal.id());
         doc.release();
@@ -57,8 +56,7 @@ describe('Model', function(){
   describe('Update', function(){
     it('updates the server model', function(done){
       storageQueue.once('synced:', function(){
-        Animal.findById(animal.id(), function(err, doc){
-          expect(err).to.not.be.ok();
+        Animal.findById(animal.id()).then(function(doc){
           expect(doc).to.have.property('_id');
           expect(doc.id()).to.eql(animal.id());
           expect(doc).to.have.property('name');
@@ -69,7 +67,7 @@ describe('Model', function(){
       });
       
       animal.set('name', 'foobar');
-      animal.save(function(err){
+      animal.save().then(function(){
         expect(err).to.not.be.ok();
         expect(animal).to.have.property('_id');
         expect(animal._id).to.be.eql(animal.id());
@@ -89,8 +87,7 @@ describe('Model', function(){
         done();
       });
 
-      Animal.findById(animal.id(), function(err, doc){
-        expect(err).to.not.be.ok();
+      Animal.findById(animal.id()).then(function(doc){
         expect(doc).to.have.property('_id');
         expect(doc.id()).to.eql(animal.id());
         doc.keepSynced();
@@ -105,15 +102,13 @@ describe('Model', function(){
       storageQueue.once('synced:', function(){
         expect(oneFox).to.have.property('_id');
         
-        Animal.findById(oneFox._id, function(err, secondFox){
-          expect(err).to.not.be.ok();
+        Animal.findById(oneFox._id).then(function(secondFox){
           expect(secondFox).to.have.property('_id');
           expect(secondFox).to.eql(secondFox);
           
           secondFox.keepSynced();
           
-          Animal.findById(oneFox._id, function(err, thirdFox){
-            expect(err).to.not.be.ok();
+          Animal.findById(oneFox._id).then(function(thirdFox){
             expect(thirdFox).to.have.property('_id', secondFox._id);
             expect(thirdFox).to.have.property('legs', secondFox.legs);
             expect(thirdFox).to.have.property('name', secondFox.name);
@@ -125,8 +120,7 @@ describe('Model', function(){
         });
       });
       
-      oneFox.save(function(err){
-        expect(err).to.not.be.ok();
+      oneFox.save().then(function(){
         oneFox.keepSynced();
         
         oneFox.once('changed:', function(){
@@ -225,10 +219,9 @@ describe('Model', function(){
       var tempAnimal = new Animal(), tempAnimal2;
             
       storageQueue.once('synced:', function(){
-        Animal.findById(tempAnimal.id(), function(err, doc){
+        Animal.findById(tempAnimal.id()).then(function(doc){
           expect(tempAnimal._id).to.be(doc._id);
           expect(tempAnimal2._id).to.be(doc._id);
-          expect(err).to.not.be.ok();
           expect(doc.legs).to.be(8);
           expect(storageQueue.isEmpty()).to.be(true);
           done();
@@ -236,11 +229,10 @@ describe('Model', function(){
       });
 
       tempAnimal.set({legs : 8, name:'gorilla'});
-      tempAnimal.save(function(err){
-        expect(err).to.not.be.ok();
+      tempAnimal.save().then(function(){
         tempAnimal.keepSynced();
         
-        Animal.findById(tempAnimal.id(), function(err, doc){
+        Animal.findById(tempAnimal.id()).then(function(doc){
           tempAnimal2 = doc;
           tempAnimal2.keepSynced();
           socket.socket.connect();
@@ -260,8 +252,7 @@ describe('Model', function(){
         expect(err).to.not.be.ok();
       });
       
-      Animal.findById(elephant.id(), true, function(err, otherElephant){
-        expect(err).to.not.be.ok();
+      Animal.findById(elephant.id(), true).then(function(otherElephant){
         expect(otherElephant).to.be.ok();
         expect(otherElephant).to.be(elephant);
           
@@ -279,28 +270,25 @@ describe('Model', function(){
     it('keepSynced before save (waiting for sync)', function(done){
       var elephant = new Animal({name: 'elephant', legs:4});
       elephant.keepSynced();
-      elephant.save(function(err){
-        expect(err).to.not.be.ok();
-      });
+      elephant.save();
       
       storageQueue.once('synced:', function(){
         expect(elephant._persisted).to.be.ok();
         expect(elephant).to.have.property('_id');
-        Animal.findById(elephant._id, true, function(err, otherElephant){
-          expect(err).to.not.be.ok();
+        Animal.findById(elephant._id, true).then(function(otherElephant){
           expect(otherElephant).to.be.ok();
           expect(otherElephant).to.be(elephant);
           
           //otherElephant.on('resynced:', function(){
-            elephant.once('changed:', function(doc){
-              expect(elephant.legs).to.be(5);
-              elephant.release();
-              otherElephant.release();
-              done();
-            });
+          elephant.once('changed:', function(doc){
+            expect(elephant.legs).to.be(5);
+            elephant.release();
+            otherElephant.release();
+            done();
+          });
           
-            otherElephant.set('legs', 5);
-            //});
+          otherElephant.set('legs', 5);
+          //});
         });
       });
     });
@@ -321,8 +309,7 @@ describe('Model', function(){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider-pig'});
       
-      tempAnimal.save(function(err){
-        expect(err).to.not.be.ok();
+      tempAnimal.save().then(function(){
         tempAnimal.keepSynced();
       });
       
@@ -330,12 +317,12 @@ describe('Model', function(){
         expect(tempAnimal).to.have.property('_id');
         
         socket.disconnect();
-        tempAnimal.remove(function(){
+        tempAnimal.remove().then(function(){
           socket.socket.connect();              
         });
         
         storageQueue.once('synced:', function(){
-          Animal.findById(tempAnimal._id, function(err, doc){
+          Animal.findById(tempAnimal._id).error(function(err){
             expect(err).to.be.an(Error);
             done();
           });
@@ -348,22 +335,19 @@ describe('Model', function(){
       var spiderPig = new Animal();
       spiderPig.set({legs : 8, name:'spider-pig'});
       
-      spiderPig.save(function(err){
-        expect(err).to.not.be.ok();
+      spiderPig.save().then(function(){
         spiderPig.keepSynced();
       });
           
       storageQueue.once('synced:', function(){
         expect(spiderPig).to.have.property('_id');
         
-        spiderPig.remove(function(err){
-          expect(err).to.not.be.ok();
+        spiderPig.remove().then(function(){
           
           socket.disconnect();
             
-          Animal.findById(spiderPig.id(), function(err, doc){
+          Animal.findById(spiderPig.id()).error(function(err){
             expect(err).to.be.an(Error);
-            expect(doc).to.not.be.ok();
 
             socket.socket.connect();
             socket.once('connect', done);
@@ -423,15 +407,14 @@ describe('Model', function(){
       tempAnimal.set({legs : 8, name:'spider'});
       
       tempAnimal.on('deleted:', function(){
-        Animal.findById(tempAnimal.id(), function(err, res){
+        Animal.findById(tempAnimal.id()).error(function(err){
           expect(err).to.be.ok();
-          expect(res).to.not.be.ok();
           done();
         });
       });
       
-      tempAnimal.remove(function(err){
-        expect(err).to.not.be.ok();
+      tempAnimal.remove().then(function(){
+
       });
     });
   });
