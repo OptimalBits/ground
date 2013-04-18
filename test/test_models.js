@@ -22,11 +22,8 @@ describe('Model', function(){
     storageQueue = Gnd.using.storageQueue;
     
     storageQueue.init(function(){
-      storageQueue.once('synced:', function(){
-        done();
-      });
-      
       animal.save();
+      storageQueue.exec().then(done);
     });
   });
   
@@ -164,13 +161,10 @@ describe('Model', function(){
     });
     
     beforeEach(function(done){
-      storageQueue.clear();
-      storageQueue.once('synced:', function(){
-        done();
-      });
       animal = new Animal({tail:true});
-      animal.save();
       animal.keepSynced();
+      animal.save();
+      storageQueue.exec().then(done)
     });
       
     //

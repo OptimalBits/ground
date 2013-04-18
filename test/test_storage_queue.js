@@ -18,11 +18,8 @@ describe('Storage Queue', function(){
   });
 
   beforeEach(function(done){
-    storage.clear(function() {
-      done();
-    });
+    storage.exec().then(done);
   });
-
 
   describe('Sequences', function(){
     var keyPath;
@@ -509,9 +506,7 @@ describe('Storage Queue', function(){
     var q2 = new Gnd.Storage.Queue(sm2, ss);
 
     beforeEach(function(done){
-      q.clear(function() {
-        done();
-      });
+      q.exec().then(done);
     });
     it('changes propagates to other queues on exec()', function(done){
       q.create(['parade'], {}, function(err, paradeId){
@@ -532,18 +527,16 @@ describe('Storage Queue', function(){
             }
             var t = setTimeout(function(){
               q.off('synced:', fail);
-              q2.all(kp, {}, {}, function(err, docs){
+              q2.all(kp, {}, {}).then(function(docs){
                 //q2 should not have the new animal yet
-                expect(err).to.be(null);
                 expect(docs).to.have.property('length', 0);
                 q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
                   expect(docs).to.have.property('length', 0);
                   q.exec();
                 });
               });
-              q.once('synced:', function(){
-                q.all(kp, {}, {}, function(err, docs){
-                  expect(err).to.not.be.ok();
+              q.waitUntilSynced(function(){
+                q.all(kp, {}, {}).then(function(docs){
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 1);
                   expect(docs[0]).to.have.property('doc');
@@ -553,9 +546,8 @@ describe('Storage Queue', function(){
                     expect(docs).to.have.property('length', 1);
                     expect(docs[0]).to.have.property('doc');
                     expect(docs[0].doc).to.have.property('name', 'tiger');
-                    q2.all(kp, {}, {}, function(err, docs){
+                    q2.all(kp, {}, {}).then(function(docs){
                       //q2 local storage still doesn't have the new animal...
-                      expect(err).to.be(null);
                       expect(docs).to.have.property('length', 0);
                       q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
                         //... but receives it on resync
