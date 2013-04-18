@@ -22,6 +22,35 @@ export class Promise {
   reason: Error;
   isFulfilled : bool;
   
+  static map(elements: any[], fn: (item)=>Promise): Promise
+  {
+    elements = _.isArray(elements) ? elements : [elements];
+    
+    var
+      len = elements.length,
+      counter = len,
+      promise = new Promise(),
+      results = []; results.length = len;
+    
+    if(!len){
+      promise.resolve(results);
+    }
+    
+    for(var i=0; i<len; i++){
+      fn(elements[i]).then((result)=>{
+        results[i] = result;
+        counter--;
+        if(counter === 0){
+          promise.resolve(results);
+        }
+      }, (err) => {
+        promise.reject(err);
+      });
+    }
+  
+    return promise;
+  }
+  
   constructor(value?: any)
   {
     if(value instanceof Error){
@@ -73,7 +102,13 @@ export class Promise {
     return promise;
   }
   
-  resolveOrReject(err?: Error, value?: any){
+  error(onRejected: (reason: Error) => any)
+  {
+    return this.then(null, onRejected);
+  }
+  
+  resolveOrReject(err?: Error, value?: any)
+  {
     if(err) this.reject(err);
     else this.resolve(value);
   }
