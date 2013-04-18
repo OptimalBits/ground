@@ -68,13 +68,10 @@ export class Sequence extends Container
     return this.remove(idx, opts);
   }
 
-  private insertBefore(id: string, item: Model, opts?): Promise
+  private insertBefore(refId: string, item: Model, opts?): Promise
   {
     opts = opts || {};
-
-    return this.insertItemBefore(id, item, null, opts).then(() => {
-      this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-    });
+    return this.insertItemBefore(refId, item, null, opts);
   }
   
   private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
@@ -118,13 +115,16 @@ export class Sequence extends Container
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
+        this._keepSynced && item.keepSynced();
         return this.insertPersistedItemBefore(refId, item).then(done);
       }else{
         return item.save().then(()=>{
+          this._keepSynced && item.keepSynced();
           return this.insertPersistedItemBefore(refId, item).then(done);
         });
       }
     }else{
+      this._keepSynced && item.keepSynced();
       return promise.resolve();
     }
   }
@@ -215,9 +215,7 @@ export class Sequence extends Container
     
     this.on('insertBefore:', (id, itemKeyPath, refId)=>{
       this.model.findById(itemKeyPath, true, {}).then((item)=>{
-        this.insertItemBefore(refId, item, id, {nosync: true}).then(()=> {
-          this._keepSynced && !item.isKeptSynced() && item.keepSynced();
-        });
+        this.insertItemBefore(refId, item, id, {nosync: true});
       });
     });
 
@@ -253,7 +251,7 @@ export class Sequence extends Container
             i++;
           }else{
             itemsToInsert.push({
-              id: oldItem.id,
+              refId: oldItem.id,
               newItem: newItem.doc
             });
           }
@@ -266,7 +264,8 @@ export class Sequence extends Container
       while(j<newItems.length){
         newItem = newItems[j];
         itemsToInsert.push({
-          id: null,
+          refId: null,
+          id: newItem.id,
           newItem: newItem.doc
         });
         j++;
@@ -274,7 +273,7 @@ export class Sequence extends Container
       
       return Promise.map(itemsToInsert, (item)=>{
          return (<any>this.model).create(item.newItem).then((instance)=>{
-           return this.insertBefore(item.id, instance, {nosync: true});
+           return this.insertItemBefore(item.refId, instance, item.id, {nosync: true});
          });
       });
       
