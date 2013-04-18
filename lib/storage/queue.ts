@@ -362,16 +362,18 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[]): Promise
   {
+    var promise = new Promise();
     this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}, (err) => {
       if(!err){
         this.addCmd({
           cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
         });
       }
-      cb(err);
+      promise.resolveOrReject(err);
     });
+    return promise;
   }
   
   all(keyPath: string[], query: {}, opts: {}): Promise
@@ -563,26 +565,15 @@ export class Queue extends Base implements IStorage
   
   public waitUntilSynced(cb:()=>void)
   {
-    if(!this.currentTransfer){
-      cb();
-    }else{
+    if(this.queue.length > 0){
       this.once('synced:', cb);
+    }else{
+      cb();
     }
   }
   
   public isEmpty(){
     return !this.queue.length;
-  }
-  
-  public clear(cb?: (err?: Error) => void)
-  {
-    // clearing the queue is a dangerous thing to do. Hence we wait until finished
-      if(this.queue.length > 0){
-        this.once('synced:', cb || Util.noop);
-        this.synchronize();
-      }else{
-        cb && cb();
-      }
   }
   
   private loadQueue()
