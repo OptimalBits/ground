@@ -8,6 +8,7 @@
 
 /// <reference path="../storage.ts" />
 /// <reference path="../cache.ts" />
+/// <reference path="../error.ts" />
 /// <reference path="store/store.ts" />
 /// <reference path="store/local-storage.ts" />
 
@@ -307,7 +308,7 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item || item.sync === 'rm') return cb(Error('Tried to delete a non-existent item'));
+    if(!item || item.sync === 'rm') return cb(Error(''+ServerError.INVALID_ID));
 
     if(opts.insync){
       itemKeys[itemKeys[item.prev].next] = 'deleted';
@@ -363,7 +364,7 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item) return cb(Error('Tried to set a non-existent item'));
+    if(!item) return cb(Error(''+ServerError.INVALID_ID));
 
     if(sid) item._id = sid;
     switch(item.sync) {

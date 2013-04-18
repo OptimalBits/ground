@@ -426,13 +426,12 @@ listContainer may also have a type attribute:
       var seqName = _.last(keyPath);
 
       this.findContainer(ParentModel, modelId, seqName, id, (err, container?)=>{
-        if(!container || container.type === '_rip') return cb(Error('Tried to delete a non-existent item'));
+        if(!container || container.type === '_rip') return cb(Error(''+ServerError.INVALID_ID));
         this.removeFromSeq(container._id, cb);
       });
     }, cb);
   }
 
-  
   private getModel(keyPath: string[], cb: (Model: IMongooseModel, id?: string) => void, errCb: (err: Error) => void): void
   {
     //
