@@ -438,7 +438,7 @@ describe('Sequences', function(){
                   expect(err).to.be(null);
                   parade.seq(Animal).then(function(animals2){
                     expect(animals2.count).to.be(1);
-                    animals.once('resynced:', function(){
+                    animals2.once('resynced:', function(){
                       expect(animals2.count).to.be(0);
                       done();
                     });
