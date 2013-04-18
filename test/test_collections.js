@@ -24,7 +24,7 @@ describe('Collections', function(){
     storageQueue = Gnd.using.storageQueue;
     
     storageQueue.init(function(){
-        done();
+      done();
     });
   });
   
@@ -55,7 +55,7 @@ describe('Collections', function(){
       });
     });
   });
-
+  
   describe('Addition', function(){
     it('add item to collection', function(done){
       zoo.all(Animal).then(function(animals){
@@ -155,12 +155,10 @@ describe('Collections', function(){
       });
     });
   
-    it.skip('collection proxies add item event', function(done){
-      Zoo.findById(zoo.id(), function(err, zoo){
+    it('collection proxies add item event', function(done){
+      Zoo.findById(zoo.id()).then(function(zoo){
         var testAnimal;
-
-        expect(err).to.not.be.ok();
-        expect(zoo).to.not.be(undefined);
+        expect(zoo).to.be.ok();
       
         zoo.keepSynced();
                 
@@ -173,23 +171,21 @@ describe('Collections', function(){
             expect(panther).to.be.an(Object);
             expect(panther.name).to.be.eql('panther');
         
-            storageQueue.once('synced:', function(){
-              Animal.findById(panther.id(), function(err, animal){
-                expect(err).to.not.be.ok();
+            storageQueue.waitUntilSynced(function(){
+              Animal.findById(panther.id()).then(function(animal){
                 animal.keepSynced();
-                
-                animal.on('resynced:', function(){                
-                  animals.on('updated:', function(model, args){
-                    expect(args).to.be.an(Object);
-                    expect(args.legs).to.be(5);
-                    // animals.release();
-                    // zoo.release();
-                    done();
-                  });
-                  
-                  animal.set('legs', 5);
-                  animal.release(); 
+                         
+                animals.on('updated:', function(model, args){
+                  expect(args).to.be.an(Object);
+                  expect(args.legs).to.be(5);
+                  animals.release();
+                  zoo.release();
+                  animal.release();
+                  done();
                 });
+                  
+                animal.set('legs', 5);
+                animal.release(); 
               });
             });
           });
@@ -197,6 +193,7 @@ describe('Collections', function(){
       });
     });
   });
+  
   describe('Remove', function(){
     it('remove item from collection', function(done){
       Zoo.findById(zoo.id()).then(function(zoo){
@@ -240,16 +237,10 @@ describe('Collections', function(){
         zoo.all(Animal).then(function(animals){
           var otherAnimal;
           
-          animals.once('removed:', function(item){
-            expect(item).to.be.an(Object);
-            expect(item).to.have.property('_id');
-            expect(item.id()).to.be.eql(otherAnimal.id());
-            animals.release();
-            zoo.release();
-            done();
-          });
+          var koala = new Animal({name:"koala"});
+          animals.add(koala);
           
-          storageQueue.once('synced:', function(){
+          storageQueue.waitUntilSynced(function(){
             Zoo.findById(zoo.id()).then(function(anotherZoo){
               expect(anotherZoo).to.be.an(Object);
               
@@ -257,16 +248,21 @@ describe('Collections', function(){
               anotherZoo.all(Animal).then(function(otherAnimals){
                 expect(otherAnimals).to.be.an(Object);
                 
-                otherAnimal = otherAnimals.first();
-                otherAnimal.remove().then(function(){
-                  // otherAnimals.release();
+                otherAnimals.once('resynced:', function(){
+                  
+                  animals.once('removed:', function(item){
+                    expect(item).to.be.an(Object);
+                    expect(item).to.have.property('_id');
+                    expect(item.id()).to.be.eql(otherAnimal.id());
+                    Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
+                    done();
+                  });
+                  
+                  otherAnimal = otherAnimals.first();
+                  otherAnimal.remove();
                 });
               });
             });
-          });
-          
-          animals.add(new Animal({name:"koala"})).then(function(){
-
           });
         });
       });
@@ -305,7 +301,7 @@ describe('Collections', function(){
     });
     
     it.skip('find items are cached');
-      // IMPLEMENT: Items that are "finded" from the server should be
+      // IMPLEMENT: Items that are "found" from the server should be
       // cached for offline usage.
   
     it('add item to collection being offline', function(done){
@@ -328,7 +324,7 @@ describe('Collections', function(){
                 expect(collection.items).to.be.an(Array);
                 expect(animals.count).to.be(1);
                 expect(collection.count).to.be(1);
-                // Gnd.Util.release(sameZoo, collection, animals);
+                Gnd.Util.release(sameZoo, collection, animals);
                 done();
               });
             });
@@ -339,7 +335,7 @@ describe('Collections', function(){
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
               expect(animals.count).to.be(1);
-              // collection.release();
+              collection.release();
             // socket.socket.reconnect();
               socket.socket.connect();
             });
@@ -363,8 +359,8 @@ describe('Collections', function(){
                 expect(collection.count).to.be(1);
                 expect(animals.count).to.be(1);
                 doc.release();
-                // collection.release();
-                // animals.release();
+                collection.release();
+                animals.release();
                 done();
               });
             });
@@ -374,7 +370,7 @@ describe('Collections', function(){
               expect(collection.items).to.be.an(Array);
               expect(collection.count).to.be(1);
               expect(animals.count).to.be(1);
-              // collection.release();
+              collection.release();
               socket.socket.connect();
             });
           });
@@ -726,6 +722,12 @@ describe('Collections', function(){
     it.skip('find models in collection paginating');
   
     it.skip('find models in collection sorting and paginating');
+  });
+  
+  describe('Orphan collections', function(){
+    it.skip('Add models to orphan collection');
+    it.skip('Delete models from orphan collection');
+    
   });
   
   describe('Edge cases', function(){
