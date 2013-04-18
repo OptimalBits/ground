@@ -561,6 +561,15 @@ export class Queue extends Base implements IStorage
     }
   }
   
+  public waitUntilSynced(cb:()=>void)
+  {
+    if(!this.currentTransfer){
+      cb();
+    }else{
+      this.once('synced:', cb);
+    }
+  }
+  
   public isEmpty(){
     return !this.queue.length;
   }
