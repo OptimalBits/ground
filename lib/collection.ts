@@ -95,43 +95,32 @@ export class Collection extends Container
   remove(itemIds, opts): Promise
   {
     var 
-      promise = new Promise(),
       items = this.items,
       keyPath = this.getKeyPath();
     
     opts = opts || {};
     
-    Util.asyncForEach(itemIds, (itemId, done) => {
-      var index, item, len = items.length;
-      for(index=0; index<len; index++){
-        if(items[index].id() == itemId){
-          item = items[index];
-          break;
-        }
-      }
+    return Promise.map(itemIds, (itemId) => {
+      var item = this.findById(itemId);
   
       if(item){
-        items.splice(index, 1);
+        items.splice(_.indexOf(items, item), 1);
         
         item.off('changed:', this.updateFn);
         item.off('deleted:', this.deleteFn);
         
         this.set('count', items.length);
-        this.emit('removed:', item, index);
+        this.emit('removed:', item);
         
         if(!opts || !opts.nosync){
           var itemKeyPath = _.initial(item.getKeyPath());
-          this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()], done);
-          return;
+          return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()]);
         }
         
         item.release();
       }
-      done();
-    }, (err)=>{
-      promise.resolveOrReject(err);
+      return new Promise(true);
     });
-    return promise;
   }
   
   toggleSortOrder(){
