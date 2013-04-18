@@ -87,7 +87,7 @@ export class Collection extends Container
 
     return Promise.map(items, (item)=>{
       return this.addItem(item, opts).then(()=>{
-        this._keepSynced && !item.keepSynced && item.keepSynced();
+        this._keepSynced && !item._keepSynced && item.keepSynced();
       });
     });
   }
