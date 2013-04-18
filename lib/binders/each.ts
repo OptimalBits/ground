@@ -150,9 +150,9 @@ export class EachBinder implements Binder
       this.updatedListener = refresh;
       
       collection
-        .on('added: inserted:', this.addedListener)
+        .on('added:', this.addedListener)
         .on('removed:', this.removedListener)
-        .on('filterFn sorted: updated:', this.updatedListener);
+        .on('filterFn sorted: updated: inserted:', this.updatedListener);
     }else{
       console.log("Warning: not found a valid collection: "+arr[0]);
     }
