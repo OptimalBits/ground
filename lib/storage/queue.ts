@@ -98,11 +98,16 @@ export class Queue extends Base implements IStorage
   fetch(keyPath: string[]): Promise
   {
     var promise = new Promise();
+    var remotePromise = new Promise();
+    
     this.localStorage.fetch(keyPath, (err?, doc?) => {
-      if(doc){            
+      if(doc){ 
         doc['_id'] = _.last(keyPath);
-        promise.resolve(doc);
+        promise.resolve([doc, remotePromise]);
+      }else if(!this.useRemote){
+        return promise.reject(err);
       }
+      
       if(this.useRemote){
         this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
           if(!err){
@@ -113,15 +118,13 @@ export class Queue extends Base implements IStorage
                 docRemote['_cid'] = docRemote['_id'];
                 this.localStorage.create(collectionKeyPath, docRemote, ()=>{});
               }
+              remotePromise.resolve(docRemote);
             });
-            this.emit('resync:'+Queue.makeKey(keyPath), docRemote);
           }
           if(!doc){
-            promise.resolveOrReject(err, docRemote);
+            promise.resolveOrReject(err, [docRemote, remotePromise]);
           }
         });
-      }else if(!doc){
-        promise.reject(err);
       }
     });
     return promise;
@@ -285,25 +288,25 @@ export class Queue extends Base implements IStorage
   find(keyPath: string[], query: {}, options: {}): Promise
   {
     var promise = new Promise();
+    var remotePromise = new Promise();
     
     var localOpts = _.extend({snapshot:true}, options);
-    this.localStorage.find(keyPath, query, localOpts, (err?, result?) => {
+    this.localStorage.find(keyPath, query, localOpts, (err?, result?:any) => {
       if(result){
-        promise.resolve(result);
+        promise.resolve([result, remotePromise]);
       }
-      
       if(this.useRemote){
-        this.remoteStorage.find(keyPath, query, options, (err?, remote?) => {
+        this.remoteStorage.find(keyPath, query, options, (err?, remote?: any) => {
           if(!err){
             this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
               if(result){
                 this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
-                  !err && this.emit('resync:'+Queue.makeKey(keyPath), items);
-                })
+                  remotePromise.resolveOrReject(err, items);
+                });
               }
             });
           }
-          !result && promise.resolveOrReject(err, remote);
+          !result && promise.resolveOrReject(err, [remote, remotePromise]);
         });
       }else if(!result){
         promise.reject(err);
@@ -375,39 +378,80 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
+  /*
+  allRemote(keyPath: string[], query: {}, opts: {}): Promise
+  {
+    var promise = new Promise();
+    // TODO: what if keyPath is local (same for find())
+    this.remoteStorage.all(keyPath, query, opts, (err?, remote?: any) => {
+      if(!err){
+        this.updateLocalSequence(keyPath, {}, remote, (err?)=>{
+          if(result){
+            this.localStorage.all(keyPath, {}, localOpts, (err?, items?) => {
+              promise.resolveOrReject(err, items);
+            });
+          }
+        });
+      }else{
+        promise.reject(err);
+      }
+    });
+    return promise;
+  }
   
   all(keyPath: string[], query: {}, opts: {}): Promise
   {
     var promise = new Promise();
+    var remotePromise;
+    
+    if(this.useRemote){
+     remotePromise = allRemote(keyPath, query, opts).then((items)=>{
+       if(promise.isFulfilled){
+         return items;
+        }else{
+          promise.resolve([items]);
+        }
+      }, (err)=>{
+        !promise.isFulfilled && promise.reject(err);
+      });
+    }
     var localOpts = _.extend({snapshot:true}, {});
-    this.localStorage.all(keyPath, query, opts, (err?, result?) => {
+    this.localStorage.all(keyPath, query, opts, (err?, result?: any) => {
       if(result){
-        promise.resolve(result);
+        promise.resolve([result, remotePromise]);
+      } else if(!remotePromise){
+        promise.reject(err);
       }
-      
-      if(!this.useRemote){
+    });
+
+    return promise;
+  }
+  */
+  all(keyPath: string[], query: {}, opts: {}): Promise
+  {
+    var promise = new Promise();
+    var remotePromise = new Promise();
+    
+    var localOpts = _.extend({snapshot:true}, {});
+    this.localStorage.all(keyPath, query, opts, (err?, result?: any) => {
+      if(result){
+        promise.resolve([result, remotePromise]);
+      }      
+      if(!this.useRemote && !result){
         promise.reject(err);
       }else{
         // TODO: what if keyPath is local (same for find())
-        this.remoteStorage.all(keyPath, query, opts, (err?, remote?) => {
+        this.remoteStorage.all(keyPath, query, opts, (err?, remote?: any) => {
           if(!err){
             this.updateLocalSequence(keyPath, {}, remote, (err?)=>{
               if(result){
                 this.localStorage.all(keyPath, {}, localOpts, (err?, items?) => {
-                  var key = Queue.makeKey(keyPath);
-                  var subQ = <any>(this.remoteStorage);
-                  if(this.autosync || !subQ.once){
-                    !err && this.emit('resync:'+key, items);
-                  }else{
-                    subQ.once('resync:'+key, (items)=>{
-                      this.emit('resync:'+key, items);
-                    });
-                  }
-                })
+                  remotePromise.resolveOrReject(err, items);
+                });
               }
             });
           }
-          !result && promise.resolveOrReject(err, remote);
+          !result && promise.resolveOrReject(err, [remote, remotePromise]);
         });
       }
     });

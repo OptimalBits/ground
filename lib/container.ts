@@ -44,7 +44,7 @@ module Gnd
     public _keepSynced: bool = false;
     
     // Abstract
-    private resync(items: any[]): Promise 
+    public resync(items: any[]): Promise 
     {
       return new Promise(true);
     };
@@ -90,27 +90,16 @@ module Gnd
       this.resyncFn = (items) => {
         this.resync(items);
       }
-      
-      if(using.storageQueue){
-        if(parent){
-          if(parent.isPersisted()){
-            this.listenToResync(using.storageQueue, true);
-          }else{
-            parent.once('id', ()=> {
-              this.listenToResync(using.storageQueue, true)
-            });
-          }
-        }else{
-          this.listenToResync(using.storageQueue, true);
-        }
-      }
     }
     
     destroy(){
       Util.nextTick(()=>{
         this.items = null;
       });
-
+      
+      var key = Storage.Queue.makeKey(this.getKeyPath());
+      this.storageQueue.off('resync:'+key, this.resyncFn);
+      
       this._keepSynced && this.endSync();
       this.deinitItems(this.getItems());
       super.destroy();
@@ -177,7 +166,6 @@ module Gnd
     
       this.storageQueue.exec().then(()=>{
         this.storageQueue = using.storageQueue;
-        this.listenToResync(using.storageQueue);
       });
     }
     
@@ -191,11 +179,6 @@ module Gnd
     public getItems(): Model[]
     {
       return this.items;
-    }
-    
-    private listenToResync(queue: Storage.Queue, once?: bool){
-      var key = Storage.Queue.makeKey(this.getKeyPath());
-      queue[once ? 'once' : 'on']('resync:'+key, this.resyncFn);
     }
     
     public initItems(item: Model);
@@ -214,9 +197,7 @@ module Gnd
     public deinitItems(item: Model);
     public deinitItems(items: Model[]);
     public deinitItems(items)
-    {
-      var key = Storage.Queue.makeKey(this.getKeyPath());
-      this.storageQueue.off('resync:'+key, this.resyncFn);
+    {      
       for (var i=0,len=items.length; i<len;i++){
         var item = items[i];
         item.off('changed:', this.updateFn);

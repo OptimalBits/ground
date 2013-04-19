@@ -59,9 +59,12 @@ class ModelDepot
     var promise = this.models[key];
     if(!promise){
       if(fetch){
-        promise = using.storageQueue.fetch(keyPath).then((doc: {}) => {
-          return create(doc).then((instance: Model) => {
+        promise = using.storageQueue.fetch(keyPath).then((result) => {
+          return create(result[0]).then((instance) => {
             instance.set(args);
+            result[1].then(function(doc){
+              instance.set(doc, {nosync: true});
+            });
             return instance;
           });
         });
@@ -197,20 +200,9 @@ export class Model extends Base implements Sync.ISynchronizable
       throw new Error("Cannot create two instances of the same model!");
     }
     
-    var listenToResync = () => {
-      var keyPath = this.getKeyPath();
-      this._storageQueue.on('resync:'+Storage.Queue.makeKey(keyPath), (doc: {}) => {
-        // NOTE: If the model is "dirty", we could have a conflict
-        this.set(doc, {nosync: true});
-        this.emit('resynced:');
-      });
-    }
-    
     if(this.isPersisted()){
-        listenToResync();
         this._initial = false;
     }else{
-      this.once('id', listenToResync);
       this._storageQueue.once('created:'+this.id(), (id) => {
         this.id(id);
       });
@@ -481,11 +473,17 @@ export class Model extends Base implements Sync.ISynchronizable
   static all(parent: Model, argsOrKeypath?, bucket?: string): Promise
   {
     var allInstances = (parent, keyPath, args) => {
-      return using.storageQueue.find(keyPath, {}, {}).then((docs)=>{
-          _.each(docs, function(doc){_.extend(doc, args)});
-          return Container.create(Collection, this, _.last(keyPath), parent, docs);
+      return using.storageQueue.find(keyPath, {}, {}).then((result)=>{
+        _.each(result[0], function(doc){_.extend(doc, args)});
+        return Container.create(Collection, this, _.last(keyPath), parent, result[0]).then((container)=>{
+          result[1].then((docs) =>{
+            _.each(docs, function(doc){_.extend(doc, args)});
+            container.resync(docs)
+          });
+          return container;
+        });
       });
-    }
+    };
     return overload({
       'Model Array Object': function(parent, keyPath, args){
         return allInstances(parent, keyPath, args);
@@ -516,8 +514,13 @@ export class Model extends Base implements Sync.ISynchronizable
   static seq(parent?: Model, args?: {}, bucket?: string): Promise
   {
     var allInstances = (parent, keyPath, args) => {
-      return using.storageQueue.all(keyPath, {}, {}).then((items)=>{
-        return Container.create(Sequence, this, _.last(keyPath), parent, items);
+      return using.storageQueue.all(keyPath, {}, {}).then((result)=>{        
+        return Container.create(Sequence, this, _.last(keyPath), parent, result[0]).then((seq)=>{
+          result[1].then((items)=>{
+            seq.resync(items);
+          });
+          return seq;
+        });
       });
     }
     return overload({
