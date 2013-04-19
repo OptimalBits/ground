@@ -65,7 +65,6 @@ describe('Model', function(){
       
       animal.set('name', 'foobar');
       animal.save().then(function(){
-        expect(err).to.not.be.ok();
         expect(animal).to.have.property('_id');
         expect(animal._id).to.be.eql(animal.id());
       });
@@ -127,32 +126,7 @@ describe('Model', function(){
       
     });
   });
-  /*
-  describe('Fetch', function(){
-    var dolphin, whale, shark;
-    
-    before(function(done){
-      dolphin = new Animal({name:'dolphin'});
-      dolphin.save(function(err){
-        whale = new Animal({name:'whale'});
-        whale.save(function(err){
-          shark = new Animal({name:'shark'});
-          shark.save(function(err){
-            done();
-          });
-        });
-      });
-    });
-    
-    it('all instances of a model', function(done){
-      Animal.fetch(function(err, animals){
-        expect(err).not.to.be.ok();
-        expect(animals).to.be.an(Array);
-        done();
-      })
-    });
-  });
-  */
+
   describe('Offline', function(){
     var animal;
     
@@ -316,7 +290,7 @@ describe('Model', function(){
         });
         
         storageQueue.once('synced:', function(){
-          Animal.findById(tempAnimal._id).error(function(err){
+          Animal.findById(tempAnimal._id).error(function(err, doc){
             expect(err).to.be.an(Error);
             done();
           });
@@ -370,21 +344,22 @@ describe('Model', function(){
       tempAnimal.keepSynced();
       tempAnimal.save();
       
-      storageQueue.once('synced:', function(){
+      storageQueue.waitUntilSynced(function(){
         var obj = {legs:7};
-        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj, function(err, res) {
+        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj, function(err) {
+          expect(err).to.not.be.ok();
           socket.socket.disconnect();
           socket.socket.connect();
-        });
-        
-        storageQueue.once('synced:', function(){
-          Animal.findById(tempAnimal.id(), function(err, doc){
-            doc.on('changed:', function(){
-              expect(doc.legs).to.be(7);
-              done();
+          
+          storageQueue.waitUntilSynced(function(){
+            Animal.findById(tempAnimal.id()).then(function(doc){
+              doc.on('changed:', function(){
+                expect(doc.legs).to.be(7);
+                done();
+              });
+              // This case will be worked-out later...
+              // expect(tempAnimal.legs).to.be(7);
             });
-            // This case will be worked-out later...
-            // expect(tempAnimal.legs).to.be(7);
           });
         });
       });

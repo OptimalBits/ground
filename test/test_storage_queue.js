@@ -201,7 +201,8 @@ describe('Storage Queue', function(){
           storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
             storage.once('synced:', function() {
-              storage.all(keyPath, {}, {}).then(function(docs){
+              storage.all(keyPath, {}, {}).then(function(result){
+                var docs = result[0];
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 0);
                 done();
@@ -239,7 +240,8 @@ describe('Storage Queue', function(){
         });
       });
       it('all gets all...', function(done){
-        storage.all(keyPath, {}, {}).then(function(docs){
+        storage.all(keyPath, {}, {}).then(function(result){
+          var docs = result[0];
           expect(docs).to.be.ok();
           expect(docs).to.have.property('length', 3);
           expect(docs[0]).to.have.property('doc');
@@ -257,7 +259,8 @@ describe('Storage Queue', function(){
           expect(item).to.be.ok();
           storage.deleteItem(keyPath, item.id, {}, function(err){
             expect(err).to.not.be.ok();
-            storage.all(keyPath, {}, {}).then(function(docs){
+            storage.all(keyPath, {}, {}).then(function(result){
+              var docs = result[0];
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 2);
               expect(docs[0]).to.have.property('doc');
@@ -275,7 +278,8 @@ describe('Storage Queue', function(){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}, function(err){
             expect(err).to.not.be.ok();
-            storage.all(keyPath, {}, {}).then(function(docs){
+            storage.all(keyPath, {}, {}).then(function(result){
+              var docs = result[0];
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 4);
               expect(docs[0]).to.have.property('doc');
@@ -318,7 +322,8 @@ describe('Storage Queue', function(){
       });
       it('items are cached when going offline', function(done){
         socket.disconnect();
-        storage.all(keyPath, {}, {}).then(function(docs){
+        storage.all(keyPath, {}, {}).then(function(result){
+          var docs = result[0];
           expect(docs).to.be.ok();
           expect(docs).to.have.property('length', 2);
           expect(docs[0]).to.have.property('doc');
@@ -338,7 +343,8 @@ describe('Storage Queue', function(){
             expect(err).to.not.be.ok();
 
             storage.once('synced:', function(){
-              storage.all(keyPath, {}, {}).then(function(docs){
+              storage.all(keyPath, {}, {}).then(function(result){
+                var docs = result[0];
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 3);
                 expect(docs[0]).to.have.property('doc');
@@ -347,7 +353,8 @@ describe('Storage Queue', function(){
                 expect(docs[1].doc).to.have.property('name', 'monkey');
                 expect(docs[2]).to.have.property('doc');
                 expect(docs[2].doc).to.have.property('name', 'camel');
-                storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
+                result[1].then(function(docs){
+                //storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 3);
                   expect(docs[0]).to.have.property('doc');
@@ -361,7 +368,8 @@ describe('Storage Queue', function(){
               });
             });
 
-            storage.all(keyPath, {}, {}).then(function(docs){
+            storage.all(keyPath, {}, {}).then(function(result){
+              var docs = result[0];
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 3);
               expect(docs[0]).to.have.property('doc');
@@ -383,14 +391,16 @@ describe('Storage Queue', function(){
             socket.disconnect();
             Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null, function(err, res) {
               socket.once('connect', function(){
-                storage.all(keyPath, {}, {}).then(function(docs){
+                storage.all(keyPath, {}, {}).then(function(result){
+                  var docs = result[0];
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 2);
                   expect(docs[0]).to.have.property('doc');
                   expect(docs[0].doc).to.have.property('name', 'tiger');
                   expect(docs[1]).to.have.property('doc');
                   expect(docs[1].doc).to.have.property('name', 'monkey');
-                  storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
+                  result[1].then(function(docs){
+                  //storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
                     expect(docs).to.be.ok();
                     expect(docs).to.have.property('length', 3);
                     expect(docs[0]).to.have.property('doc');
@@ -418,12 +428,14 @@ describe('Storage Queue', function(){
             expect(err).to.not.be.ok();
 
             storage.once('synced:', function(){
-              storage.all(keyPath, {}, {}).then(function(docs){
+              storage.all(keyPath, {}, {}).then(function(result){
+                var docs = result[0];
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 1);
                 expect(docs[0]).to.have.property('doc');
                 expect(docs[0].doc).to.have.property('name', 'monkey');
-                storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
+                result[1].then(function(docs){
+                //storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 1);
                   expect(docs[0]).to.have.property('doc');
@@ -433,7 +445,8 @@ describe('Storage Queue', function(){
               });
             });
 
-            storage.all(keyPath, {}, {}).then(function(docs){
+            storage.all(keyPath, {}, {}).then(function(result){
+              var docs = result[0];
               expect(docs).to.be.ok();
               expect(docs).to.have.property('length', 1);
               expect(docs[0]).to.have.property('doc');
@@ -450,14 +463,16 @@ describe('Storage Queue', function(){
           socket.disconnect();
           Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
             socket.once('connect', function(){
-              storage.all(keyPath, {}, {}).then(function(docs){
+              storage.all(keyPath, {}, {}).then(function(result){
+                var docs = result[0];
                 expect(docs).to.be.ok();
                 expect(docs).to.have.property('length', 2);
                 expect(docs[0]).to.have.property('doc');
                 expect(docs[0].doc).to.have.property('name', 'tiger');
                 expect(docs[1]).to.have.property('doc');
                 expect(docs[1].doc).to.have.property('name', 'monkey');
-                storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
+                result[1].then(function(docs){
+                //storage.once('resync:'+Gnd.Storage.Queue.makeKey(keyPath), function(docs){
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 1);
                   expect(docs[0]).to.have.property('doc');
@@ -527,29 +542,35 @@ describe('Storage Queue', function(){
             }
             var t = setTimeout(function(){
               q.off('synced:', fail);
-              q2.all(kp, {}, {}).then(function(docs){
+              q2.all(kp, {}, {}).then(function(result){
+                var docs = result[0];
                 //q2 should not have the new animal yet
                 expect(docs).to.have.property('length', 0);
-                q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                result[1].then(function(docs){
+                //q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
                   expect(docs).to.have.property('length', 0);
                   q.exec();
                 });
               });
               q.waitUntilSynced(function(){
-                q.all(kp, {}, {}).then(function(docs){
+                q.all(kp, {}, {}).then(function(result){
+                  var docs = result[0];
                   expect(docs).to.be.ok();
                   expect(docs).to.have.property('length', 1);
                   expect(docs[0]).to.have.property('doc');
                   expect(docs[0].doc).to.have.property('name', 'tiger');
-                  q.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                  result[1].then(function(docs){
+                  //q.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
                     expect(docs).to.be.ok();
                     expect(docs).to.have.property('length', 1);
                     expect(docs[0]).to.have.property('doc');
                     expect(docs[0].doc).to.have.property('name', 'tiger');
-                    q2.all(kp, {}, {}).then(function(docs){
+                    q2.all(kp, {}, {}).then(function(result){
+                      var docs = result[0];
                       //q2 local storage still doesn't have the new animal...
                       expect(docs).to.have.property('length', 0);
-                      q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                      result[1].then(function(docs){
+//                      q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
                         //... but receives it on resync
                         expect(docs).to.have.property('length', 1);
                         expect(docs[0].doc).to.have.property('name', 'tiger');

@@ -458,11 +458,11 @@ describe('Sequences', function(){
             q2.once('synced:', function(){
               getSequence(parade.id(), sm2, q2, true, 'animals2', function(syncedAnimals){
                 expect(syncedAnimals.count).to.be(2);
-                syncedAnimals.once('resynced:', function(){
+               // syncedAnimals.once('resynced:', function(){
                   //TODO: when sequences are singletons resynced will never be called
                   expect(syncedAnimals.count).to.be(2);
                   done();
-                });
+                  //});
               });
             });
             nosyncedAnimals.save();
@@ -490,12 +490,12 @@ describe('Sequences', function(){
                         getSequence(parade.id(), sm2, q2, true, 'animals2', function(syncedAnimals2){
                           expect(syncedAnimals.count).to.be(2);
                           expect(syncedAnimals2.count).to.be(3);
-                          syncedAnimals2.once('resynced:', function(){
+                          //syncedAnimals2.once('resynced:', function(){
                             //TODO: when sequences are singletons resynced will never be called
                             expect(syncedAnimals.count).to.be(2);
                             expect(syncedAnimals2.count).to.be(3);
                             done();
-                          });
+                            //});
                         });
                       });
                     });
