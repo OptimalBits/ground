@@ -77,7 +77,7 @@ module Gnd
     {
       super();
 
-      this.containerName = containerName;
+      this.containerName = containerName || this.model.__bucket;
       
       this.storageQueue = 
         new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
@@ -118,7 +118,7 @@ module Gnd
     getKeyPath(): string[]
     {
       if(this.parent) return [this.parent.bucket(), this.parent.id(), this.containerName];
-      return [this.model.__bucket];
+      return [this.containerName];
     }
     
     keepSynced(): void
@@ -154,6 +154,7 @@ module Gnd
     {
       this._keepSynced = true;
     
+      // TODO: Add support for auto-sync for collections without parents.
       if(this.parent && using.syncManager){
         if(this.parent.isPersisted()){
           using.syncManager.startSync(this);

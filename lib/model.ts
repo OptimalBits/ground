@@ -495,6 +495,9 @@ export class Model extends Base implements Sync.ISynchronizable
       },
       'Model': function(parent){
         return this.all(parent, {}, this.__bucket);
+      },
+      '': function(parent){
+        return allInstances(null, [this.__bucket], {});
       }
     }).apply(this, arguments);
   }
