@@ -77,7 +77,7 @@ module Gnd
     {
       super();
 
-      this.containerName = containerName || this.model.__bucket;
+      this.containerName = containerName || (this.model && this.model.__bucket);
       
       this.storageQueue = 
         new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
