@@ -179,7 +179,7 @@ export class Queue extends Base implements IStorage
         while(j<remoteSeq.length){
           remoteItem = remoteSeq[j];
           newItems.push({
-            id: null,
+            id: remoteItem.id,
             keyPath: remoteItem.keyPath,
             doc: remoteItem.doc
           });
@@ -202,7 +202,10 @@ export class Queue extends Base implements IStorage
             });
           }
           upsert(item, (err)=>{
-            storage.insertBefore(keyPath, item.id, item.keyPath, {insync:true}, (err?)=>{
+            storage.insertBefore(keyPath, null, item.keyPath, {
+              insync:true,
+              id:item.id
+            }, (err?)=>{
               done(err);
             });
           });

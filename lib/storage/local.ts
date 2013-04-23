@@ -340,7 +340,7 @@ export class Local implements IStorage {
     var prevItem = itemKeys[refItem.prev];
     
     var newItem = {
-      _cid: Util.uuid(),
+      _cid: opts.id || Util.uuid(),
       key: itemKey,
       sync: opts.insync ? 'insync' : 'ib',
       prev: refItem.prev,
