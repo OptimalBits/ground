@@ -8,8 +8,7 @@
   
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
-
+/// <reference path="../third/underscore.d.ts" />
 
 /*
 References:

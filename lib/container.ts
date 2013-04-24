@@ -47,7 +47,7 @@ module Gnd
     public resync(items: any[]): Promise 
     {
       return new Promise(true);
-    };
+    }
   
     public model: IModel;
     public parent: Model;
@@ -58,12 +58,12 @@ module Gnd
     // Protected
     public items: any[];
     
-    static private getItemIds(items: Model[])
+    private static getItemIds(items: Model[])
     {
       return _.map(items, function(item){return item.id()});
     }
     
-    static public create(ContainerClass: IContainer,
+    public static create(ContainerClass: IContainer,
                          model: IModel, 
                          collectionName: string, 
                          parent: Model, 

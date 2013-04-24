@@ -22,7 +22,7 @@ export class TwoWayBinder implements Binder
   private attrBindings: {[index: string]: string[];} = {};
   private attrFormatters: {[index: string]: (input: string)=>string;} = {};
     
-  static private re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
+  private static re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
   
   private parse(value: string, 
                 formatters: {[index: string]: (input: string)=>string;})

@@ -15,7 +15,7 @@
 // https://github.com/Wolfy87/EventEmitter
 //
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="../third/underscore.d.ts" />
 
 module Gnd {
 
@@ -222,9 +222,9 @@ export class EventEmitter {
       if(namespaces[namespace]){
         var _listeners;
         if(event === ''){
-          var events = namespaces[namespace];
+          var events = <Object>namespaces[namespace];
           
-          _.each(events, function(listeners, event){
+          _.each(events, function(listeners: any, event?: string){
             for(var i=0, len=listeners.length;i<len;i++){
               self._removeListener(event, listeners[i]);
             }

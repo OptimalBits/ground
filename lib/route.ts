@@ -14,8 +14,6 @@
 /// <reference path="dom.ts" />
 /// <reference path="using.ts" />
 
-/// <reference path="../third/underscore.browser.d.ts" />
-
 declare var curl;
 
 module Gnd.Route {

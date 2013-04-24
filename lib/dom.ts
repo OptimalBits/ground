@@ -11,7 +11,7 @@
   and sizzle
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="./promise" />
 
 module Gnd
 {
@@ -28,8 +28,9 @@ module Gnd
   export function $(selector: string, context?: Element): Query;
   export function $(selectorOrElement: any, context?: Element): Query
   {
-    var 
-      context = context || document,
+    var context = context || document
+    
+    var
       query = new Query(),
       el, 
       push = function(elements: any[]){

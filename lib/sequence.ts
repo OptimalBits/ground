@@ -53,12 +53,12 @@ export class Sequence extends Container
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
-  };
+  }
 
   private deleteItem(id: string, opts): Promise
   {
     var idx = -1;
-    _.each(this.items, (item, i)=>{
+    _.each(this.items, (item, i?)=>{
       if(item.id === id){
         idx = i;
       }

@@ -7,6 +7,7 @@
 */
 /// <reference path="util.ts" />
 
+
 module Gnd {
 
 function isPromise(promise){
@@ -15,6 +16,7 @@ function isPromise(promise){
 
 // TODO: Use local event queue to guarantee that all callbacks are called 
 // in the same turn in the proper order.
+//export class Promise<T> {
 export class Promise {
   fulfilledFns : any[] = [];
   rejectedFns: any[] = [];
@@ -59,9 +61,17 @@ export class Promise {
       this.resolve(value);
     }
   }
-  
-  then(onFulfilled: any, onRejected?: any);
-  then(onFulfilled: (value: any) => any, onRejected?: (reason: Error) => any){
+
+/*  
+  // Declaration using generics (typescript >= 0.9.0)
+  then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise
+  then<U>(onFulfilled: (value: T) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>
+  then<U>(onFulfilled: (value: T) => U, onRejected?: (reason: Error) => void): Promise<U>
+  */
+  then(onFulfilled: (value: any) => void, onRejected?: (reason: Error) => void): Promise;
+  then(onFulfilled: (value: any) => Promise, onRejected?: (reason: Error) => void): Promise;
+  then(onFulfilled: (value: any) => any, onRejected?: (reason: Error) => void): Promise
+  {
     var promise = new Promise();
     
     var wrapper = (fn, reject?: bool) => {
@@ -113,7 +123,8 @@ export class Promise {
     else this.resolve(value);
   }
   
-  resolve(value?:any): Promise
+  //resolve(value?: T): Promise<T>
+  resolve(value?: any): Promise
   {
     if(this.isFulfilled) return;
     this.abort();
@@ -123,6 +134,7 @@ export class Promise {
     return this;
   }
   
+  //reject(reason: Error): Promise<T>  
   reject(reason: Error): Promise
   {
     if(this.isFulfilled) return;

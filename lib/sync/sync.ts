@@ -47,7 +47,7 @@ export class Manager extends Base {
       var socket = this.socket;
       
       // Call re-sync for all models in this manager...
-      _.each(this.docs, (docs: Sync.ISynchronizable[], id: string) => {
+      _.each(this.docs, (docs: Sync.ISynchronizable[], id?: string) => {
         var doc = docs[0];
         
         // TODO: send also the current __rev, if newer in server, 
@@ -65,10 +65,7 @@ export class Manager extends Base {
           if(!err){
             for(var i=0, len=docs.length; i<len; i++){
               docs[i].set(newdoc, {nosync: true});
-              //docs[i].id(id);
             }
-            // TODO: we probably should update locally...
-            // doc.local().update(doc);
           } else {
             console.log('Error resyncing %s, %s', doc.getKeyPath(), err)
           }

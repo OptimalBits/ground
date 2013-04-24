@@ -36,7 +36,7 @@ export interface ViewArgs
  *  is defined on the parent view.
  *
  */
-export class View implements ViewArgs extends Base
+export class View extends Base implements ViewArgs
 {
   private template: (args: any) => string;
   private selector: string;

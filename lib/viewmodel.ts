@@ -9,8 +9,6 @@
   models.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
-
 /// <reference path="base.ts" />
 /// <reference path="model.ts" />
 /// <reference path="dom.ts" />

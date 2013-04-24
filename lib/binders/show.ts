@@ -54,7 +54,7 @@ export class ShowBinder implements Binder
       item[0].off(item[1], item[2]);
       item[0].release();
     });
-  };
+  }
 }
 
 }

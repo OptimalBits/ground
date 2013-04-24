@@ -23,10 +23,10 @@
 /// <reference path="../error.ts" />
 
 declare module 'mongoose' {
-  export class Schema {
+  export interface Schema {
     constructor(def: {});
-    static ObjectId : any;
-  };
+    //static ObjectId : any;
+  }
   export function model (name: string, schema: Schema) : any;
 }
 
@@ -231,10 +231,11 @@ export class MongooseStorage implements IStorage {
   {
     var query = query || {fields:null, cond:null, options:null};
     
+    // TODO: add definition types for Query object to allow using dot syntax.
     Model
       .findById(id)
       .select(setName)
-      .populate(setName, query.fields, query.cond, query.options)
+      .populate(setName, query['fields'], query['cond'], query['options'])
       .exec(function(err, doc){
         if(err){
           cb(err);

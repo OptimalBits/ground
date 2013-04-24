@@ -118,7 +118,7 @@ export class EachBinder implements Binder
             });
             
             // Remove un-used nodes.
-            _.each(mappings, (node, id) => {
+            _.each(mappings, (node, id?) => {
               !newMappings[id] && this.removeNode(id);
             });
             
@@ -132,7 +132,7 @@ export class EachBinder implements Binder
           }
         });
       }
-    
+
       refresh();
       
       this.addedListener = (item: Model) => {

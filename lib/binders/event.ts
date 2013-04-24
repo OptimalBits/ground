@@ -12,7 +12,7 @@ export class EventBinder implements Binder
   private bindings: any[][] = [];
   private el: Element;
   
-  static private re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
+  private static re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*);?)/gi;
   
   private parse(value: string): {[index: string]: string[];}
   {

@@ -72,7 +72,7 @@ export class Queue extends Base implements IStorage
     this.queue = [];
     
     this.useRemote = !!this.remoteStorage;
-    this.syncFn = _.bind(this.synchronize, this);
+    this.syncFn = <()=>void>_.bind(this.synchronize, this);
     this.autosync = typeof autosync === 'undefined' ? true : autosync;
   }
   
@@ -499,7 +499,7 @@ export class Queue extends Base implements IStorage
   
   synchronize()
   {
-    var done = _.bind(this.completed, this);
+    var done = <(err?, sid?)=>void>_.bind(this.completed, this);
     
     if (!this.currentTransfer){
       if (this.queue.length){

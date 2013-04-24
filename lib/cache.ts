@@ -130,9 +130,9 @@ export class Cache extends Base {
   private index : Index;
   private length : number = 0;
   
-  constructor(maxSize? : number = 5*1024*1024){ 
+  constructor(maxSize?: number){ 
     super();
-    this.maxSize = maxSize;
+    this.maxSize = maxSize || 5*1024*1024;
     this.populate();
   }
   /**

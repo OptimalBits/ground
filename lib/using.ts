@@ -12,7 +12,6 @@
 
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
 /// <reference path="storage.ts" />
 /// <reference path="storage/local.ts" />
 /// <reference path="storage/store/memory-storage.ts" />
@@ -40,7 +39,7 @@ module Gnd
     }
     Using.prototype._instance = this;
 
-    _.each(defaults, (value, key) => {
+    _.each(defaults, (value, key?) => {
       this[key] = value;
     });
   };

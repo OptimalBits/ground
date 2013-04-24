@@ -37,7 +37,7 @@ export interface IGettable
   get(key: string): any;
 }
 
-export class Base implements ISettable, IGettable extends EventEmitter 
+export class Base extends EventEmitter implements ISettable, IGettable
 {
   private _refCounter: number = 1;
   private _bindings: any = {};
@@ -87,8 +87,8 @@ export class Base implements ISettable, IGettable extends EventEmitter
   
     if(typeof keyOrObj == 'object'){
       options = val;
-      obj = keyOrObj;
-      _.each(obj, function(val, key){
+      obj = <Object>keyOrObj;
+      _.each(obj, function(val, key?: string){
         changed = self._set(key, val, options)?true:changed;
       });
     }else{
