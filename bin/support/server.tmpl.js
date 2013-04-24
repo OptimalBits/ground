@@ -5,13 +5,18 @@ var Gnd = require('gnd')
   , models = require('./models/models')
   , cabinet = require('cabinet') 
   , http = require('http')
-  , app = require('connect')()
-  , sio = require('socket.io').listen(app)
+  , app = require('connect').createServer()
+  , server = http.createServer(app)
+  , sio = require('socket.io').listen(server)
   , redis = require('redis')
   , mongoose = require('mongoose')
   , staticDir = __dirname
   , path = require('path');
   
+server.listen(config.APP_PORT);
+console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
+
+
 app.use(cabinet(path.join(__dirname, 'app'), {
   ignore: ['.git', 'node_modules', '*~'],
   files: {
@@ -31,7 +36,3 @@ var mongooseStorage = new Gnd.MongooseStorage(models, mongoose)
   , gndServer = new Gnd.Server(mongooseStorage, sessionManager, syncHub);
                                
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
-
-var server = http.createServer(app).listen(config.APP_PORT);
-console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
-
