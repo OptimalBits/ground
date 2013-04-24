@@ -190,15 +190,6 @@ export class Model extends Base implements Sync.ISynchronizable
     
     this._storageQueue = 
       using.storageQueue || new Storage.Queue(using.memStorage);
-
-    // 
-    // Store in model depot.
-    //
-    if(!modelDepot.getPromise(this.getKeyPath())){
-      modelDepot.setModel(this);
-    }else{
-      throw new Error("Cannot create two instances of the same model!");
-    }
     
     if(this.isPersisted()){
         this._initial = false;
