@@ -75,6 +75,7 @@ function createApplication(dst, opts, cb)
     'support/test_main.tmpl.js': '/test/main.js',
     'support/index.tmpl.html': '/app/index.html',
     'support/app.tmpl.js': '/app/app.js',
+    'support/main.tmpl.html': '/assets/templates/main.html',
     'support/models.tmpl.js': '/models/models.js',
     'support/README.tmpl.md': '/README.md'
   }
