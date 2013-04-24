@@ -199,28 +199,41 @@ export class Local implements IStorage {
   
   find(keyPath: string[], query: {}, opts, cb: (err: Error, result?: {}[]) => void) : void
   {
-    this.fetch(keyPath, (err, collection?) => {
-      var result = {};
-      var sequence = [];
-      if(collection){
-        _.each(_.keys(collection), (key)=>{
-          var op = collection[key]
-          if(op !== 'rm' || !opts.snapshot){
-            var keyValue = this.traverseLinks(key);
-            if(keyValue){
-              var 
-                item = keyValue.value,
-                id = item._cid;
-              if(!(result[id]) || op === 'insync'){
-                if(!opts.snapshot) item.__op = op;
-                result[id] = item;
+    var result = {};
+    if(keyPath.length === 1){
+      var collection = this.store.allKeys();
+      _.each(collection, (key)=>{
+        if(key.indexOf(keyPath[0]) === 0){
+          var keyValue = this.traverseLinks(key);
+          if(keyValue){
+            var item = keyValue.value;
+            result[item._cid] = item;
+          }
+        }
+      });
+      return cb(null, _.values(result));
+    }else{
+      this.fetch(keyPath, (err, collection?) => {
+        if(collection){
+          _.each(_.keys(collection), (key)=>{
+            var op = collection[key]
+            if(op !== 'rm' || !opts.snapshot){
+              var keyValue = this.traverseLinks(key);
+              if(keyValue){
+                var 
+                  item = keyValue.value,
+                  id = item._cid;
+                if(!(result[id]) || op === 'insync'){
+                  if(!opts.snapshot) item.__op = op;
+                  result[id] = item;
+                }
               }
             }
-          }
-        });
-      }
-      return cb(null, _.values(result));
-    });
+          });
+        }
+        return cb(null, _.values(result));
+      });
+    }
   }
   
   //
