@@ -184,7 +184,7 @@ export class Collection extends Container
 
   private addItem(item: Model, opts): Promise
   {
-    if(this.findById(item.id())) return;
+    if(this.findById(item.id())) return new Promise().resolve();
     
     if(this.sortByFn){
       this.sortedAdd(item);
