@@ -102,32 +102,22 @@ export function asyncDebounce(fn) {
     }
   };
 };
+
+export 
+function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number)
+{
+  var waiting;
+
+  var timer = setTimeout(() => {
+    waiting = true;
+    start();
+  }, delay);
   
-// TODO: rename to delayedTrigger(fn, triggerStart, triggerEnd, threshold)
-export function waitTrigger(func, start, end, delay){
-  return function waiter(){
-    var obj = this,
-    waiting = false,
-    timer = null,
-    args = Array.prototype.slice.call(arguments),
-    nargs = args.length,
-    callback = args[nargs-1];
-  
-    args[nargs-1] = function(){
-      clearTimeout(timer);
-      if(waiting){
-        end();
-      }
-      callback.apply(obj, arguments);
-    };
-      
-    timer = setTimeout(function(){
-      waiting = true;
-      start();
-    }, delay);
-    func.apply(this, args);
-  };
-};
+  task.then(()=>{
+    clearTimeout(timer);
+    waiting && end();
+  });
+}
  
 // Search Filter. returns true if any of the fields of the 
 // obj includes the search string.
