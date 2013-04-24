@@ -8,7 +8,7 @@
   the framework.
 */
 
-/// <reference path="../third/underscore.browser.d.ts" />
+/// <reference path="../third/underscore.d.ts" />
 /// <reference path="dom.ts" />
 /// <reference path="overload.ts" />
 
@@ -73,6 +73,7 @@ export function trim(str: string){
 
 // TODO: Add an optional timeout parameter.
 export function asyncDebounce(fn) {
+  fn = fn || noop;
   var delayedFunc = null, executing = null;
   
   return function debounced() {
