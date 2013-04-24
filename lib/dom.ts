@@ -301,29 +301,24 @@ export function serialize(obj) {
 //------------------------------------------------------------------------------
 
 module Gnd.Ajax
-{ 
-  export interface AjaxCallback
+{   
+  export function get(url: string, obj: {}): Promise
   {
-    (err?: Error, doc?:any): void;
+    return base('GET', url, obj);
   }
-  
-  export function get(url: string, obj: {}, cb: AjaxCallback)
+  export function put(url: string, obj: {}): Promise
   {
-    base('GET', url, obj, cb);
+    return base('PUT', url, obj);
   }
-  export function put(url: string, obj: {}, cb: AjaxCallback)
+  export function post(url: string, obj: {}): Promise
   {
-    base('PUT', url, obj, cb);
+    return base('POST', url, obj);
   }
-  export function post(url: string, obj: {}, cb: AjaxCallback)
+  export function del(url: string, obj: {}): Promise
   {
-    base('POST', url, obj, cb);
+    return base('DELETE', url, obj);
   }
-  export function del(url: string, obj: {}, cb: AjaxCallback)
-  {
-    base('DELETE', url, obj, cb);
-  }
-  
+
   /*
    * Get cross browser xhr object
    *
@@ -349,20 +344,24 @@ module Gnd.Ajax
     }
   }
   
-  function base(method: string, url: string, obj: {}, cb: AjaxCallback)
+  function base(method: string, url: string, obj: {}): Promise
   {
+    var promise = new Promise();
+    
     var xhr = getXhr();
     xhr.onreadystatechange = () => {
       if (xhr.readyState === 4) {
         xhr.onreadystatechange = null;
         if (xhr.status >= 200 && xhr.status < 300) {
           var res;
-          try{
+          try {
             res = JSON.parse(xhr.responseText || {});
-          }catch(e){};
-          cb(null, res);
+          } catch(e) {};
+          promise.resolve(res);
         } else {
-          cb(new Error("Ajax Error: "+xhr.responseText));
+          var err = new Error("Ajax Error: "+xhr.responseText);
+          err['status'] = xhr.status;
+          promise.reject(err);
         }
       } else {
           // still not ready
@@ -371,6 +370,8 @@ module Gnd.Ajax
     xhr.open(method, url);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.send(JSON.stringify(obj));
+
+    return promise;
   }
 } // Ajax
 
