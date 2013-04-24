@@ -13,6 +13,8 @@
   models and their IDs.
 */
 
+/// <reference path="../../third/underscore.d.ts" />
+
 module Gnd.Sync {
 export class Hub {
   private pubClient;
@@ -70,7 +72,14 @@ export class Hub {
       
       subClient.on('message', (channel, msg) => {
         var args = JSON.parse(msg);
+        
+        if(!_.isArray(args.keyPath)){
+          console.log("Error: keyPath must be an array:");
+          console.log(args.keyPath);
+          return;
+        }
         var id = args.keyPath.join(':');
+        
         console.log("MESSAGE:"+channel);
         console.log(msg);
         console.log("ID:"+id);
