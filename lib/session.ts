@@ -17,6 +17,7 @@
 
 /// <reference path="base.ts" />
 /// <reference path="dom.ts" />
+/// <reference path="promise.ts" />
 
 // var c = io.connect('http://216.157.91.131:8080/', { query: "foo=bar" });
 
@@ -33,24 +34,24 @@ export class Session extends Base
   static url = '/sessions/';
   static loginId: string;
   
-  static login(loginId: string, passwd: string, cb: (err?: Error, session?: string)=>void)
+  static login(loginId: string, passwd: string): Promise
   {
-    Ajax.post(Session.url, {username: loginId, password:passwd}, cb);
+    return Ajax.post(Session.url, {username: loginId, password:passwd});
   }
   
-  static swap(loginId: string, passwd: string, cb: (err?: Error, session?: string)=>void)
+  static swap(loginId: string, passwd: string)
   {
-    Ajax.put(Session.url, {username: loginId, password:passwd}, cb);
+    return Ajax.put(Session.url, {username: loginId, password:passwd});
   }
   
-  static logout(cb: (err?: Error) =>void)
+  static logout(): Promise
   {
-    Ajax.del(Session.url, {}, cb);
+    return Ajax.del(Session.url, {});
   }
 
-  static authenticated(cb: (err?: Error, session?: string) => void)
+  static authenticated(): Promise
   {
-    Ajax.get(Session.url, {}, cb);
+    return Ajax.get(Session.url, {});
   }
 }
 
