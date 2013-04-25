@@ -34,7 +34,7 @@ httpServer.listen(app.get('port'), function () {
 
 /// <reference path="./node.d.ts" />
 
-export module SocketIO {
+export declare module SocketIO {
 	export var version : string;
 	export var protocol: number;
 	export var clientVersion : string;

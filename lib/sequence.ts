@@ -29,8 +29,8 @@ export interface ISeqModel {
 
 export class Sequence extends Container
 { 
-  private updateFn: (args: any) => void;
-  private deleteFn: (kp: string[]) => void;
+  public updateFn: (args: any) => void;
+  public deleteFn: (model: Model) => void;
     
   constructor(model: IModel, seqName: string, parent?: Model, items?: ISeqModel[])
   {
@@ -42,9 +42,9 @@ export class Sequence extends Container
       this.emit('updated:', this, args);
     };
 
-    this.deleteFn = (kp)=>{
+    this.deleteFn = (model)=>{
       for(var i = this.items.length-1; i >= 0; i--){
-        if(this.items[i].model.id() === _.last(kp)){
+        if(this.items[i].model.id() === model.id()){
           this.remove(i);
         }
       }
@@ -209,7 +209,7 @@ export class Sequence extends Container
     return _.pluck(this.items, 'model');
   }
   
-  private startSync()
+  public startSync()
   {
     super.startSync();
     
@@ -224,7 +224,7 @@ export class Sequence extends Container
     });
   }
   
-  private resync(newItems: any[])
+  public resync(newItems: any[])
   {
     var oldItems = this.items;
     var newIds = _.pluck(newItems, 'id').sort();

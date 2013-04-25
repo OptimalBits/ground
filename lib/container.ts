@@ -28,8 +28,9 @@ module Gnd
     public storageQueue: Storage.Queue;
   
     // Event Handlers
-    private updateFn: (model: Model, args) => void;
-    private deleteFn: (model: Model) => void;
+    public updateFn: (model: Model, args) => void;
+    
+    public deleteFn: (model: Model) => void;
     
     public resyncFn: (items: any[]) => void;
     

@@ -25,15 +25,15 @@ module Gnd
   
   export function $(element: Window): Query;
   export function $(element: Element): Query;
-  export function $(selector: string, context?: Element): Query;
-  export function $(selectorOrElement: any, context?: Element): Query
+  export function $(selector: string, context?: HTMLElement): Query;
+  export function $(selectorOrElement: any, context?: HTMLElement): Query
   {
     var context = context || document
     
     var
       query = new Query(),
       el, 
-      push = function(elements: any[]){
+      push = function(elements: any){
         for(var i: number=0; i<elements.length; i++){
           query[i] = elements[i];
         }
@@ -46,7 +46,7 @@ module Gnd
       switch(selector[0]){
         case '#':
           var id = selector.slice(1);
-          el = context.getElementById(id);
+          el = document.getElementById(id);
           if(el && el.parentNode) {
       	    // Handle the case where IE, Opera, and Webkit return items
       		  // by name instead of ID
@@ -63,7 +63,7 @@ module Gnd
           push([makeElement(selector)]);
           break;
         default:
-          push(selector != 'document' ? context.getElementsByTagName(selector) : [document]);
+          push((selector != 'document' ? <any>context.getElementsByTagName(selector) : [document]));
       }
     }else{
       push([selectorOrElement]);
@@ -142,7 +142,8 @@ export class Query // implements QueryNodes
     }
   }
   
-  css(styles: {[index: string]: string;}){
+  css(styles: {[index: string]: string;})
+  {
     _.each(this, (el) => {
       _.extend(el.style, styles);
     });

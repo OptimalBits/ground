@@ -22,8 +22,8 @@ module Gnd {
 export class Collection extends Container
 {
   // Even handlers
-  private updateFn: (model: Model, args) => void;
-  private deleteFn: (model: Model) => void;
+  public updateFn: (model: Model, args) => void;
+  public deleteFn: (model: Model) => void;
   
   // Mutex
   private resyncMutex: Mutex = new Mutex();
@@ -219,7 +219,7 @@ export class Collection extends Container
     return i;
   }
     
-  private startSync()
+  public startSync()
   {
     super.startSync();
     
@@ -239,7 +239,7 @@ export class Collection extends Container
     });
   }
   
-  private resync(items: any[]): Promise
+  public resync(items: any[]): Promise
   {
     var promise = new Promise();
     this.resyncMutex.enter((done)=>{

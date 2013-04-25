@@ -11,7 +11,7 @@
 ************************************************/
 declare var process: NodeProcess;
 declare var global: any;
-
+/*
 declare var console: {
     log(...data: any[]): void;
     info(...data: any[]): void;
@@ -22,7 +22,7 @@ declare var console: {
     trace(label: string): void;
     assert(expression: any, ...message: string[]): void;
 }
-
+*/
 declare var __filename: string;
 declare var __dirname: string;
 
@@ -245,7 +245,7 @@ declare module "http" {
     export interface ServerRequest extends events.NodeEventEmitter, stream.ReadableStream {
         method: string;
         url: string;
-        headers: string;
+        headers: any;
         trailers: string;
         httpVersion: string;
         setEncoding(encoding?: string): void;
@@ -296,8 +296,8 @@ declare module "http" {
     export var STATUS_CODES;
     export function createServer(requestListener?: (request: ServerRequest, response: ServerResponse) =>void ): Server;
     export function createClient(port?: number, host?: string): any;
-    export function request(options: any, callback?: Function): ClientRequest;
-    export function get(options: any, callback?: Function): ClientRequest;
+    export function request(options: any, callback?: (res: ClientResponse) => void): ClientRequest;
+    export function get (options: any, callback?: (res: ClientResponse) => void): ClientRequest;
     export var globalAgent: Agent;
 }
 
@@ -586,16 +586,17 @@ declare module "child_process" {
 
 declare module "url" {
     export interface Url {
-        href: string;
-        protocol: string;
-        auth: string;
-        hostname: string;
-        port: string;
-        host: string;
-        pathname: string;
-        search: string;
-        query: string;
-        slashes: bool;
+        href?: string;
+        protocol?: string;
+        auth?: string;
+        hostname?: string;
+        port?: string;
+        host?: string;
+        pathname?: string;
+        search?: string;
+        query?: string;
+        slashes?: bool;
+        hash?: string;
     }
 
     export function parse(urlStr: string, parseQueryString? , slashesDenoteHost? ): Url;
@@ -724,26 +725,32 @@ declare module "fs" {
 
     export function rename(oldPath: string, newPath: string, callback?: Function): void;
     export function renameSync(oldPath: string, newPath: string): void;
-    export function truncate(fd: string, len: number, callback?: Function): void;
-    export function truncateSync(fd: string, len: number): void;
+    export function truncate(fd: number, len: number, callback?: Function): void;
+    export function truncateSync(fd: number, len: number): void;
     export function chown(path: string, uid: number, gid: number, callback?: Function): void;
     export function chownSync(path: string, uid: number, gid: number): void;
-    export function fchown(fd: string, uid: number, gid: number, callback?: Function): void;
-    export function fchownSync(fd: string, uid: number, gid: number): void;
+    export function fchown(fd: number, uid: number, gid: number, callback?: Function): void;
+    export function fchownSync(fd: number, uid: number, gid: number): void;
     export function lchown(path: string, uid: number, gid: number, callback?: Function): void;
     export function lchownSync(path: string, uid: number, gid: number): void;
+    export function chmod(path: string, mode: number, callback?: Function): void;
     export function chmod(path: string, mode: string, callback?: Function): void;
+    export function chmodSync(path: string, mode: number): void;
     export function chmodSync(path: string, mode: string): void;
-    export function fchmod(fd: string, mode: string, callback?: Function): void;
-    export function fchmodSync(fd: string, mode: string): void;
+    export function fchmod(fd: number, mode: number, callback?: Function): void;
+    export function fchmod(fd: number, mode: string, callback?: Function): void;
+    export function fchmodSync(fd: number, mode: number): void;
+    export function fchmodSync(fd: number, mode: string): void;
     export function lchmod(path: string, mode: string, callback?: Function): void;
+    export function lchmod(path: string, mode: number, callback?: Function): void;
+    export function lchmodSync(path: string, mode: number): void;
     export function lchmodSync(path: string, mode: string): void;
     export function stat(path: string, callback?: (err: Error, stats: Stats) =>any): Stats;
     export function lstat(path: string, callback?: (err: Error, stats: Stats) =>any): Stats;
-    export function fstat(fd: string, callback?: (err: Error, stats: Stats) =>any): Stats;
+    export function fstat(fd: number, callback?: (err: Error, stats: Stats) =>any): Stats;
     export function statSync(path: string): Stats;
     export function lstatSync(path: string): Stats;
-    export function fstatSync(fd: string): Stats;
+    export function fstatSync(fd: number): Stats;
     export function link(srcpath: string, dstpath: string, callback?: Function): void;
     export function linkSync(srcpath: string, dstpath: string): void;
     export function symlink(srcpath: string, dstpath: string, type?: string, callback?: Function): void;
@@ -751,29 +758,30 @@ declare module "fs" {
     export function readlink(path: string, callback?: (err: Error, linkString: string) =>any): void;
     export function realpath(path: string, callback?: (err: Error, resolvedPath: string) =>any): void;
     export function realpath(path: string, cache: string, callback: (err: Error, resolvedPath: string) =>any): void;
-    export function realpathSync(path: string, cache?: string): string;
+    export function realpathSync(path: string, cache?: bool): string;
     export function unlink(path: string, callback?: Function): void;
     export function unlinkSync(path: string): void;
     export function rmdir(path: string, callback?: Function): void;
     export function rmdirSync(path: string): void;
-    export function mkdir(path: string, mode?: number, callback?: Function): void;
+    export function mkdir(path: string, mode?: any, callback?: Function): void;
     export function mkdirSync(path: string, mode?: number): void;
+    export function mkdirSync(path: string, mode?: string): void;
     export function readdir(path: string, callback?: (err: Error, files: string[]) => void): void;
     export function readdirSync(path: string): string[];
-    export function close(fd: string, callback?: Function): void;
-    export function closeSync(fd: string): void;
-    export function open(path: string, flags: string, mode?: string, callback?: (err: Error, fd: string) =>any): void;
-    export function openSync(path: string, flags: string, mode?: string): void;
+    export function close(fd: number, callback?: Function): void;
+    export function closeSync(fd: number): void;
+    export function open(path: string, flags: string, mode?: string, callback?: (err: Error, fd: number) =>any): void;
+    export function openSync(path: string, flags: string, mode?: string): number;
     export function utimes(path: string, atime: number, mtime: number, callback?: Function): void;
     export function utimesSync(path: string, atime: number, mtime: number): void;
-    export function futimes(fd: string, atime: number, mtime: number, callback?: Function): void;
-    export function futimesSync(fd: string, atime: number, mtime: number): void;
-    export function fsync(fd: string, callback?: Function): void;
-    export function fsyncSync(fd: string): void;
-    export function write(fd: string, buffer: NodeBuffer, offset: number, length: number, position: number, callback?: (err: Error, written: number, buffer: NodeBuffer) =>any): void;
-    export function writeSync(fd: string, buffer: NodeBuffer, offset: number, length: number, position: number): void;
-    export function read(fd: string, buffer: NodeBuffer, offset: number, length: number, position: number, callback?: (err: Error, bytesRead: number, buffer: NodeBuffer) => void): void;
-    export function readSync(fd: string, buffer: NodeBuffer, offset: number, length: number, position: number): any[];
+    export function futimes(fd: number, atime: number, mtime: number, callback?: Function): void;
+    export function futimesSync(fd: number, atime: number, mtime: number): void;
+    export function fsync(fd: number, callback?: Function): void;
+    export function fsyncSync(fd: number): void;
+    export function write(fd: number, buffer: NodeBuffer, offset: number, length: number, position: number, callback?: (err: Error, written: number, buffer: NodeBuffer) =>any): void;
+    export function writeSync(fd: number, buffer: NodeBuffer, offset: number, length: number, position: number): number;
+    export function read(fd: number, buffer: NodeBuffer, offset: number, length: number, position: number, callback?: (err: Error, bytesRead: number, buffer: NodeBuffer) => void): void;
+    export function readSync(fd: number, buffer: NodeBuffer, offset: number, length: number, position: number): number;
     export function readFile(filename: string, encoding: string, callback: (err: Error, data: string) => void ): void;
     export function readFile(filename: string, callback: (err: Error, data: NodeBuffer) => void ): void;
     export function readFileSync(filename: string): NodeBuffer;
@@ -925,13 +933,13 @@ declare module "crypto" {
     export interface Credentials { context?: any; }
     export function createCredentials(details: CredentialDetails): Credentials;
     export function createHash(algorithm: string): Hash;
+    export function createHmac(algorithm: string, key: string): Hmac;
     interface Hash {
-        update(data: any, input_encoding?: string): void;
-        digest(encoding?: string): any;
-        createHmac(algorithm: string, key: string): Hmac;
+        update(data: any, input_encoding?: string): Hash;
+        digest(encoding?: string): string;
     }
     interface Hmac {
-        update(data: any): void;
+        update(data: any): Hmac;
         digest(encoding?: string): void;
     }
     export function createCipher(algorithm: string, password: any): Cipher;
@@ -940,9 +948,9 @@ declare module "crypto" {
         update(data: any, input_encoding?: string, output_encoding?: string): string;
         final(output_encoding?: string): string;
         setAutoPadding(auto_padding: bool): void;
-        createDecipher(algorithm: string, password: any): Decipher;
-        createDecipheriv(algorithm: string, key: any, iv: any): Decipher;
     }
+    export function createDecipher(algorithm: string, password: any): Decipher;
+    export function createDecipheriv(algorithm: string, key: any, iv: any): Decipher;
     interface Decipher {
         update(data: any, input_encoding?: string, output_encoding?: string): void;
         final(output_encoding?: string): string;

@@ -10,6 +10,8 @@
 
 /// <reference path="base.ts" />
 /// <reference path="dom.ts" />
+/// <reference path="using.ts" />
+
 
 module Gnd {
 
@@ -36,17 +38,17 @@ export interface ViewArgs
  *  is defined on the parent view.
  *
  */
-export class View extends Base implements ViewArgs
+export class View extends Base
 {
   private template: (args: any) => string;
   private selector: string;
   private html: string;
-  private style: string;
+  private styles: {[index: string]: string;};
   private templateStr: string;
   private templateUrl: string;
   private cssUrl: string;
 
-  public root: Element; 
+  public root: HTMLElement; 
   public fragment: DocumentFragment;
   public parent: View;
   public children: View[] = [];
@@ -55,7 +57,6 @@ export class View extends Base implements ViewArgs
   public onShowing: (el: Element, args: any, done: ()=>void) => void;
 
   constructor(selector: string, parent: View);
-  constructor(selector: string, args: ViewArgs);
   constructor(selector: string, parent?: View, args?: ViewArgs)
   {
     super();
@@ -139,8 +140,8 @@ export class View extends Base implements ViewArgs
     var target = this.root = (this.selector && $(this.selector, parentRoot)[0]) || 
                              document.body;
                   
-    if(this.style){
-      $(target).css(this.style);
+    if(this.styles){
+      $(target).css(this.styles);
     }
   
     //

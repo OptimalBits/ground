@@ -32,16 +32,23 @@ module Gnd
     historyApi: !!(window.history && window.history.pushState)
   }
   
-  export function Using() {
-
-    if (Using.prototype._instance) {
-      return Using.prototype._instance;
+  export class Using
+  {
+    public historyApi: boolean;
+    public template: (str: string) => (args: any) => string;
+    public localStorage: IStorage;
+    public remoteStorage: IStorage;
+    public memStorage: IStorage;
+    public storageQueue: Storage.Queue;
+    public localQueue: Storage.Queue;
+    
+    public syncManager: Sync.Manager;
+    
+    constructor(){
+      _.each(defaults, (value, key?) => {
+        this[key] = value;
+      });
     }
-    Using.prototype._instance = this;
-
-    _.each(defaults, (value, key?) => {
-      this[key] = value;
-    });
   };
   
   export var using = new Using();
@@ -53,17 +60,20 @@ module Gnd
     storage: {
       local: function(storage: IStorage){
         using.localStorage = storage;
-        using.storageQueue = new Gnd.Storage.Queue(storage, using.remoteStorage);
+        using.storageQueue = new Storage.Queue(storage, using.remoteStorage);
       },
       remote: function(storage: IStorage){
         using.remoteStorage = storage;
         if(using.localStorage){
           using.storageQueue = new Gnd.Storage.Queue(using.localQueue, storage);
         }
+      },
+      mem: function(storage: IStorage){
+        using.memStorage = storage;
       }
     },
     storageQueue: function(localStorage: IStorage, remoteStorage: IStorage){
-      using.storageQueue = new Gnd.Storage.Queue(localStorage, remoteStorage);
+      using.storageQueue = new Storage.Queue(localStorage, remoteStorage);
     },
     historyApi: function(use: bool){
       using.historyApi = use;

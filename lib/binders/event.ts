@@ -17,7 +17,7 @@ export class EventBinder implements Binder
   private parse(value: string): {[index: string]: string[];}
   {
     var eventBindings = {}, match;
-    while(match = TwoWayBinder.re.exec(value)){
+    while(match = EventBinder.re.exec(value)){
       eventBindings[match[3]] = makeKeypathArray(match[4]);
     }
     return eventBindings;
