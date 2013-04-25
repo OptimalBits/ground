@@ -34,7 +34,7 @@ module Gnd
   
   export class Using
   {
-    public historyApi: boolean;
+    public historyApi: bool;
     public template: (str: string) => (args: any) => string;
     public localStorage: IStorage;
     public remoteStorage: IStorage;
