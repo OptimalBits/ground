@@ -10,6 +10,7 @@
 /// <reference path="../error.ts" />
 /// <reference path="../../third/socket.io.d.ts" />
 
+// This functions picks the error message and pass it to socket.io callback ack
 function scb(cb){
   return function(){
     if(arguments[0]){

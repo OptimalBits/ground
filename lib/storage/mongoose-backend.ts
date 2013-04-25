@@ -19,7 +19,7 @@
   element in the collection.
 
 */
-/// <reference path="../storage.ts" />
+/// <reference path="storage.ts" />
 /// <reference path="../error.ts" />
 
 declare module 'mongoose' {

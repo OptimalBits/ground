@@ -7,7 +7,7 @@
 */
 
 /// <reference path="../error.ts" />
-/// <reference path="../storage.ts" />
+/// <reference path="storage.ts" />
 /// <reference path="../promise.ts" />
 
 module Gnd.Storage {

@@ -10,7 +10,6 @@
 /// <reference path="./lib/task.ts" />
 /// <reference path="./lib/base.ts" />
 /// <reference path="./lib/cache.ts" />
-/// <reference path="./lib/storage.ts" />
 /// <reference path="./lib/storage/queue.ts" />
 /// <reference path="./lib/storage/local.ts" />
 /// <reference path="./lib/storage/socket.ts" />
@@ -19,10 +18,10 @@
 /// <reference path="./lib/storage/store/memory-storage.ts" />
 /// <reference path="./lib/sync/sync.ts" />
 
-/// <reference path="./lib/session.ts" />
+/// <reference path="./lib/session/session.ts" />
 
-/// <reference path="./lib/sequence.ts" />
-/// <reference path="./lib/collection.ts" />
+/// <reference path="./lib/container/sequence.ts" />
+/// <reference path="./lib/container/collection.ts" />
 /// <reference path="./lib/model.ts" />
 
 /// <reference path="./lib/route.ts" />

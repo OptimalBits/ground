@@ -12,7 +12,7 @@
 
 */
 
-/// <reference path="storage.ts" />
+/// <reference path="storage/storage.ts" />
 /// <reference path="storage/local.ts" />
 /// <reference path="storage/store/memory-storage.ts" />
 /// <reference path="storage/queue.ts" />

@@ -6,7 +6,7 @@
   Storage implementation using HTML5 LocalStorage
 */
 
-/// <reference path="../storage.ts" />
+/// <reference path="storage.ts" />
 /// <reference path="../cache.ts" />
 /// <reference path="../error.ts" />
 /// <reference path="store/store.ts" />

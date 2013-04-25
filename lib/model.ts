@@ -16,14 +16,15 @@
   'deleted:', emitted when a model has been deleted.
 */
 
+/// <reference path="using.ts" />
 /// <reference path="base.ts" />
-/// <reference path="promise.ts" />
-/// <reference path="collection.ts" />
-/// <reference path="sequence.ts" />
 /// <reference path="overload.ts" />
+/// <reference path="promise.ts" />
+/// <reference path="container/collection.ts" />
+/// <reference path="container/sequence.ts" />
 /// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
-/// <reference path="using.ts" />
+
 
 module Gnd {
 

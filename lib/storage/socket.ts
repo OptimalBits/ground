@@ -6,7 +6,7 @@
   Storage implementation using socket.io
 */
 
-/// <reference path="../storage.ts" />
+/// <reference path="storage.ts" />
 /// <reference path="../util.ts" />
 
 module Gnd.Storage {

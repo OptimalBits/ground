@@ -7,7 +7,7 @@
   Storage implementation using HTML5 LocalStorage
 */
 
-/// <reference path="../storage.ts" />
+/// <reference path="storage.ts" />
 /// <reference path="../cache.ts" />
 
 module Gnd.Storage {
