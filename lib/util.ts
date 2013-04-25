@@ -67,8 +67,15 @@ if((typeof process !== 'undefined') && (process.nextTick)){
 
 export var nextTick;
 
-export function trim(str: string){
-  return str.replace(/^\s+|\s+$/g,'');
+export function trim(str: string, maxLen?: number, suffix?: string): string
+{
+  str = str.replace(/^\s+|\s+$/g,'');
+  if(str && maxLen && str.length > maxLen) {
+    var suffixLen = 0;
+    if(suffix) suffixLen = suffix.length;
+    str = str.substr(0,maxLen-suffixLen) + suffix;
+  }
+  return str;
 };
 
 // TODO: Add an optional timeout parameter.
@@ -105,7 +112,7 @@ export function asyncDebounce(fn) {
 };
 
 export 
-function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number)
+function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number): Promise
 {
   var waiting;
 
@@ -114,7 +121,7 @@ function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number)
     start();
   }, delay);
   
-  task.then(()=>{
+  return task.then(()=>{
     clearTimeout(timer);
     waiting && end();
   });
