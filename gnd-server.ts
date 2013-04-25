@@ -1,5 +1,5 @@
 /**
-   Ground Web Framework v0.1.0
+   Ground Web Framework
 
    Features:
    - Modular design.
@@ -30,9 +30,6 @@
 /// <reference path="./lib/task.ts" />
 
 declare var define;
-declare var exports;
-declare var window; // Browser
-declare var global; // Node.js
 
 var windowOrGlobal;
 if(typeof window === 'undefined'){
