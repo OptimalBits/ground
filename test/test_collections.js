@@ -511,7 +511,7 @@ describe('Collections', function(){
               onlineAnimals.once('resynced:', function(){
                 expect(onlineAnimals.count).to.be(1);
                 
-                Gnd.Ajax.del('/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null, function(err, res) {
+                Gnd.Ajax.del('/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null).then(function() {
                   // The server has deleted the model, but we do not know it yet.
                   // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
                   

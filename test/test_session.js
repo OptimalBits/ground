@@ -23,22 +23,20 @@ describe('Session', function(){
   
   describe('Login / Logout', function(){
     it('Login creates a new session', function(done){
-      Gnd.Session.login('tester', 'passwd', function(err, session){
-        expect(err).to.not.be.ok();
+      Gnd.Session.login('tester', 'passwd').then(function(session){
         expect(session).to.be.ok();
         expect(session).to.have.property('username');
         
-        Gnd.Session.authenticated(function(err, session2){
-          expect(err).to.not.be.ok();
+        Gnd.Session.authenticated().then(function(session2){
           expect(session2).to.be.ok();
           expect(session.username).to.be.equal(session2.username);
           
-          Gnd.Session.logout(function(err){
-            expect(err).to.not.be.ok();
+          Gnd.Session.logout().then(function(){
             
-            Gnd.Session.authenticated(function(err, session3){
-              expect(err).to.be.ok();
-              expect(session3).to.not.be.ok();
+            Gnd.Session.authenticated().then(function(session3){
+            
+            }, function(err){
+              expect(err).to.be.an(Error);
               done();
             });
           });
@@ -47,10 +45,9 @@ describe('Session', function(){
     });
     
     it('Cannot create Model if not logged in', function(done){
-      Gnd.Session.logout(function(){
-        Gnd.Session.authenticated(function(err, session){
-          expect(err).to.be.ok();
-          expect(session).to.not.be.ok();
+      Gnd.Session.logout().then(function(){
+        Gnd.Session.authenticated().then(function(){}, function(err){
+          expect(err).to.be.an(Error);
           
           socketConnect(function(){
             var animal = new Animal({name: 'kangaroo' });
@@ -66,8 +63,7 @@ describe('Session', function(){
     });
     
     it('Can create Model if logged in', function(done){
-      Gnd.Session.login('tester', 'passwd', function(err, session){
-        expect(err).to.not.be.ok();
+      Gnd.Session.login('tester', 'passwd').then(function(session){
         expect(session).to.be.ok();
           
         socketConnect(function(){

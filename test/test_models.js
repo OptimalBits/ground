@@ -346,8 +346,7 @@ describe('Model', function(){
       
       storageQueue.waitUntilSynced(function(){
         var obj = {legs:7};
-        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj, function(err) {
-          expect(err).to.not.be.ok();
+        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj).then(function(){
           socket.socket.disconnect();
           socket.socket.connect();
           

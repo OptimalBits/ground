@@ -389,7 +389,7 @@ describe('Storage Queue', function(){
           expect(id).to.be.ok();
           storage.once('created:'+id, function(sid){
             socket.disconnect();
-            Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null, function(err, res) {
+            Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null).then(function(res) {
               socket.once('connect', function(){
                 storage.all(keyPath, {}, {}).then(function(result){
                   var docs = result[0];
@@ -461,7 +461,7 @@ describe('Storage Queue', function(){
           expect(err).to.be(null);
           expect(item).to.be.an(Object);
           socket.disconnect();
-          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null, function(err, res) {
+          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null).then(function() {
             socket.once('connect', function(){
               storage.all(keyPath, {}, {}).then(function(result){
                 var docs = result[0];
