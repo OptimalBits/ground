@@ -318,7 +318,7 @@ export class Queue extends Base implements IStorage
     return promise;
   }
     
-  create(keyPath: string[], args:{}, cb:(err?: Error, id?: string) => void)
+  create(keyPath: string[], args:{}, cb?:(err?: Error, id?: string) => void): Promise
   {
     // We need a mechanism to guarantee the order of element in the queue,
     // since create is asynchronous, it could happen that a put cmd
@@ -327,33 +327,32 @@ export class Queue extends Base implements IStorage
     // On the other hand, first adding Cmd and then creating in storage
     // could result in remoteStorage completing before localStorage
     // with other hazzards as result...
-    this.localStorage.create(keyPath, args, (err, cid?) => {
-      if(!err){
-        args['_cid'] = args['_cid'] || cid;
-        this.addCmd({cmd:'create', keyPath: keyPath, args: args});
-        cb(err, cid);
-      }else{
-        cb(err);
-      }
-    });
-  }
-  
-  put(keyPath: string[], args:{}, cb)
-  {
-    this.localStorage.put(keyPath, args, (err?) => {
-      if(!err){
-        this.addCmd({cmd:'update', keyPath: keyPath, args: args});
-      }
+    return this.localStorage.create(keyPath, args).then((cid)=>{
+      args['_cid'] = args['_cid'] || cid;
+      this.addCmd({cmd:'create', keyPath: keyPath, args: args});
+      cb(null, cid);
+      return cid;
+    }, function(err){
       cb(err);
     });
   }
   
-  del(keyPath: string[], cb)
+  put(keyPath: string[], args:{}, cb?): Promise
   {
-    this.localStorage.del(keyPath, (err?) => {
-      if(!err){
-        this.addCmd({cmd:'delete', keyPath: keyPath});
-      }
+    return this.localStorage.put(keyPath, args).then(()=>{
+      this.addCmd({cmd:'update', keyPath: keyPath, args: args});
+      cb();
+    }, (err)=>{
+      cb(err);
+    });
+  }
+  
+  del(keyPath: string[], cb?): Promise
+  {
+    return this.localStorage.del(keyPath).then(()=>{
+      this.addCmd({cmd:'delete', keyPath: keyPath});
+      cb();
+    }, (err) => {
       cb(err);
     });
   }

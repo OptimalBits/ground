@@ -18,25 +18,27 @@ export class Socket implements IStorage {
     this.socket = socket;
   }
   
-  create(keyPath: string[], doc: any, cb: (err: Error, key: string) => void): void
+  create(keyPath: string[], doc: any, cb?: (err: Error, key: string) => void): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'create', keyPath, doc, cb);
+    cb = cb || Util.noop; 
+    return Gnd.Util.safeEmit(this.socket, 'create', keyPath, doc, cb);
   }
   
-  put(keyPath: string[], doc: any, cb: (err?: Error) => void): void
+  put(keyPath: string[], doc: any, cb?: (err?: Error) => void): Promise
   {
+    cb = cb || Util.noop; 
     delete doc['_id'];
-    Gnd.Util.safeEmit(this.socket, 'put', keyPath, doc, cb);
+    return Gnd.Util.safeEmit(this.socket, 'put', keyPath, doc, cb);
   }
   
-  fetch(keyPath: string[], cb: (err?: Error, doc?: any) => void): void
+  fetch(keyPath: string[], cb?: (err?: Error, doc?: any) => void): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'get', keyPath, cb);
+    return Gnd.Util.safeEmit(this.socket, 'get', keyPath, cb);
   }
   
-  del(keyPath: string[], cb: (err?: Error) => void): void
+  del(keyPath: string[], cb?: (err?: Error) => void): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'del', keyPath, cb);
+    return Gnd.Util.safeEmit(this.socket, 'del', keyPath, cb);
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void

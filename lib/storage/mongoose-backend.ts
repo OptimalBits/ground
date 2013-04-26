@@ -80,8 +80,9 @@ export class MongooseStorage implements IStorage {
     }));
   }
   
-  create(keyPath: string[], doc: any, cb: (err: Error, key?: string) => void): void
+  create(keyPath: string[], doc: any, cb?: (err: Error, key?: string) => void): Promise
   {
+    var promise = new Promise();
     this.getModel(keyPath, function(Model){
       var instance = new Model(doc);
       instance.save(function(err, doc){  
@@ -93,10 +94,12 @@ export class MongooseStorage implements IStorage {
         }
       });
     }, cb);
+    return promise;
   }
   
-  put(keyPath: string[], doc: any, cb: (err?: Error) => void): void
+  put(keyPath: string[], doc: any, cb?: (err?: Error) => void): Promise
   {
+    var promise = new Promise();
     this.getModel(keyPath, function(Model){
     // Model.findByIdAndUpdate(_.last(keyPath), {$set: doc, $inc: doc.__rev}, (err, oldDoc) => {
       Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
@@ -108,6 +111,7 @@ export class MongooseStorage implements IStorage {
         cb(err);
       });
     }, cb);
+    return promise;
   }
 
   /*
@@ -121,9 +125,10 @@ export class MongooseStorage implements IStorage {
       });
   */
   
-  fetch(keyPath: string[], cb: (err: Error, doc?: any) => void): void
+  fetch(keyPath: string[], cb?: (err: Error, doc?: any) => void): Promise
   {
-   this.getModel(keyPath, function(Model){
+    var promise = new Promise()
+    this.getModel(keyPath, function(Model){
       Model.findById(_.last(keyPath), (err, doc?) => {
         if(doc){
           cb(err, doc);
@@ -132,13 +137,16 @@ export class MongooseStorage implements IStorage {
         }
       });
     }, cb);
+    return promise;
   }
   
-  del(keyPath: string[], cb: (err?: Error) => void): void
+  del(keyPath: string[], cb?: (err?: Error) => void): Promise
   {
+    var promise = new Promise();
     this.getModel(keyPath, function(Model){
       Model.remove({_id:_.last(keyPath)}, cb);
     }, cb);
+    return promise;
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:{}, cb: (err?: Error) => void): void;

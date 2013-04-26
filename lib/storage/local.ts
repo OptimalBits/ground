@@ -89,46 +89,70 @@ export class Local implements IStorage {
     this.store = store || new Storage.Store.LocalStore();
   }
 
-  create(keyPath: string[], doc: any, cb: (err?: Error, id?: string) => void) {
+  create(keyPath: string[], doc: any, cb?: (err?: Error, id?: string) => void): Promise
+  {
+    cb = cb || Util.noop;
+    var promise = new Promise();
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
     this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
     cb(null, doc._cid);
+    
+    return promise.resolve(doc._cid);
   }
   
-  fetch(keyPath: string[], cb: (err: Error, doc?: any) => void) {
+  fetch(keyPath: string[], cb?: (err: Error, doc?: any) => void): Promise
+  {
+    cb = cb || Util.noop;
+    var promise = new Promise();
     var keyValue = this.traverseLinks(this.makeKey(keyPath));
     if(keyValue){
       cb(null, keyValue.value);
+      promise.resolve(keyValue.value);
     }else {
       cb(InvalidKeyError);  
-    } 
+      promise.reject(InvalidKeyError);
+    }
+    return promise;
   }
   
-  put(keyPath: string[], doc: {}, cb: (err?: Error) => void) {
+  put(keyPath: string[], doc: {}, cb?: (err?: Error) => void): Promise
+  {
+    cb = cb || Util.noop;
     var 
       key = this.makeKey(keyPath),
       keyValue = this.traverseLinks(this.makeKey(keyPath));
+
+    var promise = new Promise();
       
     if(keyValue){
       _.extend(keyValue.value, doc);
       this.store.put(keyValue.key, keyValue.value);
       cb();
+      promise.resolve();
     }else{
-      cb(InvalidKeyError);  
+      cb(InvalidKeyError);
+      promise.reject(InvalidKeyError);
     }
+    return promise;
   }
     
-  del(keyPath: string[], cb: (err?: Error) => void) {
+  del(keyPath: string[], cb?: (err?: Error) => void): Promise
+  {
+    cb = cb || Util.noop;
+    var promise = new Promise();
     this.traverseLinks(this.makeKey(keyPath), (key)=>{
       this.store.del(this.makeKey(keyPath));
     });
     cb();
+    return promise.resolve();
   }
     
-  link(newKeyPath: string[], oldKeyPath: string[], cb: (err?: Error) => void): void
+  link(newKeyPath: string[], oldKeyPath: string[], cb?: (err?: Error) => void): Promise
   {
+    cb = cb || Util.noop;
+    var promise = new Promise();
     // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
     var oldKey = this.makeKey(oldKeyPath);
     var newKey = this.makeKey(newKeyPath);
@@ -141,7 +165,8 @@ export class Local implements IStorage {
         this.store.put(link, keys[i]);
       }
     }
-    cb();  
+    cb();
+    return promise.resolve();
   }
   
   //
