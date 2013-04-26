@@ -52,12 +52,21 @@ class ModelDepot
     
     var fetch: bool = true;
     if(!keyPath){
-      fetch = false;
-      keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
+      if(args['_cid'] || args['_id']){
+        fetch = false;
+        keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
+      }else{
+        return create(args).then((model) => {
+          var promise = new Promise(model);
+          this.setPromise(model.getKeyPath(), promise);
+          model.retain();
+          return promise;
+        });
+      }
     }
     
-    var key = this.key(keyPath);
-    var promise = this.models[key];
+    var promise = this.models[this.key(keyPath)];
+
     if(!promise){
       if(fetch){
         promise = using.storageQueue.fetch(keyPath).then((result) => {
