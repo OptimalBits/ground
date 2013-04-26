@@ -234,20 +234,27 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
 /**
   A safe emit wrapper for socket.io that handles connection errors.
 */
-export function safeEmit(socket, ...args:any[]): void
+export function safeEmit(socket, ...args:any[]): Promise
 {
+  var promise = new Promise();
+  
   var cb = _.last(args);
    
   function errorFn(){
-    cb(new Error('Socket disconnected'));
+    var err = new Error('Socket disconnected');
+    cb(err);
+    promise.reject(err);
   };
   
   function proxyCb(err, res){
     socket.removeListener('disconnect', errorFn);
     if(err){
       err = new Error(err);
+      promise.reject(err);
+    }else{
+      promise.resolve(res);
     }
-    cb(err,res);
+    cb(err, res);
   };
   
   args[args.length-1] = proxyCb;
@@ -258,6 +265,8 @@ export function safeEmit(socket, ...args:any[]): void
   }else{
     errorFn();
   }
+  
+  return promise;
 }
 
 // TODO: Move to dom.ts and remove dom.ts as dependency for this module.
