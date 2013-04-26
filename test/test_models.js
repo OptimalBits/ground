@@ -135,10 +135,11 @@ describe('Model', function(){
     });
     
     beforeEach(function(done){
-      animal = new Animal({tail:true});
-      animal.keepSynced();
-      animal.save();
-      storageQueue.exec().then(done)
+      Animal.create({tail:true}, true).then(function(newAnimal){
+        newAnimal.save();
+        animal = newAnimal;
+        storageQueue.exec().then(done)
+      });
     });
       
     //
@@ -153,16 +154,14 @@ describe('Model', function(){
         socket.socket.disconnect();
       }
 
-      Animal.findById(animal.id(), function(err, doc){
-        expect(err).to.not.be.ok();
+      Animal.findById(animal.id()).then(function(doc){
         expect(doc).to.have.property('_id');
         expect(doc._id).to.eql(animal._id);
         doc.keepSynced();
         doc.set({legs:3});
         otherAnimal = doc;
         
-        Animal.findById(animal.id(), function(err, doc){
-          expect(err).to.not.be.ok();
+        Animal.findById(animal.id()).then(function(doc){
           expect(doc).to.have.property('legs');
           expect(doc).to.have.property('tail');
           expect(doc.legs).to.be(3);
@@ -214,40 +213,13 @@ describe('Model', function(){
     //  instances.
     
     it('keepSynced before save', function(done){
-      var elephant = new Animal({name: 'elephant', legs:4});
-      elephant.keepSynced();
-      elephant.save(function(err){
-        expect(err).to.not.be.ok();
-      });
-      
-      Animal.findById(elephant.id(), true).then(function(otherElephant){
-        expect(otherElephant).to.be.ok();
-        expect(otherElephant).to.be(elephant);
-          
-        elephant.once('changed:', function(doc){
-          expect(elephant.legs).to.be(5);
-          elephant.release();
-          otherElephant.release();
-          done();
-        });
-          
-        otherElephant.set('legs', 5);
-      });
-    });
-    
-    it('keepSynced before save (waiting for sync)', function(done){
-      var elephant = new Animal({name: 'elephant', legs:4});
-      elephant.keepSynced();
-      elephant.save();
-      
-      storageQueue.once('synced:', function(){
-        expect(elephant._persisted).to.be.ok();
-        expect(elephant).to.have.property('_id');
-        Animal.findById(elephant._id, true).then(function(otherElephant){
+      Animal.create({name: 'elephant', legs:4}, true).then(function(elephant){
+        elephant.save();
+        
+        Animal.findById(elephant.id(), true).then(function(otherElephant){
           expect(otherElephant).to.be.ok();
           expect(otherElephant).to.be(elephant);
           
-          //otherElephant.on('resynced:', function(){
           elephant.once('changed:', function(doc){
             expect(elephant.legs).to.be(5);
             elephant.release();
@@ -256,7 +228,33 @@ describe('Model', function(){
           });
           
           otherElephant.set('legs', 5);
+        });
+        
+      }) 
+    });
+    
+    it('keepSynced before save (waiting for sync)', function(done){
+      Animal.create({name: 'elephant', legs:4}, true).then(function(elephant){
+        elephant.save();
+      
+        storageQueue.waitUntilSynced(function(){
+          expect(elephant._persisted).to.be.ok();
+          expect(elephant).to.have.property('_id');
+          
+          Animal.findById(elephant.id(), true).then(function(otherElephant){
+            expect(otherElephant).to.be.ok();
+            expect(otherElephant).to.be(elephant);
+          
+            elephant.once('changed:', function(doc){
+              expect(elephant.legs).to.be(5);
+              elephant.release();
+              otherElephant.release();
+              done();
+            });
+          
+            otherElephant.set('legs', 5);
           //});
+          });
         });
       });
     });
