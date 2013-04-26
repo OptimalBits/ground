@@ -20,9 +20,9 @@
 
 /// <reference path="./lib/session/session.ts" />
 
-/// <reference path="./lib/container/sequence.ts" />
-/// <reference path="./lib/container/collection.ts" />
 /// <reference path="./lib/model.ts" />
+/// <reference path="./lib/container/collection.ts" />
+/// <reference path="./lib/container/sequence.ts" />
 
 /// <reference path="./lib/route.ts" />
 
