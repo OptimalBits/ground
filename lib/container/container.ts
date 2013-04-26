@@ -8,13 +8,13 @@
   This class is the base for container classes.
   
 */
-/// <reference path="using.ts" />
+/// <reference path="../using.ts" />
 
-/// <reference path="base.ts" />
-/// <reference path="model.ts" />
-/// <reference path="overload.ts" />
-/// <reference path="storage/local.ts" />
-/// <reference path="storage/store/memory-storage.ts" />
+/// <reference path="../base.ts" />
+/// <reference path="../model.ts" />
+/// <reference path="../overload.ts" />
+/// <reference path="../storage/local.ts" />
+/// <reference path="../storage/store/memory-storage.ts" />
 
 module Gnd 
 {

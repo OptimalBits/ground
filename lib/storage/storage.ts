@@ -6,8 +6,8 @@
   Storage Module. Include classes and interfaces for the storage subsystem.
 */
 
-/// <reference path="base.ts" />
-/// <reference path="util.ts" />
+/// <reference path="../base.ts" />
+/// <reference path="../util.ts" />
 
 module Gnd {
 /*
@@ -33,21 +33,15 @@ export class StorageError {
   persistent errors (should not retry).
 */
 
-export interface IDoc {
-  id: string;
-  doc: any;
-  keyPath?: string[];
-}
-
 export interface IStorage extends ISetStorage, ISeqStorage {
   //
   // Basic Storage for Models (Follows CRUD semantics)
   //
-  create(keyPath: string[], doc: {}, cb: (err: Error, key?: string) => void): void;
-  put(keyPath: string[], doc: {}, cb: (err?: Error) => void): void;
-  fetch(keyPath: string[], cb: (err?: Error, doc?: {}) => void): void;
-  del(keyPath: string[], cb: (err?: Error) => void): void;
-  link?(keyPath: string[], targetKeyPath: string[], cb: (err?: Error) => void): void;
+  create(keyPath: string[], doc: {}, cb?: (err: Error, key?: string) => void): Promise;
+  put(keyPath: string[], doc: {}, cb?: (err?: Error) => void): Promise;
+  fetch(keyPath: string[], cb?: (err?: Error, doc?: {}) => void): Promise;
+  del(keyPath: string[], cb?: (err?: Error) => void): Promise;
+  link?(keyPath: string[], targetKeyPath: string[], cb?: (err?: Error) => void): Promise;
 }
 
 //
@@ -62,6 +56,13 @@ export interface ISetStorage {
 //
 //  Sequence Storage (ordered)
 //
+
+export interface IDoc {
+  id: string;
+  doc: any;
+  keyPath?: string[];
+}
+
 export interface ISeqStorage {
   all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void;
   next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void);
