@@ -15,9 +15,9 @@
   Gnd.ActiveSession keeps an instance of the session object.
 */
 
-/// <reference path="base.ts" />
-/// <reference path="dom.ts" />
-/// <reference path="promise.ts" />
+/// <reference path="../base.ts" />
+/// <reference path="../dom.ts" />
+/// <reference path="../promise.ts" />
 
 // var c = io.connect('http://216.157.91.131:8080/', { query: "foo=bar" });
 

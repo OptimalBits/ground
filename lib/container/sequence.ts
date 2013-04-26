@@ -13,12 +13,11 @@
 
 */
 
-/// <reference path="using.ts" />
-
-/// <reference path="base.ts" />
-/// <reference path="model.ts" />
-/// <reference path="overload.ts" />
 /// <reference path="container.ts" />
+/// <reference path="../using.ts" />
+/// <reference path="../base.ts" />
+/// <reference path="../model.ts" />
+/// <reference path="../overload.ts" />
 
 module Gnd {
 
