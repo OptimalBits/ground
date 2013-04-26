@@ -7,10 +7,10 @@
   the synchronization module.
 */
 
-/// <reference path="./storage.ts" />
-/// <reference path="./sync/sync-backend.ts" />
-/// <reference path="./rightsmanager.ts" />
-/// <reference path="./sessionmanager.ts" />
+/// <reference path="storage/storage.ts" />
+/// <reference path="sync/sync-backend.ts" />
+/// <reference path="session/rightsmanager.ts" />
+/// <reference path="session/sessionmanager.ts" />
 
 /*
   GndServer gndServer = new GndServer(new MongoStorage(...));
