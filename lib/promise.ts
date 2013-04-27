@@ -122,9 +122,9 @@ export class Promise {
     return promise;
   }
   
-  fail(onRejected: (reason: Error) => any)
+  fail(onRejected?: (reason: Error) => any)
   {
-    return this.then(null, onRejected);
+    return this.then(null, onRejected || Util.noop);
   }
   
   resolveOrReject(err?: Error, value?: any)
