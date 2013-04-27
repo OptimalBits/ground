@@ -100,6 +100,43 @@ export class Queue extends Base implements IStorage
     var promise = new Promise();
     var remotePromise = new Promise();
     
+    var fetchRemote = ()=>{
+      return this.remoteStorage.fetch(keyPath).then((docRemote) => {
+        docRemote['_persisted'] = true;
+        return this.localStorage.put(keyPath, docRemote).then(() => {
+          return docRemote;
+        });
+      });
+    }
+    
+    this.localStorage.fetch(keyPath).then((doc)=>{
+      doc['_id'] = _.last(keyPath);
+      promise.resolve([doc, remotePromise]);
+      
+      if(this.useRemote){
+        fetchRemote().then((docRemote)=>{
+          remotePromise.resolve(docRemote);
+        })
+      }
+    }, (err) => {
+      if(!this.useRemote) return promise.reject(err);
+
+      fetchRemote().then((docRemote)=>{
+        remotePromise.resolve(docRemote);
+        promise.resolve([docRemote, remotePromise]);
+      }).fail((err)=>{
+        promise.reject(err);
+      });
+    });
+    return promise;
+  }
+  
+  /*
+  fetch(keyPath: string[]): Promise
+  {
+    var promise = new Promise();
+    var remotePromise = new Promise();
+    
     this.localStorage.fetch(keyPath, (err?, doc?) => {
       if(doc){ 
         doc['_id'] = _.last(keyPath);
@@ -129,7 +166,7 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
-
+  */
   private updateLocalSequence(keyPath: string[], 
                                 opts: {},
                                 remoteSeq: IDoc[], cb: (err?:Error) => void)
@@ -187,31 +224,16 @@ export class Queue extends Base implements IStorage
         }
 
         Util.asyncForEach(newItems, function(item, done){
-          //TODO: make put upsert
-          function upsert(item, cb){
-            storage.put(_.initial(item.keyPath), item.doc, (err?) => {
-              if(err) {
-                //not in local cache
-                item.doc._cid = item.doc._id;
-                storage.create(_.initial(item.keyPath), item.doc, (err?)=>{
-                  cb(err);
-                });
-              }else{
-                cb();
-              }
-            });
-          }
-          upsert(item, (err)=>{
+          item.doc._cid = item.doc._id; // ??
+          storage.put(_.initial(item.keyPath), item.doc).then(()=>{
             storage.insertBefore(keyPath, null, item.keyPath, {
               insync:true,
               id:item.id
             }, (err?)=>{
               done(err);
             });
-          });
-        }, function(err){
-          cb(err);
-        });
+          }).fail(cb);
+        }, cb);
       });
     });
   }
@@ -253,31 +275,18 @@ export class Queue extends Base implements IStorage
         storage.remove(keyPath, itemKeyPath, itemsToRemove, 
           {insync:true}, (err?) => {
           if(!err){
-            Util.asyncForEach(newItems, (doc, done) => {
+            Promise.map(newItems, (doc) => {
               var elemKeyPath = itemKeyPath.concat(doc._id);
 
               doc._persisted = true;
 
               // TODO: Probably not needed to update all newItems
-              storage.put(elemKeyPath, doc, (err?) => {
-                if(err) {
-                  //not in local cache
-                  doc._cid = doc._id;
-                  storage.create(itemKeyPath, doc, (err?)=>{
-                    done(err);
-                  });
-                }else{
-                  done();
-                }
-              });
-            }, (err) => {
-              if(!err){
-                // Add the new collection keys to the keyPath
-                storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
-              }else{
-                cb(err);
-              }
-            }); 
+              doc._cid = doc._id; // ??
+              return storage.put(elemKeyPath, doc);
+            }).then(() => {
+              // Add the new collection keys to the keyPath
+              storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
+            }).fail(cb);
           }else{
             cb(err);
           }
@@ -318,7 +327,7 @@ export class Queue extends Base implements IStorage
     return promise;
   }
     
-  create(keyPath: string[], args:{}, cb?:(err?: Error, id?: string) => void): Promise
+  create(keyPath: string[], args:{}): Promise
   {
     // We need a mechanism to guarantee the order of element in the queue,
     // since create is asynchronous, it could happen that a put cmd
@@ -330,30 +339,21 @@ export class Queue extends Base implements IStorage
     return this.localStorage.create(keyPath, args).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
       this.addCmd({cmd:'create', keyPath: keyPath, args: args});
-      cb(null, cid);
       return cid;
-    }, function(err){
-      cb(err);
     });
   }
   
-  put(keyPath: string[], args:{}, cb?): Promise
+  put(keyPath: string[], args:{}): Promise
   {
     return this.localStorage.put(keyPath, args).then(()=>{
       this.addCmd({cmd:'update', keyPath: keyPath, args: args});
-      cb();
-    }, (err)=>{
-      cb(err);
     });
   }
   
-  del(keyPath: string[], cb?): Promise
+  del(keyPath: string[]): Promise
   {
     return this.localStorage.del(keyPath).then(()=>{
       this.addCmd({cmd:'delete', keyPath: keyPath});
-      cb();
-    }, (err) => {
-      cb(err);
     });
   }
   
@@ -520,39 +520,38 @@ export class Queue extends Base implements IStorage
         
         switch (obj.cmd){
           case 'create':
-            ((cid, args) => {
-              remoteStorage.create(keyPath, args, (err?, sid?) => {
-
+            ((cid) => {
+              remoteStorage.create(keyPath, args).then((sid) => {
                 var localKeyPath = keyPath.concat(cid);
-                if(sid){
-                  localStorage.put(localKeyPath, {_persisted:true, _id: sid}, (err?: Error) => {
-                    var newKeyPath = _.initial(localKeyPath);
-                    newKeyPath.push(sid);
-                    localStorage.link(newKeyPath, localKeyPath, (err?: Error) => {
-                      var subQ = <any>(this.remoteStorage);
-                      if(this.autosync || !subQ.once){
+                
+                localStorage.put(localKeyPath, {_persisted:true, _id: sid}).then(() => {
+                  var newKeyPath = _.initial(localKeyPath);
+                  newKeyPath.push(sid);
+                  
+                  localStorage.link(newKeyPath, localKeyPath).then(() => {
+                    var subQ = <any>(this.remoteStorage);
+                    if(this.autosync || !subQ.once){
+                      this.emit('created:'+cid, sid);
+                    }else{
+                      subQ.once('created:'+sid, (sid)=>{
                         this.emit('created:'+cid, sid);
-                      }else{
-                        subQ.once('created:'+sid, (sid)=>{
-                          this.emit('created:'+cid, sid);
-                        });
-                      }
-                      this.updateQueueIds(cid, sid);
-                      done();
-                    });
+                      });
+                    }
+                    this.updateQueueIds(cid, sid);
+                    done();
                   });
-                }else{
-                  done(err || new Error("Create: no server id for keypath:"+keyPath));
-                }
+                });
+              }).fail((err) =>{
+                done(err || new Error("Create: no server id for keypath:"+keyPath));
               });
-            })(args['_cid'], args);
+            })(args['_cid']);
             
             break;
           case 'update':
-            remoteStorage.put(keyPath, args, done);
+            remoteStorage.put(keyPath, args).then(done).fail(done);
             break;
           case 'delete':
-            remoteStorage.del(keyPath, done);
+            remoteStorage.del(keyPath).then(done).fail(done);
             break;
           case 'add':
             remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}, done);

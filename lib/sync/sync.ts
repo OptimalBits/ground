@@ -52,22 +52,14 @@ export class Manager extends Base {
         
         // TODO: send also the current __rev, if newer in server, 
         // get the latest doc.
-        Gnd.Util.safeEmit(socket, 'sync', doc.getKeyPath(), function(err){
-          if(err){
-            console.log('Error syncing %s, %s', doc.getKeyPath(), err);
-          }else{
+        Gnd.Util.safeEmit(socket, 'sync', doc.getKeyPath()).then(() => {
             console.log('Syncing %s', doc.getKeyPath());
-          }
         });
         
         // OBSOLETE? if done according to new 'sync'
-        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath(), (err, newdoc) => {
-          if(!err){
-            for(var i=0, len=docs.length; i<len; i++){
-              docs[i].set(newdoc, {nosync: true});
-            }
-          } else {
-            console.log('Error resyncing %s, %s', doc.getKeyPath(), err)
+        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath()).then((newdoc) => {
+          for(var i=0, len=docs.length; i<len; i++){
+            docs[i].set(newdoc, {nosync: true});
           }
         });
       });
@@ -139,7 +131,7 @@ export class Manager extends Base {
     if(!this.docs[key]){
       this.docs[key] = [doc];
       
-      Gnd.Util.safeEmit(this.socket, 'sync', doc.getKeyPath(), function(err){
+      Gnd.Util.safeEmit(this.socket, 'sync', doc.getKeyPath()).then(() => {
         console.log('Start synching:'+doc.getKeyPath());
       });
     }else{
@@ -164,7 +156,7 @@ export class Manager extends Base {
       docs = _.reject(docs, function(item){return item === doc;});
       if(docs.length===0){
         console.log('Stop synching:'+key);
-        Gnd.Util.safeEmit(this.socket, 'unsync', doc.getKeyPath(), function(err){
+        Gnd.Util.safeEmit(this.socket, 'unsync', doc.getKeyPath()).then(() => {
           console.log('Stop synching:'+doc.getKeyPath());
         });
         delete this.docs[key];

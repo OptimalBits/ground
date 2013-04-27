@@ -4,11 +4,8 @@ return function(storage, storageType){
     var zooId;
     var key1;
     it('create a simple document', function(done){
-      storage.create(['documents'], {foo:'bar'}, function(err, key){
-        expect(err).to.not.be.ok();
-        expect(err).to.not.be.a('string');
-        storage.fetch(['documents', key], function(err, doc){
-          expect(err).to.not.be.ok();
+      storage.create(['documents'], {foo:'bar'}).then(function(key){
+        storage.fetch(['documents', key]).then(function(doc){
           expect(doc.foo).to.be.equal('bar');
           key1 = key;
           done();
@@ -17,10 +14,8 @@ return function(storage, storageType){
     });
     
     it('modifies a simple document', function(done){
-      storage.put(['documents', key1], {baz:'qux'}, function(err, key){
-        expect(err).to.not.be.ok();
-        storage.fetch(['documents', key1], function(err, doc){
-          expect(err).to.not.be.ok();
+      storage.put(['documents', key1], {baz:'qux'}).then(function(key){
+        storage.fetch(['documents', key1]).then(function(doc){
           expect(doc.foo).to.be.equal('bar');
           expect(doc.baz).to.be.equal('qux');
           done();
@@ -30,10 +25,8 @@ return function(storage, storageType){
     
     it('links a simple document', function(done){
       if(storage.link){
-        storage.link(['linked_document'], ['documents', key1], function(err){
-          expect(err).to.not.be.ok();
-          storage.fetch(['linked_document'], function(err, doc){
-            expect(err).to.not.be.ok();
+        storage.link(['linked_document'], ['documents', key1]).then(function(){
+          storage.fetch(['linked_document']).then(function(doc){
             expect(doc.foo).to.be.equal('bar');
             expect(doc.baz).to.be.equal('qux');
             done();
@@ -45,11 +38,9 @@ return function(storage, storageType){
     });
 
     it('deletes a simple document', function(done){
-      storage.del(['documents', key1], function(err){
-        expect(err).to.not.be.ok();
-        storage.fetch(['documents', key1], function(err, doc){
-          expect(err).to.be.ok();
-          expect(doc).to.not.be.ok();
+      storage.del(['documents', key1]).then(function(){
+        storage.fetch(['documents', key1]).fail(function(err){
+          expect(err).to.be.an(Error);
           done();
         });
       });
@@ -59,21 +50,17 @@ return function(storage, storageType){
       var id2, id4;
       
       it('add a few items to a set', function(done){
-        storage.create(['zoo'], {}, function(err, id){
+        storage.create(['zoo'], {}).then(function(id){
           zooId = id;
-          storage.create(['animals'], {legs:3}, function(err, id1){
-            expect(err).to.not.be.ok();
+          storage.create(['animals'], {legs:3}).then(function(id1){
             expect(id1).to.be.ok();
-            storage.create(['animals'], {legs:5}, function(err, id){
+            storage.create(['animals'], {legs:5}).then(function(id){
               id2 = id;
-              expect(err).to.not.be.ok();
               expect(id2).to.be.ok();
-              storage.create(['animals'], {legs:2}, function(err, id3){
-                expect(err).to.not.be.ok();
+              storage.create(['animals'], {legs:2}).then(function(id3){
                 expect(id3).to.be.ok();
-                storage.create(['animals'], {legs:7}, function(err, id){
+                storage.create(['animals'], {legs:7}).then(function(id){
                   id4 = id;
-                  expect(err).to.not.be.ok();
                   expect(id4).to.be.ok();
                   storage.add(['zoo', zooId, 'animals'], ['animals'], [id1, id2, id3, id4], {}, function(err){
                     expect(err).to.not.be.ok();
@@ -98,8 +85,7 @@ return function(storage, storageType){
       
       it('remove and add a few items to a set', function(done){
         storage.remove(['zoo', zooId, 'animals'], ['animals'], [id2, id4], {}, function(err){
-          storage.create(['animals'], {legs:1}, function(err, id){
-            expect(err).to.not.be.ok();
+          storage.create(['animals'], {legs:1}).then(function(id){
             storage.add(['zoo', zooId, 'animals'], ['animals'], [id], {}, function(err){
               storage.find(['zoo', zooId, 'animals'], {}, {snapshot: true}, function(err, items){
                 expect(err).to.not.be.ok();
@@ -120,9 +106,8 @@ return function(storage, storageType){
     describe('Sequences', function(){
       describe('insertBefore', function(){
         it('to the left', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'tiger'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'tiger'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}, function(err){
                 expect(err).to.not.be.ok();
@@ -130,8 +115,7 @@ return function(storage, storageType){
                   expect(err).to.not.be.ok();
                   expect(item).to.be.an(Object);
                   expect(item.doc).to.have.property('name', 'tiger');
-                  storage.create(['animals'], {name:'dog'}, function(err, id2){
-                    expect(err).to.not.be.ok();
+                  storage.create(['animals'], {name:'dog'}).then(function(id2){
                     expect(id2).to.be.ok();
                     storage.insertBefore(['parade', paradeId, 'animals'], item.id, ['animals', id2], {}, function(err){
                       expect(err).to.not.be.ok();
@@ -149,9 +133,8 @@ return function(storage, storageType){
           });
         });
         it('push one item', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'tiger'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'tiger'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}, function(err){
                 expect(err).to.not.be.ok();
@@ -165,24 +148,20 @@ return function(storage, storageType){
           });
         });
         it('push many items', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'cat'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'cat'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}, function(err){
                 expect(err).to.not.be.ok();
-                storage.create(['animals'], {name:'fox'}, function(err, id2){
-                  expect(err).to.not.be.ok();
+                storage.create(['animals'], {name:'fox'}).then(function(id2){
                   expect(id2).to.be.ok();
                   storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id2], {}, function(err){
                     expect(err).to.not.be.ok();
-                    storage.create(['animals'], {name:'eagle'}, function(err, id3){
-                      expect(err).to.not.be.ok();
+                    storage.create(['animals'], {name:'eagle'}).then(function(id3){
                       expect(id3).to.be.ok();
                       storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id3], {}, function(err){
                         expect(err).to.not.be.ok();
-                        storage.create(['animals'], {name:'shark'}, function(err, id4){
-                          expect(err).to.not.be.ok();
+                        storage.create(['animals'], {name:'shark'}).then(function(id4){
                           expect(id4).to.be.ok();
                           storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id4], {}, function(err){
                             expect(err).to.not.be.ok();
@@ -207,9 +186,8 @@ return function(storage, storageType){
           });
         });
         it('invalid reference keypath', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'tiger'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'tiger'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], 'jklöjlöasdf', ['animals', id1], {}, function(err){
                 expect(err).to.be.ok();
@@ -225,9 +203,8 @@ return function(storage, storageType){
       });
       describe('all', function(){
         it('one item', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'cat'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'cat'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}, function(err){
                 expect(err).to.not.be.ok();
@@ -241,19 +218,16 @@ return function(storage, storageType){
           });
         });
         it('many items', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'cat'}, function(err, id){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'cat'}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                 expect(err).to.not.be.ok();
-                storage.create(['animals'], {name:'frog'}, function(err, id){
-                  expect(err).to.not.be.ok();
+                storage.create(['animals'], {name:'frog'}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                     expect(err).to.not.be.ok();
-                    storage.create(['animals'], {name:'dog'}, function(err, id){
-                      expect(err).to.not.be.ok();
+                    storage.create(['animals'], {name:'dog'}).then(function(id){
                       expect(id).to.be.ok();
                       storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                         expect(err).to.not.be.ok();
@@ -271,9 +245,8 @@ return function(storage, storageType){
           });
         });
         it('empty sequence', function(done){
-          storage.create(['parade'], {}, function(err, paradeId){
-            storage.create(['animals'], {name:'cat'}, function(err, id1){
-              expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(paradeId){
+            storage.create(['animals'], {name:'cat'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.all(['parade', paradeId, 'animals'], {}, {}, function(err, items){
                 expect(err).to.not.be.ok();
@@ -288,32 +261,26 @@ return function(storage, storageType){
       describe('traversal', function(){
         var paradeId;
         before(function(done){
-          storage.create(['parade'], {}, function(err, id){
-            expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(id){
             expect(id).to.be.ok();
             paradeId = id;
-            storage.create(['animals'], {name:'tiger'}, function(err, id){
-              expect(err).to.not.be.ok();
+            storage.create(['animals'], {name:'tiger'}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                 expect(err).to.not.be.ok();
-                storage.create(['animals'], {name:'monkey'}, function(err, id){
-                  expect(err).to.not.be.ok();
+                storage.create(['animals'], {name:'monkey'}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                     expect(err).to.not.be.ok();
-                    storage.create(['animals'], {name:'prawn'}, function(err, id){
-                      expect(err).to.not.be.ok();
+                    storage.create(['animals'], {name:'prawn'}).then(function(id){
                       expect(id).to.be.ok();
                       storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                         expect(err).to.not.be.ok();
-                        storage.create(['animals'], {name:'shark'}, function(err, id){
-                          expect(err).to.not.be.ok();
+                        storage.create(['animals'], {name:'shark'}).then(function(id){
                           expect(id).to.be.ok();
                           storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                             expect(err).to.not.be.ok();
-                            storage.create(['animals'], {name:'dog'}, function(err, id){
-                              expect(err).to.not.be.ok();
+                            storage.create(['animals'], {name:'dog'}).then(function(id){
                               expect(id).to.be.ok();
                               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                                 expect(err).to.not.be.ok();
@@ -364,8 +331,7 @@ return function(storage, storageType){
           });
         });
         it('next on empty sequence', function(done){
-          storage.create(['parade'], {}, function(err, id){
-            expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(id){
             expect(id).to.be.ok();
             paradeId = id;
             storage.next(['parade', paradeId, 'animals'], null, {}, function(err, item){
@@ -380,32 +346,26 @@ return function(storage, storageType){
       describe('delete', function(){
         var paradeId;
         beforeEach(function(done){
-          storage.create(['parade'], {}, function(err, id){
-            expect(err).to.not.be.ok();
+          storage.create(['parade'], {}).then(function(id){
             expect(id).to.be.ok();
             paradeId = id;
-            storage.create(['animals'], {name:'tiger'}, function(err, id){
-              expect(err).to.not.be.ok();
+            storage.create(['animals'], {name:'tiger'}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                 expect(err).to.not.be.ok();
-                storage.create(['animals'], {name:'monkey'}, function(err, id){
-                  expect(err).to.not.be.ok();
+                storage.create(['animals'], {name:'monkey'}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                     expect(err).to.not.be.ok();
-                    storage.create(['animals'], {name:'prawn'}, function(err, id){
-                      expect(err).to.not.be.ok();
+                    storage.create(['animals'], {name:'prawn'}).then(function(id){
                       expect(id).to.be.ok();
                       storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                         expect(err).to.not.be.ok();
-                        storage.create(['animals'], {name:'shark'}, function(err, id){
-                          expect(err).to.not.be.ok();
+                        storage.create(['animals'], {name:'shark'}).then(function(id){
                           expect(id).to.be.ok();
                           storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                             expect(err).to.not.be.ok();
-                            storage.create(['animals'], {name:'dog'}, function(err, id){
-                              expect(err).to.not.be.ok();
+                            storage.create(['animals'], {name:'dog'}).then(function(id){
                               expect(id).to.be.ok();
                               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}, function(err){
                                 expect(err).to.not.be.ok();

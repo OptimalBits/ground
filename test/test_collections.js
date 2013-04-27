@@ -29,12 +29,12 @@ describe('Collections', function(){
   });
   
   beforeEach(function(done){
-      zoo = new Zoo();
-      zoo.keepSynced();
-      zoo.save();
-      zoo.once('id', function(){
-        done();
-      });
+    zoo = new Zoo();
+    zoo.keepSynced();
+    zoo.save();
+    zoo.once('id', function(){
+      done();
+    });
   });
   
   // afterEach(function(){
@@ -64,7 +64,7 @@ describe('Collections', function(){
         var tiger = new Animal({name:"tiger"});
         animals.add(tiger).then(function(){
           tiger.release();
-          storageQueue.once('synced:', function(){
+          storageQueue.waitUntilSynced(function(){
             
             Zoo.findById(zoo.id()).then(function(sameZoo){
               expect(sameZoo).to.be.an(Object);
@@ -735,7 +735,7 @@ describe('Collections', function(){
       zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         animals.add((new Animal({name:"tiger"})).autorelease()).then(function(){
-          storageQueue.once('synced:', function(){
+          storageQueue.waitUntilSynced(function(){
             expect(animals.count).to.be(1);
             localStorage.clear();
             zoo.all(Animal).then(function(sameAnimals){
@@ -757,12 +757,12 @@ describe('Collections', function(){
       zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         animals.add((new Animal({name:"tiger"})).autorelease()).then(function(){
-          storageQueue.once('synced:', function(){
+          storageQueue.waitUntilSynced(function(){
             expect(animals.count).to.be(1);
 
             var animalId = animals.first().id();
             storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}, function(err){
-              expect(err).to.be(null);
+              expect(err).to.not.be.ok();
               zoo.all(Animal).then(function(sameAnimals){
                 expect(sameAnimals).to.be.an(Object);
                 expect(sameAnimals.items).to.be.an(Array);

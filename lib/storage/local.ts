@@ -89,70 +89,56 @@ export class Local implements IStorage {
     this.store = store || new Storage.Store.LocalStore();
   }
 
-  create(keyPath: string[], doc: any, cb?: (err?: Error, id?: string) => void): Promise
+  create(keyPath: string[], doc: any): Promise
   {
-    cb = cb || Util.noop;
     var promise = new Promise();
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
     this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
-    cb(null, doc._cid);
     
     return promise.resolve(doc._cid);
   }
   
-  fetch(keyPath: string[], cb?: (err: Error, doc?: any) => void): Promise
+  fetch(keyPath: string[]): Promise
   {
-    cb = cb || Util.noop;
     var promise = new Promise();
     var keyValue = this.traverseLinks(this.makeKey(keyPath));
     if(keyValue){
-      cb(null, keyValue.value);
       promise.resolve(keyValue.value);
     }else {
-      cb(InvalidKeyError);  
       promise.reject(InvalidKeyError);
     }
     return promise;
   }
   
-  put(keyPath: string[], doc: {}, cb?: (err?: Error) => void): Promise
+  put(keyPath: string[], doc: {}): Promise
   {
-    cb = cb || Util.noop;
     var 
       key = this.makeKey(keyPath),
       keyValue = this.traverseLinks(this.makeKey(keyPath));
-
-    var promise = new Promise();
       
-    if(keyValue){
-      _.extend(keyValue.value, doc);
-      this.store.put(keyValue.key, keyValue.value);
-      cb();
-      promise.resolve();
-    }else{
-      cb(InvalidKeyError);
-      promise.reject(InvalidKeyError);
+    if(keyValue){  
+      this.store.put(keyValue.key, _.extend(keyValue.value, doc));
+    }else{ 
+      //
+      // Upsert
+      //
+      this.store.put(key, doc);
     }
-    return promise;
+    return Promise.resolved();
   }
     
-  del(keyPath: string[], cb?: (err?: Error) => void): Promise
+  del(keyPath: string[]): Promise
   {
-    cb = cb || Util.noop;
-    var promise = new Promise();
     this.traverseLinks(this.makeKey(keyPath), (key)=>{
       this.store.del(this.makeKey(keyPath));
     });
-    cb();
-    return promise.resolve();
+    return new Promise(true);
   }
     
-  link(newKeyPath: string[], oldKeyPath: string[], cb?: (err?: Error) => void): Promise
+  link(newKeyPath: string[], oldKeyPath: string[]): Promise
   {
-    cb = cb || Util.noop;
-    var promise = new Promise();
     // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
     var oldKey = this.makeKey(oldKeyPath);
     var newKey = this.makeKey(newKeyPath);
@@ -165,8 +151,7 @@ export class Local implements IStorage {
         this.store.put(link, keys[i]);
       }
     }
-    cb();
-    return promise.resolve();
+    return new Promise(true);
   }
   
   //
@@ -238,25 +223,26 @@ export class Local implements IStorage {
       });
       return cb(null, _.values(result));
     }else{
-      this.fetch(keyPath, (err, collection?) => {
-        if(collection){
-          _.each(_.keys(collection), (key)=>{
-            var op = collection[key]
-            if(op !== 'rm' || !opts.snapshot){
-              var keyValue = this.traverseLinks(key);
-              if(keyValue){
-                var 
-                  item = keyValue.value,
-                  id = item._cid;
-                if(!(result[id]) || op === 'insync'){
-                  if(!opts.snapshot) item.__op = op;
-                  result[id] = item;
-                }
+      this.fetch(keyPath).then((collection) => {
+        _.each(_.keys(collection), (key)=>{
+          var op = collection[key]
+          if(op !== 'rm' || !opts.snapshot){
+            var keyValue = this.traverseLinks(key);
+            if(keyValue){
+              var 
+                item = keyValue.value,
+                id = item._cid;
+              if(!(result[id]) || op === 'insync'){
+                if(!opts.snapshot) item.__op = op;
+                result[id] = item;
               }
             }
-          });
-        }
+          }
+        });
         return cb(null, _.values(result));
+      }, (err) => {
+        // This is wrong but necessary due to how .all api works right now...
+        return cb(null, []);
       });
     }
   }
@@ -327,6 +313,7 @@ export class Local implements IStorage {
           };
           cb(null, iDoc);
         }
+        // ARON: if we come here we will not call the callback...
       }else{
         this.next(keyPath, item._id || item._cid, opts, cb);
       }

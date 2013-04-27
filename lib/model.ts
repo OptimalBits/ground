@@ -292,12 +292,8 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   static removeById(keypathOrId): Promise
   {
-    var promise = new Promise();
     var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
-    using.storageQueue.del(keyPath, (err)=>{
-      promise.resolveOrReject(err);
-    });
-    return promise;
+    return using.storageQueue.del(keyPath);
   }
   
   static fromJSON(args): Promise
@@ -384,35 +380,26 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     var
       bucket = this.__bucket,
-      id = this.id(),
-      promise = new Gnd.Promise();
+      id = this.id();
     
-    if(!this._dirty){
-      return promise.resolve();
-    } 
+    if(!this._dirty) return new Gnd.Promise(true);
     
     if(this._initial){
       args['_initial'] = this._initial = false;
       this._storageQueue.once('created:'+id, (id) => {
         this.id(id);
       });
-      this._storageQueue.create([bucket], args, (err?, id?) => {
-        promise.resolveOrReject(err);
-      });
+      return this._storageQueue.create([bucket], args);
     }else{
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
       // although we will never get the event anyways, and besides we should
       // update the localStorage in any case...
       // Hopefully a singleton Model will solve this problems...
-      this._storageQueue.put([bucket, id], args, (err)=>{
-        if(!err){
-          this.emit('updated:', this, args);
-        }
-        promise.resolveOrReject(err);
+      return this._storageQueue.put([bucket, id], args).then(()=>{
+        this.emit('updated:', this, args);
       });
     }
-    return promise;
   }
 
   remove(): Promise

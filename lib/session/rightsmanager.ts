@@ -8,6 +8,9 @@
   all the rights over models, collections and sequences.
 */
 
+/// <reference path="../promise.ts" />
+
+
 module Gnd {
 
 export enum Rights {
@@ -22,36 +25,30 @@ export interface Acl
   isAllowed(userId: string, resource: string, permissions: string, cb: (err, allowed) => void): void;
 }
 
-export interface Callback {
-  (err?: Error) : void;
-}
-
 export interface CreateRule {
-  (userId: string, keypath: string[], doc: any, cb: Callback): void;
+  (userId: string, keypath: string[], doc: any): Promise;
 }
 
 export interface DeleteRule {
-  (userId: string, keypath: string[], cb: Callback): void;
+  (userId: string, keypath: string[]): Promise;
 }
 
 export interface PutRule {
-  (userId: string, keypath: string[], doc: any, cb: Callback): void;
+  (userId: string, keypath: string[], doc: any): Promise;
 }
 
 export interface AddRule {
   (userId: string, 
    keyPath: string[],
    itemsKeyPath: string[],
-   itemIds:string[],
-   cb: Callback): void;
+   itemIds:string[]): Promise;
 }
 
 export interface RemoveRule {
   (userId: string,
    keyPath: string[], 
    itemsKeyPath: string[], 
-   itemIds:string[],
-   cb: Callback): void;
+   itemIds:string[]): Promise;
 }
 
 export interface Rules
@@ -73,57 +70,55 @@ export class RulesManager
     this.acl = acl;
   }
   
-  applyCreate(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
+  applyCreate(userId: string, keyPath: string[], doc: any): Promise
   {
     var rule = <CreateRule>this.matchRule(this.rules.create, keyPath);
     if(rule){
       return rule.call(this.acl, arguments);
     }
-    cb();
+    return Promise.resolved();
   }
 
-  applyPut(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
+  applyPut(userId: string, keyPath: string[], doc: any): Promise
   {
     var rule = <PutRule>this.matchRule(this.rules.put, keyPath);
     if(rule){
       return rule.call(this.acl, arguments);
     }
-    cb();
+    return Promise.resolved();
   }
   
-  applyDel(userId: string, keyPath: string[], cb:(err?: Error) => void)
+  applyDel(userId: string, keyPath: string[]): Promise
   {
     var rule = <DeleteRule>this.matchRule(this.rules.del, keyPath);
     if(rule){
       return rule.apply(this.acl, arguments);
     }
-    cb();
+    return Promise.resolved();
   }
   
   applyAdd(userId: string, 
            keyPath: string[],
            itemsKeyPath: string[],
-           itemIds:string[], 
-           cb:(err?: Error) => void)
+           itemIds:string[]): Promise
   {
     var rule = <AddRule>this.matchRule(this.rules.add, keyPath);
     if(rule){
       return rule.apply(this.acl, arguments);
     }
-    cb();
+    return Promise.resolved();
   }
   
   applyRemove(userId: string,
               keyPath: string[],
               itemsKeyPath: string[],
-              itemIds:string[],
-              cb:(err?: Error) => void)
+              itemIds:string[]): Promise
   {
     var rule = <RemoveRule>this.matchRule(this.rules.remove, keyPath);
     if(rule){
-      return rule(userId, keyPath, itemsKeyPath, itemIds, cb);
+      return rule(userId, keyPath, itemsKeyPath, itemIds);
     }
-    cb();
+    return Promise.resolved();
   }
 
   private matchRule(rules: {}, keyPath: string[])
@@ -159,76 +154,73 @@ export class RightsManager
     }
   }
   
-  checkRights(userId: string, 
-              keyPath: string[], 
-              rights: Rights,
-              cb:(err?: Error, allowed?: bool) => void);
-  checkRights(userId: string, 
-              keyPath: string[], 
-              rights: Rights[], 
-              cb:(err?: Error, allowed?: bool) => void);
-  checkRights(userId: string, 
-              keyPath: string[], 
-              rights: any, 
-              cb:(err?: Error, allowed?: bool) => void)
+  checkRights(userId: string, keyPath: string[], rights: Rights): Promise; // Promise<bool>
+  checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise;
+  checkRights(userId: string, keyPath: string[], rights: any): Promise
   {
+    var promise = new Promise;
     if(this.acl){
-      this.acl.isAllowed(userId, keyPath.join('/'), rights, cb);
+      this.acl.isAllowed(userId, keyPath.join('/'), rights, (err?, allowed?) =>{
+        if(err){
+          promise.reject(err);
+        }else{
+          promise.resolve(allowed);
+        }
+      });
     }else{
-      cb(null, true);
+      promise.resolve(true);
+    }
+    return promise;
+  }
+  
+  create(userId: string, keyPath: string[], doc: any): Promise
+  {
+    if(this.rulesManager){
+      this.rulesManager.applyCreate(userId, keyPath, doc);
+    }else{
+      return Promise.resolved();
     }
   }
   
-  create(userId: string, keyPath: string[], doc: any, cb:(err?: Error) => void)
+  put(userId: string, keyPath: string[], doc: any): Promise
   {
     if(this.rulesManager){
-      this.rulesManager.applyCreate(userId, keyPath, doc, cb);
+      this.rulesManager.applyPut(userId, keyPath, doc);
     }else{
-      cb();
+      return Promise.resolved();
     }
   }
   
-  put(userId: string, keyPath: string[], doc: any, cb: (err?: Error) => void)
+  del(userId: string, keyPath: string[]): Promise
   {
     if(this.rulesManager){
-      this.rulesManager.applyPut(userId, keyPath, doc, cb);
+      this.rulesManager.applyDel(userId, keyPath);
     }else{
-      cb();
-    }
-  }
-  
-  del(userId: string, keyPath: string[], cb: (err?: Error) => void)
-  {
-    if(this.rulesManager){
-      this.rulesManager.applyDel(userId, keyPath, cb);
-    }else{
-      cb();
+      return Promise.resolved();
     }
   }
   
   add(userId: string, 
       keyPath: string[],
       itemsKeyPath: string[],
-      itemIds:string[],
-      cb: (err?: Error) => void)
+      itemIds:string[]): Promise
   {
     if(this.rulesManager){
-      this.rulesManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds, cb);
+      return this.rulesManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds);
     }else{
-      cb();
+      return Promise.resolved();
     }
   }
   
   remove(userId: string, 
          keyPath: string[], 
          itemsKeyPath: string[], 
-         itemIds:string[], 
-         cb: (err?: Error) => void)
+         itemIds:string[]): Promise
   {
     if(this.rulesManager){
-      this.rulesManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds, cb);
+      return this.rulesManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds);
     }else{
-      cb();
+      return Promise.resolved();
     }    
   }
 }

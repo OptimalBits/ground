@@ -39,7 +39,7 @@ export class SessionManager
     
     this.sessionStore.save(sessionId, session, cb);
   }
-    
+  
   getSession(cookie: string, cb: (err?: Error, session?: any) => void)
   {
     if(this.useSessions){

@@ -237,12 +237,9 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
 export function safeEmit(socket, ...args:any[]): Promise
 {
   var promise = new Promise();
-  
-  var cb = _.last(args);
    
   function errorFn(){
     var err = new Error('Socket disconnected');
-    cb(err);
     promise.reject(err);
   };
   
@@ -254,10 +251,10 @@ export function safeEmit(socket, ...args:any[]): Promise
     }else{
       promise.resolve(res);
     }
-    cb(err, res);
   };
   
-  args[args.length-1] = proxyCb;
+  //args[args.length-1] = proxyCb;
+  args.push(proxyCb)
   
   if(socket.socket.connected){
     socket.once('disconnect', errorFn);

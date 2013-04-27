@@ -37,69 +37,56 @@ export class Server {
     this.rm = rightsManager || new RightsManager();
   }
   
-  create(userId: string, keyPath: string[], doc: any, cb:(err: Error, key?: string) => void)
+  create(userId: string, keyPath: string[], doc: any): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.CREATE, (err?, allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.CREATE).then((allowed) => {
       if(allowed){
-        this.storage.create(keyPath, doc, (err, id?) => {
-          if(err) return cb(err);
+        return this.storage.create(keyPath, doc).then((id) => {
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
-          this.rm.create(userId, newKeyPath, doc, (err?) => {
-            cb(err, id);
-            // TODO: Remove document if error.
+          return this.rm.create(userId, newKeyPath, doc).then(()=>{
+            return id;
+          }).fail((err)=>{
+            // TODO: remove doc
           });
         });
-      }else{
-        cb(err);
       }
     });
   }
   
-  put(clientId: string, userId: string, keyPath: string[], doc: any, cb: (err?: Error) => void): void
+  put(clientId: string, userId: string, keyPath: string[], doc: any): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.PUT, (err?, allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
-        this.rm.put(userId, keyPath, doc, (err?) => {
-          this.storage.put(keyPath, doc, (err?: Error) => {
-            if(!err){
-              this.syncHub && this.syncHub.update(clientId, keyPath, doc);
-            }else{
-              // TODO: remove rights
-            }
-            cb(err);
+        return this.rm.put(userId, keyPath, doc).then(() => {
+          return this.storage.put(keyPath, doc).then(()=>{
+            this.syncHub && this.syncHub.update(clientId, keyPath, doc);
+          }).fail((err)=>{
+            // TODO: remove rights
+            console.log("Error updating document:"+keyPath+":"+err)
           });
         });
-      } else {
-        cb(err);
       }
     });
   }
   
-  fetch(userId: string, keyPath: string[], cb: (err?: Error, doc?: any) => void): void
+  fetch(userId: string, keyPath: string[]): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed) => {
       if(allowed){
-        this.storage.fetch(keyPath, cb);
-      }else{
-        cb(err);
+        return this.storage.fetch(keyPath);
       }
     });
   }
 
-  del(clientId: string, userId: string, keyPath: string[], cb: (err?: Error) => void): void
+  del(clientId: string, userId: string, keyPath: string[]): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.DEL, (err?, allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
-        this.rm.del(userId, keyPath, (err?) => {
-          this.storage.del(keyPath, (err?: Error) => {
-            if(!err){
-              this.syncHub && this.syncHub.delete(clientId, keyPath);
-            }
-            cb(err);
+        return this.rm.del(userId, keyPath).then(() => {
+          return this.storage.del(keyPath).then(()=>{
+            this.syncHub && this.syncHub.delete(clientId, keyPath);
           });
         });
-      }else{
-        cb(err);
       }
     });
   }
@@ -107,51 +94,55 @@ export class Server {
   //
   // Collection
   //
-  add(clientId: string, userId: string, keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
+  add(clientId: string, 
+      userId: string, 
+      keyPath: string[], 
+      itemsKeyPath: string[], 
+      itemIds:string[], 
+      opts: {}, 
+      cb: (err?: Error) => void): void
   {
-    this.rm.checkRights(userId, keyPath, Rights.PUT, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
-        this.rm.add(userId, keyPath, itemsKeyPath, itemIds, (err?) => {
+        return this.rm.add(userId, keyPath, itemsKeyPath, itemIds).then(() => {
           this.storage.add(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
             if(!err){
               this.syncHub && this.syncHub.add(clientId, keyPath, itemsKeyPath, itemIds);
             }
             cb(err);
-          })
-        });
+          });
+        }).fail(cb);
       }else{
-        cb(err);
+        cb();
       }
-    });
+    }).fail(cb);
   }
 
-  remove(clientId: string, userId: string, keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
+  remove(clientId: string, userId: string, keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void): void
   {
-    this.rm.checkRights(userId, keyPath, Rights.DEL, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
-        this.rm.remove(userId, keyPath, itemsKeyPath, itemIds, (err?) => {
+        this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() => {
           this.storage.remove(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
             if(!err){
               this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
             }
             cb(err);
           });
-        });
-      } else {
-        cb(err);
+        }).fail(cb);
+      }else{
+        cb();
       }
-    });
+    }).fail(cb);
   }
 
   find(userId: string, keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
         this.storage.find(keyPath, query, options, cb);
-      }else{
-        cb(err);
       }
-    });
+    }).fail(cb);
   }
   
   //
@@ -159,29 +150,25 @@ export class Server {
   //
   all(userId: string, keyPath: string[], query: {}, opts: {}, cb: (err?: Error, result?: IDoc[]) => void) : void
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
         this.storage.all(keyPath, query, opts, cb);
-      }else{
-        cb(err);
       }
-    });
+    }).fail(cb);
   }
   
   next(userId: string, keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
         this.storage.next(keyPath, id, opts, cb);
-      }else{
-        cb(err);
       }
-    });
+    }).fail(cb);
   }
 
   deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
-    this.rm.checkRights(userId, keyPath, Rights.DEL, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed?) => {
       if(allowed){
         this.storage.deleteItem(keyPath, id, opts, (err?: Error) => {
           if(!err){
@@ -189,15 +176,13 @@ export class Server {
           }
           cb(err);
         });
-      }else{
-        cb(err);
       }
-    });
+    }).fail(cb);
   }
 
   insertBefore(clientId: string, userId: string, keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
-    this.rm.checkRights(userId, keyPath, Rights.PUT, (err?, allowed?) => {
+    this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
         this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string, refId?: string) => {
           if(!err){
@@ -205,10 +190,8 @@ export class Server {
           }
           cb(err, id);
         });
-      }else{
-        cb(err);
       }
-    });
+    }).fail(cb);
   }  
 }
 

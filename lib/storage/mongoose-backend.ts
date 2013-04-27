@@ -65,6 +65,12 @@ export interface IMongooseModel extends GndModel {
   remove(query:{}, cb:(err: Error)=>void);
 }
 
+interface FoundModel
+{
+  Model: IMongooseModel;
+  id: string;
+}
+
 export class MongooseStorage implements IStorage {
   private models : any;
   private listContainer: any;
@@ -74,44 +80,49 @@ export class MongooseStorage implements IStorage {
     this.models = models;
     
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
-      type: {type: String},
+      type: { type: String },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      modelId: { type: String}
+      modelId: { type: String }
     }));
   }
   
-  create(keyPath: string[], doc: any, cb?: (err: Error, key?: string) => void): Promise
+  create(keyPath: string[], doc: any): Promise
   {
-    var promise = new Promise();
-    this.getModel(keyPath, function(Model){
-      var instance = new Model(doc);
+    return this.getModel(keyPath).then((found) => {
+      var promise = new Promise();
+      
+      var instance = new found.Model(doc);
       instance.save(function(err, doc){  
         if(!err){
           doc.__rev = 0;
-          cb(err, doc._id);
+          promise.resolve(doc._id);
         }else{
-          cb(err);
+          promise.reject(err);
         }
       });
-    }, cb);
-    return promise;
+      return promise;
+    });
   }
   
-  put(keyPath: string[], doc: any, cb?: (err?: Error) => void): Promise
+  put(keyPath: string[], doc: any): Promise
   {
-    var promise = new Promise();
-    this.getModel(keyPath, function(Model){
-    // Model.findByIdAndUpdate(_.last(keyPath), {$set: doc, $inc: doc.__rev}, (err, oldDoc) => {
-      Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
-        // Note: isEqual should only check the properties present in doc!
-        if(!err && !_.isEqual(doc, oldDoc)){
-          // if doc modified synchronize
-          //this.sync && this.sync.update(keyPath, doc);
+    return this.getModel(keyPath).then(function(found){
+      var promise = new Promise();
+      found.Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
+        if(!err){
+          // Note: isEqual should only check the properties present in doc!
+          if(!_.isEqual(doc, oldDoc)){
+            // if doc modified synchronize
+            // Why is this out commented?
+            //this.sync && this.sync.update(keyPath, doc);
+            promise.resolve(doc);
+          } 
+        }else{
+          promise.reject(err);
         }
-        cb(err);
       });
-    }, cb);
-    return promise;
+      return promise;
+    });
   }
 
   /*
@@ -125,34 +136,58 @@ export class MongooseStorage implements IStorage {
       });
   */
   
-  fetch(keyPath: string[], cb?: (err: Error, doc?: any) => void): Promise
+  fetch(keyPath: string[]): Promise
   {
-    var promise = new Promise()
-    this.getModel(keyPath, function(Model){
-      Model.findById(_.last(keyPath), (err, doc?) => {
+    return this.getModel(keyPath).then((found) => {
+      var promise = new Promise()
+      found.Model.findById(_.last(keyPath), (err, doc?) => {
         if(doc){
-          cb(err, doc);
+          promise.resolve(doc);
         }else{
-          cb(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND));
+          promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
         }
       });
-    }, cb);
-    return promise;
+      return promise;
+    });
   }
   
-  del(keyPath: string[], cb?: (err?: Error) => void): Promise
+  del(keyPath: string[]): Promise
   {
-    var promise = new Promise();
-    this.getModel(keyPath, function(Model){
-      Model.remove({_id:_.last(keyPath)}, cb);
-    }, cb);
-    return promise;
+    return this.getModel(keyPath).then((found) => {
+      var promise = new Promise();
+      found.Model.remove({_id:_.last(keyPath)}, (err?)=>{
+        if(!err){
+          promise.resolve();
+        }else{
+          promise.reject(err);
+        }
+      });
+      return promise;
+    });    
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:{}, cb: (err?: Error) => void): void;
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any, cb: any): void
   {
     if(_.isFunction(opts)) cb = opts;
+    
+    this.getModel(keyPath).then((found) => {
+      var id = keyPath[keyPath.length-2];
+      if(found.Model.add){
+        var setName = _.last(keyPath);
+        found.Model.add(id, setName, itemIds, (err, ids)=>{
+          if(!err){
+            // Use FindAndModify to get added items
+            //sync.add(id, setName, ids);
+          }
+          cb(err);
+        });
+      }else{
+        cb(new Error("No parent or add function available"));
+      }
+    }).fail(cb);
+    
+    /*
     this.getModel(itemsKeyPath, (Set) => {
       if(Set && Set.parent){
         var doc = {};
@@ -162,7 +197,6 @@ export class MongooseStorage implements IStorage {
             // TODO: Only notify for really added items
             // this.sync.add(id, collection, itemIds);
           }
-
           cb(err);
         });
       }else{
@@ -183,6 +217,7 @@ export class MongooseStorage implements IStorage {
         }, cb);
       }
     }, cb);
+    */
   }
 
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
@@ -190,6 +225,19 @@ export class MongooseStorage implements IStorage {
   {
     if(itemIds.length === 0) cb(null); //nothing to do
     if(_.isFunction(opts)) cb = opts;
+    
+    this.getModel(keyPath).then((found) => {
+      var id = keyPath[keyPath.length-2];  
+      var setName = _.last(keyPath);
+      var update = {$pullAll: {}};
+      update.$pullAll[setName] = itemIds;
+      found.Model.update({_id:id}, update, function(err){
+        // TODO: Use FindAndModify to get removed items
+        cb(err);
+      });
+    }).fail(cb);
+  
+    /*
     this.getModel(itemsKeyPath, (Set) => {
       if(Set && Set.parent){
         
@@ -206,20 +254,20 @@ export class MongooseStorage implements IStorage {
         }, cb);
       }
     }, cb);
-    
+    */
   }
   
   find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
   {
-    this.getModel(keyPath, (Model)=>{
+    this.getModel(keyPath).then((found)=>{
       if(keyPath.length === 1){
-        return this.findAll(Model, cb);
+        return this.findAll(found.Model, cb);
       }else{
         var id = keyPath[keyPath.length-2];
         var setName = _.last(keyPath);
-        return this.findById(Model, id, setName, query, options, cb);
+        return this.findById(found.Model, id, setName, query, options, cb);
       }
-    }, cb);
+    }).fail(cb);
   }
 
   private findAll(Model: IMongooseModel, cb: (err: Error, result?: any[]) => void): void
@@ -384,7 +432,8 @@ listContainer may also have a type attribute:
 
   next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
   {
-    this.getModel(keyPath, (ParentModel) => {
+    this.getModel(keyPath).then((found) => {
+      var ParentModel = found.Model;
       var parentId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
@@ -398,25 +447,25 @@ listContainer may also have a type attribute:
             cb(null); //no next item
           }else{
             var kp = parseKey(container.modelId);
-            this.fetch(kp, (err, doc?)=>{
-              if(err) return cb(err);
+            this.fetch(kp).then((doc)=>{
               cb(null, {
                 id: container._id,
                 keyPath: kp,
                 doc: doc
               });
-            });
+            }).fail(cb);
           }
         });
       });
-    }, cb);
+    }).fail(cb);
   }
 
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
   {
     if(_.isFunction(opts)) cb = opts;
 
-    this.getModel(keyPath, (ParentModel) => {
+    this.getModel(keyPath).then((found) => {
+      var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
       this.initSequence(ParentModel, modelId, seqName, (err, begin?, end?) => {
@@ -430,7 +479,8 @@ listContainer may also have a type attribute:
 
   deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
   {
-    this.getModel(keyPath, (ParentModel) => {
+    this.getModel(keyPath).then((found) => {
+      var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
@@ -440,26 +490,32 @@ listContainer may also have a type attribute:
       });
     }, cb);
   }
-
-  private getModel(keyPath: string[], cb: (Model: IMongooseModel, id?: string) => void, errCb: (err: Error) => void): void
+  
+  private getModel(keyPath: string[]): Promise // Promise<[FoundModel]>
   {
     //
     // ex. /cars/1234/engines/3456/carburetors
     //
+    var promise = new Promise();
     var last = keyPath.length - 1;
     var index = last - last & 1;
     var collection = keyPath[index]; //TODO rename?
     
     if(collection in this.models){
-      cb(this.models[collection], this.models[keyPath[last]]);
+      promise.resolve({
+        Model: this.models[collection], 
+        id: this.models[keyPath[last]]
+      });
     }else{
-      errCb(new Error(''+ServerError.MODEL_NOT_FOUND));
+      promise.reject(new Error(''+ServerError.MODEL_NOT_FOUND));
     }
+    return promise;
   }
   
   private getSequence(keyPath: string[], cb: (err: Error, seqDoc?: any, seq?: any[]) => void): void
   {
-     this.getModel(_.initial(keyPath, 2), (ParentModel)=>{
+     this.getModel(_.initial(keyPath, 2)).then((found)=>{
+      var ParentModel = found.Model;
       var seqName = _.last(keyPath);
       var parentId = keyPath[keyPath.length-2];
       ParentModel
