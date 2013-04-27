@@ -53,6 +53,16 @@ export class Promise {
     return promise;
   }
   
+  static resolved(): Promise
+  {
+    return new Promise(true);
+  }
+  
+  static rejected(err: Error): Promise
+  {
+    return new Promise(err);
+  }
+  
   constructor(value?: any)
   {
     if(value instanceof Error){
@@ -112,7 +122,7 @@ export class Promise {
     return promise;
   }
   
-  error(onRejected: (reason: Error) => any)
+  fail(onRejected: (reason: Error) => any)
   {
     return this.then(null, onRejected);
   }
