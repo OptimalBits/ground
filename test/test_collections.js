@@ -761,7 +761,7 @@ describe('Collections', function(){
             expect(animals.count).to.be(1);
 
             var animalId = animals.first().id();
-            storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}, function(err){
+            storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}).then(function(err){
               expect(err).to.not.be.ok();
               zoo.all(Animal).then(function(sameAnimals){
                 expect(sameAnimals).to.be.an(Object);

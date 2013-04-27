@@ -39,21 +39,19 @@ export class Socket implements IStorage {
     return Gnd.Util.safeEmit(this.socket, 'del', keyPath);
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'add', keyPath, itemsKeyPath, itemIds).then(cb, cb);
+    return Gnd.Util.safeEmit(this.socket, 'add', keyPath, itemsKeyPath, itemIds);
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'remove', keyPath, itemsKeyPath, itemIds)
-      .then(cb, cb);
+    return Gnd.Util.safeEmit(this.socket, 'remove', keyPath, itemsKeyPath, itemIds);
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err?: Error, result?: any[]) => void): void
+  find(keyPath: string[], query: {}, options: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'find', keyPath, query, options)
-      .then((result)=>{cb(null, result)}).fail(cb);
+    return Gnd.Util.safeEmit(this.socket, 'find', keyPath, query, options);
   }
   
   all(keyPath: string[], query: {}, opts: {}, cb: (err?: Error, result?: IDoc[]) => void) : void

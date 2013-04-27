@@ -62,10 +62,8 @@ return function(storage, storageType){
                 storage.create(['animals'], {legs:7}).then(function(id){
                   id4 = id;
                   expect(id4).to.be.ok();
-                  storage.add(['zoo', zooId, 'animals'], ['animals'], [id1, id2, id3, id4], {}, function(err){
-                    expect(err).to.not.be.ok();
-                    storage.find(['zoo', zooId, 'animals'], {}, {}, function(err, items){
-                      expect(err).to.not.be.ok();
+                  storage.add(['zoo', zooId, 'animals'], ['animals'], [id1, id2, id3, id4], {}).then(function(){
+                    storage.find(['zoo', zooId, 'animals'], {}, {}).then(function(items){
                       expect(items).to.be.an(Array);
                       expect(items).to.have.length(4);
                       // FIX THIS since order is not guaranteed!
@@ -84,11 +82,10 @@ return function(storage, storageType){
       });
       
       it('remove and add a few items to a set', function(done){
-        storage.remove(['zoo', zooId, 'animals'], ['animals'], [id2, id4], {}, function(err){
+        storage.remove(['zoo', zooId, 'animals'], ['animals'], [id2, id4], {}).then(function(){
           storage.create(['animals'], {legs:1}).then(function(id){
-            storage.add(['zoo', zooId, 'animals'], ['animals'], [id], {}, function(err){
-              storage.find(['zoo', zooId, 'animals'], {}, {snapshot: true}, function(err, items){
-                expect(err).to.not.be.ok();
+            storage.add(['zoo', zooId, 'animals'], ['animals'], [id], {}).then(function(){
+              storage.find(['zoo', zooId, 'animals'], {}, {snapshot: true}).then(function(items){
                 expect(items).to.be.an(Array);
                 expect(items).to.have.length(3);
                 // FIX THIS since order is not guaranteed!

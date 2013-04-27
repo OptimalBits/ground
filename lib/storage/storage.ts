@@ -37,7 +37,7 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   //
   // Basic Storage for Models (Follows CRUD semantics)
   //
-  create(keyPath: string[], doc: {}): Promise;
+  create(keyPath: string[], doc: {}): Promise; // Promise<string>
   put(keyPath: string[], doc: {}): Promise;
   fetch(keyPath: string[]): Promise;
   del(keyPath: string[]): Promise;
@@ -48,9 +48,9 @@ export interface IStorage extends ISetStorage, ISeqStorage {
 //  Set / Collection Storage (unordered)
 //
 export interface ISetStorage {
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
-  find(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: any[]) => void): void;
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; // Promise<void>
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; //Promise<void>
+  find(keyPath: string[], query: {}, opts: {}): Promise; // Promise<any[]>
 }
 
 //

@@ -68,17 +68,17 @@ export class SocketBackend {
         // Collections / Sets
         socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.add(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
+          callback(server.add(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}), cb);
         });
     
         socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.remove(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}, scb(cb));
+          callback(server.remove(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}), cb);
         });
 
         socket.on('find', function(keyPath: string[], query: {}, opts: {}, cb: (err: ServerError, result?: {}[]) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.find(session.userId, keyPath, query, opts, scb(cb));
+          callback(server.find(session.userId, keyPath, query, opts), cb);
         });
         
         // Sequences

@@ -159,7 +159,8 @@ export class Local implements IStorage {
   //  
   // Save as an Object where key = itemId, value = add|rm|synced
   // 
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void): void{
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise
+  {
     var
       key = this.makeKey(keyPath),
       itemIdsKeys = this.contextualizeIds(itemsKeyPath, itemIds),
@@ -169,7 +170,7 @@ export class Local implements IStorage {
 
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
       this.createCollectionLink(keyPath[0]);
-      return cb();
+      return Promise.resolved();
     }
     
     key = keyValue ? keyValue.key : key;
@@ -178,16 +179,17 @@ export class Local implements IStorage {
     })
     this.store.put(key, _.extend(oldItemIdsKeys, newIdKeys));
     
-    cb();
+    return Promise.resolved();
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts, cb: (err?: Error) => void) {
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise
+  {
     var 
       key = this.makeKey(keyPath),
       itemIdsKeys = this.contextualizeIds(itemsKeyPath, itemIds),
       keyValue = this.traverseLinks(key);
 
-    if(itemIds.length === 0) return cb(); // do nothing
+    if(itemIds.length === 0) return Promise.resolved(); // do nothing
 
     if(keyValue){
       var keysToDelete = keyValue.value;
@@ -201,13 +203,13 @@ export class Local implements IStorage {
         });
       });
       this.store.put(keyValue.key, keysToDelete);
-      cb();
+      return Promise.resolved()
     }else{
-      cb(InvalidKeyError);
+      return Promise.rejected(InvalidKeyError);
     }
   }
   
-  find(keyPath: string[], query: {}, opts, cb: (err: Error, result?: {}[]) => void) : void
+  find(keyPath: string[], query: {}, opts) : Promise
   {
     var result = {};
     if(keyPath.length === 1){
@@ -221,9 +223,9 @@ export class Local implements IStorage {
           }
         }
       });
-      return cb(null, _.values(result));
+      return new Promise(_.values(result));
     }else{
-      this.fetch(keyPath).then((collection) => {
+      return this.fetch(keyPath).then((collection) => {
         _.each(_.keys(collection), (key)=>{
           var op = collection[key]
           if(op !== 'rm' || !opts.snapshot){
@@ -239,10 +241,10 @@ export class Local implements IStorage {
             }
           }
         });
-        return cb(null, _.values(result));
+        return _.values(result);
       }, (err) => {
         // This is wrong but necessary due to how .all api works right now...
-        return cb(null, []);
+        return [];
       });
     }
   }

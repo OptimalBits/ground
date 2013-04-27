@@ -112,7 +112,7 @@ export class MongooseStorage implements IStorage {
         if(!err){
           // Note: isEqual should only check the properties present in doc!
           if(!_.isEqual(doc, oldDoc)){
-            // if doc modified synchronize
+            // only if doc modified synchronize
             // Why is this out commented?
             //this.sync && this.sync.update(keyPath, doc);
             promise.resolve(doc);
@@ -127,7 +127,7 @@ export class MongooseStorage implements IStorage {
 
   /*
     Cat
-    .where('name', 'Sprinkls')
+    .where('name', 'Sprinkles')
     .findOneAndUpdate({ name: 'Sprinkles' })
     .setOptions({ new: false })
     .exec(function (err, cat) {
@@ -166,26 +166,27 @@ export class MongooseStorage implements IStorage {
     });    
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:{}, cb: (err?: Error) => void): void;
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any, cb: any): void
-  {
-    if(_.isFunction(opts)) cb = opts;
-    
-    this.getModel(keyPath).then((found) => {
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise
+  {    
+    return this.getModel(keyPath).then((found) => {
+      var promise = new Promise();
       var id = keyPath[keyPath.length-2];
       if(found.Model.add){
         var setName = _.last(keyPath);
         found.Model.add(id, setName, itemIds, (err, ids)=>{
           if(!err){
             // Use FindAndModify to get added items
-            //sync.add(id, setName, ids);
+            // sync.add(id, setName, ids);
+            promise.resolve();
+          }else{
+            promise.reject(err);
           }
-          cb(err);
         });
       }else{
-        cb(new Error("No parent or add function available"));
+        promise.reject(new Error("No parent or add function available"));
       }
-    }).fail(cb);
+      return promise;
+    });
     
     /*
     this.getModel(itemsKeyPath, (Set) => {
@@ -220,22 +221,26 @@ export class MongooseStorage implements IStorage {
     */
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err: Error) => void): void;
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any, cb: any): void
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any): Promise
   {
-    if(itemIds.length === 0) cb(null); //nothing to do
-    if(_.isFunction(opts)) cb = opts;
+    if(itemIds.length === 0) return Promise.resolved(); //nothing to do
     
-    this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then((found) => {
+      var promise = new Promise();
+      
       var id = keyPath[keyPath.length-2];  
       var setName = _.last(keyPath);
       var update = {$pullAll: {}};
       update.$pullAll[setName] = itemIds;
       found.Model.update({_id:id}, update, function(err){
         // TODO: Use FindAndModify to get removed items
-        cb(err);
+        if(!err){
+          promise.resolve();
+        }else{
+          promise.reject(err);
+        }
       });
-    }).fail(cb);
+    });
   
     /*
     this.getModel(itemsKeyPath, (Set) => {
@@ -257,35 +262,42 @@ export class MongooseStorage implements IStorage {
     */
   }
   
-  find(keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
+  find(keyPath: string[], query: {}, opts: {}): Promise
   {
-    this.getModel(keyPath).then((found)=>{
+    return this.getModel(keyPath).then((found)=>{
       if(keyPath.length === 1){
-        return this.findAll(found.Model, cb);
+        return this.findAll(found.Model);
       }else{
         var id = keyPath[keyPath.length-2];
         var setName = _.last(keyPath);
-        return this.findById(found.Model, id, setName, query, options, cb);
+        return this.findById(found.Model, id, setName, query, opts);
       }
-    }).fail(cb);
+    });
   }
 
-  private findAll(Model: IMongooseModel, cb: (err: Error, result?: any[]) => void): void
+  private findAll(Model: IMongooseModel): Promise
   {
+    var promise = new Promise();
     Model
       .find({})
       .exec(function(err, doc){
         if(err){
-          cb(err);
+          promise.reject(err);
         }else{
-          cb(null, doc);
+          promise.resolve(doc);
         }
       });
+    return promise;
   }
 
-  private findById(Model: IMongooseModel, id: string, setName: string, query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
+  private findById(Model: IMongooseModel, 
+                   id: string, 
+                   setName: string,
+                   query: {},
+                   opts: {}): Promise
   {
     var query = query || {fields:null, cond:null, options:null};
+    var promise = new Promise();
     
     // TODO: add definition types for Query object to allow using dot syntax.
     Model
@@ -294,11 +306,13 @@ export class MongooseStorage implements IStorage {
       .populate(setName, query['fields'], query['cond'], query['options'])
       .exec(function(err, doc){
         if(err){
-          cb(err);
+          promise.reject(err);
         }else{
-          cb(null, doc && doc[setName]);
+          promise.resolve(doc && doc[setName])
         }
       });
+    
+    return promise;
   }
   
 /*

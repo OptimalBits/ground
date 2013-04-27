@@ -18,6 +18,12 @@
 /// <reference path="../mutex.ts" />
 
 module Gnd {
+  
+  /**
+    Collection.find()
+    Animal.find(zoo, 'birds', {type: 'bird'})
+    
+  */
 
 export class Collection extends Container
 {
@@ -172,14 +178,10 @@ export class Collection extends Container
   
   private addPersistedItem(item: Model): Promise
   {
-    var promise = new Promise();
     var keyPath = this.getKeyPath();
     var itemKeyPath = _.initial(item.getKeyPath());
     
-    this.storageQueue.add(keyPath, itemKeyPath, [item.id()], (err)=>{
-      promise.resolveOrReject(err);
-    });
-    return promise;
+    return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
   }
 
   private addItem(item: Model, opts): Promise

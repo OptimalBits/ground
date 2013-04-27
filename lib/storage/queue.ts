@@ -131,42 +131,6 @@ export class Queue extends Base implements IStorage
     return promise;
   }
   
-  /*
-  fetch(keyPath: string[]): Promise
-  {
-    var promise = new Promise();
-    var remotePromise = new Promise();
-    
-    this.localStorage.fetch(keyPath, (err?, doc?) => {
-      if(doc){ 
-        doc['_id'] = _.last(keyPath);
-        promise.resolve([doc, remotePromise]);
-      }else if(!this.useRemote){
-        return promise.reject(err);
-      }
-      
-      if(this.useRemote){
-        this.remoteStorage.fetch(keyPath, (err?, docRemote?) => {
-          if(!err){
-            docRemote['_persisted'] = true;
-            this.localStorage.put(keyPath, docRemote, (err?) => {
-              if(err) { //not in local cache
-                var collectionKeyPath = _.initial(keyPath);
-                docRemote['_cid'] = docRemote['_id'];
-                this.localStorage.create(collectionKeyPath, docRemote, ()=>{});
-              }
-              remotePromise.resolve(docRemote);
-            });
-          }
-          if(!doc){
-            promise.resolveOrReject(err, [docRemote, remotePromise]);
-          }
-        });
-      }
-    });
-    return promise;
-  }
-  */
   private updateLocalSequence(keyPath: string[], 
                                 opts: {},
                                 remoteSeq: IDoc[], cb: (err?:Error) => void)
@@ -241,7 +205,7 @@ export class Queue extends Base implements IStorage
   private updateLocalCollection(keyPath: string[], 
                                 query: {}, 
                                 options: {},
-                                newItems: any[], cb: (err?:Error) => void)
+                                newItems: any[]): Promise // Promise<void>
   {
     var 
       storage = this.localStorage,
@@ -249,54 +213,85 @@ export class Queue extends Base implements IStorage
     
     options = _.extend({snapshot: false}, options);
     
-    storage.find(keyPath, query, options, (err?:Error, oldItems?: {}[]) => {
-      if(!err){
-        var itemsToRemove = [], itemsToAdd = [];     
+    return storage.find(keyPath, query, options).then((oldItems) => {
+      var itemsToRemove = [], itemsToAdd = [];
         
-        function findItem(items, itemToFind){
-          return _.find(items, function(item){
-              return (item._cid === itemToFind._cid || 
-                      item._id === itemToFind._id);
-          });
-        }
-        
-        // Gather item ids to be removed from localStorage 
-        _.each(oldItems, function(oldItem){
-          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
-            itemsToRemove.push(oldItem._cid, oldItem._id);
-          }
+      function findItem(items, itemToFind){
+        return _.find(items, function(item){
+            return (item._cid === itemToFind._cid || 
+                    item._id === itemToFind._id);
         });
-        
-        // Gather item ids to be added to localStorage      
-        _.each(newItems, function(newItem){
-          !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
-        });
-        
-        storage.remove(keyPath, itemKeyPath, itemsToRemove, 
-          {insync:true}, (err?) => {
-          if(!err){
-            Promise.map(newItems, (doc) => {
-              var elemKeyPath = itemKeyPath.concat(doc._id);
-
-              doc._persisted = true;
-
-              // TODO: Probably not needed to update all newItems
-              doc._cid = doc._id; // ??
-              return storage.put(elemKeyPath, doc);
-            }).then(() => {
-              // Add the new collection keys to the keyPath
-              storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}, cb);
-            }).fail(cb);
-          }else{
-            cb(err);
-          }
-        });
-      }else{
-        storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}, cb);
       }
+        
+      // Gather item ids to be removed from localStorage 
+      _.each(oldItems, function(oldItem){
+        if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
+          itemsToRemove.push(oldItem._cid, oldItem._id);
+        }
+      });
+        
+      // Gather item ids to be added to localStorage      
+      _.each(newItems, function(newItem){
+        !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
+      });
+        
+      return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() => {
+        return Promise.map(newItems, (doc) => {
+          var elemKeyPath = itemKeyPath.concat(doc._id);
+
+          doc._persisted = true;
+
+          // TODO: Probably not needed to update all newItems
+          doc._cid = doc._id; // ??
+          return storage.put(elemKeyPath, doc);
+        }).then(() => {
+          // Add the new collection keys to the keyPath
+          return storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true});
+        });
+      }).fail(); // catch this failure to avoid propagation.
+      
+    }).fail((err)=>{
+      return storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true});
     });
   }
   
+  find(keyPath: string[], query: {}, options: {}): Promise
+  {
+    var promise = new Promise();
+    var remotePromise = new Promise();
+    
+    var localOpts = _.extend({snapshot:true}, options);
+    
+    var findRemote = ()=>{
+      return this.remoteStorage.find(keyPath, query, options).then((remote) => {
+        return this.updateLocalCollection(keyPath, query, options, remote);
+      }).then(()=>{
+        return this.localStorage.find(keyPath, query, localOpts);
+      });
+    }
+    
+    this.localStorage.find(keyPath, query, localOpts).then((result)=>{
+      promise.resolve([result, remotePromise]);
+      
+      if(this.useRemote){
+        findRemote().then((itemsRemote)=>{
+          remotePromise.resolve(itemsRemote);
+        });
+      }
+    }, (err) => {
+      if(!this.useRemote) return promise.reject(err);
+
+      findRemote().then((itemsRemote)=>{
+        remotePromise.resolve(itemsRemote);
+        promise.resolve([itemsRemote, remotePromise]);
+      }).fail((err)=>{
+        promise.reject(err);
+      });
+    });
+    return promise;
+  }
+  
+  /*
   find(keyPath: string[], query: {}, options: {}): Promise
   {
     var promise = new Promise();
@@ -326,6 +321,7 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
+  */
     
   create(keyPath: string[], args:{}): Promise
   {
@@ -357,28 +353,20 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], cb)
+  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[])
   {
-    this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}, (err) => {
-      if(!err){
-        this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds});
-      }
-      cb(err);
+    return this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => {
+      this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds});
     });
   }
   
   remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[]): Promise
   {
-    var promise = new Promise();
-    this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}, (err) => {
-      if(!err){
-        this.addCmd({
-          cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
-        });
-      }
-      promise.resolveOrReject(err);
+    return this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}).then(() => {
+      this.addCmd({
+        cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
+      });
     });
-    return promise;
   }
   /*
   allRemote(keyPath: string[], query: {}, opts: {}): Promise
@@ -548,16 +536,16 @@ export class Queue extends Base implements IStorage
             
             break;
           case 'update':
-            remoteStorage.put(keyPath, args).then(done).fail(done);
+            remoteStorage.put(keyPath, args).then(done, done);
             break;
           case 'delete':
-            remoteStorage.del(keyPath).then(done).fail(done);
+            remoteStorage.del(keyPath).then(done, done);
             break;
           case 'add':
-            remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}, done);
+            remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(done, done);
             break;
           case 'remove':
-            remoteStorage.remove(keyPath, itemsKeyPath, _.unique(itemIds), {}, done);
+            remoteStorage.remove(keyPath, itemsKeyPath, _.unique(itemIds), {}).then(done, done);
             break;
           case 'insertBefore':
             var id = obj.id;
@@ -671,6 +659,7 @@ export class Queue extends Base implements IStorage
       // execution queue, the same command could be executed 2 or more times in 
       // some hazardous scenarios (if the browser crashes after updating the server
       // and before the local storage). revisions should fix this problem.
+      // PROPOSAL. have a queue model in the server with a rev number.
       //
       var cmd = this.dequeueCmd();
       if(!cmd) return;
@@ -679,21 +668,21 @@ export class Queue extends Base implements IStorage
         
       switch(cmd.cmd){
         case 'add':
-          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts).then(() =>{
             storage.add(cmd.keyPath,
                         cmd.itemsKeyPath, 
                         cmd.itemIds,
-                        opts, (err?) => {
+                        opts).then(() => {
               Util.nextTick(syncFn);
             });
           });
           break;
         case 'remove': 
-          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts, (err?) =>{
+          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts).then(() =>{
             storage.remove(cmd.keyPath, 
                            cmd.itemsKeyPath, 
                            cmd.itemIds,
-                           opts, (err?) => {
+                           opts).then(() => {
               Util.nextTick(syncFn);
             });
           });

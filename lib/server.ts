@@ -99,50 +99,44 @@ export class Server {
       keyPath: string[], 
       itemsKeyPath: string[], 
       itemIds:string[], 
-      opts: {}, 
-      cb: (err?: Error) => void): void
+      opts: {}): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
+    return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
         return this.rm.add(userId, keyPath, itemsKeyPath, itemIds).then(() => {
-          this.storage.add(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
-            if(!err){
-              this.syncHub && this.syncHub.add(clientId, keyPath, itemsKeyPath, itemIds);
-            }
-            cb(err);
+          return this.storage.add(keyPath, itemsKeyPath, itemIds, opts).then(()=>{
+            this.syncHub && this.syncHub.add(clientId, keyPath, itemsKeyPath, itemIds);
           });
-        }).fail(cb);
-      }else{
-        cb();
+        });
       }
-    }).fail(cb);
+    });
   }
 
-  remove(clientId: string, userId: string, keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}, cb: (err?: Error) => void): void
+  remove(clientId: string, 
+         userId: string,
+         keyPath: string[],
+         itemsKeyPath: string[],
+         itemIds:string[],
+         opts: {}): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
+    return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
-        this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() => {
-          this.storage.remove(keyPath, itemsKeyPath, itemIds, opts, (err?: Error) => {
-            if(!err){
-              this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
-            }
-            cb(err);
+        return this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() => {
+          return this.storage.remove(keyPath, itemsKeyPath, itemIds, opts).then(() => {
+            this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
           });
-        }).fail(cb);
-      }else{
-        cb();
+        });
       }
-    }).fail(cb);
+    });
   }
 
-  find(userId: string, keyPath: string[], query: {}, options: {}, cb: (err: Error, result?: any[]) => void): void
+  find(userId: string, keyPath: string[], query: {}, opts: {}): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
-        this.storage.find(keyPath, query, options, cb);
+        return this.storage.find(keyPath, query, opts);
       }
-    }).fail(cb);
+    });
   }
   
   //
