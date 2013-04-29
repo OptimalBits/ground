@@ -271,8 +271,8 @@ export class Collection extends Container
         }).then((models)=>{
           this.add(models, {nosync: true}).then(()=> {
             this.emit('resynced:');
-            done();
             promise.resolve();
+            done();
           });
         });
       });
