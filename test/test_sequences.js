@@ -412,7 +412,7 @@ describe('Sequences', function(){
     it('works after clearing local storage', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
         animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
-          q1.once('synced:', function(){
+          q1.waitUntilSynced(function(){
             localStorage.clear();
             getSequence(parade.id(), sm2, q2, true, function(animals2){
               expect(animals2.count).to.be(1);
@@ -432,12 +432,11 @@ describe('Sequences', function(){
           expect(animals).to.be.an(Object);
           animals.once('resynced:', function(){
             animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
-              q1.once('synced:', function(){
+              q1.waitUntilSynced(function(){
                 var animalId = animals.items[0].id;
                 ss1.deleteItem(['parade', paradeId, 'animals'], animalId, {}, function(err){
-                  expect(err).to.be(null);
+                  expect(err).to.be(undefined);
                   parade.seq(Animal).then(function(animals2){
-                    expect(animals2.count).to.be(1);
                     animals2.once('resynced:', function(){
                       expect(animals2.count).to.be(0);
                       done();
@@ -535,22 +534,21 @@ describe('Sequences', function(){
   describe('Updating items', function(){
     it('update item propagates to the same item in a sequence', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
-        var tiger = new Animal({name: 'tiger'});
-        animals.once('inserted:', function(){
-          animals.once('updated:', function(){
-            expect(animals.first()).to.have.property('legs', 5);
-            animals.release();
-            tiger.release();
-            done();
+        Animal.create({name: 'tiger'}, true).then(function(tiger){
+          animals.once('inserted:', function(){
+            animals.once('updated:', function(){
+              expect(animals.first()).to.have.property('legs', 5);
+              animals.release();
+              tiger.release();
+              done();
+            });
+            Animal.findById(tiger.id()).then(function(animal){
+              animal.keepSynced();
+              animal.set('legs', 5);
+              animal.release();
+            });
           });
-          Animal.findById(tiger.id()).then(function(animal){
-            animal.keepSynced();
-            animal.set('legs', 5);
-            animal.release();
-          });
-        });
-        animals.push(tiger).error(function(err){
-          expect(err).to.not.be.ok();
+          animals.push(tiger);
         });
       });
     });
@@ -575,8 +573,8 @@ describe('Sequences', function(){
           });
         });
 
-        animals.push((new Animal({name:"panther"})).autorelease()).error(function(err){
-          expect(err).to.not.be.ok();
+        Animal.create({name: 'panther'}, true).then(function(panther){
+          animals.push(panther);
         });
       });
     });
@@ -585,18 +583,19 @@ describe('Sequences', function(){
   describe('Deleting items', function(){
     it('delete item propagates to the same item in a sequence', function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
-        var tiger = new Animal({name: 'tiger'});
-        animals.push(tiger).then(function(){
-          expect(animals.count).to.be(1);
-          animals.once('removed:', function(){
-            expect(animals.count).to.be(0);
-            done();
-          });
-          q1.once('synced:', function(){
-            Animal.findById(tiger.id()).then(function(animal){
-              animal.keepSynced();
-              animal.remove().then(function(){
-                animal.release();
+        Animal.create({name: 'tiger'}, true).then(function(tiger){
+          animals.push(tiger).then(function(){
+            expect(animals.count).to.be(1);
+            animals.once('removed:', function(){
+              expect(animals.count).to.be(0);
+              done();
+            });
+            q1.once('synced:', function(){
+              Animal.findById(tiger.id()).then(function(animal){
+                animal.keepSynced();
+                animal.remove().then(function(){
+                  animal.release();
+                });
               });
             });
           });
