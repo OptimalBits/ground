@@ -60,8 +60,9 @@ export class Local implements IStorage {
       if (this.isLink(value)){
         if (this.isCollectionLink(value)){
           var regex = new RegExp(value.slice(1, value.length-1));
-          var allKeys = this.store.allKeys(); //localCache.getKeys();
+          var allKeys = this.store.allKeys();
           // get the keys matching our regex but only those that aren't links
+          // otherwise we could get dupplicates (maybe not needed)
           var keys = _.filter(allKeys, (key)=>{
             if(key.match(regex)){
               var value = this.store.get(key);
@@ -212,36 +213,33 @@ export class Local implements IStorage {
   find(keyPath: string[], query: {}, opts) : Promise
   {
     var result = {};
-    if(keyPath.length === 1){
-      var collection = this.store.allKeys();
-      _.each(collection, (key)=>{
-        if(key.indexOf(keyPath[0]) === 0){
+    
+    var getItems = (collection) => {
+      _.each(_.keys(collection), (key)=>{
+        var op = collection[key]
+        if(op !== 'rm' || !opts.snapshot){
           var keyValue = this.traverseLinks(key);
           if(keyValue){
-            var item = keyValue.value;
-            result[item._cid] = item;
+            var 
+              item = keyValue.value,
+              id = item._cid;
+            if(!(result[id]) || op === 'insync'){
+              if(!opts.snapshot) item.__op = op;
+              result[id] = item;
+            }
           }
         }
       });
-      return new Promise(_.values(result));
+      return _.values(result);
+    }
+    
+    if(keyPath.length === 1){
+      var keyValue = this.traverseLinks(keyPath[0]);
+      if(keyValue) return new Promise(getItems(keyValue.value));
+      else return Promise.rejected(InvalidKeyError);
     }else{
       return this.fetch(keyPath).then((collection) => {
-        _.each(_.keys(collection), (key)=>{
-          var op = collection[key]
-          if(op !== 'rm' || !opts.snapshot){
-            var keyValue = this.traverseLinks(key);
-            if(keyValue){
-              var 
-                item = keyValue.value,
-                id = item._cid;
-              if(!(result[id]) || op === 'insync'){
-                if(!opts.snapshot) item.__op = op;
-                result[id] = item;
-              }
-            }
-          }
-        });
-        return _.values(result);
+        return getItems(collection);
       }, (err) => {
         // This is wrong but necessary due to how .all api works right now...
         return [];
