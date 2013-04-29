@@ -189,7 +189,8 @@ export class Queue extends Base implements IStorage
 
         Util.asyncForEach(newItems, function(item, done){
           item.doc._cid = item.doc._id; // ??
-          storage.put(_.initial(item.keyPath), item.doc).then(()=>{
+          // storage.put(_.initial(item.keyPath), item.doc).then(()=>{
+          storage.put(item.keyPath, item.doc).then(()=>{
             storage.insertBefore(keyPath, null, item.keyPath, {
               insync:true,
               id:item.id

@@ -406,7 +406,8 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     return Model.removeById(this.getKeyPath()).then(()=> {
       using.syncManager && using.syncManager.endSync(this);
-      this.emit('deleted:', this.getKeyPath());
+      // this.emit('deleted:', this.getKeyPath());
+      this.emit('deleted:', this);
     });
   }
     

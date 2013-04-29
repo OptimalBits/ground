@@ -18,6 +18,7 @@
 /// <reference path="../base.ts" />
 /// <reference path="../model.ts" />
 /// <reference path="../overload.ts" />
+/// <reference path="../mutex.ts" />
 
 module Gnd {
 
@@ -31,6 +32,9 @@ export class Sequence extends Container
   public updateFn: (args: any) => void;
   public deleteFn: (model: Model) => void;
     
+  // Mutex
+  private resyncMutex: Mutex = new Mutex();
+  
   constructor(model: IModel, seqName: string, parent?: Model, items?: ISeqModel[])
   {
     super(model, seqName, parent, items);
@@ -223,64 +227,70 @@ export class Sequence extends Container
     });
   }
   
-  public resync(newItems: any[])
+  public resync(newItems: any[]): Promise
   {
-    var oldItems = this.items;
-    var newIds = _.pluck(newItems, 'id').sort();
-    var remainingItems = [];
-    
-    return Promise.map(oldItems, (item)=>{
-      if(!item.pending && -1 === _.indexOf(newIds, item.id, true)){
-        return this.deleteItem(item.id, {nosync: true});
-      }else{
-        remainingItems.push(item);
-        return new Promise(true);
-      }
-    }).then(()=>{
-      var itemsToInsert = [];
-      var i=0;
-      var j=0;
-      var oldItem, newItem;
+    var promise = new Promise();
+    this.resyncMutex.enter((done)=>{
+      var oldItems = this.items;
+      var newIds = _.pluck(newItems, 'id').sort();
+      var remainingItems = [];
       
-      while(i<remainingItems.length){
-        oldItem = remainingItems[i];
-        if(!oldItem.pending){
-          newItem = newItems[j];
-          if(newItem.id === oldItem.id){
-            i++;
-          }else{
-            itemsToInsert.push({
-              refId: oldItem.id,
-              newItem: newItem.doc
-            });
-          }
-          j++;
+      Promise.map(oldItems, (item)=>{
+        if(!item.pending && -1 === _.indexOf(newIds, item.id, true)){
+          return this.deleteItem(item.id, {nosync: true});
         }else{
-          i++;
+          remainingItems.push(item);
+          return new Promise(true);
         }
-      }
-      
-      while(j<newItems.length){
-        newItem = newItems[j];
-        itemsToInsert.push({
-          refId: null,
-          id: newItem.id,
-          newItem: newItem.doc
+      }).then(()=>{
+        var itemsToInsert = [];
+        var i=0;
+        var j=0;
+        var oldItem, newItem;
+        
+        while(i<remainingItems.length){
+          oldItem = remainingItems[i];
+          if(!oldItem.pending){
+            newItem = newItems[j];
+            if(newItem.id === oldItem.id){
+              i++;
+            }else{
+              itemsToInsert.push({
+                refId: oldItem.id,
+                newItem: newItem.doc
+              });
+            }
+            j++;
+          }else{
+            i++;
+          }
+        }
+        
+        while(j<newItems.length){
+          newItem = newItems[j];
+          itemsToInsert.push({
+            refId: null,
+            id: newItem.id,
+            newItem: newItem.doc
+          });
+          j++;
+        }
+        
+        return Promise.map(itemsToInsert, (item)=>{
+           return (<any>this.model).create(item.newItem).then((instance)=>{
+             return this.insertItemBefore(item.refId, instance, item.id, {nosync: true});
+           });
         });
-        j++;
-      }
-      
-      return Promise.map(itemsToInsert, (item)=>{
-         return (<any>this.model).create(item.newItem).then((instance)=>{
-           return this.insertItemBefore(item.refId, instance, item.id, {nosync: true});
-         });
+        
+      }).then(()=>{
+        this.emit('resynced:');
+        done();
+        promise.resolve();
+      }, (err)=>{
+        console.log("Error resyncing sequence:"+err);
       });
-      
-    }).then(()=>{
-      this.emit('resynced:');
-    }, (err)=>{
-      console.log("Error resyncing sequence:"+err);
     });
+    return promise;
   }
 }
 

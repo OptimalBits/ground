@@ -55,8 +55,8 @@ export class Collection extends Container
       _this.emit('updated:', this, args);
     };
     
-    this.deleteFn = (itemId)=>{
-      this.remove(itemId, false);
+    this.deleteFn = (model)=>{
+      this.remove(model.id(), false);
     };
 
     this.on('sortByFn sortOrder', (fn) => {
