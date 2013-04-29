@@ -79,7 +79,8 @@ export class Manager extends Base {
     socket.on('delete:', (keyPath) => {
       var key = keyPathToKey(keyPath);
       _.each(this.docs[key], function(doc){
-        doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
+        // doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
+        doc.emit('deleted:', doc); // rename event to 'delete:' ?
       });
     });
         
