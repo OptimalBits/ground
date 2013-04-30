@@ -145,7 +145,8 @@ describe('Model', function(){
     //
     // Simulate a disconnect in the middle of an emit.
     //
-    it.skip('disconnect', function(done){
+    /*
+    it('disconnect', function(done){
       var otherAnimal;
       animal.off();
       
@@ -167,14 +168,15 @@ describe('Model', function(){
           expect(doc.legs).to.be(3);
           socket.emit = orgEmit;
           socket.socket.connect(function(){
-            storageQueue.once('synced:', function(){
+            storageQueue.waitUntilSynced(function(){
               expect(storageQueue.isEmpty()).to.be(true);
               done();
             });
           });
-        });
+        })
       });
     });
+    */
     
     //
     //  Creates a model while offline automatically creates it when
@@ -204,6 +206,23 @@ describe('Model', function(){
           tempAnimal2.keepSynced();
           socket.socket.connect();
         });
+      });
+    });
+    
+    //
+    //  Tests that after doing a findById, the object has been cached and
+    //  is available in offline mode.
+    //
+    it('findById caches object', function(done){
+      Animal.create({legs : 8, name:'spider-pig'}, true).then(function(bat){
+        socket.disconnect();
+      
+        Animal.findById(bat.id()).then(function(offlineBat){
+          expect(offlineBat).to.be.ok();
+          expect(offlineBat.id()).to.be(bat.id());
+          socket.socket.connect();
+          done();
+        })
       });
     });
     
@@ -257,14 +276,6 @@ describe('Model', function(){
           });
         });
       });
-    });
-    
-    //
-    //  Tests that after doing a findById, the object has been cached and
-    //  is available in offline mode.
-    //
-    it('findById caches object', function(){
-      // TO IMPLEMENT: This case
     });
 
     //
@@ -335,7 +346,7 @@ describe('Model', function(){
     // A model updated in the server while being offline gets
     // updated as soon as we get online.
     // (Note: we do not handle conflicts yet).
-    //
+    // 
     it.skip('serverside update while offline', function(done){
       var tempAnimal = new Animal();
       tempAnimal.set({legs : 8, name:'spider'});
@@ -361,7 +372,7 @@ describe('Model', function(){
         });
       });
     });
-    it('serverside update while offline with multiple instances', function(done){
+    it.skip('serverside update while offline with multiple instances', function(done){
       // TO IMPLEMENT;
       done();
     });

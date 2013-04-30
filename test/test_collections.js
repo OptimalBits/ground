@@ -297,12 +297,31 @@ describe('Collections', function(){
     
     before(function(done){
       socket.on('connect', storageQueue.syncFn);
-      done();
+      storageQueue.waitUntilSynced(function(){
+        done();
+      });
     });
     
-    it.skip('find items are cached');
-      // IMPLEMENT: Items that are "found" from the server should be
-      // cached for offline usage.
+    it('found items are cached', function(done){
+      localStorage.clear();
+      
+      zoo.all(Animal).then(function(animals){
+        var bat = new Animal({name:"bat"});
+        animals.add(bat);
+        
+        storageQueue.waitUntilSynced(function(){
+          socket.disconnect();
+          animals.release();
+          
+          zoo.all(Animal).then(function(animals){
+            var found = animals.findById(bat.id());
+            expect(found).to.be.ok();
+            socket.socket.connect();
+            done();
+          });
+        });
+      });
+    });
   
     it('add item to collection being offline', function(done){
       zoo.all(Animal).then(function(animals){
@@ -317,7 +336,7 @@ describe('Collections', function(){
           Zoo.findById(zoo.id()).then(function(sameZoo){
             expect(sameZoo).to.be.an(Object);
               
-            storageQueue.once('synced:', function(){
+            storageQueue.waitUntilSynced(function(){
               // Check that the collection has been synced in server.
               sameZoo.all(Animal).then(function(collection){
                 expect(collection).to.be.an(Object);
@@ -377,7 +396,7 @@ describe('Collections', function(){
         });
       });
     });
-  
+   
     it('remove item while offline', function(done){
       zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
@@ -443,13 +462,21 @@ describe('Collections', function(){
           });
         });
     });
+    
+    it.skip('serverside add item to collection offline generates added event when going online', function(done){
+    
+    
+    });
   
     //
     //  An item is added from a collection on the server, when we come back online
-    //  the local cache should be updated with the removed item.
+    //  the local cache should be updated with the added item.
     //
-    it.skip('serverside add item while offline');
+    it('serverside add item while offline', function(done){
     
+    
+      done();
+    });
     
     it('removed item from collection online is not available offline', function(done){
       zoo.all(Animal).then(function(animals){
@@ -546,6 +573,11 @@ describe('Collections', function(){
           });
         });
       });
+    });
+    
+    it.skip('serverside remove item from collection offline generates removed event when going online', function(done){
+    
+    
     });
 
     /*
