@@ -171,8 +171,8 @@ export class MongooseStorage implements IStorage {
     return this.getModel(keyPath).then((found) => {
       var promise = new Promise();
       var id = keyPath[keyPath.length-2];
+      var setName = _.last(keyPath);
       if(found.Model.add){
-        var setName = _.last(keyPath);
         found.Model.add(id, setName, itemIds, (err, ids)=>{
           if(!err){
             // Use FindAndModify to get added items
@@ -183,42 +183,25 @@ export class MongooseStorage implements IStorage {
           }
         });
       }else{
+        var update = {$addToSet: {}};
+        update.$addToSet[setName] = {$each:itemIds};
+        found.Model.update({_id:id}, update, (err) => {
+          if(!err){
+            // Use FindAndModify to get added items
+            // sync.add(id, setName, ids);
+            promise.resolve();
+          }else{
+            promise.reject(err);
+          }
+        });
+      }      
+      /*
+      else{
         promise.reject(new Error("No parent or add function available"));
       }
+      */
       return promise;
     });
-    
-    /*
-    this.getModel(itemsKeyPath, (Set) => {
-      if(Set && Set.parent){
-        var doc = {};
-        doc[Set.parent()] = keyPath[keyPath.length-2];
-        Set.update({ _id : { $in : itemIds }}, doc, function(err){
-          if(!err){
-            // TODO: Only notify for really added items
-            // this.sync.add(id, collection, itemIds);
-          }
-          cb(err);
-        });
-      }else{
-        this.getModel(keyPath, (Model) => {
-          var id = keyPath[keyPath.length-2];
-          if(Model.add){
-            var setName = _.last(keyPath);
-            Model.add(id, setName, itemIds, (err, ids)=>{
-              if(!err){
-                // Use FindAndModify to get added items
-                //sync.add(id, setName, ids);
-              }
-              cb(err);
-            });
-          }else{
-            cb(new Error("No parent or add function available"));
-          }
-        }, cb);
-      }
-    }, cb);
-    */
   }
 
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any): Promise
@@ -241,25 +224,6 @@ export class MongooseStorage implements IStorage {
         }
       });
     });
-  
-    /*
-    this.getModel(itemsKeyPath, (Set) => {
-      if(Set && Set.parent){
-        
-      }else{
-        this.getModel(keyPath, (Model) => {
-          var id = keyPath[keyPath.length-2];  
-          var setName = _.last(keyPath);
-          var update = {$pullAll: {}};
-          update.$pullAll[setName] = itemIds;
-          Model.update({_id:id}, update, function(err){
-            // TODO: Use FindAndModify to get removed items
-            cb(err);
-          });
-        }, cb);
-      }
-    }, cb);
-    */
   }
   
   find(keyPath: string[], query: {}, opts: {}): Promise
