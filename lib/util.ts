@@ -307,4 +307,70 @@ export function fetchTemplate(templateUrl?: string,
   }
 }
 
+// Expand an object with stringified keys e.g
+// {
+//   'a.b.c': 1,
+//   'a.b.x': 2,
+//   'b':3
+// }
+// =>
+// {
+//   a: {
+//     b: {
+//       c: 1,
+//       x: 2
+//     }
+//   },
+//   b: 3
+// }
+function expand(args: {}): {}
+{
+  var obj = {};
+  var keys = _.keys(args);
+  _.each(keys, function(key){
+    var path = key.split('.');
+    var branch = _.reduceRight(path, function(memo, level){
+      var tmp = {};
+      tmp[level] = memo;
+      return tmp;
+    }, args[key]);
+    deepExtend(obj, branch);
+  });
+  return obj;
+}
+
+//Deply extend an object e.g.
+// deepExtend({
+//   a: {
+//     b: 1
+//   }
+// }, {
+//   a:{
+//     c: 2
+//   }
+// })
+// =>
+// {
+//   a: {
+//     b: 1,
+//     c: 2
+//   }
+// }
+function deepExtend(doc, args): {}
+{
+  var keys = _.keys(args);
+  _.each(keys, function(key){
+    if(doc[key] && _.isObject(args[key])){
+      deepExtend(doc[key], args[key]);
+    }else{
+      doc[key] = args[key];
+    }
+  });
+  return doc;
+}
+export function merge(doc, args): {}
+{
+  return deepExtend(doc, expand(args));
+}
+
 } // Gnd.Util

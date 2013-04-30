@@ -119,7 +119,8 @@ export class Local implements IStorage {
       keyValue = this.traverseLinks(this.makeKey(keyPath));
       
     if(keyValue){  
-      this.store.put(keyValue.key, _.extend(keyValue.value, doc));
+      // this.store.put(keyValue.key, _.extend(keyValue.value, doc));
+      this.store.put(keyValue.key, Util.merge(keyValue.value, doc));
     }else{ 
       //
       // Upsert
