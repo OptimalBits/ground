@@ -11,7 +11,15 @@ module Gnd {
 //
 //  Syntax: data-each="collection: itemContextName"
 //  Ex: data-each="todos: todo" data-bind="todo.description"
+//  data-each="todos: todo [| added:callback0] [removed: callback1]"
 //
+
+interface Callbacks
+{
+  added?: (node: Node, item: Model) => void;
+  removed?: (node: Node) => void;
+}
+
 export class EachBinder implements Binder
 {
   private items: Element[] = [];
@@ -23,22 +31,30 @@ export class EachBinder implements Binder
   private addedListener: (item: Model)=>void;
   private removedListener: (item: Model)=>void;
   private updatedListener: ()=>void;
+  private callbacks;
   
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var arr = value.trim().split(':');
+    var match = value.match(/((?:\w+\.?\w+)+)\s*:\s*(\w+)/);
     
-    if(arr.length !== 2){
-      console.log("Warning: syntax error in data-each:"+value);
-      return;
+    if(!match){
+      throw new Error("Syntax error in data-each:"+value);
+    }
+    
+    var callbacksRegExp = /\|\s*(added|removed)\s*:\s*(\w+)/g;
+    var callbacks: Callbacks = this.callbacks = {};
+    var matchArr;
+    while(matchArr = callbacksRegExp.exec(value)){
+      callbacks[matchArr[1]] = 
+        viewModel.resolveContext([matchArr[2]]) || Util.noop;
     }
     
     var
       mappings = this.mappings,
       nextSibling = el.nextSibling,
-      keyPath = makeKeypathArray(arr[0]),
+      keyPath = makeKeypathArray(match[1]),
       collection = <Collection> viewModel.resolveContext(keyPath),
-      itemContextName = arr[1].trim();
+      itemContextName = match[2];
       
     var parent = this.parent = <Element> el.parentNode;
       
@@ -55,12 +71,13 @@ export class EachBinder implements Binder
       el.removeAttribute('data-each');
       el.removeAttribute('id');
       
-      var attachNode = (node: Node, nextSibling?: Element) => {
+      var attachNode = (node: Node, nextSibling: Element, item) => {
         if(nextSibling){
           parent.insertBefore(node, nextSibling)
         }else{
           parent.appendChild(node);
         }
+        callbacks.added && callbacks.added(node, item);
       }
     
       var addNode = (item, nextSibling) => {
@@ -70,7 +87,7 @@ export class EachBinder implements Binder
 
         if(existingNode){
           var oldChild = parent.removeChild(existingNode);
-          attachNode(oldChild, nextSibling);
+          attachNode(oldChild, nextSibling, item);
         }else{
           var 
             itemNode = <Element> el.cloneNode(true),
@@ -87,7 +104,7 @@ export class EachBinder implements Binder
           setAttr(itemNode, 'data-item', id);
           mappings[id] = itemNode;
 
-          attachNode(itemNode, nextSibling);
+          attachNode(itemNode, nextSibling, item);
 
           var context = {};
           context[itemContextName] = item;
@@ -154,7 +171,7 @@ export class EachBinder implements Binder
         .on('removed:', this.removedListener)
         .on('filterFn sorted: updated: inserted:', this.updatedListener);
     }else{
-      console.log("Warning: not found a valid collection: "+arr[0]);
+      console.log("Warning: not found a valid collection: "+match[1]);
     }
   }
 
@@ -175,6 +192,10 @@ export class EachBinder implements Binder
     this.viewModel.unbind(node['gnd-bindings']);
     item.off('id', node['gnd-listener']);
     item.release();
+    
+    // TODO: in order to support animations, the remove callback
+    // should have a done callback as last parameter...
+    this.callbacks.removed && this.callbacks.removed(node);
     
     this.parent.removeChild(node);
     delete this.mappings[id];

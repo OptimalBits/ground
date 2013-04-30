@@ -349,7 +349,7 @@ describe('ViewModel', function(){
       
       list = document.createElement('lu');
       listEl = document.createElement('li');
-      listEl.setAttribute('data-each', 'zoo.animals: animal');
+      listEl.setAttribute('data-each', 'zoo.animals: animal | added: addedCallback | removed: removedCallback');
       listEl.setAttribute('data-bind', 'text: animal.name');
       list.appendChild(listEl);
     });
@@ -467,6 +467,32 @@ describe('ViewModel', function(){
       expect(Gnd.$(list.children[1]).text()).to.be.eql('leopard');
       zoo.animals.set('filterFn',null);
       vm.unbind();
+    });
+    
+    it('calls callback with added node', function(done){
+      var vm = new Gnd.ViewModel(list, {
+        zoo: zoo,
+        addedCallback: function(el){
+         expect(el).to.be.ok();
+         expect(Gnd.isElement(el)).to.be(true);
+         done() 
+        }
+      });
+      
+      zoo.animals.add(new Animal({name: 'elephant'}));
+    });
+    
+    it('calls callback with removed node', function(done){
+      var vm = new Gnd.ViewModel(list, {
+        zoo: zoo,
+        removedCallback: function(el){
+         expect(el).to.be.ok();
+         expect(Gnd.isElement(el)).to.be(true);
+         done() 
+        }
+      });
+      
+      zoo.animals.remove(tiger.id());
     });
   });
   describe('data-each with nested nodes', function(){
