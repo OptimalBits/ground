@@ -22,7 +22,6 @@ module Gnd.Storage {
   export interface Command {
     cmd: string;
     keyPath?: string[];
-    // refItemKeyPath?: string[];
     id?: string;
     cid?: string;
     itemKeyPath?: string[];
@@ -664,6 +663,8 @@ export class Queue extends Base implements IStorage
       //
       var cmd = this.dequeueCmd();
       if(!cmd) return;
+      
+      console.log("Completed queue command", cmd);
       
       var opts = {insync: true};
         
