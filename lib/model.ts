@@ -465,9 +465,11 @@ export class Model extends Base implements Sync.ISynchronizable
       return using.storageQueue.find(keyPath, {}, {}).then((result)=>{
         _.each(result[0], function(doc){_.extend(doc, args)});
         return Container.create(Collection, this, _.last(keyPath), parent, result[0]).then((container)=>{
+          container.retain();
           result[1].then((docs) =>{
             _.each(docs, function(doc){_.extend(doc, args)});
             container.resync(docs)
+            container.release();
           });
           return container;
         });
@@ -508,8 +510,10 @@ export class Model extends Base implements Sync.ISynchronizable
     var allInstances = (parent, keyPath, args) => {
       return using.storageQueue.all(keyPath, {}, {}).then((result)=>{        
         return Container.create(Sequence, this, _.last(keyPath), parent, result[0]).then((seq)=>{
+          seq.retain();
           result[1].then((items)=>{
             seq.resync(items);
+            seq.release();
           });
           return seq;
         });
