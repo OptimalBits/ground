@@ -52,12 +52,42 @@ export class Base extends EventEmitter implements ISettable, IGettable
     }
   }
   
+  /**
+    set - Sets a property and notifies any listeners attached to it if changed.
+  */
+  set(keyOrObj, val?: any, options?: {})
+  {
+    var changed = false, obj;
+  
+    if(typeof keyOrObj == 'object'){
+      options = val;
+      obj = <Object>keyOrObj;
+      _.each(obj, (val, key?: string) => {
+        changed = this._set(key, val, options) ? true : changed;
+      });
+    }else{
+      changed = this._set(keyOrObj, val, options)
+    }
+    if(changed){
+      if(!obj){
+        obj = {}
+        obj[keyOrObj] = val;
+      }
+      this.emit('changed:', obj, options);
+    }
+    return this;
+  }
+  
   //
   // TODO: Accept keypath arrays besides strings.
   //
   private _set(keypath: string, val, options) {
-    var path = keypath.split('.'), obj = this, len=path.length-1, key = path[len];
-  
+    var 
+      path = keypath.split('.'), 
+      obj = this,
+      len=path.length-1, 
+      key = path[len];
+
     for(var i=0;i<len;i++){
       var t = this[path[i]];
       if (!t){
@@ -66,42 +96,23 @@ export class Base extends EventEmitter implements ISettable, IGettable
         obj = t;
       }
     }
+    
+    var isFunc = _.isFunction(obj[key]);
+    var oldVal = isFunc ? obj[key].call(this) : obj[key];
   
-    if((_.isEqual(obj[key], val) === false) || (options && options.force)){
-      var oldval = obj[key],
-        val = this.willChange ? this.willChange(key, val):val;
-      obj[key] = val
-      this.emit(keypath, val, oldval, options)
+    if((_.isEqual(oldVal, val) === false) || (options && options.force)){
+      var val = this.willChange ? this.willChange(key, val) : val;
+      if(isFunc){
+        obj[key].call(this, val);
+      }else{
+        obj[key] = val
+      }
+      
+      this.emit(keypath, val, oldVal, options)
       return true
     }else{
       return false
     }
-  }
-  
-  /**
-    set - Sets a property and notifies any listeners attached to it if changed.
-  */
-  set(keyOrObj, val?: any, options?: {})
-  {
-    var changed = false, obj, self = this;
-  
-    if(typeof keyOrObj == 'object'){
-      options = val;
-      obj = <Object>keyOrObj;
-      _.each(obj, function(val, key?: string){
-        changed = self._set(key, val, options)?true:changed;
-      });
-    }else{
-      changed = self._set(keyOrObj, val, options)
-    }
-    if(changed){
-      if(!obj){
-        obj = {}
-        obj[keyOrObj] = val;
-      }
-      self.emit('changed:', obj, options);
-    }
-    return this;
   }
   
   willChange(key, val) {
@@ -115,13 +126,16 @@ export class Base extends EventEmitter implements ISettable, IGettable
   {
     var path = key.split('.'), result;
   
-    result = this[path[0]];
-    for(var i=1, len=path.length;i<len;i++){
+    for(var i=0, len=path.length;i<len;i++){
+      result = this[path[0]];
+      
+      result = _.isFunction(result) ? result.call(this) : result;
+      
       if(!_.isObject(result)) break;
-      result = result[path[i]];
     }
     return result;
   }
+  
   
   /**
    * bind - Creates a binding between two keys.
