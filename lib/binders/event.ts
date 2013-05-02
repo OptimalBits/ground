@@ -39,15 +39,13 @@ export class EventBinder implements Binder
       
       if(obj instanceof Base){
         var 
-          eventKeypath = _.rest(keypath).join('.'),
-          handler = obj.get(eventKeypath);
+          key = _.last(keypath),
+          handler = obj[key];
         
         obj.retain();
 
         if(_.isFunction(handler)){
-          var elementListener = (evt) => {
-            handler.call(obj, el, evt);
-          }
+          var elementListener = (evt) => handler.call(obj, el, evt);
           
           $(el).on(eventName, elementListener);
           

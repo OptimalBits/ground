@@ -34,11 +34,9 @@ export class ShowBinder implements Binder
         }
       }
       
-      var key = 
-        _.rest(keypath).join('.'),
-        modelListener = (visible) => {
-          setVisibility(visible);
-        };
+      var 
+        key = _.last(keypath),
+        modelListener = (visible) => setVisibility(visible);
       
       setVisibility(model.get(key));
       

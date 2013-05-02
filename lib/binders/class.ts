@@ -33,7 +33,7 @@ export class ClassBinder implements Binder
         model.retain();
           
         var 
-          key = _.rest(keypathArray).join('.'),
+          key = _.last(keypathArray),
           addClasses = negate ? !model.get(key) : model.get(key),
           modelListener;
           
