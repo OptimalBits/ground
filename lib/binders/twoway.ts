@@ -62,11 +62,11 @@ export class TwoWayBinder implements Binder
         
       if(attr === 'text'){
         setText(el, format());
-        modelListener = () => { setText(el, format());}
+        modelListener = () => setText(el, format());
       }else{
         setAttr(el, attr, format());
-        modelListener = () => { setAttr(el, attr, format()); };
-        elemListener = (value) => { obj.set(keypath, getAttr(el, attr)); };
+        modelListener = () => setAttr(el, attr, format());
+        elemListener = (value) => obj.set(keypath, getAttr(el, attr));
       }
       obj.retain();
       obj.on(keypath, modelListener);
