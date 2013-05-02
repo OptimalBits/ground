@@ -47,6 +47,8 @@ export class View extends Base
   private templateStr: string;
   private templateUrl: string;
   private cssUrl: string;
+  
+  private isInitialized: bool;
 
   public root: HTMLElement; 
   public fragment: DocumentFragment;
@@ -81,32 +83,6 @@ export class View extends Base
   }
   
   /**
-   * 
-   * Initializes the view.
-   *
-   * This method must be called at least once before the view can be rendered.
-   * Tipically this method will fetch templates and css files from the server
-   * asynchronously.
-   * 
-   * @param {Function} done Callback called after initialization has been 
-   * completed.
-   */
-  init(done: (err?: Error)=>void)
-  {
-    Util.fetchTemplate(this.templateUrl, this.cssUrl, (err?, templ?) => {
-      if(!err){
-        this.template = using.template(this.templateStr || templ);
-      
-        Util.asyncForEach(this.children, (subview, cb) => {
-          this.init(cb);
-        }, done);
-      }else{
-        done(err);
-      }
-    });
-  }
-  
-  /**
    *
    * Renders this view and all its subviews (if any)
    *
@@ -119,37 +95,40 @@ export class View extends Base
    */
   render(context?: {})
   {
-    var html;
-    
-    if(this.template){
-      html = this.template(context);
-    }else{
-      html = this.html || '<div>';
-    }
-    
-    this.fragment = $(html)[0];
-    
-    if(!this.fragment) throw(new Error('Invalid html:\n'+html));
-    
-    //
-    // TODO: We do not use this for now...
-    // waitForImages(el, done);
-    //
-    var parentRoot = this.parent ? this.parent.root : null;
-    
-    var target = this.root = (this.selector && $(this.selector, parentRoot)[0]) || 
-                             document.body;
-                  
-    if(this.styles){
-      $(target).css(this.styles);
-    }
-  
-    //
-    // we can use cloneNode here on the fragment if we want to keep a copy.
-    //
-    target.appendChild(this.fragment);
-    _.each(this.children, (subview) => {
-      subview.render(context);
+    this.init((err?)=>{
+      var html;
+
+      if(this.template){
+        html = this.template(context);
+      }else{
+        html = this.html || '<div>';
+      }
+
+      this.fragment = $(html)[0];
+
+      if(!this.fragment) throw(new Error('Invalid html:\n'+html));
+
+      //
+      // TODO: We do not use this for now...
+      // waitForImages(el, done);
+      //
+      var parentRoot = this.parent ? this.parent.root : null;
+
+      var target = this.root = (this.selector && $(this.selector, parentRoot)[0]) || 
+      document.body;
+
+      if(this.styles){
+        $(target).css(this.styles);
+      }
+
+      //
+      // we can use cloneNode here on the fragment if we want to keep a copy.
+      //
+      target.appendChild(this.fragment);
+      _.each(this.children, (subview) => {
+        subview.render(context);
+      });
+
     });
   }
   
@@ -186,6 +165,39 @@ export class View extends Base
     this.clean();
     super.destroy();
   }
+  
+  /**
+   * 
+   * Initializes the view.
+   *
+   * This method must be called at least once before the view can be rendered.
+   * Tipically this method will fetch templates and css files from the server
+   * asynchronously.
+   * 
+   * @param {Function} done Callback called after initialization has been 
+   * completed.
+   */
+  private init(done: (err?: Error)=>void)
+  {
+    if(!this.isInitialized){
+      this.isInitialized = true;
+      
+      Util.fetchTemplate(this.templateUrl, this.cssUrl, (err?, templ?) => {
+        if(templ){
+          this.template = using.template(this.templateStr || templ);
+      
+          Util.asyncForEach(this.children, (subview, cb) => {
+            this.init(cb);
+          }, done);
+        }else{
+          done(err);
+        }
+      });
+    }else{
+      done();
+    }
+  }
+  
 }
 
 }
