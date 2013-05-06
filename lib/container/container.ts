@@ -23,7 +23,7 @@ module Gnd
     new (model: IModel, containerName: string, parent?: Model, items?: any[]): Container;
   }
   
-  export class Container extends Base implements Sync.ISynchronizable
+  export class Container extends Promise implements Sync.ISynchronizable
   {
     public storageQueue: Storage.Queue;
   
@@ -66,15 +66,15 @@ module Gnd
     
     public static create(ContainerClass: IContainer,
                          model: IModel, 
-                         collectionName: string, 
+                         containerName: string,
                          parent: Model, 
-                         docs: {}[]): Promise
+                         items?: any[]): Container
     {
-      var container = new ContainerClass(model, collectionName, parent);
-      return container.init(docs);
+      return new ContainerClass(model, containerName, parent, items);
+      // return container.init(docs);
     }
     
-    constructor(model: IModel, containerName: string, parent?: Model, items?: any[])
+    constructor(model: IModel, containerName?: string, parent?: Model, items?: any[])
     {
       super();
 
@@ -88,18 +88,18 @@ module Gnd
       this.model = model;
       this.parent = parent;
     
-      this.resyncFn = (items) => {
-        this.resync(items);
-      }
+      this.resyncFn = (items) => this.resync(items);
     }
     
-    destroy(){
-      Util.nextTick(()=>{
-        this.items = null;
-      });
+    destroy()
+    {
+      Util.nextTick(() => this.items = null);
       
-      var key = Storage.Queue.makeKey(this.getKeyPath());
-      this.storageQueue.off('resync:'+key, this.resyncFn);
+      var keyPath = this.getKeyPath();
+      if(keyPath){
+        var key = Storage.Queue.makeKey(keyPath);
+        this.storageQueue.off('resync:'+key, this.resyncFn);
+      }
       
       this._keepSynced && this.endSync();
       this.deinitItems(this.getItems());
@@ -108,7 +108,7 @@ module Gnd
     
     init(docs: {}[]): Promise
     {
-      return this.resync(docs).then(()=>{return this});
+      return this.resync(docs).then(() => this);
     }
     
     save(): Promise
@@ -118,8 +118,10 @@ module Gnd
     
     getKeyPath(): string[]
     {
-      if(this.parent) return [this.parent.bucket(), this.parent.id(), this.containerName];
-      return [this.containerName];
+      if(this.containerName){
+        if(this.parent) return [this.parent.bucket(), this.parent.id(), this.containerName];
+        return [this.containerName];
+      }
     }
     
     keepSynced(): void

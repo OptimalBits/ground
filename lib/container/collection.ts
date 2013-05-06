@@ -73,6 +73,20 @@ export class Collection extends Container
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
+    
+    var keyPath = this.getKeyPath();
+    if(keyPath){
+      this.retain();
+      using.storageQueue.find(keyPath, {}, {}).then((result) => {
+        this.resync(result[0]);
+        result[1].then((items) => this.resync(items))
+          .then(() => this.resolve(this))
+          .fail(() => this.resolve(this))
+          .then(() => this.release());
+      });
+    }else{
+      this.resolve(this);
+    }
   }
   
   destroy(){
@@ -179,9 +193,13 @@ export class Collection extends Container
   private addPersistedItem(item: Model): Promise
   {
     var keyPath = this.getKeyPath();
-    var itemKeyPath = _.initial(item.getKeyPath());
+    if(keyPath){
+      var itemKeyPath = _.initial(item.getKeyPath());
     
-    return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
+      return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
+    }else{
+      return Promise.resolved();
+    }
   }
 
   private addItem(item: Model, opts): Promise

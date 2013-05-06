@@ -56,6 +56,15 @@ export class Sequence extends Container
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
+    
+    this.retain();
+    using.storageQueue.all(this.getKeyPath(), {}, {}).then((result) => {
+      this.resync(result[0]);
+      result[1].then((items) => this.resync(items))
+        .then(() => this.resolve(this))
+        .fail(() => this.resolve(this))
+        .then(() => this.release());
+    });
   }
 
   private deleteItem(id: string, opts): Promise
@@ -276,11 +285,9 @@ export class Sequence extends Container
           j++;
         }
         
-        return Promise.map(itemsToInsert, (item)=>{
-           return (<any>this.model).create(item.newItem).then((instance)=>{
-             return this.insertItemBefore(item.refId, instance, item.id, {nosync: true});
-           });
-        });
+        return Promise.map(itemsToInsert, (item) =>
+          (<any>this.model).create(item.newItem).then((instance) =>
+            this.insertItemBefore(item.refId, instance, item.id, {nosync: true})));
         
       }).then(()=>{
         this.emit('resynced:');
@@ -298,7 +305,7 @@ export class Sequence extends Container
 // Underscore methods that we want to implement on the Sequence
 //
 var methods = 
-  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
+  ['each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
     'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
     'contains', 'invoke', 'max', 'min', 'toArray', 'size',
     'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty']
