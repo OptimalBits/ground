@@ -128,7 +128,9 @@ export class Base extends EventEmitter implements ISettable, IGettable
   */
   get(key: string): any
   {
-    var path = key.split('.'), result;
+    var 
+      path = key.split('.'),
+      result = this[path[0]];
   
     for(var i=0, len=path.length;i<len;i++){
       result = this[path[i]];
