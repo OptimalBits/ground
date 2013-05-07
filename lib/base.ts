@@ -21,7 +21,8 @@
 // Error.prototype.stack = Error.prototype.stack || '';
 
 module Gnd {
-  
+"use strict";
+
 export interface IObservable 
 {
   // TODO: Implement
