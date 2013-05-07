@@ -42,15 +42,15 @@ export class Promise extends Base
     }
     
     for(var i=0; i<len; i++){
-      fn(elements[i]).then((result)=>{
-        results[i] = result;
-        counter--;
-        if(counter === 0){
-          promise.resolve(results);
-        }
-      }, (err) => {
-        promise.reject(err);
-      });
+      ((index) => {
+        fn(elements[index]).then((result) => {
+          results[index] = result;
+          counter--;
+          if(counter === 0){
+            promise.resolve(results);
+          }
+        }, (err) => promise.reject(err));
+      })(i);
     }
   
     return promise;
