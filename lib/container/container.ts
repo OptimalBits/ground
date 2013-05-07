@@ -20,7 +20,13 @@ module Gnd
 {
   export interface IContainer
   {
-    new (model: IModel, containerName: string, parent?: Model, items?: any[]): Container;
+    new (model: IModel, opts?: ContainerOptions, parent?: Model, items?: any[]): Container;
+  }
+  
+  export interface ContainerOptions
+  {
+    key?: string;
+    nosync?: bool;
   }
   
   export class Container extends Promise implements Sync.ISynchronizable
@@ -54,10 +60,9 @@ module Gnd
     public parent: Model;
     public count: number = 0;
     
-    private containerName: string;
-    
     // Protected
     public items: any[];
+    public opts: ContainerOptions;
     
     private static getItemIds(items: Model[])
     {
@@ -66,19 +71,20 @@ module Gnd
     
     public static create(ContainerClass: IContainer,
                          model: IModel, 
-                         containerName: string,
-                         parent: Model, 
+                         opts?: ContainerOptions,
+                         parent?: Model, 
                          items?: any[]): Container
     {
-      return new ContainerClass(model, containerName, parent, items);
-      // return container.init(docs);
+      return new ContainerClass(model, opts, parent, items);
     }
     
-    constructor(model: IModel, containerName?: string, parent?: Model, items?: any[])
+    constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: any[])
     {
       super();
-
-      this.containerName = containerName || (this.model && this.model.__bucket);
+      
+      this.opts = opts = opts || {};
+      
+      opts.key = opts.key || (model && model.__bucket);
       
       this.storageQueue = 
         new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
@@ -118,9 +124,9 @@ module Gnd
     
     getKeyPath(): string[]
     {
-      if(this.containerName){
-        if(this.parent) return [this.parent.bucket(), this.parent.id(), this.containerName];
-        return [this.containerName];
+      if(this.opts.key){
+        if(this.parent) return [this.parent.bucket(), this.parent.id(), this.opts.key];
+        return [this.opts.key];
       }
     }
     

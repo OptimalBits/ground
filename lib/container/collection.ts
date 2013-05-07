@@ -76,7 +76,7 @@ export class Collection extends Container
     }
     
     var keyPath = this.getKeyPath();
-    if(keyPath){
+    if(keyPath && !this.opts.nosync){
       this.retain();
       using.storageQueue.find(keyPath, {}, {}).then((result) => {
         this.resync(result[0]);
@@ -104,8 +104,6 @@ export class Collection extends Container
   
   add(items: Model[], opts?): Promise
   {
-    opts = opts || {};
-
     return Promise.map(items, (item)=>{
       return this.addItem(item, opts).then(()=>{
         this._keepSynced && !item._keepSynced && item.keepSynced();
@@ -119,8 +117,6 @@ export class Collection extends Container
       items = this.items,
       keyPath = this.getKeyPath();
     
-    opts = opts || {};
-    
     return Promise.map(itemIds, (itemId) => {
       var item = this.findById(itemId);
   
@@ -133,7 +129,9 @@ export class Collection extends Container
         this.set('count', items.length);
         this.emit('removed:', item);
         
-        if(!opts || !opts.nosync){
+        opts = _.extend(this.opts, opts);
+        
+        if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
           return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()]);
         }
@@ -223,6 +221,8 @@ export class Collection extends Container
     
     this.set('count', this.items.length);
     this.emit('added:', item);
+    
+    opts = _.extend(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
