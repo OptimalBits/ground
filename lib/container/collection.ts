@@ -22,7 +22,6 @@ module Gnd {
   /**
     Collection.find()
     Animal.find(zoo, 'birds', {type: 'bird'})
-    
   */
 
 export class Collection extends Container
@@ -35,13 +34,15 @@ export class Collection extends Container
   private resyncMutex: Mutex = new Mutex();
   
   // Links
-  private linkFn: (evt: string, item: Model, fields?: string[]) => void;
+  private linkAddFn: (item: Model) => void;
+  private linkRemoveFn: (item: Model) => void;
+  private linkUpdateFn: (item: Model, fields?: string[]) => void;
   private linkTarget: Collection;
-
+  
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   
-  constructor(model: IModel, collectionName: string, parent?: Model, items?: Model[])
+  constructor(model: IModel, collectionName?: string, parent?: Model, items?: Model[])
   {
     super(model, collectionName, parent, items);
     
@@ -160,34 +161,40 @@ export class Collection extends Container
   link(target: Collection, 
        fn: (evt: string, item: Model, fields?: string[]) => void)
   {
-    if(this.linkFn){
+    if(this.linkTarget){
       this.unlink();
     }
     
-    this.linkFn = fn;
-    this.linkTarget = target;
-    target
-      .on('added:', (item)=>{
-        fn('added:', item);
-      })
-      .on('removed:', (item)=>{
-        fn('removed:', item);
-      })
-      .on('updated:', (item, fields)=>{
-        fn('added:', item, fields);
-      });
-    target['each']((item)=>{
+    this.linkAddFn = (item: Model)=>{
       fn('added:', item);
-    });
+    };
+    this.linkRemoveFn = (item)=>{
+      fn('removed:', item);
+    };
+    this.linkUpdateFn = (item, fields?)=>{
+      fn('updated:', item, fields);
+    }
+    
+    // TODO: Add a proxy in EventEmitter class.
+    this.linkTarget = target;
+    
+    target
+      .on('added:', this.linkAddFn)
+      .on('removed:', this.linkRemoveFn)
+      .on('updated:', this.linkUpdateFn);
+
+    target['each'](this.linkAddFn);
   }
   
   unlink()
   {
-    var fn = this.linkFn;
-    if(fn){
-      this.linkTarget.off('added:', fn).off('removed:', fn).off('updated:', fn);
-      this.linkFn = null;
+    if(this.linkTarget){
+      this.linkTarget.off('added:', this.linkAddFn);
+      this.linkTarget.off('removed:', this.linkRemoveFn);
+      this.linkTarget.off('updated:', this.linkUpdateFn);
     }
+    
+    this.linkAddFn = this.linkRemoveFn = this.linkUpdateFn = null;
   }
   
   private addPersistedItem(item: Model): Promise
