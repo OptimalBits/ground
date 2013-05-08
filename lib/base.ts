@@ -131,9 +131,12 @@ export class Base extends EventEmitter implements ISettable, IGettable
   {
     var 
       path = key.split('.'),
-      result = this[path[0]];
-  
-    for(var i=1, len=path.length;i<len;i++){
+      result: any = this,
+      len = path.length;
+    
+    if(!len) return;
+    
+    for(var i=0; i<len; i++){
       result = result[path[i]];
       
       result = _.isFunction(result) ? result.call(this) : result;
