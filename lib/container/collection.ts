@@ -22,7 +22,6 @@ module Gnd {
   /**
     Collection.find()
     Animal.find(zoo, 'birds', {type: 'bird'})
-    
   */
 
 export class Collection extends Container
@@ -35,13 +34,15 @@ export class Collection extends Container
   private resyncMutex: Mutex = new Mutex();
   
   // Links
-  private linkFn: (evt: string, item: Model, fields?: string[]) => void;
+  private linkAddFn: (item: Model) => void;
+  private linkRemoveFn: (item: Model) => void;
+  private linkUpdateFn: (item: Model, fields?: string[]) => void;
   private linkTarget: Collection;
-
+  
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   
-  constructor(model: IModel, collectionName: string, parent?: Model, items?: Model[])
+  constructor(model: IModel, collectionName?: string, parent?: Model, items?: Model[])
   {
     super(model, collectionName, parent, items);
     
@@ -73,6 +74,20 @@ export class Collection extends Container
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
+    
+    var keyPath = this.getKeyPath();
+    if(keyPath && !this.opts.nosync){
+      this.retain();
+      using.storageQueue.find(keyPath, {}, {}).then((result) => {
+        this.resync(result[0]);
+        result[1].then((items) => this.resync(items))
+          .then(() => this.resolve(this))
+          .fail(() => this.resolve(this))
+          .then(() => this.release());
+      });
+    }else{
+      this.resolve(this);
+    }
   }
   
   destroy(){
@@ -89,8 +104,6 @@ export class Collection extends Container
   
   add(items: Model[], opts?): Promise
   {
-    opts = opts || {};
-
     return Promise.map(items, (item)=>{
       return this.addItem(item, opts).then(()=>{
         this._keepSynced && !item._keepSynced && item.keepSynced();
@@ -104,8 +117,6 @@ export class Collection extends Container
       items = this.items,
       keyPath = this.getKeyPath();
     
-    opts = opts || {};
-    
     return Promise.map(itemIds, (itemId) => {
       var item = this.findById(itemId);
   
@@ -118,7 +129,9 @@ export class Collection extends Container
         this.set('count', items.length);
         this.emit('removed:', item);
         
-        if(!opts || !opts.nosync){
+        opts = _.extend(this.opts, opts);
+        
+        if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
           return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()]);
         }
@@ -146,42 +159,52 @@ export class Collection extends Container
   link(target: Collection, 
        fn: (evt: string, item: Model, fields?: string[]) => void)
   {
-    if(this.linkFn){
+    if(this.linkTarget){
       this.unlink();
     }
     
-    this.linkFn = fn;
-    this.linkTarget = target;
-    target
-      .on('added:', (item)=>{
-        fn('added:', item);
-      })
-      .on('removed:', (item)=>{
-        fn('removed:', item);
-      })
-      .on('updated:', (item, fields)=>{
-        fn('added:', item, fields);
-      });
-    target['each']((item)=>{
+    this.linkAddFn = (item: Model)=>{
       fn('added:', item);
-    });
+    };
+    this.linkRemoveFn = (item)=>{
+      fn('removed:', item);
+    };
+    this.linkUpdateFn = (item, fields?)=>{
+      fn('updated:', item, fields);
+    }
+    
+    // TODO: Add a proxy in EventEmitter class.
+    this.linkTarget = target;
+    
+    target
+      .on('added:', this.linkAddFn)
+      .on('removed:', this.linkRemoveFn)
+      .on('updated:', this.linkUpdateFn);
+
+    target['each'](this.linkAddFn);
   }
   
   unlink()
   {
-    var fn = this.linkFn;
-    if(fn){
-      this.linkTarget.off('added:', fn).off('removed:', fn).off('updated:', fn);
-      this.linkFn = null;
+    if(this.linkTarget){
+      this.linkTarget.off('added:', this.linkAddFn);
+      this.linkTarget.off('removed:', this.linkRemoveFn);
+      this.linkTarget.off('updated:', this.linkUpdateFn);
     }
+    
+    this.linkAddFn = this.linkRemoveFn = this.linkUpdateFn = null;
   }
   
   private addPersistedItem(item: Model): Promise
   {
     var keyPath = this.getKeyPath();
-    var itemKeyPath = _.initial(item.getKeyPath());
+    if(keyPath){
+      var itemKeyPath = _.initial(item.getKeyPath());
     
-    return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
+      return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
+    }else{
+      return Promise.resolved();
+    }
   }
 
   private addItem(item: Model, opts): Promise
@@ -198,6 +221,8 @@ export class Collection extends Container
     
     this.set('count', this.items.length);
     this.emit('added:', item);
+    
+    opts = _.extend(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){

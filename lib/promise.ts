@@ -6,6 +6,7 @@
   Promise Module. Minimal promise implementation.
 */
 /// <reference path="util.ts" />
+/// <reference path="base.ts" />
 
 
 module Gnd {
@@ -17,7 +18,9 @@ function isPromise(promise){
 // TODO: Use local event queue to guarantee that all callbacks are called 
 // in the same turn in the proper order.
 //export class Promise<T> {
-export class Promise {
+
+export class Promise extends Base
+{
   fulfilledFns : any[] = [];
   rejectedFns: any[] = [];
   value : any;
@@ -39,15 +42,15 @@ export class Promise {
     }
     
     for(var i=0; i<len; i++){
-      fn(elements[i]).then((result)=>{
-        results[i] = result;
-        counter--;
-        if(counter === 0){
-          promise.resolve(results);
-        }
-      }, (err) => {
-        promise.reject(err);
-      });
+      ((index) => {
+        fn(elements[index]).then((result) => {
+          results[index] = result;
+          counter--;
+          if(counter === 0){
+            promise.resolve(results);
+          }
+        }, (err) => promise.reject(err));
+      })(i);
     }
   
     return promise;
@@ -65,6 +68,8 @@ export class Promise {
   
   constructor(value?: any)
   {
+    super();
+    
     if(value instanceof Error){
       this.reject(value);
     }else if(value){

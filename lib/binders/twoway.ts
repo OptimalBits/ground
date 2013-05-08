@@ -46,19 +46,14 @@ export class TwoWayBinder implements Binder
       obj = viewModel.resolveContext(([attrBinding[0]]));
     
     if(obj instanceof Base){
-      //
-      // TODO: This join('.') will disapear when we have
-      // keypath support in Base as an array.
-      //
-      var 
+       var 
         keypath = _.rest(attrBinding).join('.'),
         modelListener,
         elemListener = null;
         
-      var format = () => {
-        return attrFormatter ? 
+      var format = () =>
+        attrFormatter ? 
           attrFormatter.call(obj, obj.get(keypath)) : obj.get(keypath);
-      }
         
       if(attr === 'text'){
         setText(el, format());

@@ -461,20 +461,9 @@ export class Model extends Base implements Sync.ISynchronizable
   */
   static all(parent: Model, argsOrKeypath?, bucket?: string): Promise
   {
-    var allInstances = (parent, keyPath, args) => {
-      return using.storageQueue.find(keyPath, {}, {}).then((result)=>{
-        _.each(result[0], function(doc){_.extend(doc, args)});
-        return Container.create(Collection, this, _.last(keyPath), parent, result[0]).then((container)=>{
-          container.retain();
-          result[1].then((docs) =>{
-            _.each(docs, function(doc){_.extend(doc, args)});
-            container.resync(docs)
-            container.release();
-          });
-          return container;
-        });
-      });
-    };
+    var allInstances = (parent, keyPath, args) =>
+      Container.create(Collection, this, {key: _.last(keyPath)}, parent);
+ 
     return overload({
       'Model Array Object': function(parent, keyPath, args){
         return allInstances(parent, keyPath, args);
@@ -507,18 +496,9 @@ export class Model extends Base implements Sync.ISynchronizable
   static seq(parent: Model, bucket: string): Promise;
   static seq(parent?: Model, args?: {}, bucket?: string): Promise
   {
-    var allInstances = (parent, keyPath, args) => {
-      return using.storageQueue.all(keyPath, {}, {}).then((result)=>{        
-        return Container.create(Sequence, this, _.last(keyPath), parent, result[0]).then((seq)=>{
-          seq.retain();
-          result[1].then((items)=>{
-            seq.resync(items);
-            seq.release();
-          });
-          return seq;
-        });
-      });
-    }
+    var allInstances = (parent, keyPath, args) =>
+      Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
+    
     return overload({
       'Model Array Object': function(parent, keyPath, args){
         return allInstances(parent, keyPath, args);

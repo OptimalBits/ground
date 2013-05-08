@@ -35,9 +35,9 @@ export class Sequence extends Container
   // Mutex
   private resyncMutex: Mutex = new Mutex();
   
-  constructor(model: IModel, seqName: string, parent?: Model, items?: ISeqModel[])
+  constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: ISeqModel[])
   {
-    super(model, seqName, parent, items);
+    super(model, opts, parent, items);
     
     this.initItems(this.getItems());
 
@@ -56,6 +56,20 @@ export class Sequence extends Container
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
+    
+    var keyPath = this.getKeyPath();
+    if(keyPath && !this.opts.nosync){
+      this.retain();
+      using.storageQueue.all(keyPath, {}, {}).then((result) => {
+        this.resync(result[0]);
+        result[1].then((items) => this.resync(items))
+          .then(() => this.resolve(this))
+          .fail(() => this.resolve(this))
+          .then(() => this.release());
+      });
+    }else{
+      this.resolve(this);
+    }
   }
 
   private deleteItem(id: string, opts): Promise
@@ -73,7 +87,6 @@ export class Sequence extends Container
 
   private insertBefore(refId: string, item: Model, opts?): Promise
   {
-    opts = opts || {};
     return this.insertItemBefore(refId, item, null, opts);
   }
   
@@ -115,6 +128,8 @@ export class Sequence extends Container
     
     this.set('count', this.items.length);
     this.emit('inserted:', item, index);
+    
+    opts = _.extend(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
@@ -164,7 +179,6 @@ export class Sequence extends Container
   remove(idx: number, opts?): Promise
   {
     var promise = new Promise();
-    opts = opts || {};
 
     var item = this.items[idx];
 
@@ -180,6 +194,8 @@ export class Sequence extends Container
     this.set('count', this.items.length);
     this.emit('removed:', item.model, idx);
     item.model.release();
+    
+    opts = _.extend(this.opts, opts);
     
     if(!opts || !opts.nosync){
       this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, (err?)=>{
@@ -276,11 +292,9 @@ export class Sequence extends Container
           j++;
         }
         
-        return Promise.map(itemsToInsert, (item)=>{
-           return (<any>this.model).create(item.newItem).then((instance)=>{
-             return this.insertItemBefore(item.refId, instance, item.id, {nosync: true});
-           });
-        });
+        return Promise.map(itemsToInsert, (item) =>
+          (<any>this.model).create(item.newItem).then((instance) =>
+            this.insertItemBefore(item.refId, instance, item.id, {nosync: true})));
         
       }).then(()=>{
         this.emit('resynced:');
@@ -298,7 +312,7 @@ export class Sequence extends Container
 // Underscore methods that we want to implement on the Sequence
 //
 var methods = 
-  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
+  ['each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
     'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
     'contains', 'invoke', 'max', 'min', 'toArray', 'size',
     'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty']

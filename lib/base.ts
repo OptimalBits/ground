@@ -21,7 +21,8 @@
 // Error.prototype.stack = Error.prototype.stack || '';
 
 module Gnd {
-  
+"use strict";
+
 export interface IObservable 
 {
   // TODO: Implement
@@ -54,11 +55,17 @@ export class Base extends EventEmitter implements ISettable, IGettable
   
   /**
     set - Sets a property and notifies any listeners attached to it if changed.
+    
+    Code smell: when setting a whole object of properties, if one of them
+    is a function, nosync will be set to true and none of the properties will
+    be synchronized...
   */
   set(keyOrObj, val?: any, options?: {})
   {
     var changed = false, obj;
   
+    options = options || {};
+    
     if(typeof keyOrObj == 'object'){
       options = val;
       obj = <Object>keyOrObj;
@@ -78,9 +85,6 @@ export class Base extends EventEmitter implements ISettable, IGettable
     return this;
   }
   
-  //
-  // TODO: Accept keypath arrays besides strings.
-  //
   private _set(keypath: string, val, options) {
     var 
       path = keypath.split('.'), 
@@ -103,6 +107,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
     if((_.isEqual(oldVal, val) === false) || (options && options.force)){
       var val = this.willChange ? this.willChange(key, val) : val;
       if(isFunc){
+        options.nosync = true;
         obj[key].call(this, val);
       }else{
         obj[key] = val
@@ -124,10 +129,12 @@ export class Base extends EventEmitter implements ISettable, IGettable
   */
   get(key: string): any
   {
-    var path = key.split('.'), result;
-  
-    for(var i=0, len=path.length;i<len;i++){
+    var 
+      path = key.split('.'),
       result = this[path[0]];
+  
+    for(var i=1, len=path.length;i<len;i++){
+      result = result[path[i]];
       
       result = _.isFunction(result) ? result.call(this) : result;
       

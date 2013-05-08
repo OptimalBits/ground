@@ -3,19 +3,21 @@
    
 */
 
-/// <reference path="./lib/using.ts" />
 /// <reference path="./lib/util.ts" />
 /// <reference path="./lib/timer.ts" />
 /// <reference path="./lib/overload.ts" />
-/// <reference path="./lib/task.ts" />
 /// <reference path="./lib/base.ts" />
+/// <reference path="./lib/task.ts" />
+/// <reference path="./lib/promise.ts" />
 /// <reference path="./lib/cache.ts" />
+
 /// <reference path="./lib/storage/queue.ts" />
 /// <reference path="./lib/storage/local.ts" />
 /// <reference path="./lib/storage/socket.ts" />
 /// <reference path="./lib/storage/store/store.ts" />
 /// <reference path="./lib/storage/store/local-storage.ts" />
 /// <reference path="./lib/storage/store/memory-storage.ts" />
+
 /// <reference path="./lib/sync/sync.ts" />
 
 /// <reference path="./lib/session/session.ts" />
@@ -28,6 +30,8 @@
 
 /// <reference path="./lib/view.ts" />
 /// <reference path="./lib/viewmodel.ts" />
+
+/// <reference path="./lib/using.ts" />
 
 //
 // Adds support for AMD and CommonJs module loaders
