@@ -110,6 +110,43 @@ export function asyncDebounce(fn) {
     }
   };
 };
+/*
+export function debounce(task: ()=>Promise): Promise
+{
+  var 
+    delayedFunc = null,
+    executing = null;
+  
+  return function debounced() {
+    var context = this,
+      args = arguments,
+      nargs = args.length,
+      cb = args[nargs-1],
+      delayed = function() {
+        executing = task;
+        task.apply(context, args).then(){
+        
+        });
+      };
+  
+    args[nargs-1] = function(){
+      cb.apply(context, arguments);
+      executing = null;
+      if(delayedFunc){
+        var f = delayedFunc;
+        delayedFunc = null;
+        f();
+      }
+    };
+  
+    if(executing){
+      delayedFunc = delayed;
+    }else{
+      delayed();
+    }
+  };
+}
+*/
 
 export 
 function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number): Promise
