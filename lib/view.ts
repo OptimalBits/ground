@@ -19,6 +19,7 @@ export interface ViewArgs
 {
   html?: string;
   style?: string;
+  templateEngine?: (str: string) => (args: any) => string;
   templateStr?: string;
   templateUrl?: string;
   cssUrl?: string;
@@ -46,6 +47,7 @@ export class View extends Base
   private styles: {[index: string]: string;};
   private templateStr: string;
   private templateUrl: string;
+  private templateEngine: (str: string) => (args: any) => string;
   private cssUrl: string;
   
   private isInitialized: bool;
@@ -58,11 +60,14 @@ export class View extends Base
   public onHidding: (el: Element, args: any, done: ()=>void) => void;
   public onShowing: (el: Element, args: any, done: ()=>void) => void;
 
-  constructor(selector: string, parent: View);
   constructor(selector: string, parent?: View, args?: ViewArgs)
   {
     super();
-    
+
+    if((args.templateUrl || args.templateStr) && !args.templateEngine){
+      throw new Error('Template engine required');
+    }
+
     this.selector = selector;
     
     if(parent){
@@ -93,7 +98,7 @@ export class View extends Base
    * the view models.
    *
    */
-  render(context?: {})
+  render(context?: {}, cb?: ()=>{})
   {
     this.init((err?)=>{
       var html;
@@ -128,7 +133,7 @@ export class View extends Base
       _.each(this.children, (subview) => {
         subview.render(context);
       });
-
+      cb && cb();
     });
   }
   
@@ -184,10 +189,10 @@ export class View extends Base
       
       Util.fetchTemplate(this.templateUrl, this.cssUrl, (err?, templ?) => {
         if(templ){
-          this.template = using.template(this.templateStr || templ);
+          this.template = this.templateEngine(this.templateStr || templ);
       
           Util.asyncForEach(this.children, (subview, cb) => {
-            this.init(cb);
+            subview.init(cb);
           }, done);
         }else{
           done(err);
