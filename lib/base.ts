@@ -60,6 +60,8 @@ export class Base extends EventEmitter implements ISettable, IGettable
     is a function, nosync will be set to true and none of the properties will
     be synchronized...
   */
+  set(keypath: string, val: any, opts?: {});
+  set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, options?: {})
   {
     var changed = false, obj;
@@ -92,13 +94,13 @@ export class Base extends EventEmitter implements ISettable, IGettable
       len=path.length-1, 
       key = path[len];
 
-    for(var i=0;i<len;i++){
-      var t = this[path[i]];
-      if (!t){
-        obj = this[path[i]] = new Base();
-      }else{
-        obj = t;
-      }
+    var tmp = this;
+    for(var i=0; i<len; i++){
+      var tmp2 = tmp[path[i]];
+      if(!tmp2){
+        tmp2 = tmp[path[i]] = {};
+      } 
+      tmp = tmp2;
     }
     
     var isFunc = _.isFunction(obj[key]);
@@ -138,11 +140,10 @@ export class Base extends EventEmitter implements ISettable, IGettable
     
     for(var i=0; i<len; i++){
       result = result[path[i]];
-      
-      result = _.isFunction(result) ? result.call(this) : result;
-      
+      result = _.isFunction(result) ? result.call(this) : result;    
       if(!_.isObject(result)) break;
     }
+    
     return result;
   }
   
