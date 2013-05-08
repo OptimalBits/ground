@@ -77,8 +77,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
     }
     if(changed){
       if(!obj){
-        obj = {}
-        obj[keyOrObj] = val;
+        obj = Util.expandProperty({}, keyOrObj, val);
       }
       this.emit('changed:', obj, options);
     }
