@@ -360,19 +360,25 @@ export function fetchTemplate(templateUrl?: string,
 //   },
 //   b: 3
 // }
-function expand(args: {}): {}
+export function expand(args: {}): {}
 {
   var obj = {};
   var keys = _.keys(args);
   _.each(keys, function(key){
-    var path = key.split('.');
-    var branch = _.reduceRight(path, function(memo, level){
-      var tmp = {};
-      tmp[level] = memo;
-      return tmp;
-    }, args[key]);
-    deepExtend(obj, branch);
+    expandProperty(obj, key, args[key]);
   });
+  return obj;
+}
+
+export function expandProperty(obj: {}, keyPath: string, value: any): {}
+{
+  var path = keyPath.split('.');
+  var branch = _.reduceRight(path, function(memo, level){
+    var tmp = {};
+    tmp[level] = memo;
+    return tmp;
+  }, value);
+  deepExtend(obj, branch);
   return obj;
 }
 
