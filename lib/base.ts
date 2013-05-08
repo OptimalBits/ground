@@ -102,7 +102,9 @@ export class Base extends EventEmitter implements ISettable, IGettable
       tmp = tmp2;
     }
     
-    var isFunc = _.isFunction(obj[key]);
+    // We do this to make sure that we do not execute a function property...
+    var isFunc = _.isFunction(obj[key]) && !_.isFunction(val);
+
     var oldVal = isFunc ? obj[key].call(this) : obj[key];
   
     if((_.isEqual(oldVal, val) === false) || (options && options.force)){
