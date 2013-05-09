@@ -117,6 +117,8 @@ export class Collection extends Container
       items = this.items,
       keyPath = this.getKeyPath();
     
+    opts = opts || {};
+
     return Promise.map(itemIds, (itemId) => {
       var item = this.findById(itemId);
   
@@ -129,7 +131,7 @@ export class Collection extends Container
         this.set('count', items.length);
         this.emit('removed:', item);
         
-        opts = _.extend(this.opts, opts);
+        _.extend(opts, this.opts);
         
         if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
@@ -210,6 +212,7 @@ export class Collection extends Container
   private addItem(item: Model, opts): Promise
   {
     if(this.findById(item.id())) return new Promise().resolve();
+    opts = opts || {};
     
     if(this.sortByFn){
       this.sortedAdd(item);
@@ -222,7 +225,7 @@ export class Collection extends Container
     this.set('count', this.items.length);
     this.emit('added:', item);
     
-    opts = _.extend(this.opts, opts);
+    _.extend(opts, this.opts);
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
