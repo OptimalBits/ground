@@ -389,7 +389,8 @@ export class Model extends Base implements Sync.ISynchronizable
       this._storageQueue.once('created:'+id, (id) => {
         this.id(id);
       });
-      return this._storageQueue.create([bucket], args);
+      Util.merge(this, args);
+      return this._storageQueue.create([bucket], this.toArgs());
     }else{
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
