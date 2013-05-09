@@ -79,51 +79,47 @@ export class Base extends EventEmitter implements ISettable, IGettable
     }
     if(changed){
       if(!obj){
-        obj = Util.expandProperty({}, keyOrObj, val);
+        // obj = Util.expandProperty({}, keyOrObj, val);
+        // All group resources buggar
+        obj = {};
+        obj[keyOrObj] = val;
       }
       this.emit('changed:', obj, options);
     }
     return this;
   }
   
+  private _getProperty(keypath: string, callFn?: bool): any {
+    var path = keypath.split('.');
+    var level = this;
+    _.each(path, (key)=>{
+      if(_.isUndefined(level)) return;
+      level = level[key];
+    });
+    if(callFn && _.isFunction(level)) level = (<Function><any>level).call(this);
+    return level;
+  }
+
+  private _setProperty(keypath: string, val: any): void {
+    Util.expandProperty(this, keypath, val, true);
+  }
+
   private _set(keypath: string, val, options) {
-    var 
-      path = keypath.split('.'), 
-      obj = this,
-      len=path.length-1, 
-      key = path[len];
+    var callFnProperties = !_.isFunction(val); // Do not execute fns when trying to set a fn property
+    var oldVal = this._getProperty(keypath, callFnProperties);
 
-    var tmp = this;
-    for(var i=0; i<len; i++){
-      var tmp2 = tmp[path[i]];
-      if(!tmp2){
-        tmp2 = tmp[path[i]] = {};
-      } 
-      tmp = tmp2;
-    }
-    
-    // We do this to make sure that we do not execute a function property...
-    var isFunc = _.isFunction(obj[key]) && !_.isFunction(val);
-
-    var oldVal = isFunc ? obj[key].call(this) : obj[key];
-  
-    if((_.isEqual(oldVal, val) === false) || (options && options.force)){
-      var val = this.willChange ? this.willChange(key, val) : val;
-      if(isFunc){
-        options.nosync = true;
-        obj[key].call(this, val);
-      }else{
-        obj[key] = val
-      }
-      
+    if(!_.isEqual(oldVal, val) || (options && options.force)){
+      var val = this.willChange ? this.willChange(keypath, val) : val;
+      // if(isFunc) options.nosync = true; //TODO: Clarify if this is necessary?
+      this._setProperty(keypath, val);
       this.emit(keypath, val, oldVal, options)
-      return true
+      return true;
     }else{
-      return false
+      return false;
     }
   }
   
-  willChange(key, val) {
+  willChange(keypath, val) {
     return val;
   }
   

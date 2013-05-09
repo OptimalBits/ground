@@ -370,7 +370,8 @@ export function expand(args: {}): {}
   return obj;
 }
 
-export function expandProperty(obj: {}, keyPath: string, value: any): {}
+// Expand a single property and decorate the object obj with it
+export function expandProperty(obj: {}, keyPath: string, value: any, callFns?: bool): {}
 {
   var path = keyPath.split('.');
   var branch = _.reduceRight(path, function(memo, level){
@@ -378,7 +379,7 @@ export function expandProperty(obj: {}, keyPath: string, value: any): {}
     tmp[level] = memo;
     return tmp;
   }, value);
-  deepExtend(obj, branch);
+  deepExtend(obj, branch, callFns);
   return obj;
 }
 
@@ -399,18 +400,24 @@ export function expandProperty(obj: {}, keyPath: string, value: any): {}
 //     c: 2
 //   }
 // }
-function deepExtend(doc, args): {}
+function deepExtend(doc, args, callFns?: bool): {}
 {
   var keys = _.keys(args);
   _.each(keys, function(key){
     if(doc[key] && _.isObject(args[key])){
       deepExtend(doc[key], args[key]);
     }else{
-      doc[key] = args[key];
+      if(callFns && _.isFunction(doc[key]) && !_.isFunction(args[key])){
+        doc[key].call(this, args[key]);
+      }else{
+        doc[key] = args[key];
+      }
     }
   });
   return doc;
 }
+
+// Merge a doc with an object containing unexpanded properties
 export function merge(doc, args): {}
 {
   return deepExtend(doc, expand(args));
