@@ -69,6 +69,7 @@ export class Manager extends Base {
     // Socket Listeners
     //
     socket.on('update:', (keyPath, args) => {
+      console.log("Received update", keyPath, args);
       var key = keyPathToKey(keyPath);
       
       _.each(this.docs[key], function(doc: Base){
@@ -77,6 +78,7 @@ export class Manager extends Base {
     });
       
     socket.on('delete:', (keyPath) => {
+      console.log("Received delete", keyPath);
       var key = keyPathToKey(keyPath);
       _.each(this.docs[key], function(doc){
         // doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
@@ -85,21 +87,25 @@ export class Manager extends Base {
     });
         
     socket.on('add:', (keyPath, itemsKeyPath, itemIds) => {
+      console.log("Received add", keyPath, itemsKeyPath, itemIds);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'add:', itemsKeyPath, itemIds);
     });
     
     socket.on('remove:', (keyPath, itemsKeyPath, itemIds) => {
+      console.log("Received remove", keyPath, itemsKeyPath, itemIds);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'remove:', itemsKeyPath, itemIds);
     });
 
     socket.on('insertBefore:', (keyPath, id, itemKeyPath, refId) => {
+      console.log("Received insert", keyPath, id, itemKeyPath, refId);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'insertBefore:', id, itemKeyPath, refId);
     });
 
     socket.on('deleteItem:', (keyPath, id) => {
+      console.log("Received deleteItem", keyPath, id);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'deleteItem:', id);
     });
