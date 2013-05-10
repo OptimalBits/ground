@@ -93,7 +93,6 @@ export class Sequence extends Container
   private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
   {
     var promise = new Gnd.Promise();
-    opts = opts || {};
     
     var seqItem = {
       model: item,
@@ -130,7 +129,7 @@ export class Sequence extends Container
     this.set('count', this.items.length);
     this.emit('inserted:', item, index);
     
-    _.extend(opts, this.opts);
+    opts = Util.extendClone(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
       if(item.isPersisted()){
@@ -180,7 +179,6 @@ export class Sequence extends Container
   remove(idx: number, opts?): Promise
   {
     var promise = new Promise();
-    opts = opts || {};
 
     var item = this.items[idx];
 
@@ -197,7 +195,7 @@ export class Sequence extends Container
     this.emit('removed:', item.model, idx);
     item.model.release();
     
-    _.extend(opts, this.opts);
+    opts = Util.extendClone(this.opts, opts);
     
     if(!opts || !opts.nosync){
       this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, (err?)=>{

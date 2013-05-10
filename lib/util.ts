@@ -423,4 +423,9 @@ export function merge(doc, args): {}
   return deepExtend(doc, expand(args));
 }
 
+export function extendClone(a: {}, b: {}): {}
+{
+  return _.extend(_.clone(a), b);
+}
+
 } // Gnd.Util
