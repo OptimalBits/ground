@@ -86,9 +86,7 @@ class ModelDepot
 
     // Note. The promise returned will only retaing the model once, so be
     // careful with this...
-    promise.then((model) => {
-      model.retain();
-    });
+    promise.then((model) => model.retain());
     
     return promise;
   }
@@ -523,5 +521,8 @@ export class Model extends Base implements Sync.ISynchronizable
     return model.seq(this, args, bucket);
   }
 }
+
+// Virtual properties.
+Model.prototype.id['isVirtual'] = true;
 
 }
