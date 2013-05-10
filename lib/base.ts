@@ -89,29 +89,36 @@ export class Base extends EventEmitter implements ISettable, IGettable
     return this;
   }
   
-  private _getProperty(keypath: string, callFn?: bool): any {
+  private getProperty(keypath: string): any 
+  {
     var path = keypath.split('.');
-    var level = this;
+    var level: any = this;
     _.each(path, (key)=>{
       if(_.isUndefined(level)) return;
       level = level[key];
     });
-    if(callFn && _.isFunction(level)) level = (<Function><any>level).call(this);
+    
     return level;
   }
 
-  private _setProperty(keypath: string, val: any): void {
-    Util.expandProperty(this, keypath, val, true);
+  private setProperty(keypath: string, val: any): void 
+  {
+    Util.expandProperty(this, keypath, val);
   }
 
-  private _set(keypath: string, val, options) {
-    var callFnProperties = !_.isFunction(val); // Do not execute fns when trying to set a fn property
-    var oldVal = this._getProperty(keypath, callFnProperties);
-
+  private _set(keypath: string, val, options): bool
+  {    
+    var oldProp = this.getProperty(keypath);
+    var isVirtual = Util.isVirtualProperty(oldProp);
+    var oldVal = isVirtual ? oldProp.call(this) : oldProp;
+    
     if(!_.isEqual(oldVal, val) || (options && options.force)){
       var val = this.willChange ? this.willChange(keypath, val) : val;
-      // if(isFunc) options.nosync = true; //TODO: Clarify if this is necessary?
-      this._setProperty(keypath, val);
+      
+      // Virtual properties shall not trigger sync on serverside
+      if(isVirtual) options.nosync = true;
+      
+      this.setProperty(keypath, val);
       this.emit(keypath, val, oldVal, options)
       return true;
     }else{

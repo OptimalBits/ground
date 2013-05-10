@@ -371,7 +371,7 @@ export function expand(args: {}): {}
 }
 
 // Expand a single property and decorate the object obj with it
-export function expandProperty(obj: {}, keyPath: string, value: any, callFns?: bool): {}
+export function expandProperty(obj: {}, keyPath: string, value: any): {}
 {
   var path = keyPath.split('.');
   var branch = _.reduceRight(path, function(memo, level){
@@ -379,7 +379,7 @@ export function expandProperty(obj: {}, keyPath: string, value: any, callFns?: b
     tmp[level] = memo;
     return tmp;
   }, value);
-  deepExtend(obj, branch, callFns);
+  deepExtend(obj, branch);
   return obj;
 }
 
@@ -404,11 +404,12 @@ function deepExtend(doc, args, callFns?: bool): {}
 {
   var keys = _.keys(args);
   _.each(keys, function(key){
-    if(doc[key] && _.isObject(args[key])){
-      deepExtend(doc[key], args[key]);
+    if(isVirtualProperty(doc[key])){
+      doc[key].call(this, args[key]);
     }else{
-      if(callFns && _.isFunction(doc[key]) && !_.isFunction(args[key])){
-        doc[key].call(this, args[key]);
+      // TODO: use isPlainObject to avoid special cases.
+      if(doc[key] && args[key] && typeof args[key] === 'object'){
+        deepExtend(doc[key], args[key]);
       }else{
         doc[key] = args[key];
       }
@@ -426,6 +427,11 @@ export function merge(doc, args): {}
 export function extendClone(a: {}, b: {}): {}
 {
   return _.extend(_.clone(a), b);
+}
+
+export function isVirtualProperty(prop: any): bool
+{
+  return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
 
 } // Gnd.Util
