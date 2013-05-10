@@ -11,6 +11,7 @@
 /// <reference path="../promise.ts" />
 
 module Gnd.Storage {
+"use strict";
   
   var QUEUE_STORAGE_KEY = 'meta@taskQueue'
   
@@ -202,15 +203,19 @@ export class Queue extends Base implements IStorage
     });
   }
   
+  // CHALLENGE: This method must be ATOMIC, and this only holds if using
+  // a synchronouse local store.
   private updateLocalCollection(keyPath: string[], 
                                 query: {}, 
                                 options: {},
-                                newItems: any[]): Promise // Promise<void>
+                                newItems: any[]): Promise // Promise<{}[]>
   {
     var 
       storage = this.localStorage,
-      itemKeyPath = [_.last(keyPath)];
+      itemKeyPath = [_.last(keyPath)],
+      result = [];
     
+    newItems = newItems || [];
     options = _.extend({snapshot: false}, options);
     
     return storage.find(keyPath, query, options).then((oldItems) => {
@@ -224,35 +229,37 @@ export class Queue extends Base implements IStorage
       }
         
       // Gather item ids to be removed from localStorage 
-      _.each(oldItems, function(oldItem){
+      _.each(oldItems, (oldItem) => {
         if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
           itemsToRemove.push(oldItem._cid, oldItem._id);
+        }else if(oldItem.__op !== 'rm'){
+          result.push(oldItem);
         }
       });
         
       // Gather item ids to be added to localStorage      
-      _.each(newItems, function(newItem){
-        !findItem(oldItems, newItem) && itemsToAdd.push(newItem._id);
+      _.each(newItems, (newItem) => {
+        if(!findItem(oldItems, newItem)){
+          itemsToAdd.push(newItem._id);
+          result.push(newItem);
+        }
       });
-        
-      return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() => {
-        return Promise.map(newItems, (doc) => {
+      
+      return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() =>
+        // TODO: Do we really need to update all items here?
+        Promise.map(newItems, (doc) => {
           var elemKeyPath = itemKeyPath.concat(doc._id);
-
           doc._persisted = true;
-
-          // TODO: Probably not needed to update all newItems
           doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc);
-        }).then(() => {
-          // Add the new collection keys to the keyPath
-          return storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true});
-        });
-      }).fail(); // catch this failure to avoid propagation.
-      
-    }).fail((err)=>{
-      return storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true});
-    });
+        })
+        .then(() => storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}))
+        .then(() => result)
+        
+      ).fail(); // catch this failure to avoid propagation.
+    
+    // We cannot get the local items, so lets write all we got from remote
+    }).fail(() => storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}));
   }
   
   find(keyPath: string[], query: {}, options: {}): Promise
@@ -262,21 +269,16 @@ export class Queue extends Base implements IStorage
     
     var localOpts = _.extend({snapshot:true}, options);
     
-    var findRemote = ()=>{
-      return this.remoteStorage.find(keyPath, query, options).then((remote) => {
-        return this.updateLocalCollection(keyPath, query, options, remote);
-      }).then(()=>{
-        return this.localStorage.find(keyPath, query, localOpts);
-      });
-    }
+    var findRemote = () => this.remoteStorage.find(keyPath, query, options)
+      .then((remote) => this.updateLocalCollection(keyPath, query, options, remote));
     
     this.localStorage.find(keyPath, query, localOpts).then((result)=>{
       promise.resolve([result, remotePromise]);
       
       if(this.useRemote){
-        findRemote().then((itemsRemote)=>{
-          remotePromise.resolve(itemsRemote);
-        });
+        findRemote()
+          .then((itemsRemote) => remotePromise.resolve(itemsRemote))
+          .fail((err) => remotePromise.reject(err));
       }
     }, (err) => {
       if(!this.useRemote) return promise.reject(err);
@@ -290,38 +292,6 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
-  
-  /*
-  find(keyPath: string[], query: {}, options: {}): Promise
-  {
-    var promise = new Promise();
-    var remotePromise = new Promise();
-    
-    var localOpts = _.extend({snapshot:true}, options);
-    this.localStorage.find(keyPath, query, localOpts, (err?, result?:any) => {
-      if(result){
-        promise.resolve([result, remotePromise]);
-      }
-      if(this.useRemote){
-        this.remoteStorage.find(keyPath, query, options, (err?, remote?: any) => {
-          if(!err){
-            this.updateLocalCollection(keyPath, query, options, remote, (err?)=>{
-              if(result){
-                this.localStorage.find(keyPath, query, localOpts, (err?, items?) => {
-                  remotePromise.resolveOrReject(err, items);
-                });
-              }
-            });
-          }
-          !result && promise.resolveOrReject(err, [remote, remotePromise]);
-        });
-      }else if(!result){
-        promise.reject(err);
-      }
-    });
-    return promise;
-  }
-  */
     
   create(keyPath: string[], args:{}): Promise
   {
