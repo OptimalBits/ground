@@ -84,9 +84,9 @@ export class Promise extends Base
     return promise;
   }
   
-  static resolved(): Promise
+  static resolved(value?): Promise
   {
-    return (new Promise()).resolve();
+    return (new Promise()).resolve(value);
   }
   
   static rejected(err: Error): Promise
