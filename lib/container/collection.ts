@@ -80,9 +80,10 @@ export class Collection extends Container
       this.retain();
       using.storageQueue.find(keyPath, {}, {}).then((result) => {
         this.resync(result[0]);
-        result[1].then((items) => this.resync(items))
-          .then(() => this.resolve(this))
+        result[1]
+          .then((items) => this.resync(items))
           .fail(() => this.resolve(this))
+          .then(() => this.resolve(this))
           .then(() => this.release());
       });
     }else{
