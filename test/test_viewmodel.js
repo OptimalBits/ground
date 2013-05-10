@@ -345,7 +345,7 @@ describe('ViewModel', function(){
       leopard = new Animal({name: 'leopard', pos:3});
      
       zoo = new Zoo();
-      zoo.animals = new Gnd.Collection(Animal, zoo, null, [tiger, lion, leopard]);
+      zoo.animals = new Gnd.Collection(Animal, 'animals', zoo, [tiger, lion, leopard]);
       
       list = document.createElement('lu');
       listEl = document.createElement('li');
@@ -503,7 +503,7 @@ describe('ViewModel', function(){
       leopard = new Animal({name: 'leopard', pos:3});
      
       zoo = new Zoo();
-      zoo.animals = new Gnd.Collection(Animal, zoo, null, [tiger, lion, leopard]);
+      zoo.animals = new Gnd.Collection(Animal, 'animals', zoo, [tiger, lion, leopard]);
       
       list = document.createElement('lu');
       listEl = document.createElement('li');

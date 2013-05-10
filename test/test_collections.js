@@ -69,20 +69,18 @@ describe('Collections', function(){
             Zoo.findById(zoo.id()).then(function(sameZoo){
               expect(sameZoo).to.be.an(Object);
             
-              sameZoo.all(Animal).then(function(sameAnimals){
+              var sameAnimals = sameZoo.all(Animal);
+              
+              sameAnimals.once('resynced:', function(){
                 expect(sameAnimals).to.be.an(Object);
                 expect(sameAnimals.items).to.be.an(Array);
                 expect(sameAnimals.count).to.be(1);
                 expect(animals.count).to.be(1);
-                                
-                sameAnimals.on('resynced:', function(){
-                  expect(sameAnimals.count).to.be(1);
                 
-                  sameZoo.release();
-                  sameAnimals.release();
-                  animals.release();
-                  done();
-                });
+                sameZoo.release();
+                sameAnimals.release();
+                animals.release();
+                done();
               });
             });
           });
@@ -164,12 +162,13 @@ describe('Collections', function(){
                 
         zoo.all(Animal).then(function(animals){
           
-          animals.add((new Animal({name:"panther"})).autorelease()).then(function(){
+          var panther = new Animal({name:"panther"});
+          animals.add(panther.autorelease()).then(function(){
 
-            var panther = animals.find(function(item){ return item.name==='panther'; });
+            var foundPanther = animals.find(function(item){ return item.name==='panther'; });
 
-            expect(panther).to.be.an(Object);
-            expect(panther.name).to.be.eql('panther');
+            expect(foundPanther).to.be.an(Object);
+            expect(foundPanther).to.be(panther);            
         
             storageQueue.waitUntilSynced(function(){
               Animal.findById(panther.id()).then(function(animal){
@@ -185,7 +184,6 @@ describe('Collections', function(){
                 });
                   
                 animal.set('legs', 5);
-                animal.release(); 
               });
             });
           });
@@ -220,9 +218,33 @@ describe('Collections', function(){
                 zoo.release();
                 otherAnimals.release();
                 animals.release();
-                expect(otherAnimals.isDestroyed()).to.be(true);
-                expect(animals.isDestroyed()).to.be(true);
-                done();
+                
+                var counter = 0;
+                
+                if(otherAnimals.isDestroyed()){
+                  done();
+                }else{
+                  counter++;
+                  otherAnimals.once('destroy:', function(){
+                    expect(otherAnimals.isDestroyed()).to.be(true);
+                    counter--;
+                    if(counter == 0){
+                      done();
+                    }
+                  });
+                }
+                if(animals.isDestroyed()){
+                  done();
+                }else{
+                  counter++;
+                  animals.once('destroy:', function(){
+                    expect(animals.isDestroyed()).to.be(true);
+                    counter--;
+                    if(counter == 0){
+                      done();
+                    }
+                  });
+                }
               });
             });
           });
@@ -245,22 +267,21 @@ describe('Collections', function(){
               expect(anotherZoo).to.be.an(Object);
               
               anotherZoo.keepSynced();
-              anotherZoo.all(Animal).then(function(otherAnimals){
-                expect(otherAnimals).to.be.an(Object);
+              var otherAnimals = anotherZoo.all(Animal);
+              expect(otherAnimals).to.be.an(Object);
                 
-                otherAnimals.once('resynced:', function(){
+              otherAnimals.once('resynced:', function(){
                   
-                  animals.once('removed:', function(item){
-                    expect(item).to.be.an(Object);
-                    expect(item).to.have.property('_id');
-                    expect(item.id()).to.be.eql(otherAnimal.id());
-                    Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
-                    done();
-                  });
-                  
-                  otherAnimal = otherAnimals.first();
-                  otherAnimal.remove();
+                animals.once('removed:', function(item){
+                  expect(item).to.be.an(Object);
+                  expect(item).to.have.property('_id');
+                  expect(item.id()).to.be.eql(otherAnimal.id());
+                  Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
+                  done();
                 });
+                  
+                otherAnimal = otherAnimals.first();
+                otherAnimal.remove();
               });
             });
           });
@@ -523,49 +544,49 @@ describe('Collections', function(){
         animals.add(tiger).then(function(){
           expect(animals.count).to.be(1);
             
-          storageQueue.once('synced:', function(){
+          storageQueue.waitUntilSynced(function(){
             expect(animals.count).to.be(1);
             
-            zoo.all(Animal).then(function(onlineAnimals){
-              expect(onlineAnimals).to.be.an(Object);
+            var onlineAnimals = zoo.all(Animal);
+            
+            expect(onlineAnimals).to.be.an(Object);
+            expect(onlineAnimals.count).to.be(1);
+              
+            var onlineTiger = onlineAnimals.first();
+              
+            expect(onlineTiger).to.be.an(Object);
+            expect(onlineTiger.id()).to.be.equal(tiger.id());
+              
+            onlineAnimals.once('resynced:', function(){
               expect(onlineAnimals.count).to.be(1);
-              
-              var onlineTiger = onlineAnimals.first();
-              
-              expect(onlineTiger).to.be.an(Object);
-              expect(onlineTiger.id()).to.be.equal(tiger.id());
-              
-              onlineAnimals.once('resynced:', function(){
-                expect(onlineAnimals.count).to.be(1);
                 
-                Gnd.Ajax.del('/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null).then(function() {
-                  // The server has deleted the model, but we do not know it yet.
-                  // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
+              Gnd.Ajax.del('/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null).then(function() {
+                // The server has deleted the model, but we do not know it yet.
+                // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
+                  
+                var emptyZoo = zoo.all(Animal);
+                
+                expect(emptyZoo).to.be.an(Object);
+                expect(emptyZoo.count).to.be(1);
+                    
+                /* setTimeout(function(){
+                    expect(emptyZoo.count).to.be(0);
+                  }, 1000);
+                */
+                emptyZoo.once('resynced:', function(){
+                  expect(emptyZoo.count).to.be(0);
+                    
+                  emptyZoo.release();
+                  
+                  socket.disconnect();
                   
                   zoo.all(Animal).then(function(emptyZoo){
                     expect(emptyZoo).to.be.an(Object);
-                    expect(emptyZoo.count).to.be(1);
+                    expect(emptyZoo.count).to.be(0);
                     
-                   /* setTimeout(function(){
-                      expect(emptyZoo.count).to.be(0);
-                    }, 1000);
-                    */
-                    emptyZoo.once('resynced:', function(){
-                      expect(emptyZoo.count).to.be(0);
-                    
-                      emptyZoo.release();
-                  
-                      socket.disconnect();
-                  
-                      zoo.all(Animal).then(function(emptyZoo){
-                        expect(emptyZoo).to.be.an(Object);
-                        expect(emptyZoo.count).to.be(0);
-                    
-                        Gnd.Util.release(onlineAnimals, emptyZoo);
-                        socket.socket.connect();
-                        socket.once('connect', done);
-                      });
-                    });
+                    Gnd.Util.release(onlineAnimals, emptyZoo);
+                    socket.socket.connect();
+                    socket.once('connect', done);
                   });
                 });
               });
@@ -770,23 +791,23 @@ describe('Collections', function(){
           storageQueue.waitUntilSynced(function(){
             expect(animals.count).to.be(1);
             localStorage.clear();
-            zoo.all(Animal).then(function(sameAnimals){
-              expect(sameAnimals).to.be.an(Object);
-              expect(sameAnimals.items).to.be.an(Array);
-              expect(sameAnimals.count).to.be(0);
-              sameAnimals.on('resynced:', function(){
-                expect(sameAnimals.count).to.be(1);
-                sameAnimals.release();
-                animals.release();
-                done();
-              });
+            var sameAnimals = zoo.all(Animal);
+            
+            expect(sameAnimals).to.be.an(Object);
+            expect(sameAnimals.items).to.be.an(Array);
+            expect(sameAnimals.count).to.be(0);
+            sameAnimals.on('resynced:', function(){
+              expect(sameAnimals.count).to.be(1);
+              sameAnimals.release();
+              animals.release();
+              done();
             });
           });
         });
       });
     });
     it('works after clearing remote storage', function(done){
-      zoo.all(Animal).then(function(animals){
+      var animals = zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         animals.add((new Animal({name:"tiger"})).autorelease()).then(function(){
           storageQueue.waitUntilSynced(function(){
@@ -795,16 +816,15 @@ describe('Collections', function(){
             var animalId = animals.first().id();
             storageSocket.remove(['zoo', zoo.id(), 'animals'], ['animals'], [animalId], {}).then(function(err){
               expect(err).to.not.be.ok();
-              zoo.all(Animal).then(function(sameAnimals){
-                expect(sameAnimals).to.be.an(Object);
-                expect(sameAnimals.items).to.be.an(Array);
-                expect(sameAnimals.count).to.be(1);
-                sameAnimals.on('resynced:', function(){
-                  expect(sameAnimals.count).to.be(0);
-                  sameAnimals.release();
-                  animals.release();
-                  done();
-                });
+              var sameAnimals = zoo.all(Animal);
+              expect(sameAnimals).to.be.an(Object);
+              expect(sameAnimals.items).to.be.an(Array);
+              expect(sameAnimals.count).to.be(1);
+              sameAnimals.on('resynced:', function(){
+                expect(sameAnimals.count).to.be(0);
+                sameAnimals.release();
+                animals.release();
+                done();
               });
             });
           });

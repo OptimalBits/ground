@@ -45,9 +45,7 @@ describe('Sequences', function(){
       if(keepSynced) parade.keepSynced();
       parade.seq(Animal, seqName).then( function(animals){
         expect(animals).to.be.an(Object);
-        animals.once('resynced:', function(){
-          cb(animals);
-        });
+        cb(animals);
       });
     });
   }
@@ -430,18 +428,14 @@ describe('Sequences', function(){
         parade.keepSynced();
         parade.seq(Animal).then(function(animals){
           expect(animals).to.be.an(Object);
-          animals.once('resynced:', function(){
-            animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
-              q1.waitUntilSynced(function(){
-                var animalId = animals.items[0].id;
-                ss1.deleteItem(['parade', paradeId, 'animals'], animalId, {}, function(err){
-                  expect(err).to.be(undefined);
-                  parade.seq(Animal).then(function(animals2){
-                    animals2.once('resynced:', function(){
-                      expect(animals2.count).to.be(0);
-                      done();
-                    });
-                  });
+          animals.push((new Animal({name: 'tiger'})).autorelease()).then(function(){
+            q1.waitUntilSynced(function(){
+              var animalId = animals.items[0].id;
+              ss1.deleteItem(['parade', paradeId, 'animals'], animalId, {}, function(err){
+                expect(err).to.be(undefined);
+                parade.seq(Animal).then(function(animals2){
+                  expect(animals2.count).to.be(0);
+                  done();
                 });
               });
             });

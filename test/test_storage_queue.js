@@ -503,15 +503,13 @@ describe('Storage Queue', function(){
       q.exec().then(done);
     });
     it('changes propagates to other queues on exec()', function(done){
-      q.create(['parade'], {}, function(err, paradeId){
+      q.create(['parade'], {}).then(function(paradeId){
         var kp = ['parade', paradeId, 'animals'];
         q.once('created:'+paradeId, function(sid){
           kp = ['parade', sid, 'animals'];
         });
-        expect(err).to.not.be.ok();
         expect(paradeId).to.be.ok();
-        q.create(['animals'], {name:'tiger'}, function(err, id){
-          expect(err).to.not.be.ok();
+        q.create(['animals'], {name:'tiger'}).then(function(id){
           expect(id).to.be.ok();
           q.insertBefore(kp, null, ['animals', id], {}, function(err){
             expect(err).to.not.be.ok();
