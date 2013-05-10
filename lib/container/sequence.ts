@@ -263,8 +263,11 @@ export class Sequence extends Container
         var i=0;
         var j=0;
         var oldItem, newItem;
+        var remainingLength = remainingItems.length;
+        var newItemsLength = newItems.length;
         
-        while(i<remainingItems.length){
+        // Determine which remote items to add to the sequence
+        while(i<remainingLength && j<newItemsLength){
           oldItem = remainingItems[i];
           if(!oldItem.pending){
             newItem = newItems[j];
@@ -282,7 +285,7 @@ export class Sequence extends Container
           }
         }
         
-        while(j<newItems.length){
+        while(j<newItemsLength){
           newItem = newItems[j];
           itemsToInsert.push({
             refId: null,
@@ -292,10 +295,12 @@ export class Sequence extends Container
           j++;
         }
         
-        return Promise.map(itemsToInsert, (item) =>
+        return Promise.map(remainingItems.slice(i), (item) =>
+          this.deleteItem(item.id, {nosync: true})
+        ).then(() => Promise.map(itemsToInsert, (item) =>
           (<any>this.model).create(item.newItem).then((instance) =>
-            this.insertItemBefore(item.refId, instance, item.id, {nosync: true})));
-        
+            this.insertItemBefore(item.refId, instance, item.id, {nosync: true}))));
+
       }).then(()=>{
         this.emit('resynced:');
         done();
