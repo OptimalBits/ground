@@ -61,7 +61,7 @@ export class ViewModel extends Base
     _.extend(this.binders, binders);
     
     this.pushContext(context);
-    this.boundBinders = this.bindNode(el);
+    this.boundBinders = this.bindNode(_.isString(el) ? $(el)[0] : el);
   }
 
   destroy()
@@ -79,12 +79,21 @@ export class ViewModel extends Base
   }
 
   resolveContext(keyPath: string[]): Base
+  { 
+    var 
+      root = keyPath[0],
+      context = this.findContext(root);
+      
+    if(context){
+      return this.resolveKeypath(context[root], _.rest(keyPath))
+    }
+  }
+  
+  findContext(prop: string): any
   {
-    var root = keyPath[0], context;
     for(var i=this.contexts.length-1; i >= 0; i--){
-      context = this.contexts[i][root];
-      if(context){
-        return this.resolveKeypath(context, _.rest(keyPath));
+      if (this.contexts[i][prop]){
+        return this.contexts[i];
       }
     }
   }
