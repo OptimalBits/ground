@@ -232,7 +232,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
   {
     this.emit('destroy:');
     this._destroyed = true;
-    this._destroyedTrace = "";//new Error().stack;
+    this._destroyedTrace = "";// Error().stack;
     this.off();
     
     // TODO: nullify this object.
@@ -241,7 +241,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
   retain(): Base
   {
     if(this._destroyed){
-      throw new Error("Cannot retain destroyed object");
+      throw Error("Cannot retain destroyed object");
     }
     this._refCounter++;
     return this;
@@ -259,11 +259,11 @@ export class Base extends EventEmitter implements ISettable, IGettable
         if(this._destroyedTrace){
           msg += '\n'+this._destroyedTrace;
         }
-        throw new Error(msg);
+        throw Error(msg);
       }else{
         msg = "Invalid reference count!";
       }
-      throw new Error(msg);
+      throw Error(msg);
     }
     return this;
   }
