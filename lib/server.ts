@@ -142,50 +142,50 @@ export class Server {
   //
   // Sequences
   //
-  all(userId: string, keyPath: string[], query: {}, opts: {}, cb: (err?: Error, result?: IDoc[]) => void) : void
+  all(userId: string, keyPath: string[], query: {}, opts: {}) : Promise //<IDoc[]>
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
-        this.storage.all(keyPath, query, opts, cb);
+        return this.storage.all(keyPath, query, opts);
       }
-    }).fail(cb);
+    });
   }
   
-  next(userId: string, keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  next(userId: string, keyPath: string[], id: string, opts: {}): Promise //<IDoc>
   {
-    this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
       if(allowed){
-        this.storage.next(keyPath, id, opts, cb);
+        return this.storage.next(keyPath, id, opts);
       }
-    }).fail(cb);
+    });
   }
 
-  deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
+  deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}): Promise
   {
-    this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed?) => {
       if(allowed){
-        this.storage.deleteItem(keyPath, id, opts, (err?: Error) => {
-          if(!err){
-            this.syncHub && this.syncHub.deleteItem(clientId, keyPath, id);
-          }
-          cb(err);
+        return this.storage.deleteItem(keyPath, id, opts).then(() => {
+          this.syncHub && this.syncHub.deleteItem(clientId, keyPath, id);
         });
       }
-    }).fail(cb);
+    });
   }
 
-  insertBefore(clientId: string, userId: string, keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  insertBefore(clientId: string, 
+               userId: string,
+               keyPath: string[],
+               id: string,
+               itemKeyPath: string[], 
+               opts): Promise //<{id:string; refId?: string>}
   {
-    this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
+    return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
-        this.storage.insertBefore(keyPath, id, itemKeyPath, opts, (err: Error, id?: string, refId?: string) => {
-          if(!err){
-            this.syncHub && this.syncHub.insertBefore(clientId, keyPath, id, itemKeyPath, refId);
-          }
-          cb(err, id);
+        return this.storage.insertBefore(keyPath, id, itemKeyPath, opts).then((res)=>{
+          this.syncHub && this.syncHub.insertBefore(clientId, keyPath, res.id, itemKeyPath, res.refId);
+          return res;
         });
       }
-    }).fail(cb);
+    });
   }  
 }
 

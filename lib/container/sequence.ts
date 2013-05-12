@@ -147,15 +147,11 @@ export class Sequence extends Container
     }
   }
 
-  private insertPersistedItemBefore(id: string, item: Model): Promise
+  private insertPersistedItemBefore(id: string, item: Model): Promise // <string>
   {
-    var promise = new Promise();
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
-    this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {}, (err?, id?) =>{
-      promise.resolveOrReject(err, id);
-    });
-    return promise;
+    return this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {});
   }
 
   push(item: Model, opts?): Promise
@@ -198,13 +194,9 @@ export class Sequence extends Container
     opts = Util.extendClone(this.opts, opts);
     
     if(!opts || !opts.nosync){
-      this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts, (err?)=>{
-        promise.resolveOrReject(err);
-      });
-    }else{
-      promise.resolve();
+      return this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts);
     }
-    return promise;
+    return promise.resolve();
   }
   
   move(startIdx: number, endIdx: number, opts?): Promise

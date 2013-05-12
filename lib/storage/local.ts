@@ -238,31 +238,27 @@ export class Local implements IStorage {
       if(keyValue) return new Promise(getItems(keyValue.value));
       else return Promise.rejected(InvalidKeyError);
     }else{
-      return this.fetch(keyPath).then((collection) => {
-        return getItems(collection);
-      }, (err) => {
+      return this.fetch(keyPath).then((collection) => getItems(collection), 
         // This is wrong but necessary due to how .all api works right now...
-        return [];
-      });
+        (err) => []);
     }
   }
   
   //
   // ISeqStorage
   //
-  all(keyPath: string[], query, opts, cb: (err: Error, result: {}[]) => void) : void
+  all(keyPath: string[], query, opts) : Promise
   {
     //TODO: optimize
     var all = [];
-    var traverse = (kp)=>{
-      this.next(keyPath, kp, opts, (err, next?)=>{
-        if(!next) return cb(null, all);
+    var traverse = (kp) => this.next(keyPath, kp, opts).then((next) => {
+      if(next){
         all.push(next);
-        traverse(next.id);
-      });
-    };
-      
-    traverse(null);
+        return traverse(next.id);
+      }
+    });
+    
+    return traverse(null).then(() => all);
   }
 
   private initSequence(seq){
@@ -280,8 +276,9 @@ export class Local implements IStorage {
     }
   }
   
-  next(keyPath: string[], id: string, opts, cb: (err: Error, doc?:IDoc) => void)
+  next(keyPath: string[], id: string, opts): Promise // <IDoc>
   {
+    var promise = new Promise();
     var options = _.defaults(opts, {snapshot: true});
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);
@@ -289,7 +286,7 @@ export class Local implements IStorage {
     key = keyValue ? keyValue.key : key;
 
     // first item of empty sequence is not an error
-    if(itemKeys.length === 0 && !id) return cb(null, null);
+    if(itemKeys.length === 0 && !id) return promise.resolve();
 
     id = id || '##@_begin';
     var refItem = _.find(itemKeys, (item) => {
@@ -298,7 +295,7 @@ export class Local implements IStorage {
 
     if(refItem){
       var item = itemKeys[refItem.next];
-      if(item.next < 0) return cb(null); //last pointer
+      if(item.next < 0) return promise.resolve(); //last pointer
 
       var itemKeyPath = this.parseKey(item.key);
       var op = item.sync;
@@ -311,20 +308,24 @@ export class Local implements IStorage {
             id: item._id || item._cid,
             doc: doc
           };
-          cb(null, iDoc);
+          promise.resolve(iDoc);
         }
+        //
         // ARON: if we come here we will not call the callback...
+        //
       }else{
-        this.next(keyPath, item._id || item._cid, opts, cb);
+        return this.next(keyPath, item._id || item._cid, opts);
       }
     }else{
-      return cb(Error('reference item not found'));
+      promise.reject(Error('reference item not found'))
     }
+    return promise;
     // cb(null, parseKey(item.key));
   }
 
-  deleteItem(keyPath: string[], id: string, opts, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], id: string, opts): Promise
   {
+    var promise = new Promise();
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);
     var itemKeys = keyValue ? keyValue.value || [] : [];
@@ -333,7 +334,8 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item || item.sync === 'rm') return cb(Error(''+ServerError.INVALID_ID));
+    if(!item || item.sync === 'rm') 
+      return promise.reject(new Error(''+ServerError.INVALID_ID));
 
     if(opts.insync){
       itemKeys[itemKeys[item.prev].next] = 'deleted';
@@ -344,12 +346,13 @@ export class Local implements IStorage {
     }
 
     this.store.put(key, itemKeys);
-    cb();
+    return promise.resolve()
   }
   
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise //  Promise<{id, refId}>
   {
     id = id || '##@_end';
+    var promise = new Promise();
     var key = this.makeKey(keyPath);
     var itemKey = this.makeKey(itemKeyPath);
     var keyValue = this.traverseLinks(key);
@@ -361,7 +364,7 @@ export class Local implements IStorage {
       return item._id === id || item._cid === id;
     });
 
-    if(!refItem) return cb(Error('reference item not found'));
+    if(!refItem) return promise.reject(Error('reference item not found'));
     var prevItem = itemKeys[refItem.prev];
     
     var newItem = {
@@ -376,10 +379,11 @@ export class Local implements IStorage {
     prevItem.next = refItem.prev = itemKeys.length-1;
 
     this.store.put(key, itemKeys);
-    cb(null, newItem._cid, newItem.next !== '##@_end' ? newItem.next : null);
+    var refId = newItem.next !== '##@_end' ? newItem.next : null;
+    return promise.resolve({id: newItem._cid, refId: refId});
   }
 
-  meta(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void)
+  meta(keyPath: string[], id: string, sid: string): Promise
   {
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);
@@ -389,7 +393,7 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item) return cb(Error(''+ServerError.INVALID_ID));
+    if(!item) return Promise.rejected(Error(''+ServerError.INVALID_ID));
 
     if(sid) item._id = sid;
     switch(item.sync) {
@@ -404,7 +408,7 @@ export class Local implements IStorage {
         break;
     }
     this.store.put(key, itemKeys);
-    cb();
+    return Promise.resolved();
   }
 }
 

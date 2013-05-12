@@ -54,29 +54,28 @@ export class Socket implements IStorage {
     return Gnd.Util.safeEmit(this.socket, 'find', keyPath, query, options);
   }
   
-  all(keyPath: string[], query: {}, opts: {}, cb: (err?: Error, result?: IDoc[]) => void) : void
+  all(keyPath: string[], query: {}, opts: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'all', keyPath, query, opts)
-      .then((result)=>{cb(null, result)}).fail(cb);
+    return Gnd.Util.safeEmit(this.socket, 'all', keyPath, query, opts)
   }
   
-  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  next(keyPath: string[], id: string, opts: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'next', keyPath, id, opts)
-      .then((result)=>{cb(null, result)}).fail(cb);
+    return Gnd.Util.safeEmit(this.socket, 'next', keyPath, id, opts);
   }
 
-  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise
   {
-    Gnd.Util.safeEmit(this.socket, 'deleteItem', keyPath, id, opts).then(cb, cb);
+    return Gnd.Util.safeEmit(this.socket, 'deleteItem', keyPath, id, opts);
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise
   {
+    // 
     // BROKEN DUE TO safeEmit not being able to send more than one parameter right now
     // Hack (in case of several args, embedd in an array)
-    Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts)
-      .then((result)=>{cb(null, result)}).fail(cb);
+    // Instead of several params use an object, so it is compatible with promises as well
+    return Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts);
   }
 }
 }

@@ -324,14 +324,17 @@ listContainer may also have a type attribute:
     });
   }
 
-  private removeFromSeq(containerId, cb:(err?: Error)=>void){
+  private removeFromSeq(containerId): Promise
+  {
+    var promise = new Promise();
     this.listContainer.update(
       {_id: containerId},
       {
         $set: {type: '_rip'}
       },
-      cb
+      (err) => promise.resolveOrReject(err)
     );
+    return promise;
   }
 
   private initSequence(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
@@ -365,21 +368,23 @@ listContainer may also have a type attribute:
       }
     });
   }
-
-  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts, cb: (err:Error, id?: string)=>void)
+  // cb: (err:Error, id?: string)=>void)
+  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise
   {
+    var promise = new Promise();
     var newContainer = new this.listContainer({
       next: nextId,
       modelId: itemKey
     });
+    
     newContainer.save((err, newContainer)=>{
-      if(err) return cb(err);
+      if(err) return promise.reject(err);
 
       this.listContainer.update({next: nextId}, {next: newContainer._id}, (err)=>{
         if(err){
           // rollback
           newContainer.remove();
-          return cb(err);
+          return promise.reject(err);
         }
         var delta = {};
         delta[name] = newContainer._id;
@@ -387,86 +392,99 @@ listContainer may also have a type attribute:
           {_id: parentId},
           { $push: delta },
           (err)=>{
-            cb(err, newContainer._id);
+            if(err) promise.reject(err);
+            else promise.resolve(newContainer._id);
           }
         );
       });
     });
+    
+    return promise;
   }
 
-  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result?: any[]) => void) : void
-  {
+  // cb: (err: Error, result?: any[]
+  // Note: This code is copy paste of Local.ts
+  all(keyPath: string[], query: {}, opts: {}): Promise
+  {  
     var all = [];
-    var traverse = (id)=>{
-      this.next(keyPath, id, opts, (err, next?)=>{
-        if(!next) return cb(null, all);
+    var traverse = (kp) => this.next(keyPath, kp, opts).then((next) => {
+      if(next){
         all.push(next);
-        traverse(next.id);
-      });
-    };
-      
-    traverse(null);
+        return traverse(next.id);
+      }
+    });
+    
+    return traverse(null).then(() => all);
   }
 
-  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void)
+  next(keyPath: string[], id: string, opts: {}): Promise // <IDoc
   {
+    var promise = new Promise();
+    
     this.getModel(keyPath).then((found) => {
       var ParentModel = found.Model;
       var parentId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
       this.findContainer(ParentModel, parentId, seqName, id, (err, container?)=>{
-        if(!id && !container) return cb(null); //empty sequence
+        if(!id && !container) return promise.resolve(); //empty sequence
+        
         this.findContainer(ParentModel, parentId, seqName, container.next, (err, container?)=>{
-        //TODO:Err handling
+          if(err) return promise.reject(err);
+
           if(container.type === '_rip'){ //tombstone
-            this.next(keyPath, container._id, opts, cb);
+            this.next(keyPath, container._id, opts).then((val) => promise.resolve(val));
           }else if(container.type === '_end'){
-            cb(null); //no next item
+            promise.resolve()
           }else{
             var kp = parseKey(container.modelId);
             this.fetch(kp).then((doc)=>{
-              cb(null, {
+              promise.resolve({
                 id: container._id,
                 keyPath: kp,
                 doc: doc
-              });
-            }).fail(cb);
+              })
+            }).fail((err)=>promise.reject(err));
           }
         });
       });
-    }).fail(cb);
+    }).fail((err)=>promise.reject(err));
+    
+    return promise;
   }
 
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err: Error, id?: string, refId?: string) => void)
+  // id?: string, refId?: string
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise
   {
-    if(_.isFunction(opts)) cb = opts;
-
-    this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then((found) => {
       var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
+      var promise = new Promise();
       this.initSequence(ParentModel, modelId, seqName, (err, begin?, end?) => {
         if(!id) id = end._id;
-        this.insertContainerBefore(ParentModel, modelId, seqName, id, makeKey(itemKeyPath), opts, (err, newId?)=>{
-          cb(err, newId, id);
-        });
+        this.insertContainerBefore(ParentModel, modelId, seqName, id, makeKey(itemKeyPath), opts).then((newId)=>{
+          promise.resolve({id: newId, refId: id});
+        }).fail((err)=>promise.reject(err));
       });
-    }, cb);
+      return promise;
+    });
   }
 
-  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void)
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise
   {
-    this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then((found) => {
       var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
+      var promise = new Promise();
 
       this.findContainer(ParentModel, modelId, seqName, id, (err, container?)=>{
-        if(!container || container.type === '_rip') return cb(Error(''+ServerError.INVALID_ID));
-        this.removeFromSeq(container._id, cb);
+        if(!container || container.type === '_rip') return promise.reject(Error(''+ServerError.INVALID_ID));
+        this.removeFromSeq(container._id).then(() => promise.resolve(), (err) => promise.reject(err));
       });
-    }, cb);
+      return promise;
+    });
   }
   
   private getModel(keyPath: string[]): Promise // Promise<[FoundModel]>

@@ -43,6 +43,7 @@ export class SocketBackend {
       
       server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {    
         
+        // Models
         socket.on('create', function(keyPath: string[], doc: {}, cb: (err: ServerError, key?: string) => void){
           console.log(clientId+"TRYING TO CREATE");
           console.log("SESSION:"+session);
@@ -84,19 +85,19 @@ export class SocketBackend {
         // Sequences
         socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: ServerError, result?: {}[]) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.all(session.userId, keyPath, query, opts, scb(cb));
+          callback(server.all(session.userId, keyPath, query, opts), cb);
         });
         socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: ServerError, doc?:IDoc) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.next(session.userId, keyPath, id, opts, scb(cb));
+          callback(server.next(session.userId, keyPath, id, opts), cb);
         });
         socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.deleteItem(clientId, session.userId, keyPath, id, opts, scb(cb));
+          callback(server.deleteItem(clientId, session.userId, keyPath, id, opts), cb);
         });
         socket.on('insertBefore', function(keyPath: string[], id: string, itemKeyPath: string[], opts, cb: (err?: ServerError, id?: string, refId?: string) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          server.insertBefore(clientId, session.userId, keyPath, id, itemKeyPath, opts, scb(cb));
+          callback(server.insertBefore(clientId, session.userId, keyPath, id, itemKeyPath, opts), cb);
         });
       });
     });

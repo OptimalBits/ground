@@ -64,11 +64,11 @@ export interface IDoc {
 }
 
 export interface ISeqStorage {
-  all(keyPath: string[], query: {}, opts: {}, cb: (err: Error, result: IDoc[]) => void) : void;
-  next(keyPath: string[], id: string, opts: {}, cb: (err: Error, doc?:IDoc) => void);
-  deleteItem(keyPath: string[], id: string, opts: {}, cb: (err?: Error) => void);
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}, cb: (err: Error, id?: string, refId?: string) => void);
-  meta?(keyPath: string[], id: string, sid: string, cb: (err?: Error) => void);
+  all(keyPath: string[], query: {}, opts: {}): Promise; //<Idoc[]>;
+  next(keyPath: string[], id: string, opts: {}): Promise; // <IDoc>
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise; //
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise; //<{id, refId}>
+  meta?(keyPath: string[], id: string, sid: string): Promise;
 }
 
 }
