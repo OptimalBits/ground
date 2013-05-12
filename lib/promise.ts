@@ -15,6 +15,34 @@ function isPromise(promise){
   return (promise instanceof Object) && (promise.then instanceof Function);
 }
 
+// TODO: We might want to implement the interface according to
+// the new W3C specification (http://dom.spec.whatwg.org/#futures)
+/*
+interface FutureResolver {
+  void accept(optional any value);
+  void resolve(optional any value);
+  void reject(optional any value);
+};
+
+callback FutureInit = void (FutureResolver resolver);
+callback AnyCallback = any (optional any value);
+
+[Constructor(FutureInit init)]
+interface Future {
+  static Future accept(any value);
+  static Future resolve(any value); // same as any(value)
+  static Future reject(any value);
+
+  static Future _any(any... values); // exposed as "any" in JavaScript, without "_"
+  static Future every(any... values);
+  static Future some(any... values);
+
+  Future then([TreatUndefinedAs=Missing] optional AnyCallback acceptCallback, [TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
+  Future catch([TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
+  void done([TreatUndefinedAs=Missing] optional AnyCallback acceptCallback, [TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
+};
+*/
+
 // TODO: Use local event queue to guarantee that all callbacks are called 
 // in the same turn in the proper order.
 //export class Promise<T> {
@@ -138,6 +166,25 @@ export class Promise extends Base
     else this.resolve(value);
   }
   
+  ensure(always: () => any)
+  {
+    var alwaysOnSuccess = (result) => {
+      // don't pass result through, *and ignore* the return value
+      // of alwaysCleanup.  Instead, return original result to propagate it.
+      always();
+      return result;
+    }
+
+    var alwaysOnFailure = (err) => {
+      // don't pass result through, *and ignore* the result
+      // of alwaysCleanup.  Instead, rethrow error to propagate the failure.
+      always();
+      throw err;
+    }
+    
+    return this.then(alwaysOnSuccess, alwaysOnFailure);
+  }
+  
   //resolve(value?: T): Promise<T>
   resolve(value?: any): Promise
   {
@@ -183,6 +230,8 @@ export class Promise extends Base
     }
   }
 }
+
+Promise.prototype['otherwise'] = Promise.prototype.fail;
 
 export class PromiseQueue {
   private promises : Promise[];
