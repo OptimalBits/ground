@@ -295,10 +295,6 @@ describe('Util', function(){
         id: function(item){
           return item.id;
         },
-        docId: function(item){
-          // return item.doc._id;
-          return item.id;
-        },
         keyPath: function(item){
           return item.keyPath;
         },

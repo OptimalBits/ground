@@ -434,20 +434,34 @@ export function isVirtualProperty(prop: any): bool
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
 
-export function mergeSequences(source: any[], target: any[], fns: any): any[]
+export interface MergeFunctions {
+  id: (item: {}) => string;
+  keyPath: (item: {}) => string;
+  doc: (item: {}) => {};
+  inSync: (item: {}) => bool;
+}
+
+export interface MergeCommand {
+  cmd: string;
+  id?: string;
+  refId?: string;
+  newId?: string;
+  keyPath?: string;
+  doc?: {};
+}
+
+export function mergeSequences(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
 {
-  var commands = [];
+  var commands: MergeCommand[] = [];
   var remainingItems = [];
 
   var sourceIds = _.map(source, function(item){
-    return fns.docId(item);
-    //TODO: Change to id
+    return fns.id(item); //TODO: Change to id
   }).sort();
 
   //Determine which items to delete
   _.each(target, function(targetItem){
-    if(fns.inSync(targetItem) && -1 === _.indexOf(sourceIds, fns.docId(targetItem), true)){
-    //TODO: Change to id
+    if(fns.inSync(targetItem) && -1 === _.indexOf(sourceIds, fns.id(targetItem), true)){ //TODO: Change to id
       commands.push({
         cmd: 'removeItem',
         id: fns.id(targetItem)
@@ -467,7 +481,7 @@ export function mergeSequences(source: any[], target: any[], fns: any): any[]
     if(fns.inSync(targetItem)){
       sourceItem = source[j];
       // TODO: change to id
-      if(fns.docId(targetItem) === fns.docId(sourceItem)){
+      if(fns.id(targetItem) === fns.id(sourceItem)){
         i++;
       }else{
         commands.push({
