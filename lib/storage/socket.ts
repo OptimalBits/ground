@@ -71,11 +71,7 @@ export class Socket implements IStorage {
 
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise
   {
-    // 
-    // BROKEN DUE TO safeEmit not being able to send more than one parameter right now
-    // Hack (in case of several args, embedd in an array)
-    // Instead of several params use an object, so it is compatible with promises as well
-    return Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts);
+   return Gnd.Util.safeEmit(this.socket, 'insertBefore', keyPath, id, itemKeyPath, opts);
   }
 }
 }
