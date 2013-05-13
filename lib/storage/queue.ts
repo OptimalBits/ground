@@ -241,13 +241,6 @@ export class Queue extends Base implements IStorage
     
   create(keyPath: string[], args:{}): Promise
   {
-    // We need a mechanism to guarantee the order of element in the queue,
-    // since create is asynchronous, it could happen that a put cmd
-    // ends before the create command for a given model, creating 
-    // storage problems...
-    // On the other hand, first adding Cmd and then creating in storage
-    // could result in remoteStorage completing before localStorage
-    // with other hazzards as result...
     return this.localStorage.create(keyPath, args).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
       this.addCmd({cmd:'create', keyPath: keyPath, args: args});
