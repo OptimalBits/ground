@@ -250,7 +250,7 @@ export class Sequence extends Container
     });
   }
 
-  private execCmds(commands: Util.MergeCommand[]): Promise
+  private execCmds(commands: MergeCommand[]): Promise
   {
     var opts = {nosync: true};
     return Gnd.Promise.map(commands, (cmd) => {
@@ -273,7 +273,7 @@ export class Sequence extends Container
   {
     var promise = new Promise();
     this.resyncMutex.enter((done)=>{
-      var commands = Gnd.Util.mergeSequences(remoteItems, this.items, Sequence.mergeFns);
+      var commands = Sequence.mergeSequences(remoteItems, this.items, Sequence.mergeFns);
       this.execCmds(commands).then(()=>{
         this.emit('resynced:');
         done();
@@ -281,6 +281,83 @@ export class Sequence extends Container
       });
     });
     return promise;
+  }
+
+  static mergeSequences(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
+  {
+    var commands: MergeCommand[] = [];
+    var remainingItems = [];
+
+    var sourceIds = _.map(source, function(item){
+      return fns.id(item); //TODO: Change to id
+    }).sort();
+
+    //Determine which items to delete
+    _.each(target, function(targetItem){
+      if(fns.inSync(targetItem) && -1 === _.indexOf(sourceIds, fns.id(targetItem), true)){
+        commands.push({
+          cmd: 'removeItem',
+          id: fns.id(targetItem)
+        });
+      }else{
+        remainingItems.push(targetItem);
+      }
+    });
+
+    var i=0;
+    var j=0;
+    var targetItem, sourceItem;
+
+    // insert new items on the right place
+    while(i<remainingItems.length && j<source.length){
+      targetItem = remainingItems[i];
+      if(fns.inSync(targetItem)){
+        sourceItem = source[j];
+        if(fns.id(targetItem) === fns.id(sourceItem)){
+          i++;
+        }else{
+          commands.push({
+            cmd: 'insertBefore',
+            refId: fns.id(targetItem),
+            newId: fns.id(sourceItem),
+            keyPath: fns.keyPath(sourceItem), //TODO: not always needed
+            doc: fns.doc(sourceItem)
+          });
+        }
+        j++;
+      }else{
+        i++;
+      }
+    }
+
+    //append remaining new items
+    while(j<source.length){
+      sourceItem = source[j];
+      commands.push({
+        cmd: 'insertBefore',
+        refId: null,
+        newId: fns.id(sourceItem),
+        keyPath: fns.keyPath(sourceItem), //TODO: see above
+        doc: fns.doc(sourceItem)
+      });
+      j++;
+    }
+
+    //remove remaining old items
+    while(i<remainingItems.length){
+      targetItem = remainingItems[i];
+      if(fns.inSync(targetItem)){
+        commands.push({
+          cmd: 'removeItem',
+          id: fns.id(targetItem)
+        });
+      }
+      i++;
+    }
+
+    // return the sequence of commands that transforms the target sequence according
+    // to the source
+    return commands;
   }
 }
 
@@ -300,5 +377,21 @@ _.each(methods, function(method) {
     return _[method].apply(_, [_.pluck(this.items, 'model')].concat(_.toArray(arguments)))
   }
 });
+
+export interface MergeFunctions {
+  id: (item: {}) => string;
+  keyPath: (item: {}) => string;
+  doc: (item: {}) => {};
+  inSync: (item: {}) => bool;
+}
+
+export interface MergeCommand {
+  cmd: string;
+  id?: string;
+  refId?: string;
+  newId?: string;
+  keyPath?: string;
+  doc?: {};
+}
 
 }

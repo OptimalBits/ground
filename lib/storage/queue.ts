@@ -9,6 +9,7 @@
 /// <reference path="../error.ts" />
 /// <reference path="storage.ts" />
 /// <reference path="../promise.ts" />
+/// <reference path="../container/sequence.ts" />
 
 module Gnd.Storage {
 "use strict";
@@ -146,7 +147,7 @@ export class Queue extends Base implements IStorage
     return promise;
   }
 
-  private execCmds(keyPath: string[], commands: Util.MergeCommand[]): Promise
+  private execCmds(keyPath: string[], commands: MergeCommand[]): Promise
   {
     var opts = {insync: true};
     return Gnd.Promise.map(commands, (cmd) => {
@@ -174,7 +175,7 @@ export class Queue extends Base implements IStorage
     opts = _.extend({snapshot: false}, opts);
 
     return this.localStorage.all(keyPath, {}, opts).then((localSeq: IDoc[]) => {
-      var commands = Gnd.Util.mergeSequences(remoteSeq, localSeq, Queue.mergeFns);
+      var commands = Sequence.mergeSequences(remoteSeq, localSeq, Queue.mergeFns);
       return this.execCmds(keyPath, commands);
     });
   }
