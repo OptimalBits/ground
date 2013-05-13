@@ -434,6 +434,7 @@ export function isVirtualProperty(prop: any): bool
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
 
+//The following code is pretty sequence to sequences and could be moved
 export interface MergeFunctions {
   id: (item: {}) => string;
   keyPath: (item: {}) => string;
