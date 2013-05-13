@@ -382,7 +382,7 @@ export class Local implements IStorage {
     return promise.resolve({id: newItem._cid, refId: refId});
   }
 
-  meta(keyPath: string[], id: string, sid: string): Promise
+  meta(keyPath: string[], id: string, sid?: string): Promise
   {
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);
