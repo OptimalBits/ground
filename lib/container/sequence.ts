@@ -29,6 +29,21 @@ export interface ISeqModel {
 
 export class Sequence extends Container
 { 
+  static mergeFns = {
+    id: function(item){
+      return item.id;
+    },
+    keyPath: function(item){
+      return item.keyPath;
+    },
+    doc: function(item){
+      return item.doc;
+    },
+    inSync: function(item){
+      return item.insync;
+    }
+  };
+
   public updateFn: (args: any) => void;
   public deleteFn: (model: Model) => void;
     
@@ -97,14 +112,14 @@ export class Sequence extends Container
     var seqItem = {
       model: item,
       id: id,
-      pending: !id
+      insync: !!id
     };
     
     var done = (id)=>{
       seqItem.id = id || seqItem.id;
       this.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
         seqItem.id = sid;
-        seqItem.pending = false;
+        seqItem.insync = true;
       });
     }
 
@@ -234,71 +249,35 @@ export class Sequence extends Container
       this.deleteItem(id, {nosync: true});
     });
   }
+
+  private execCmds(commands: Util.MergeCommand[]): Promise
+  {
+    var opts = {nosync: true};
+    return Gnd.Promise.map(commands, (cmd) => {
+      switch(cmd.cmd) {
+        case 'insertBefore':
+          return this.model.create(cmd.doc, false).then((instance) =>
+            this.insertItemBefore(cmd.refId, instance, cmd.newId, opts)
+          );
+          break;
+        case 'removeItem':
+          return this.deleteItem(cmd.id, opts);
+          break;
+        default:
+          throw new Error('Invalid command: '+cmd);
+      }
+    });
+  }
   
-  public resync(newItems: any[]): Promise
+  public resync(remoteItems: any[]): Promise
   {
     var promise = new Promise();
     this.resyncMutex.enter((done)=>{
-      var oldItems = this.items;
-      var newIds = _.pluck(newItems, 'id').sort();
-      var remainingItems = [];
-      
-      Promise.map(oldItems, (item)=>{
-        if(!item.pending && -1 === _.indexOf(newIds, item.id, true)){
-          return this.deleteItem(item.id, {nosync: true});
-        }else{
-          remainingItems.push(item);
-          return new Promise(true);
-        }
-      }).then(()=>{
-        var itemsToInsert = [];
-        var i=0;
-        var j=0;
-        var oldItem, newItem;
-        var remainingLength = remainingItems.length;
-        var newItemsLength = newItems.length;
-        
-        // Determine which remote items to add to the sequence
-        while(i<remainingLength && j<newItemsLength){
-          oldItem = remainingItems[i];
-          if(!oldItem.pending){
-            newItem = newItems[j];
-            if(newItem.id === oldItem.id){
-              i++;
-            }else{
-              itemsToInsert.push({
-                refId: oldItem.id,
-                newItem: newItem.doc
-              });
-            }
-            j++;
-          }else{
-            i++;
-          }
-        }
-        
-        while(j<newItemsLength){
-          newItem = newItems[j];
-          itemsToInsert.push({
-            refId: null,
-            id: newItem.id,
-            newItem: newItem.doc
-          });
-          j++;
-        }
-        
-        return Promise.map(remainingItems.slice(i), (item) =>
-          this.deleteItem(item.id, {nosync: true})
-        ).then(() => Promise.map(itemsToInsert, (item) =>
-          (<any>this.model).create(item.newItem).then((instance) =>
-            this.insertItemBefore(item.refId, instance, item.id, {nosync: true}))));
-
-      }).then(()=>{
+      var commands = Gnd.Util.mergeSequences(remoteItems, this.items, Sequence.mergeFns);
+      this.execCmds(commands).then(()=>{
         this.emit('resynced:');
         done();
         promise.resolve();
-      }, (err)=>{
-        console.log("Error resyncing sequence:"+err);
       });
     });
     return promise;
