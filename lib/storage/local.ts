@@ -19,7 +19,7 @@ interface KeyValue {
 
 module Gnd.Storage {
 
-var InvalidKeyError = new Error('Invalid Key');
+var InvalidKeyError = () => Error('Invalid Key');
 
 export class Local implements IStorage {
   private store: Store.IStore;
@@ -108,7 +108,7 @@ export class Local implements IStorage {
     if(keyValue){
       promise.resolve(keyValue.value);
     }else {
-      promise.reject(InvalidKeyError);
+      promise.reject(InvalidKeyError());
     }
     return promise;
   }
@@ -206,7 +206,7 @@ export class Local implements IStorage {
       this.store.put(keyValue.key, keysToDelete);
       return Promise.resolved()
     }else{
-      return Promise.rejected(InvalidKeyError);
+      return Promise.rejected(InvalidKeyError());
     }
   }
   
@@ -236,7 +236,7 @@ export class Local implements IStorage {
     if(keyPath.length === 1){
       var keyValue = this.traverseLinks(keyPath[0]);
       if(keyValue) return new Promise(getItems(keyValue.value));
-      else return Promise.rejected(InvalidKeyError);
+      else return Promise.rejected(InvalidKeyError());
     }else{
       return this.fetch(keyPath).then((collection) => getItems(collection), 
         // This is wrong but necessary due to how .all api works right now...
@@ -309,10 +309,9 @@ export class Local implements IStorage {
             doc: doc
           };
           promise.resolve(iDoc);
+        }else{
+          promise.reject(InvalidKeyError());
         }
-        //
-        // ARON: if we come here we will not call the callback...
-        //
       }else{
         return this.next(keyPath, item._id || item._cid, opts);
       }

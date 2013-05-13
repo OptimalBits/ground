@@ -68,7 +68,6 @@ var gndServer = new Gnd.Server(mongooseStorage,
                                
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 
-
 //
 // Ajax APIs used for some unit tests
 //
@@ -85,22 +84,6 @@ app.put('/zoos/:zooId/animals/:id', function(req, res){
   res.send(204);
 });
 
-app.put('/parade/:seqId/seq/animals/:id', function(req, res){
-  console.log('pushing '+req.params.id+' to '+req.params.seqId);
-  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], null, ['animals', req.params.id], {}, function(err){
-    if(err) throw new Error('Error in test service');
-    res.send(204);
-  });
-});
-
-app.del('/parade/:seqId/seq/animals/:id', function(req, res){
-  console.log('deleting '+req.params.id+' from '+req.params.seqId);
-  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'], req.params.id, {}, function(err){
-    if(err) throw new Error('Error in test service');
-    res.send(204);
-  });
-});
-
 app.del('/zoos/:zooId/animals/:id', function(req, res){
   models.zoo.findById(req.params.zooId, function(err, zoo){
     if (err) {
@@ -112,6 +95,24 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
         res.send(204);
       });
     }
+  });
+});
+
+app.put('/parade/:seqId/seq/animals/:id', function(req, res){
+  console.log('pushing '+req.params.id+' to '+req.params.seqId);
+  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], null, ['animals', req.params.id], {}).then(function(){
+    res.send(204);
+  }).fail(function(err){
+    return Error('Error in test service')
+  });
+});
+
+app.del('/parade/:seqId/seq/animals/:id', function(req, res){
+  console.log('deleting '+req.params.id+' from '+req.params.seqId);
+  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'], req.params.id, {}).then(function(){
+    res.send(204);
+  }).fail(function(err){
+     return Error('Error in test service');
   });
 });
 

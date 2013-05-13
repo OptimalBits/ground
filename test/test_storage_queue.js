@@ -331,7 +331,7 @@ describe('Storage Queue', function(){
           });
         });
       });
-      it.skip('serverside insert while offline', function(done){
+      it('serverside insert while offline', function(done){
         storage.create(['animals'], {name:'camel'}).then(function(id){
           expect(id).to.be.ok();
           storage.once('created:'+id, function(sid){
@@ -366,12 +366,11 @@ describe('Storage Queue', function(){
           });
         });
       });
-      it.skip('remove item while offline', function(done){
+      it('remove item while offline', function(done){
         socket.disconnect();
         storage.next(keyPath, null, {}).then(function(item){
           expect(item).to.be.an(Object);
-          storage.deleteItem(keyPath, item.id, {}, function(err){
-            expect(err).to.not.be.ok();
+          storage.deleteItem(keyPath, item.id, {}).then(function(){
 
             storage.once('synced:', function(){
               storage.all(keyPath, {}, {}).then(function(result){
@@ -402,7 +401,7 @@ describe('Storage Queue', function(){
           });
         });
       });
-      it.skip('serverside remove while offline', function(done){
+      it('serverside remove while offline', function(done){
         storage.next(keyPath, null, {}).then(function(item){
           expect(item).to.be.an(Object);
           socket.disconnect();
