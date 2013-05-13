@@ -217,6 +217,150 @@ describe('Sequences', function(){
     });
   });
 
+  describe('Move', function(){
+    var seq;
+    beforeEach(function(done){
+      getSequence(parade.id(), sm1, q1, true, function(animals){
+        Animal.create({name: 'tiger'}, true).then(function(animal){
+          animals.push(animal).then(function(){
+            Animal.create({name: 'dog'}, true).then(function(animal){
+              animals.push(animal).then(function(){
+                Animal.create({name: 'ant'}, true).then(function(animal){
+                  animals.push(animal).then(function(){
+                    Animal.create({name: 'shark'}, true).then(function(animal){
+                      animals.push(animal).then(function(){
+                        expect(animals.count).to.be(4);
+                        q1.once('synced:', function(){
+                          seq = animals;
+                          done();
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    describe('Simple moves', function(){
+      it('first to last', function(done){
+        var target = ['dog','ant','shark','tiger'];
+        seq.move(0, 3).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
+          });
+          done();
+        });
+      });
+      it('last to first', function(done){
+        var target = ['shark','tiger','dog','ant'];
+        seq.move(3, 0).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
+          });
+          done();
+        });
+      });
+      it('one forward', function(done){
+        var target = ['tiger','ant','dog','shark'];
+        seq.move(1, 2).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
+          });
+          done();
+        });
+      });
+      it('one backward', function(done){
+        var target = ['tiger','ant','dog','shark'];
+        seq.move(2, 1).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
+          });
+          done();
+        });
+      });
+      it('same index', function(done){
+        var target = ['tiger','dog','ant','shark'];
+        seq.move(1, 1).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
+          });
+          done();
+        });
+      });
+    });
+    describe('Complex moves', function(){
+      it('Many rotations', function(done){
+        var target = ['tiger','dog','ant','shark'];
+        seq.move(0, 3).then(function(){
+          seq.move(0, 3).then(function(){
+            seq.move(0, 3).then(function(){
+              seq.move(0, 3).then(function(){
+                seq.move(0, 3).then(function(){
+                  seq.move(0, 3).then(function(){
+                    seq.move(0, 3).then(function(){
+                      seq.move(0, 3).then(function(){
+                        seq.move(0, 3).then(function(){
+                          seq.move(0, 3).then(function(){
+                            seq.move(0, 3).then(function(){
+                              seq.move(0, 3).then(function(){
+                                seq.each(function(item, i){
+                                  expect(item).to.have.property('name', target[i]);
+                                });
+                                done();
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Many rotations', function(done){
+        var target = ['tiger','dog','ant','shark'];
+        seq.move(0, 2).then(function(){
+          seq.move(0, 2).then(function(){
+            seq.move(0, 2).then(function(){
+              seq.each(function(item, i){
+                expect(item).to.have.property('name', target[i]);
+              });
+              done();
+            });
+          });
+        });
+      });
+    });
+    describe('Index out of bounds', function(){
+      it('source after', function(done){
+        seq.move(10, 3).fail(function(){
+          done();
+        });
+      });
+      it('source before', function(done){
+        seq.move(-10, 3).fail(function(){
+          done();
+        });
+      });
+      it('target before', function(done){
+        seq.move(3, -10).fail(function(){
+          done();
+        });
+      });
+      it('target after', function(done){
+        seq.move(0, 10).fail(function(){
+          done();
+        });
+      });
+    });
+  });
   describe('Remove', function(){
     it('one item', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
@@ -246,6 +390,7 @@ describe('Sequences', function(){
         });
       });
     });
+
 
     it('many items', function(done){
       getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
@@ -643,7 +788,7 @@ describe('Sequences', function(){
           synced2.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
             expect(err).to.not.be.ok();
             expect(synced1.count).to.be(0);
-            expect(synced2.count).to.be(1);
+            expect(synced2.count).to.be(1)
             expect(synced2.first()).to.have.property('name', 'tiger');
             synced1.once('inserted:', function(){
               expect(synced1).to.be.an(Object);
@@ -903,14 +1048,18 @@ describe('Sequences', function(){
       });
     });
     describe('Sequence IStorage', function(){
+      
       var Animal = Gnd.Model.extend('animals');
       var Parade = Gnd.Model.extend('parade');
 
-      socket = io.connect('/', {'force new connection': true});
-      var sl  = new Gnd.Storage.Local();
-      var ss = new Gnd.Storage.Socket(socket);
-      var q  = new Gnd.Storage.Queue(sl, ss);
-      Gnd.using.storageQueue = q;
+      before(function(){
+
+        var local_socket = io.connect('/', {'force new connection': true});
+        var sl  = new Gnd.Storage.Local();
+        var ss = new Gnd.Storage.Socket(local_socket);
+        var q  = new Gnd.Storage.Queue(sl, ss);
+        Gnd.using.storageQueue = q;
+      });
 
       var fns = {
         id: function(item){

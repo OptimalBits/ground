@@ -219,13 +219,16 @@ export class Sequence extends Container
     var srcItem = this.items[startIdx];
 
     if(srcItem){
-      endIdx = startIdx < endIdx ? endIdx + 1 : endIdx;
+      endIdx = startIdx <= endIdx ? endIdx + 1 : endIdx;
   
-      var targetId = endIdx < this.items.length ? this.items[endIdx].id : null;
-      srcItem.model.retain();
-      return this.remove(startIdx).then(()=>{
-        return this.insertBefore(targetId, srcItem.model, opts);
-      });
+      if(0 <= endIdx && endIdx <= this.items.length){
+        var targetId = endIdx < this.items.length ? this.items[endIdx].id : null;
+
+        srcItem.model.retain();
+        return this.remove(startIdx).then(()=>{
+          return this.insertBefore(targetId, srcItem.model, opts);
+        });
+      }
     }
     return new Promise(new Error("Invalid indexes:"+startIdx+", "+endIdx));
   }
