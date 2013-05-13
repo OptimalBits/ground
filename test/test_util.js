@@ -35,7 +35,6 @@ describe('Util', function(){
       })
       var obj = new Obj();
     });
-    
   });
 });
 

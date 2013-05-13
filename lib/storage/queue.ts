@@ -9,6 +9,7 @@
 /// <reference path="../error.ts" />
 /// <reference path="storage.ts" />
 /// <reference path="../promise.ts" />
+/// <reference path="../container/sequence.ts" />
 
 module Gnd.Storage {
 "use strict";
@@ -43,6 +44,21 @@ module Gnd.Storage {
 */
 export class Queue extends Base implements IStorage
 {
+  static mergeFns = {
+    id: function(item){
+      return item.id;
+    },
+    keyPath: function(item){
+      return item.keyPath;
+    },
+    doc: function(item){
+      return item.doc;
+    },
+    inSync: function(item){
+      return item.doc.__op === 'insync';
+    }
+  };
+
   private savedQueue: {};
   private queue: Command[];
   private createList = {};
@@ -130,73 +146,37 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
-  
-  private updateLocalSequence(keyPath: string[], 
-                              opts: {},
-                              remoteSeq: IDoc[]): Promise
+
+  private execCmds(keyPath: string[], commands: MergeCommand[]): Promise
   {
-    var storage = this.localStorage;
-    
+    var opts = {insync: true};
+    return Gnd.Promise.map(commands, (cmd) => {
+      switch(cmd.cmd) {
+        case 'insertBefore':
+          console.log('EX: insertBefore');
+          // item.doc._cid = item.doc._id; // ??
+          return this.localStorage.put(cmd.keyPath, cmd.doc).then(() => {
+            return this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
+              Util.extendClone({ id:cmd.newId }, opts));
+          });
+          break;
+        case 'removeItem':
+          console.log('EX: removeItem');
+          return this.localStorage.deleteItem(keyPath, cmd.id, opts);
+          break;
+        default:
+          throw new Error('Invalid command: '+cmd);
+      }
+    });
+  }
+  
+  private updateLocalSequence(keyPath: string[], opts: {}, remoteSeq: IDoc[]): Promise
+  {
     opts = _.extend({snapshot: false}, opts);
 
-    return storage.all(keyPath, {}, opts).then((localSeq: IDoc[]) => {
-      var remoteIds = _.map(remoteSeq, function(item){
-        return item.doc._id;
-      }).sort();
-      
-      var remainingItems = [];
-      return Promise.map(localSeq, function(item){
-        if(item.doc.__op === 'insync' && -1 === _.indexOf(remoteIds, item.doc._id, true)){
-          return storage.deleteItem(keyPath, item.id, {insync:true});
-        }else{
-          remainingItems.push(item);
-          return Promise.resolved();
-        }
-      }).then(function(err){
-        // insert new items
-        var newItems = [];
-        var i=0;
-        var j=0;
-        var localItem, remoteItem;
-        while(i<remainingItems.length){
-          localItem = remainingItems[i];
-          if(localItem.doc.__op === 'insync'){
-            remoteItem = remoteSeq[j];
-            if(localItem.doc._id === remoteItem.doc._id){
-              i++;
-            }else{
-              newItems.push({
-                id: localItem.id,
-                keyPath: remoteItem.keyPath,
-                doc: remoteItem.doc
-              });
-            }
-            j++;
-          }else{
-            i++;
-          }
-        }
-        while(j<remoteSeq.length){
-          remoteItem = remoteSeq[j];
-          newItems.push({
-            id: remoteItem.id,
-            keyPath: remoteItem.keyPath,
-            doc: remoteItem.doc
-          });
-          j++;
-        }
-
-        return Promise.map(newItems, (item) => {
-          item.doc._cid = item.doc._id; // ??
-          
-          return storage.put(item.keyPath, item.doc).then(() => {
-            return storage.insertBefore(keyPath, null, item.keyPath, {
-              insync:true,
-              id:item.id
-            });
-          });
-        });
-      });
+    return this.localStorage.all(keyPath, {}, opts).then((localSeq: IDoc[]) => {
+      var commands = Sequence.mergeSequences(remoteSeq, localSeq, Queue.mergeFns);
+      return this.execCmds(keyPath, commands);
     });
   }
   
