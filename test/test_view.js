@@ -6,7 +6,7 @@ describe('View', function(){
   it('Create view based on html', function(){
     var $views = Gnd.$('#views');
     
-    var view = new Gnd.View('#views', {
+    var view = new Gnd.View('#views', null, {
       html: '<div><p>hello world</p></div>'
     });
     
