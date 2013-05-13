@@ -434,4 +434,83 @@ export function isVirtualProperty(prop: any): bool
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
 
+export function mergeSequences(source: any[], target: any[], fns: any): any[]
+{
+  var commands = [];
+  var remainingItems = [];
+
+  var sourceIds = _.map(source, function(item){
+    return fns.docId(item);
+    //TODO: Change to id
+  }).sort();
+
+  //Determine which items to delete
+  _.each(target, function(targetItem){
+    if(fns.inSync(targetItem) && -1 === _.indexOf(sourceIds, fns.docId(targetItem), true)){
+    //TODO: Change to id
+      commands.push({
+        cmd: 'removeItem',
+        id: fns.id(targetItem)
+      });
+    }else{
+      remainingItems.push(targetItem);
+    }
+  });
+
+  var i=0;
+  var j=0;
+  var targetItem, sourceItem;
+
+  // insert new items on the right place
+  while(i<remainingItems.length && j<source.length){
+    targetItem = remainingItems[i];
+    if(fns.inSync(targetItem)){
+      sourceItem = source[j];
+      // TODO: change to id
+      if(fns.docId(targetItem) === fns.docId(sourceItem)){
+        i++;
+      }else{
+        commands.push({
+          cmd: 'insertBefore',
+          refId: fns.id(targetItem),
+          newId: fns.id(sourceItem),
+          keyPath: fns.keyPath(sourceItem), //TODO: not always needed
+          doc: fns.doc(sourceItem)
+        });
+      }
+      j++;
+    }else{
+      i++;
+    }
+  }
+
+  //append remaining new items
+  while(j<source.length){
+    sourceItem = source[j];
+    commands.push({
+      cmd: 'insertBefore',
+      refId: null,
+      newId: fns.id(sourceItem),
+      keyPath: fns.keyPath(sourceItem), //TODO: see above
+      doc: fns.doc(sourceItem)
+    });
+    j++;
+  }
+
+  //remove remaining old items
+  while(i<remainingItems.length){
+    targetItem = remainingItems[i];
+    if(fns.inSync(targetItem)){
+      commands.push({
+        cmd: 'removeItem',
+        id: fns.id(targetItem)
+      });
+    }
+    i++;
+  }
+
+  // return the sequence of commands that transforms the target sequence according
+  // to the source
+  return commands;
+}
 } // Gnd.Util
