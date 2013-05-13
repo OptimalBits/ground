@@ -302,7 +302,7 @@ describe('Util', function(){
           return item.doc;
         },
         inSync: function(item){
-          return !item.pending;
+          return item.insync;
         }
       };
       
@@ -313,7 +313,7 @@ describe('Util', function(){
           var b = items[i];
           expect(a.id).to.equal(b.id);
           expect(a.model.id()).to.equal(b.doc._id);
-          expect(a.pending).to.equal(!!b.pending);
+          expect(a.insync).to.equal(b.insync || typeof b.insync === 'undefined');
         }
       }
 
