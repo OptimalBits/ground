@@ -343,7 +343,6 @@ export class Queue extends Base implements IStorage
     
     var localOpts = _.extend({snapshot:true}, opts);
     
-    // TODO: what if keyPath is local (same for find())
     var allRemote = () => this.remoteStorage.all(keyPath, query, opts)
       .then((remote) => this.updateLocalSequence(keyPath, opts, remote))
       .then(()=> this.localStorage.all(keyPath, {}, localOpts));
@@ -366,43 +365,8 @@ export class Queue extends Base implements IStorage
     });
     return promise;
   }
-  
-  /*
-  all(keyPath: string[], query: {}, opts: {}): Promise
-  {
-    var promise = new Promise();
-    var remotePromise = new Promise();
-    
-    var localOpts = _.extend({snapshot:true}, {});
-    
-    this.localStorage.all(keyPath, query, opts, (err?, result?: any) => {
-      if(result){
-        promise.resolve([result, remotePromise]);
-      }      
-      if(!this.useRemote && !result){
-        promise.reject(err);
-      }else{
-        // TODO: what if keyPath is local (same for find())
-        this.remoteStorage.all(keyPath, query, opts, (err?, remote?: any) => {
-          if(!err){
-            this.updateLocalSequence(keyPath, {}, remote, (err?)=>{
-              if(result){
-                this.localStorage.all(keyPath, {}, localOpts, (err?, items?) => {
-                  remotePromise.resolveOrReject(err, items);
-                });
-              }
-            });
-          }
-          !result && promise.resolveOrReject(err, [remote, remotePromise]);
-        });
-      }
-    });
-    return promise;
-  }
-  */
 
-  //TODO: do we need next?
-  next(keyPath: string[], id: string, opts: {}): Promise // <IDoc>
+  private next(keyPath: string[], id: string, opts: {}): Promise // <IDoc>
   {
     return this.localStorage.next(keyPath, id, opts).fail((err) => {
       if(!this.useRemote){
