@@ -400,11 +400,11 @@ export class Queue extends Base implements IStorage
               remoteStorage.create(keyPath, args).then((sid) => {
                 var localKeyPath = keyPath.concat(cid);
                 
-                localStorage.put(localKeyPath, {_persisted:true, _id: sid}).then(() => {
+                return localStorage.put(localKeyPath, {_persisted:true, _id: sid}).then(() => {
                   var newKeyPath = _.initial(localKeyPath);
                   newKeyPath.push(sid);
                   
-                  localStorage.link(newKeyPath, localKeyPath).then(() => {
+                  return localStorage.link(newKeyPath, localKeyPath).then(() => {
                     var subQ = <any>(this.remoteStorage);
                     if(this.autosync || !subQ.once){
                       this.emit('created:'+cid, sid);
@@ -414,12 +414,9 @@ export class Queue extends Base implements IStorage
                       });
                     }
                     this.updateQueueIds(cid, sid);
-                    done();
                   });
                 });
-              }).fail((err) =>{
-                done(err || Error("Create: no server id for keypath:"+keyPath));
-              });
+              }).then(done, done)
             })(args['_cid']);
             
             break;
@@ -453,13 +450,11 @@ export class Queue extends Base implements IStorage
                   });
                 }
                 this.updateQueueIds(cid, sid);
-                done(null, res.id);
               });
-            }).fail(done);
+            }).then(done, done);
             break;
           case 'deleteItem':
-            var id = obj.id;
-            remoteStorage.deleteItem(keyPath, id, {}).then(done, done);
+            remoteStorage.deleteItem(keyPath, obj.id, {}).then(done, done);
             break;
           case 'syncTask':
             obj.fn(done);
@@ -536,7 +531,7 @@ export class Queue extends Base implements IStorage
   private completed(err?: Error)
   {
     var storage = this.localStorage;
-    var syncFn = this.syncFn;
+    var syncFn = () => Util.nextTick(() => this.synchronize());
     
     if(!err){ // || (err.status >= 400 && err.status < 500)){ 
       //
@@ -552,41 +547,24 @@ export class Queue extends Base implements IStorage
       console.log("Completed queue command", cmd);
       
       var opts = {insync: true};
-        
-      switch(cmd.cmd){
-        case 'add':
-          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts).then(() =>{
-            storage.add(cmd.keyPath,
-                        cmd.itemsKeyPath, 
-                        cmd.itemIds,
-                        opts).then(() => {
-              Util.nextTick(syncFn);
-            });
-          });
-          break;
-        case 'remove': 
-          storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts).then(() =>{
-            storage.remove(cmd.keyPath, 
-                           cmd.itemsKeyPath, 
-                           cmd.itemIds,
-                           opts).then(() => {
-              Util.nextTick(syncFn);
-            });
-          });
-          break;
-        case 'insertBefore':
-          storage.meta(cmd.keyPath, cmd.id, null).ensure(() => {
-            Util.nextTick(syncFn);
-          });
-          break;
-        case 'deleteItem':
-          storage.meta(cmd.keyPath, cmd.id, null).ensure(() =>{
-            Util.nextTick(syncFn);
-          });
-          break;
-        default:
-          Util.nextTick(syncFn);
-      }
+      
+      (() => { 
+        switch(cmd.cmd){
+          case 'add':
+            return storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts)
+              .then(() => storage.add(cmd.keyPath,
+                                      cmd.itemsKeyPath, 
+                                      cmd.itemIds,
+                                      opts));
+          case 'remove': 
+            var itemsToRemove = (cmd.oldItemIds || []).concat(cmd.itemIds || []);
+            return storage.remove(cmd.keyPath, cmd.itemsKeyPath, itemsToRemove, opts);
+          case 'deleteItem':
+            return storage.meta(cmd.keyPath, cmd.id);
+        }
+        return Promise.resolved();
+      })().ensure(() => syncFn());
+      
     }else{
       console.log("Queue error:"+err);
       
@@ -608,12 +586,12 @@ export class Queue extends Base implements IStorage
         case ServerError.DOCUMENT_NOT_FOUND:
         case ServerError.MODEL_NOT_FOUND:
           // Discard command
-          var cmd = this.dequeueCmd();
+          this.dequeueCmd();
           this.emit('error:', err);
-          Util.nextTick(syncFn);
+          syncFn();
           break;
         default:
-        // Shouldn't we try to synchronize again?
+        // Shouldn't we try to synchronize again after x seconds?
       }
     }
     
