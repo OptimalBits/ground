@@ -32,7 +32,7 @@ module Gnd
     historyApi: !!(window.history && window.history.pushState)
   }
   
-  export class Using
+  export class Using extends Base
   {
     public historyApi: bool;
     public template: (str: string) => (args: any) => string;
@@ -45,9 +45,16 @@ module Gnd
     public syncManager: Sync.Manager;
     
     constructor(){
+      super();
+      
       _.each(defaults, (value, key?) => {
         this[key] = value;
       });
+    }
+    
+    destroy(){
+      Util.release(this.storageQueue, this.syncManager);
+      super.destroy();
     }
   };
   
@@ -79,8 +86,8 @@ module Gnd
       using.historyApi = use;
     },
     syncManager: function(socket){
+      Util.release(using.syncManager);
       using.syncManager = new Sync.Manager(socket);
-      using.syncManager.init();
     }
   }
 }
