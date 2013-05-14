@@ -278,7 +278,7 @@ export class Sequence extends Container
       return this.execCmds(commands).then(() => {
         this.emit('resynced:')
       });
-    }).then(() => console.log("MUTEX ENDED"), () => console.log("MUTEX FAILED"));
+    });
   }
 
   static merge(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
