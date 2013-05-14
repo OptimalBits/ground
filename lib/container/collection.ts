@@ -98,18 +98,14 @@ export class Collection extends Container
   
   findById(id)
   {
-    return this['find']((item) => {
-      return item.id() == id
-    });
+    return this['find']((item) => item.id() == id);
   }
   
   add(items: Model[], opts?): Promise
   {
-    return Promise.map(items, (item)=>{
-      return this.addItem(item, opts).then(()=>{
-        this._keepSynced && !item._keepSynced && item.keepSynced();
-      });
-    });
+    return Promise.map(items, (item) =>
+      this.addItem(item, opts).then(() => 
+        this._keepSynced && !item._keepSynced && item.keepSynced()));
   }
 
   remove(itemIds, opts): Promise
@@ -269,8 +265,7 @@ export class Collection extends Container
   
   public resync(items: any[]): Promise
   {
-    var promise = new Promise();
-    this.resyncMutex.enter((done)=>{
+    return this.resyncMutex.enter(()=>{
       var 
         itemsToRemove = [],
         itemsToAdd = [];
@@ -291,19 +286,11 @@ export class Collection extends Container
         if(!this.findById(item._id)) itemsToAdd.push(item);
       })
     
-      this.remove(itemsToRemove, {nosync: true}).then(() => {
-        Promise.map(_.unique(itemsToAdd), (args) => {
-          return (<any>this.model).create(args);
-        }).then((models)=>{
-          this.add(models, {nosync: true}).then(()=> {
-            this.emit('resynced:');
-            promise.resolve();
-            done();
-          });
-        });
-      });
+      return this.remove(itemsToRemove, {nosync: true})
+        .then(() => Promise.map(_.unique(itemsToAdd), (args) => (<any>this.model).create(args)))
+        .then((models) => this.add(models, {nosync: true}))
+        .then(()=> {this.emit('resynced:')});
     });
-    return promise;
   }
 }
 

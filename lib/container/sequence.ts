@@ -260,33 +260,28 @@ export class Sequence extends Container
       switch(cmd.cmd) {
         case 'insertBefore':
           return this.model.create(cmd.doc, false).then((instance) =>
-            this.insertItemBefore(cmd.refId, instance, cmd.newId, opts)
-          );
+            this.insertItemBefore(cmd.refId, instance, cmd.newId, opts));
           break;
         case 'removeItem':
           return this.deleteItem(cmd.id, opts);
           break;
         default:
-          throw new Error('Invalid command: '+cmd);
+          throw Error('Invalid command:'+cmd);
       }
     });
   }
   
   public resync(remoteItems: any[]): Promise
   {
-    var promise = new Promise();
-    this.resyncMutex.enter((done)=>{
-      var commands = Sequence.mergeSequences(remoteItems, this.items, Sequence.mergeFns);
-      this.execCmds(commands).then(()=>{
-        this.emit('resynced:');
-        done();
-        promise.resolve();
+    return this.resyncMutex.enter(() => {
+      var commands = Sequence.merge(remoteItems, this.items, Sequence.mergeFns);
+      return this.execCmds(commands).then(() => {
+        this.emit('resynced:')
       });
-    });
-    return promise;
+    }).then(() => console.log("MUTEX ENDED"), () => console.log("MUTEX FAILED"));
   }
 
-  static mergeSequences(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
+  static merge(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
   {
     var commands: MergeCommand[] = [];
     var remainingItems = [];

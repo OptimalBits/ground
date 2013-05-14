@@ -175,7 +175,7 @@ export class Queue extends Base implements IStorage
     opts = _.extend({snapshot: false}, opts);
 
     return this.localStorage.all(keyPath, {}, opts).then((localSeq: IDoc[]) => {
-      var commands = Sequence.mergeSequences(remoteSeq, localSeq, Queue.mergeFns);
+      var commands = Sequence.merge(remoteSeq, localSeq, Queue.mergeFns);
       return this.execCmds(keyPath, commands);
     });
   }
