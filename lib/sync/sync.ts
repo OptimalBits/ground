@@ -35,7 +35,7 @@ export class Manager extends Base {
   private docs: { 
     [key: string]: ISynchronizable[];
   } = {};
-  private connectFn: ()=>void;
+  private cleanUpFn: ()=>void;
   
   constructor(socket)
   {
@@ -43,7 +43,7 @@ export class Manager extends Base {
     
     this.socket = socket;
         
-    this.connectFn = () => {
+    var connectFn = () => {
       var socket = this.socket;
       
       // Call re-sync for all models in this manager...
@@ -53,7 +53,7 @@ export class Manager extends Base {
         // TODO: send also the current __rev, if newer in server, 
         // get the latest doc.
         Gnd.Util.safeEmit(socket, 'sync', doc.getKeyPath()).then(() => {
-            console.log('Syncing %s', doc.getKeyPath());
+          console.log('Syncing %s', doc.getKeyPath().join('.'))
         });
         
         // OBSOLETE? if done according to new 'sync'
@@ -68,62 +68,83 @@ export class Manager extends Base {
     //
     // Socket Listeners
     //
-    socket.on('update:', (keyPath, args) => {
+    var updateFn = (keyPath, args) => {
       console.log("Received update", keyPath, args);
       var key = keyPathToKey(keyPath);
       
       _.each(this.docs[key], function(doc: Base){
         doc.set(args, {nosync: true});
       });
-    });
-      
-    socket.on('delete:', (keyPath) => {
+    };
+  
+    socket.on('update:', updateFn);
+    
+    var deleteFn = keyPath => {
       console.log("Received delete", keyPath);
       var key = keyPathToKey(keyPath);
       _.each(this.docs[key], function(doc){
-        // doc.emit('deleted:', keyPath); // rename event to 'delete:' ?
         doc.emit('deleted:', doc); // rename event to 'delete:' ?
       });
-    });
-        
-    socket.on('add:', (keyPath, itemsKeyPath, itemIds) => {
+    };
+    
+    socket.on('delete:', deleteFn);
+    
+    var addFn = (keyPath, itemsKeyPath, itemIds) => {
       console.log("Received add", keyPath, itemsKeyPath, itemIds);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'add:', itemsKeyPath, itemIds);
-    });
+    }
+     
+    socket.on('add:', addFn);
     
-    socket.on('remove:', (keyPath, itemsKeyPath, itemIds) => {
+    var removeFn = (keyPath, itemsKeyPath, itemIds) => {
       console.log("Received remove", keyPath, itemsKeyPath, itemIds);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'remove:', itemsKeyPath, itemIds);
-    });
+    }
+    
+    socket.on('remove:', removeFn);
 
-    socket.on('insertBefore:', (keyPath, id, itemKeyPath, refId) => {
+    var insertBeforeFn = (keyPath, id, itemKeyPath, refId) => {
       console.log("Received insert", keyPath, id, itemKeyPath, refId);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'insertBefore:', id, itemKeyPath, refId);
-    });
+    }
+    
+    socket.on('insertBefore:', insertBeforeFn);
 
-    socket.on('deleteItem:', (keyPath, id) => {
+    var deleteItemFn = (keyPath, id) => {
       console.log("Received deleteItem", keyPath, id);
       var key = keyPathToKey(keyPath);
       notifyObservers(this.docs[key], 'deleteItem:', id);
-    });
-  }
-  
-  init()
-  {
-    this.socket.on('connect', this.connectFn);
-   // socket.on('reconnect', this._connectFn);
-  }
-  
-  deinit()
-  {
-    var socket = this.socket;
-    if(socket){
-      socket.removeListener('connect', this.connectFn);
-      socket.removeListener('reconnect', this.connectFn);
     }
+    
+    socket.on('deleteItem:', deleteItemFn);
+    
+    socket.once('connect', connectFn);
+    socket.on('reconnect', connectFn);
+    
+    this.cleanUpFn = () => {
+      var off = _.bind(socket.removeListener, socket);
+      
+      // Remove connection listeners
+      off('connect', connectFn);
+      off('reconnect', connectFn);
+      
+      // Remove event listeners.
+      off('update:', updateFn);
+      off('delete:', deleteFn);
+      off('add:', addFn);
+      off('remove:', removeFn);
+      off('insertBefore', insertBeforeFn);
+      off('deleteItem', deleteItemFn);
+    } 
+  }
+  
+  destroy()
+  {
+    this.cleanUpFn();
+    super.destroy();
   }
   
   /**
