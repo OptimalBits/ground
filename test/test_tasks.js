@@ -175,6 +175,7 @@ describe('Promises and Tasks', function(){
       expect(triggered).to.be(true);
     });
     
+    throw Error('This case always fails until promises are A+ compatible');
     promise1.resolve();
     promise2.resolve();
     triggered = true;

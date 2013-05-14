@@ -337,12 +337,13 @@ describe('ViewModel', function(){
     });
   });
   describe('data-each', function(){
-    var tiger, lion, leopard, zoo, list, listEl;
+    var tiger, lion, leopard, zoo, list, listEl, len;
     
     beforeEach(function(){
       tiger = new Animal({name: 'tiger', pos:1});
       lion = new Animal({name: 'lion', pos:2});
       leopard = new Animal({name: 'leopard', pos:3});
+      len = 3;
      
       zoo = new Zoo();
       zoo.animals = new Gnd.Collection(Animal, 'animals', zoo, [tiger, lion, leopard]);
@@ -469,13 +470,51 @@ describe('ViewModel', function(){
       vm.unbind();
     });
     
-    it('calls callback with added node', function(done){
+    it('calls addedCallback only once', function(done){
+      var count = 0;
       var vm = new Gnd.ViewModel(list, {
         zoo: zoo,
         addedCallback: function(el){
          expect(el).to.be.ok();
          expect(Gnd.isElement(el)).to.be(true);
-         done() 
+         count++;
+        }
+      });
+      
+      zoo.animals.add(new Animal({name: 'elephant'}));
+      setTimeout(function() {
+        expect(count).to.be(len+1);
+        done();
+      }, 100); //better way?
+    });
+
+    it('calls removedCallback only once', function(done){
+      var count = 0;
+      var vm = new Gnd.ViewModel(list, {
+        zoo: zoo,
+        removedCallback: function(el){
+         expect(el).to.be.ok();
+         expect(Gnd.isElement(el)).to.be(true);
+         count++;
+        }
+      });
+      
+      zoo.animals.remove(tiger.id());
+      setTimeout(function() {
+        expect(count).to.be(1);
+        done();
+      }, 100); //better way?
+    });
+
+    it('calls callback with added node', function(done){
+      var count = 0;
+      var vm = new Gnd.ViewModel(list, {
+        zoo: zoo,
+        addedCallback: function(el){
+         expect(el).to.be.ok();
+         expect(Gnd.isElement(el)).to.be(true);
+         count++;
+         if(count === len+1) done() 
         }
       });
       

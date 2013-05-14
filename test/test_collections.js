@@ -222,29 +222,33 @@ describe('Collection Datatype', function(){
                 var counter = 0;
                 
                 if(otherAnimals.isDestroyed()){
+                  console.log('DONE1');
                   done();
                 }else{
                   counter++;
                   otherAnimals.once('destroy:', function(){
                     expect(otherAnimals.isDestroyed()).to.be(true);
                     counter--;
+                    console.log(counter);
                     if(counter == 0){
+                      console.log('DONE2');
                       done();
                     }
                   });
                 }
-                if(animals.isDestroyed()){
-                  done();
-                }else{
-                  counter++;
-                  animals.once('destroy:', function(){
-                    expect(animals.isDestroyed()).to.be(true);
-                    counter--;
-                    if(counter == 0){
-                      done();
-                    }
-                  });
-                }
+
+                // if(animals.isDestroyed()){
+                //   done();
+                // }else{
+                //   counter++;
+                //   animals.once('destroy:', function(){
+                //     expect(animals.isDestroyed()).to.be(true);
+                //     counter--;
+                //     if(counter == 0){
+                //       done();
+                //     }
+                //   });
+                // }
               });
             });
           });
