@@ -324,15 +324,97 @@ describe('Sequences', function(){
           });
         });
       });
-      it('Many rotations', function(done){
+      it('Many rotations2', function(done){
         var target = ['tiger','dog','ant','shark'];
         seq.move(0, 2).then(function(){
           seq.move(0, 2).then(function(){
             seq.move(0, 2).then(function(){
-              seq.each(function(item, i){
-                expect(item).to.have.property('name', target[i]);
+              seq.move(1, 3).then(function(){
+                seq.move(1, 3).then(function(){
+                  seq.move(1, 3).then(function(){
+                    seq.move(0, 1).then(function(){
+                      seq.move(0, 1).then(function(){
+                        seq.move(1, 2).then(function(){
+                          seq.move(1, 2).then(function(){
+                            seq.move(2, 3).then(function(){
+                              seq.move(2, 3).then(function(){
+                                seq.each(function(item, i){
+                                  expect(item).to.have.property('name', target[i]);
+                                });
+                                done();
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
               });
-              done();
+            });
+          });
+        });
+      });
+    });
+    describe('Synced collections', function(){
+      var socket3;
+      var sl3;
+      var ss3;
+      var q3;
+      var sm3;
+
+      var seq2;
+
+      function seqEqual(s1, s2){
+        var items2 = s2.filter(function() {return true});
+        s1.each(function(item, i){
+          expect(item).to.have.property('name', items2[i].name);
+        });
+      }
+
+      before(function(done){
+        socket3 = io.connect('/', {'force new connection': true});
+        sl3  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+        ss3 = new Gnd.Storage.Socket(socket3);
+        q3  = new Gnd.Storage.Queue(sl3, ss3);
+        sm3 = new Gnd.Sync.Manager(socket3);
+        socket3.on('connect', done);
+      });
+
+      beforeEach(function(done){
+        getSequence(parade.id(), sm3, q3, true, function(animals){
+          seq2 = animals;
+          done();
+        });
+      });
+
+      it('Initial state equal', function(){
+        seqEqual(seq, seq2);
+      });
+      it('Move propagate from one sequence to another', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            done();
+          });
+        });
+      });
+      it('Multiple moves propagate from one sequence to another', function(done){
+        seq.move(0, 1).then(function(){
+          seq.move(0, 2).then(function(){
+            seq.move(0, 3).then(function(){
+              seq.move(2, 3).then(function(){
+                seq2.once('inserted:', function(){
+                  seq2.once('inserted:', function(){
+                    seq2.once('inserted:', function(){
+                      seq2.once('inserted:', function(){
+                        seqEqual(seq, seq2);
+                        done();
+                      });
+                    });
+                  });
+                });
+              });
             });
           });
         });
