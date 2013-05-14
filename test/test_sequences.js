@@ -4,7 +4,7 @@ define(['gnd'], function(Gnd){
 
 localStorage.clear();
 
-describe('Sequences', function(){
+describe('Sequence Datatype', function(){
   var Animal = Gnd.Model.extend('animals');
   var Parade = Gnd.Model.extend('parade');
   

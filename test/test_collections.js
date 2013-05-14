@@ -4,7 +4,7 @@ define(['gnd'], function(Gnd){
 
 localStorage.clear();
   
-describe('Collections', function(){
+describe('Collection Datatype', function(){
   var storageSocket, storageQueue;
 
   var
