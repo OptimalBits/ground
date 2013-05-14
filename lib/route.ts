@@ -654,7 +654,8 @@ class Request {
       
       if(self.el){
         self.el.innerHTML = html;
-        waitForImages(self.el, cb);
+        cb();
+        //waitForImages(self.el, cb);
       }else{
         cb();
       }
