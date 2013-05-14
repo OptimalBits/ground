@@ -11,7 +11,7 @@
   and sizzle
 */
 
-/// <reference path="./promise" />
+/// <reference path="promise" />
 
 module Gnd
 {
