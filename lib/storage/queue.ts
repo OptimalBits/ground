@@ -431,13 +431,13 @@ export class Queue extends Base implements IStorage
             var cid = obj.cid;
             remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}).then((res)=>{
               var sid = res.id, refId = res.refId;
-              return localStorage.meta(keyPath, cid, sid).then(()=>{
+              return localStorage.ack(keyPath, cid, sid, {op: 'ib'}).then(()=>{
                 var subQ = <any>(this.remoteStorage);
                 if(this.autosync || !subQ.once){
                   this.emit('inserted:'+cid, sid, refId);
                 }else{
                   subQ.once('inserted:'+sid, (newSid, refId) => {
-                    localStorage.meta(keyPath, sid, newSid).then(() => {
+                    localStorage.ack(keyPath, sid, newSid, {op: 'ib'}).then(() => {
                       this.emit('inserted:'+cid, newSid, refId);
                     });
                   });
@@ -553,7 +553,7 @@ export class Queue extends Base implements IStorage
             var itemsToRemove = (cmd.oldItemIds || []).concat(cmd.itemIds || []);
             return storage.remove(cmd.keyPath, cmd.itemsKeyPath, itemsToRemove, opts);
           case 'deleteItem':
-            return storage.meta(cmd.keyPath, cmd.id);
+            return storage.ack(cmd.keyPath, null, cmd.id, {op: 'rm'});
         }
         return Promise.resolved();
       })().ensure(() => syncFn());

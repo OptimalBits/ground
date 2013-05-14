@@ -382,7 +382,7 @@ export class Local implements IStorage {
     return promise.resolve({id: newItem._cid, refId: refId});
   }
 
-  meta(keyPath: string[], id: string, sid?: string): Promise
+  ack(keyPath: string[], id: string, sid: string, opts): Promise
   {
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);
@@ -390,7 +390,8 @@ export class Local implements IStorage {
     key = keyValue ? keyValue.key : key;
 
     var item = _.find(itemKeys, (item) => {
-      return item._id === id || item._cid === id;
+      return opts.op === 'ib' && item._cid === id ||
+             opts.op === 'rm' && item._id === sid;
     });
     if(!item) return Promise.rejected(Error(''+ServerError.INVALID_ID));
 

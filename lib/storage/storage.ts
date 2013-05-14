@@ -68,7 +68,7 @@ export interface ISeqStorage {
   next(keyPath: string[], id: string, opts: {}): Promise; // <IDoc>
   deleteItem(keyPath: string[], id: string, opts: {}): Promise; //
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise; //<{id, refId}>
-  meta?(keyPath: string[], id: string, sid?: string): Promise;
+  ack?(keyPath: string[], id: string, sid: string, opts: {}): Promise;
 }
 
 }
