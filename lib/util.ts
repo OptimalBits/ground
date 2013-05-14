@@ -9,8 +9,11 @@
 */
 
 /// <reference path="../third/underscore.d.ts" />
-/// <reference path="dom.ts" />
 /// <reference path="overload.ts" />
+/// <reference path="base.ts" />
+/// <reference path="promise.ts" />
+
+
 
 module Gnd.Util {
 
@@ -38,7 +41,8 @@ export function retain(objs){
   });
 };
 
-export function release(objs){
+export function release(...objs: Base[]);
+export function release(objs: any){
   var items = _.isArray(objs) ? objs :arguments;
   _.each(items, function(obj){
     obj && obj.release();
@@ -54,7 +58,11 @@ var nextTick;
 if((typeof process !== 'undefined') && (process.nextTick)){
   nextTick = process.nextTick;
 }else{
-  nextTick = function(fn){
+  nextTick = (fn) => {
+    setTimeout(fn, 0);
+  }
+  /*
+  nextTick = (fn) => {
     var script = <HTMLScriptElement>document.createElement('script');
     script.onload = function() {
       document.body.removeChild(script);
@@ -63,6 +71,7 @@ if((typeof process !== 'undefined') && (process.nextTick)){
     script.src = 'data:text/javascript,';
     document.body.appendChild(script);
   }
+  */
 }
 
 export var nextTick;
@@ -301,27 +310,6 @@ export function safeEmit(socket, ...args:any[]): Promise
   }
   
   return promise;
-}
-
-// TODO: Move to dom.ts and remove dom.ts as dependency for this module.
-export function waitForImages(el, cb)
-{
-  var
-    $images = $('img', el),
-    counter = $images.length;
-    
-  if(counter>0){        
-    var loadEvent = function(evt){
-      $images.off('load', loadEvent);
-      counter--;
-      if(counter === 0){
-        cb();
-      }
-    }
-    $images.on('load', loadEvent);
-  }else{
-    cb();
-  }
 }
 
 declare var curl;
