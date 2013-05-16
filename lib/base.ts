@@ -65,18 +65,18 @@ export class Base extends EventEmitter implements ISettable, IGettable
   set(keyOrObj, val?: any, options?: {})
   {
     var changed = false, obj;
-  
-    options = options || {};
-    
+      
     if(typeof keyOrObj == 'object'){
-      options = val;
+      options = val || {};
       obj = <Object>keyOrObj;
       _.each(obj, (val, key?: string) => {
         changed = this._set(key, val, options) ? true : changed;
       });
     }else{
+      options = options || {};
       changed = this._set(keyOrObj, val, options)
     }
+    
     if(changed){
       if(!obj){
         // obj = Util.expandProperty({}, keyOrObj, val);
@@ -112,7 +112,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
     var isVirtual = Util.isVirtualProperty(oldProp);
     var oldVal = isVirtual ? oldProp.call(this) : oldProp;
     
-    if(!_.isEqual(oldVal, val) || (options && options.force)){
+    if(!_.isEqual(oldVal, val) || options.force){
       var val = this.willChange ? this.willChange(keypath, val) : val;
       
       // Virtual properties shall not trigger sync on serverside
