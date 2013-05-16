@@ -31,9 +31,9 @@ export class Hub {
       sio.on('connection', (socket) => {
         console.log("Socket %s connected in the Sync Module", socket.id);
         
-        socket.on('sync', function(keyPath: string[], cb:(err?: Error) => void){
+        socket.on('observe', function(keyPath: string[], cb:(err?: Error) => void){
           
-          console.log("SYNC:"+keyPath);
+          console.log("Request to start observing:"+keyPath);
           console.log(keyPath);
           
           if(!Array.isArray(keyPath)){
@@ -54,8 +54,8 @@ export class Hub {
           }
         });
     
-        socket.on('unsync', function(keyPath: string[], cb:(err?: Error) => void){
-          console.log("UNSYNC:"+keyPath);
+        socket.on('unobserve', function(keyPath: string[], cb:(err?: Error) => void){
+          console.log("Request to stop observing:"+keyPath);
           var id = keyPath.join(':');
           console.log("Socket %s stopped synchronization for id:%s", socket.id, id);
           socket.leave(id);

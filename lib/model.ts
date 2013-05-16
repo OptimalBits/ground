@@ -306,7 +306,7 @@ export class Model extends Base implements Sync.ISynchronizable
   
   destroy(): void
   {
-    using.syncManager && using.syncManager.endSync(this);
+    using.syncManager && using.syncManager.unobserve(this);
     super.destroy();
   }
   
@@ -404,8 +404,7 @@ export class Model extends Base implements Sync.ISynchronizable
   remove(): Promise
   {
     return Model.removeById(this.getKeyPath()).then(()=> {
-      using.syncManager && using.syncManager.endSync(this);
-      // this.emit('deleted:', this.getKeyPath());
+      using.syncManager && using.syncManager.unobserve(this);
       this.emit('deleted:', this);
     });
   }
@@ -417,7 +416,7 @@ export class Model extends Base implements Sync.ISynchronizable
     this._keepSynced = true;
     
     var startSync = () => {
-      using.syncManager && using.syncManager.startSync(this);
+      using.syncManager && using.syncManager.observe(this);
     }
   
     if (this.isPersisted()){

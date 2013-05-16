@@ -166,10 +166,10 @@ module Gnd
       // TODO: Add support for auto-sync for collections without parents.
       if(this.parent && using.syncManager){
         if(this.parent.isPersisted()){
-          using.syncManager.startSync(this);
+          using.syncManager.observe(this);
         }else{
           this.parent.on('id', () => {
-            using.syncManager.startSync(this);
+            using.syncManager.observe(this);
           });
         }
       }
@@ -182,7 +182,7 @@ module Gnd
     // protected
     public endSync()
     {
-      using.syncManager && using.syncManager.endSync(this);
+      using.syncManager && using.syncManager.unobserve(this);
       this._keepSynced = false;
     }
     
