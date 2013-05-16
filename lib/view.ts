@@ -98,8 +98,12 @@ export class View extends Base
    * the view models.
    *
    */
-  render(context?: {}, cb?: ()=>{})
+  render(context?: {}): Promise
   {
+    var promise = new Promise();
+    
+    context = context || {};
+    
     this.init((err?)=>{
       var html;
 
@@ -133,8 +137,9 @@ export class View extends Base
       _.each(this.children, (subview) => {
         subview.render(context);
       });
-      cb && cb();
+      promise.resolve();
     });
+    return promise;
   }
   
   clean()
