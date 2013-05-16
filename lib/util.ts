@@ -396,7 +396,10 @@ function deepExtend(doc, args, callFns?: bool): {}
       doc[key].call(this, args[key]);
     }else{
       // TODO: use isPlainObject to avoid special cases.
-      if(doc[key] && args[key] && typeof args[key] === 'object'){
+      if(doc[key] && 
+         args[key] && 
+         typeof args[key] === 'object' &&
+         !(args[key] instanceof Date)){
         deepExtend(doc[key], args[key]);
       }else{
         doc[key] = args[key];
