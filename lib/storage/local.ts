@@ -366,20 +366,24 @@ export class Local implements IStorage {
     if(!refItem) return promise.reject(Error('reference item not found'));
     var prevItem = itemKeys[refItem.prev];
     
-    var newItem = {
-      _cid: opts.id || Util.uuid(),
+    var newItem: any = {
       key: itemKey,
       sync: opts.insync ? 'insync' : 'ib',
       prev: refItem.prev,
       next: prevItem.next
     };
+    if(opts.id){
+      newItem._id = opts.id;
+    }else{
+      newItem._cid = Util.uuid();
+    }
 
     itemKeys.push(newItem);
     prevItem.next = refItem.prev = itemKeys.length-1;
 
     this.store.put(key, itemKeys);
     var refId = newItem.next !== '##@_end' ? newItem.next : null;
-    return promise.resolve({id: newItem._cid, refId: refId});
+    return promise.resolve({id: newItem._id || newItem._cid, refId: refId});
   }
 
   ack(keyPath: string[], id: string, sid: string, opts): Promise
@@ -398,6 +402,7 @@ export class Local implements IStorage {
     if(sid) item._id = sid;
     switch(item.sync) {
       case 'rm':
+        console.log(item);
         itemKeys[itemKeys[item.prev].next] = 'deleted';
         itemKeys[item.prev].next = item.next;
         itemKeys[item.next].prev = item.prev;
