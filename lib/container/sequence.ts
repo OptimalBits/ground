@@ -112,7 +112,7 @@ export class Sequence extends Container
     var seqItem = {
       model: item,
       id: id,
-      insync: !!id
+      insync: !(_.isNull(id) || _.isUndefined(id))
     };
     
     var done = (id)=>{
@@ -283,7 +283,8 @@ export class Sequence extends Container
 
   static merge(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
   {
-    var commands: MergeCommand[] = [];
+    var insertCommands: MergeCommand[] = [];
+    var removeCommands: MergeCommand[] = [];
     var remainingItems = [];
 
     var sourceIds = _.map(source, function(item){
@@ -293,7 +294,7 @@ export class Sequence extends Container
     //Determine which items to delete
     _.each(target, function(targetItem){
       if(fns.inSync(targetItem) && -1 === _.indexOf(sourceIds, fns.id(targetItem), true)){
-        commands.push({
+        removeCommands.push({
           cmd: 'removeItem',
           id: fns.id(targetItem)
         });
@@ -314,7 +315,7 @@ export class Sequence extends Container
         if(fns.id(targetItem) === fns.id(sourceItem)){
           i++;
         }else{
-          commands.push({
+          insertCommands.push({
             cmd: 'insertBefore',
             refId: fns.id(targetItem),
             newId: fns.id(sourceItem),
@@ -331,7 +332,7 @@ export class Sequence extends Container
     //append remaining new items
     while(j<source.length){
       sourceItem = source[j];
-      commands.push({
+      insertCommands.push({
         cmd: 'insertBefore',
         refId: null,
         newId: fns.id(sourceItem),
@@ -345,7 +346,7 @@ export class Sequence extends Container
     while(i<remainingItems.length){
       targetItem = remainingItems[i];
       if(fns.inSync(targetItem)){
-        commands.push({
+        removeCommands.push({
           cmd: 'removeItem',
           id: fns.id(targetItem)
         });
@@ -353,9 +354,21 @@ export class Sequence extends Container
       i++;
     }
 
+    // Adapt insert commands if pointing at deleted item
+    _.each(insertCommands, function(insertCmd){
+      var found = _.find(removeCommands, function(removeCmd){
+        return removeCmd.id === insertCmd.refId;
+      });
+      if(found){
+        insertCmd.refId = null;
+      }
+    });
+
+
     // return the sequence of commands that transforms the target sequence according
     // to the source
-    return commands;
+    // it is important that the removecommands come before the insertcommands
+    return removeCommands.concat(insertCommands);
   }
 }
 
