@@ -391,9 +391,9 @@ export function expandProperty(obj: {}, keyPath: string, value: any): {}
 function deepExtend(doc, args, callFns?: bool): {}
 {
   var keys = _.keys(args);
-  _.each(keys, function(key){
+  _.each(keys, (key) => {
     if(isVirtualProperty(doc[key])){
-      doc[key].call(this, args[key]);
+      doc[key](args[key]);
     }else{
       // TODO: use isPlainObject to avoid special cases.
       if(doc[key] && 
