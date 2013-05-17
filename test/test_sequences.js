@@ -43,9 +43,15 @@ describe('Sequence Datatype', function(){
     
     Parade.findById(paradeId).then(function(parade){
       if(keepSynced) parade.keepSynced();
-      parade.seq(Animal, seqName).then( function(animals){
+      parade.seq(Animal, seqName).then(function(animals){
         expect(animals).to.be.an(Object);
-        cb(animals);
+        if(keepSynced){
+          sq.waitUntilSynced(function(){
+            cb(animals);
+          });
+        }else{
+          cb(animals);
+        }
       });
     });
   }
@@ -80,6 +86,30 @@ describe('Sequence Datatype', function(){
               done();
             });
             nosyncedAnimals.save();
+          });
+        });
+      });
+    });
+    it('two items', function(done){
+      getSequence(parade.id(), sm1, q1, true, function(syncedAnimals){
+        getSequence(parade.id(), sm2, q2, false, function(nosyncedAnimals){
+          nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
+            nosyncedAnimals.push((new Animal({name:"panther"})).autorelease()).then(function(err){
+              expect(nosyncedAnimals.count).to.be(2);
+              syncedAnimals.once('inserted:', function(item, index){
+                expect(item).to.have.property('name', 'tiger');
+                syncedAnimals.once('inserted:', function(item, index){
+                  expect(item).to.have.property('name', 'panther');
+                  expect(syncedAnimals.count).to.be(2);
+                  var a = ['tiger','panther'];
+                  syncedAnimals.each(function(animal, i){
+                    expect(animal).to.have.property('name', a[i]);
+                  });
+                  done();
+                });
+              });
+              nosyncedAnimals.save();
+            });
           });
         });
       });
@@ -219,6 +249,8 @@ describe('Sequence Datatype', function(){
 
   describe('Move', function(){
     var seq;
+    var cow;
+    var sheep;
     beforeEach(function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
         Animal.create({name: 'tiger'}, true).then(function(animal){
@@ -232,7 +264,13 @@ describe('Sequence Datatype', function(){
                         expect(animals.count).to.be(4);
                         q1.once('synced:', function(){
                           seq = animals;
-                          done();
+                          Animal.create({name: 'cow'}, true).then(function(animal){
+                            cow = animal;
+                            Animal.create({name: 'sheep'}, true).then(function(animal){
+                              sheep = animal;
+                              done();
+                            });
+                          });
                         });
                       });
                     });
@@ -414,6 +452,293 @@ describe('Sequence Datatype', function(){
                     });
                   });
                 });
+              });
+            });
+          });
+        });
+      });
+      it('remove propagates in both directions', function(done){
+        seq.remove(0).then(function(){
+          seq2.once('removed:', function(){
+            seqEqual(seq, seq2);
+            seq2.remove(0).then(function(){
+              seq.once('removed:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+
+// 1,2,3,a
+//         \
+//          a b
+//           X
+// 1,2,3,   b a
+
+
+      it('insert propagates in both directions', function(done){
+        seq.push(cow).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            seq2.push(sheep).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Moves propagate in both directions', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            seq2.move(1, 0).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Multiple moves propagate in both directions', function(done){
+        seq.move(0, 1).then(function(){
+          seq.move(0, 2).then(function(){
+            seq.move(0, 3).then(function(){
+              seq.move(2, 3).then(function(){
+                seq2.once('inserted:', function(){
+                  seq2.once('inserted:', function(){
+                    seq2.once('inserted:', function(){
+                      seq2.once('inserted:', function(){
+                        seqEqual(seq, seq2);
+                        seq2.move(0, 1).then(function(){
+                          seq2.move(1, 3).then(function(){
+                            seq2.move(2, 1).then(function(){
+                              seq2.move(3, 1).then(function(){
+                                seq.once('inserted:', function(){
+                                  seq.once('inserted:', function(){
+                                    seq.once('inserted:', function(){
+                                      seq.once('inserted:', function(){
+                                        seqEqual(seq, seq2);
+                                        done();
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous inserts leads to a consistent state', function(done){
+        var numInserts = 6;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numInserts && c2 === numInserts){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('inserted:', handleInsert);
+            seq.off('inserted:', handleInsert2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleInsert(){
+          c++;
+          console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleInsert2(){
+          c2++;
+          console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('inserted:', handleInsert);
+        seq2.on('inserted:', handleInsert2);
+
+        seq.push(cow).then(function(){
+          seq.push(sheep).then(function(){
+            seq2.push(cow).then(function(){
+              seq2.push(sheep).then(function(){
+                seq.push(cow).then(function(){
+                  seq.push(sheep).then(function(){
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous deletes lead to a consistent state', function(done){
+        var numDeletes = 4;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numDeletes && c2 === numDeletes){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('removed:', handleRemove);
+            seq.off('removed:', handleRemove2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleRemove(){
+          c++;
+          console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleRemove2(){
+          c2++;
+          console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('removed:', handleRemove);
+        seq2.on('removed:', handleRemove2);
+
+        console.log(_.pluck(seq.items, 'id'));
+        seq.remove(3).then(function(){
+          seq2.remove(2).then(function(){
+            seq.remove(1).then(function(){
+              seq2.remove(0).then(function(){
+
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous deletes of same index lead to a consistent state', function(done){
+        var numDeletes = 2;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numDeletes && c2 === numDeletes){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('removed:', handleRemove);
+            seq.off('removed:', handleRemove2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleRemove(){
+          c++;
+          console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleRemove2(){
+          c2++;
+          console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('removed:', handleRemove);
+        seq2.on('removed:', handleRemove2);
+
+        console.log(_.pluck(seq.items, 'id'));
+        seq.remove(2).then(function(){
+          seq2.remove(2).then(function(){
+            seq.remove(1).then(function(){
+              seq2.remove(1).then(function(){
+
+              });
+            });
+          });
+        });
+      });
+      it.skip('Simultaneous moves leads to a consistent state', function(done){
+        var numInserts = 2;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numInserts && c2 === numInserts){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('inserted:', handleInsert);
+            seq.off('inserted:', handleInsert2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleInsert(){
+          c++;
+          console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleInsert2(){
+          c2++;
+          console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('inserted:', handleInsert);
+        seq2.on('inserted:', handleInsert2);
+
+        console.log('----init-----');
+        console.log(_.pluck(seq.items, 'id'));
+        seq.move(0, 1).then(function(){
+        console.log();
+        console.log(_.pluck(seq.items, 'id'));
+          // seq.move(0, 2).then(function(){
+            // seq.move(1, 3).then(function(){
+              seq2.move(2, 1).then(function(){
+        console.log();
+        console.log(_.pluck(seq2.items, 'id'));
+        // seq.move(0, 1).then(function(){
+                // seq2.move(1, 2).then(function(){
+                  // seq.move(0, 3).then(function(){
+              // seq2.once('inserted:', function(){
+              // seq.once('inserted:', function(){
+              // });
+                  // });
+                // });
+              });
+            // });
+          // });
+
+          //x,2,a,3
+          //1,b,2,x
+        });
+      });
+      it('Moves in both directions leads to a consistent local storage state', function(done){
+        // returns an array of local storage ids for this sequence
+        function getLsIds(seq){
+          var ls = seq.storageQueue.localStorage.store.get(seq.getKeyPath().join('@'));
+          var s = [];
+          function next(ls, i){
+            var item = ls[i];
+            if(item._id !== '##@_end'){
+              s.push(item);
+              next(ls, item.next);
+            }
+          }
+          next(ls, ls[0].next);
+          return _.map(s, function(item){
+            return item._id || item;
+          });
+        }
+
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+            expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+            seq2.move(1, 0).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+                expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+                done();
               });
             });
           });
@@ -1024,48 +1349,48 @@ describe('Sequence Datatype', function(){
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
           expect(commands.length).to.be(6);
-          expect(commands[0]).to.have.property('cmd', 'insertBefore');
-          expect(commands[0]).to.have.property('newId', 2);
-          expect(commands[0]).to.have.property('refId', 1);
-          expect(commands[1]).to.have.property('cmd', 'insertBefore');
-          expect(commands[1]).to.have.property('newId', 3);
-          expect(commands[1]).to.have.property('refId', 1);
-          expect(commands[2]).to.have.property('cmd', 'insertBefore');
-          expect(commands[2]).to.have.property('newId', 4);
-          expect(commands[2]).to.have.property('refId', 1);
-          expect(commands[3]).to.have.property('cmd', 'removeItem');
-          expect(commands[3]).to.have.property('id', 2);
-          expect(commands[4]).to.have.property('cmd', 'removeItem');
-          expect(commands[4]).to.have.property('id', 3);
-          expect(commands[5]).to.have.property('cmd', 'removeItem');
-          expect(commands[5]).to.have.property('id', 4);
+          expect(commands[0]).to.have.property('cmd', 'removeItem');
+          expect(commands[0]).to.have.property('id', 2);
+          expect(commands[1]).to.have.property('cmd', 'removeItem');
+          expect(commands[1]).to.have.property('id', 3);
+          expect(commands[2]).to.have.property('cmd', 'removeItem');
+          expect(commands[2]).to.have.property('id', 4);
+          expect(commands[3]).to.have.property('cmd', 'insertBefore');
+          expect(commands[3]).to.have.property('newId', 2);
+          expect(commands[3]).to.have.property('refId', 1);
+          expect(commands[4]).to.have.property('cmd', 'insertBefore');
+          expect(commands[4]).to.have.property('newId', 3);
+          expect(commands[4]).to.have.property('refId', 1);
+          expect(commands[5]).to.have.property('cmd', 'insertBefore');
+          expect(commands[5]).to.have.property('newId', 4);
+          expect(commands[5]).to.have.property('refId', 1);
         });
         it('move right to left', function(){
           var source = [4,1,2,3];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
           expect(commands.length).to.be(2);
-          expect(commands[0]).to.have.property('cmd', 'insertBefore');
-          expect(commands[0]).to.have.property('newId', 4);
-          expect(commands[0]).to.have.property('refId', 1);
-          expect(commands[1]).to.have.property('cmd', 'removeItem');
-          expect(commands[1]).to.have.property('id', 4);
+          expect(commands[0]).to.have.property('cmd', 'removeItem');
+          expect(commands[0]).to.have.property('id', 4);
+          expect(commands[1]).to.have.property('cmd', 'insertBefore');
+          expect(commands[1]).to.have.property('newId', 4);
+          expect(commands[1]).to.have.property('refId', 1);
         });
         it('move multiple', function(){
           var source = [3,1,4,2];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
           expect(commands.length).to.be(4);
-          expect(commands[0]).to.have.property('cmd', 'insertBefore');
-          expect(commands[0]).to.have.property('newId', 3);
-          expect(commands[0]).to.have.property('refId', 1);
-          expect(commands[1]).to.have.property('cmd', 'insertBefore');
-          expect(commands[1]).to.have.property('newId', 4);
-          expect(commands[1]).to.have.property('refId', 2);
-          expect(commands[2]).to.have.property('cmd', 'removeItem');
-          expect(commands[2]).to.have.property('id', 3);
-          expect(commands[3]).to.have.property('cmd', 'removeItem');
-          expect(commands[3]).to.have.property('id', 4);
+          expect(commands[0]).to.have.property('cmd', 'removeItem');
+          expect(commands[0]).to.have.property('id', 3);
+          expect(commands[1]).to.have.property('cmd', 'removeItem');
+          expect(commands[1]).to.have.property('id', 4);
+          expect(commands[2]).to.have.property('cmd', 'insertBefore');
+          expect(commands[2]).to.have.property('newId', 3);
+          expect(commands[2]).to.have.property('refId', 1);
+          expect(commands[3]).to.have.property('cmd', 'insertBefore');
+          expect(commands[3]).to.have.property('newId', 4);
+          expect(commands[3]).to.have.property('refId', 2);
         });
       });
       describe('Replacing items', function(){
@@ -1360,6 +1685,95 @@ describe('Sequence Datatype', function(){
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, source);
+              done();
+            });
+          });
+        });
+      });
+      describe('Moving items', function(){
+        it('First to last', function(done){
+          var newSeq = [
+            { id: 1, doc: { _id:11 } },
+            { id: 2, doc: { _id:12 } },
+            { id: 3, doc: { _id:13 } }
+          ];
+          var oldSeq = _.clone(newSeq);
+          //1,2,3
+          //2,3,1
+          oldSeq.push(oldSeq.shift());
+          populateSeq(animals, oldSeq).then(function(){
+            var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
+            expect(commands.length).to.be(2);
+            execCmds(animals, commands).then(function(){
+              console.log(animals.items);
+              seqEqual(animals, newSeq);
+              done();
+            });
+          });
+        });
+        it('Last to first', function(done){
+          var newSeq = [
+            { id: 1, doc: { _id:11 } },
+            { id: 2, doc: { _id:12 } },
+            { id: 3, doc: { _id:13 } }
+          ];
+          var oldSeq = _.clone(newSeq);
+          //1,2,3
+          //3,1,2
+          oldSeq.unshift(oldSeq.pop());
+          populateSeq(animals, oldSeq).then(function(){
+            var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
+            expect(commands.length).to.be(4);
+            execCmds(animals, commands).then(function(){
+              console.log(animals.items);
+              seqEqual(animals, newSeq);
+              done();
+            });
+          });
+        });
+        it('Statically shuffled order', function(done){
+          var newSeq = _.map(_.range(4), function(n){
+            return { id: n, doc: { _id:'id_'+n } };
+          });
+          var oldSeq = [newSeq[1],newSeq[2],newSeq[0],newSeq[3]];
+          //0,1,2,3
+          //1,2,0,3
+          populateSeq(animals, oldSeq).then(function(){
+            var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
+            execCmds(animals, commands).then(function(){
+              console.log(animals.items);
+              console.log(newSeq);
+              seqEqual(animals, newSeq);
+              done();
+            });
+          });
+        });
+        it('Statically shuffled order2', function(done){
+          var newSeq = _.map(_.range(4), function(n){
+            return { id: n, doc: { _id:'id_'+n } };
+          });
+          var oldSeq = [newSeq[1],newSeq[0],newSeq[2],newSeq[3]];
+          populateSeq(animals, oldSeq).then(function(){
+            var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
+            execCmds(animals, commands).then(function(){
+              console.log(animals.items);
+              console.log(newSeq);
+              seqEqual(animals, newSeq);
+              done();
+            });
+          });
+        });
+        it('Random Shuffle', function(done){
+          // Note: this test uses _.shuffle which isn't deterministic.
+          // A deterministic shuffle would be better
+          var newSeq = _.map(_.range(30), function(n){
+            return { id: n, doc: { _id:'id_'+n } };
+          });
+          var oldSeq = _.shuffle(newSeq);
+          populateSeq(animals, oldSeq).then(function(){
+            var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
+            execCmds(animals, commands).then(function(){
+              seqEqual(animals, newSeq);
               done();
             });
           });

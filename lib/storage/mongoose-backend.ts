@@ -464,7 +464,10 @@ listContainer may also have a type attribute:
       this.initSequence(ParentModel, modelId, seqName, (err, begin?, end?) => {
         if(!id) id = end._id;
         this.insertContainerBefore(ParentModel, modelId, seqName, id, makeKey(itemKeyPath), opts).then((newId)=>{
-          promise.resolve({id: newId, refId: id});
+          promise.resolve({
+            id: newId,
+            refId: id === end._id ? null : id
+          });
         }).fail((err)=>promise.reject(err));
       });
       return promise;

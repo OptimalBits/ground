@@ -336,7 +336,7 @@ export class Local implements IStorage {
     if(!item || item.sync === 'rm') 
       return promise.reject(new Error(''+ServerError.INVALID_ID));
 
-    if(opts.insync){
+    if(opts.insync || opts.noremote){ //noremote implies insync
       itemKeys[itemKeys[item.prev].next] = 'deleted';
       itemKeys[item.prev].next = item.next;
       itemKeys[item.next].prev = item.prev;
@@ -368,7 +368,7 @@ export class Local implements IStorage {
     
     var newItem: any = {
       key: itemKey,
-      sync: opts.insync ? 'insync' : 'ib',
+      sync: opts.insync || opts.noremote ? 'insync' : 'ib', //noremote implied insync
       prev: refItem.prev,
       next: prevItem.next
     };
@@ -397,7 +397,10 @@ export class Local implements IStorage {
       return opts.op === 'ib' && item._cid === id ||
              opts.op === 'rm' && item._id === sid;
     });
-    if(!item) return Promise.rejected(Error(''+ServerError.INVALID_ID));
+    // If we get an ack for an item we didn't created ourself, just return. This
+    // happens when having two synced sequences on the same client (i.e. during testing)
+    if(!item) return Promise.resolved();
+    // if(!item) return Promise.rejected(Error(''+ServerError.INVALID_ID));
 
     if(sid) item._id = sid;
     switch(item.sync) {

@@ -37,11 +37,11 @@ export class Server {
     this.rm = rightsManager || new RightsManager();
   }
   
-  create(userId: string, keyPath: string[], doc: any): Promise
+  create(userId: string, keyPath: string[], doc: any, opts: {}): Promise
   {
     return this.rm.checkRights(userId, keyPath, Rights.CREATE).then((allowed) => {
       if(allowed){
-        return this.storage.create(keyPath, doc).then((id) => {
+        return this.storage.create(keyPath, doc, opts).then((id) => {
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
           return this.rm.create(userId, newKeyPath, doc).then(()=>{
             return id;
@@ -53,12 +53,12 @@ export class Server {
     });
   }
   
-  put(clientId: string, userId: string, keyPath: string[], doc: any): Promise
+  put(clientId: string, userId: string, keyPath: string[], doc: any, opts: {}): Promise
   {
     return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
         return this.rm.put(userId, keyPath, doc).then(() => {
-          return this.storage.put(keyPath, doc).then(()=>{
+          return this.storage.put(keyPath, doc, opts).then(()=>{
             this.syncHub && this.syncHub.update(clientId, keyPath, doc);
           }).fail((err)=>{
             // TODO: remove rights
@@ -78,12 +78,12 @@ export class Server {
     });
   }
 
-  del(clientId: string, userId: string, keyPath: string[]): Promise
+  del(clientId: string, userId: string, keyPath: string[], opts: {}): Promise
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
         return this.rm.del(userId, keyPath).then(() => {
-          return this.storage.del(keyPath).then(()=>{
+          return this.storage.del(keyPath, opts).then(()=>{
             this.syncHub && this.syncHub.delete(clientId, keyPath);
           });
         });

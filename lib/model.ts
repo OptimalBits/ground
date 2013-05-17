@@ -291,7 +291,7 @@ export class Model extends Base implements Sync.ISynchronizable
   static removeById(keypathOrId): Promise
   {
     var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
-    return using.storageQueue.del(keyPath);
+    return using.storageQueue.del(keyPath, {});
   }
   
   static fromJSON(args): Promise
@@ -388,14 +388,14 @@ export class Model extends Base implements Sync.ISynchronizable
         this.id(id);
       });
       Util.merge(this, args);
-      return this._storageQueue.create([bucket], this.toArgs());
+      return this._storageQueue.create([bucket], this.toArgs(), {});
     }else{
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
       // although we will never get the event anyways, and besides we should
       // update the localStorage in any case...
       // Hopefully a singleton Model will solve this problems...
-      return this._storageQueue.put([bucket, id], args).then(()=>{
+      return this._storageQueue.put([bucket, id], args, {}).then(()=>{
         this.emit('updated:', this, args);
       });
     }

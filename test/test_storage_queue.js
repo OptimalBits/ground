@@ -24,7 +24,7 @@ describe('Storage Queue', function(){
   describe('Sequences', function(){
     var keyPath;
     beforeEach(function(done){
-      storage.create(['parade'], {}).then(function(id){
+      storage.create(['parade'], {}, {}).then(function(id){
         expect(id).to.be.ok();
         storage.once('created:'+id, function(sid){
           keyPath = ['parade', sid, 'animals'];
@@ -40,13 +40,13 @@ describe('Storage Queue', function(){
         });
       });
       it('next on a non persisted sequence', function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.create(['animals'], {name:'prawn'}).then(function(id){
+            storage.create(['animals'], {name:'prawn'}, {}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                storage.create(['animals'], {name:'shark'}).then(function(id){
+                storage.create(['animals'], {name:'shark'}, {}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
                     storage.next(keyPath, null, {}).then(function(item){
@@ -72,7 +72,7 @@ describe('Storage Queue', function(){
     });
     describe('Insert', function(){
       it('insertBefore as push', function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
             storage.next(keyPath, null, {}).then(function(item){
@@ -84,13 +84,13 @@ describe('Storage Queue', function(){
         });
       });
       it('insertBefore as unshift', function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(err){
             storage.next(keyPath, null, {}).then(function(item){
               expect(item).to.be.an(Object);
               expect(item.doc).to.have.property('name', 'tiger');
-              storage.create(['animals'], {name:'dog'}).then(function(id){
+              storage.create(['animals'], {name:'dog'}, {}).then(function(id){
                 expect(id).to.be.ok();
                 storage.insertBefore(keyPath, item.id, ['animals', id], {}).then(function(){
                   storage.next(keyPath, null, {}).then(function(item){
@@ -105,13 +105,13 @@ describe('Storage Queue', function(){
         });
       });
       it('many insertBefores as push', function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.create(['animals'], {name:'prawn'}).then(function(id){
+            storage.create(['animals'], {name:'prawn'}, {}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                storage.create(['animals'], {name:'shark'}).then(function(id){
+                storage.create(['animals'], {name:'shark'}, {}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
                     storage.next(keyPath, null, {}).then(function(item){
@@ -141,7 +141,7 @@ describe('Storage Queue', function(){
     });
     describe('Delete', function(){
       beforeEach(function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
             storage.once('synced:', function(){
@@ -178,13 +178,13 @@ describe('Storage Queue', function(){
     });
     describe('All', function(){
       beforeEach(function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.create(['animals'], {name:'monkey'}).then(function(id){
+            storage.create(['animals'], {name:'monkey'}, {}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                storage.create(['animals'], {name:'fish'}).then(function(id){
+                storage.create(['animals'], {name:'fish'}, {}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
                     storage.once('synced:', function(){
@@ -229,7 +229,7 @@ describe('Storage Queue', function(){
         });
       });
       it('all after insert', function(done){
-        storage.create(['animals'], {name:'spider'}).then(function(id){
+        storage.create(['animals'], {name:'spider'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
             storage.all(keyPath, {}, {}).then(function(result){
@@ -252,10 +252,10 @@ describe('Storage Queue', function(){
     });
     describe('Offline', function(){
       beforeEach(function(done){
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.create(['animals'], {name:'monkey'}).then(function(id){
+            storage.create(['animals'], {name:'monkey'}, {}).then(function(id){
               expect(id).to.be.ok();
               storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
                 storage.once('synced:', function(){
@@ -286,7 +286,7 @@ describe('Storage Queue', function(){
       });
       it('insert item while offline', function(done){
         socket.disconnect();
-        storage.create(['animals'], {name:'camel'}).then(function(id){
+        storage.create(['animals'], {name:'camel'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
 
@@ -332,7 +332,7 @@ describe('Storage Queue', function(){
         });
       });
       it('serverside insert while offline', function(done){
-        storage.create(['animals'], {name:'camel'}).then(function(id){
+        storage.create(['animals'], {name:'camel'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.once('created:'+id, function(sid){
             socket.disconnect();
@@ -436,9 +436,9 @@ describe('Storage Queue', function(){
 
   describe('Syncing', function(){
     it('Insert on non synced parent', function(done){
-      storage.create(['parade'], {}).then(function(paradeId){
+      storage.create(['parade'], {}, {}).then(function(paradeId){
         expect(paradeId).to.be.ok();
-        storage.create(['animals'], {name:'tiger'}).then(function(id){
+        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
             storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
@@ -464,13 +464,13 @@ describe('Storage Queue', function(){
       q.exec().then(done);
     });
     it('changes propagates to other queues on exec()', function(done){
-      q.create(['parade'], {}).then(function(paradeId){
+      q.create(['parade'], {}, {}).then(function(paradeId){
         var kp = ['parade', paradeId, 'animals'];
         q.once('created:'+paradeId, function(sid){
           kp = ['parade', sid, 'animals'];
         });
         expect(paradeId).to.be.ok();
-        q.create(['animals'], {name:'tiger'}).then(function(id){
+        q.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           q.insertBefore(kp, null, ['animals', id], {}).then(function(){
             function fail(){

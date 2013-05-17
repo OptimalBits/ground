@@ -119,7 +119,7 @@ export class Queue extends Base implements IStorage
     var fetchRemote = ()=>{
       return this.remoteStorage.fetch(keyPath).then((docRemote) => {
         docRemote['_persisted'] = true;
-        return this.localStorage.put(keyPath, docRemote).then(() => {
+        return this.localStorage.put(keyPath, docRemote, {}).then(() => {
           return docRemote;
         });
       });
@@ -155,7 +155,7 @@ export class Queue extends Base implements IStorage
         case 'insertBefore':
           console.log('EX: insertBefore');
           // item.doc._cid = item.doc._id; // ??
-          return this.localStorage.put(cmd.keyPath, cmd.doc).then(() => {
+          return this.localStorage.put(cmd.keyPath, cmd.doc, opts).then(() => {
             return this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
               Util.extendClone({ id:cmd.newId }, opts));
           });
@@ -228,7 +228,7 @@ export class Queue extends Base implements IStorage
           var elemKeyPath = itemKeyPath.concat(doc._id);
           doc._persisted = true;
           doc._cid = doc._id; // ??
-          return storage.put(elemKeyPath, doc);
+          return storage.put(elemKeyPath, doc, {});
         })
         .then(() => storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}))
         .then(() => result)
@@ -238,45 +238,45 @@ export class Queue extends Base implements IStorage
     // We cannot get the local items, so lets write all we got from remote
     }).fail(() => storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}));
   }
-  
+
   // Put all local storage operations in a task queue, so that they are
   // guaranteed to be executed in a deterministic order
-  create(keyPath: string[], args:{}): Promise // Promise<cid: string>
-  {     
-    return this.localStorage.create(keyPath, args).then((cid)=>{
+  create(keyPath: string[], args:{}, opts: {}): Promise // Promise<cid: string>
+  {
+    return this.localStorage.create(keyPath, args, opts).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
-      this.addCmd({cmd:'create', keyPath: keyPath, args: args});
+      this.addCmd({cmd:'create', keyPath: keyPath, args: args}, opts);
       return cid;
     });
   }
   
-  put(keyPath: string[], args:{}): Promise
+  put(keyPath: string[], args:{}, opts: {}): Promise
   {
-    return this.localStorage.put(keyPath, args).then(()=>{
-      this.addCmd({cmd:'update', keyPath: keyPath, args: args});
+    return this.localStorage.put(keyPath, args, opts).then(()=>{
+      this.addCmd({cmd:'update', keyPath: keyPath, args: args}, opts);
     });
   }
   
-  del(keyPath: string[]): Promise
+  del(keyPath: string[], opts: {}): Promise
   {
-    return this.localStorage.del(keyPath).then(()=>{
-      this.addCmd({cmd:'delete', keyPath: keyPath});
+    return this.localStorage.del(keyPath, opts).then(()=>{
+      this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
     });
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[])
+  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {})
   {
     return this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => {
-      this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds});
+      this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds}, opts);
     });
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[]): Promise
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {}): Promise
   {
     return this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}).then(() => {
       this.addCmd({
         cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
-      });
+      }, opts);
     });
   }
   
@@ -354,7 +354,7 @@ export class Queue extends Base implements IStorage
   deleteItem(keyPath: string[], id: string, opts: {}): Promise
   {
     return this.localStorage.deleteItem(keyPath, id, opts).then(() => 
-      this.addCmd({cmd:'deleteItem', keyPath: keyPath, id: id})
+      this.addCmd({cmd:'deleteItem', keyPath: keyPath, id: id}, opts)
     );
   }
   
@@ -365,7 +365,7 @@ export class Queue extends Base implements IStorage
                   keyPath: keyPath,
                   id: id,
                   itemKeyPath: itemKeyPath, 
-                  cid: res.id});
+                  cid: res.id}, opts);
       return res.id;
     });
   }
@@ -392,10 +392,10 @@ export class Queue extends Base implements IStorage
         switch (obj.cmd){
           case 'create':
             ((cid) => {
-              remoteStorage.create(keyPath, args).then((sid) => {
+              remoteStorage.create(keyPath, args, {}).then((sid) => {
                 var localKeyPath = keyPath.concat(cid);
                 
-                return localStorage.put(localKeyPath, {_persisted:true, _id: sid}).then(() => {
+                return localStorage.put(localKeyPath, {_persisted:true, _id: sid}, {}).then(() => {
                   var newKeyPath = _.initial(localKeyPath);
                   newKeyPath.push(sid);
                   
@@ -416,10 +416,10 @@ export class Queue extends Base implements IStorage
             
             break;
           case 'update':
-            remoteStorage.put(keyPath, args).then(done, done);
+            remoteStorage.put(keyPath, args, {}).then(done, done);
             break;
           case 'delete':
-            remoteStorage.del(keyPath).then(done, done);
+            remoteStorage.del(keyPath, {}).then(done, done);
             break;
           case 'add':
             remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(done, done);
@@ -509,15 +509,15 @@ export class Queue extends Base implements IStorage
   {
     if(this.queue.length > 0){
       this.once('synced:', fn);
-      this.addCmd({cmd:'syncTask', fn: fn});
+      this.addCmd({cmd:'syncTask', fn: fn}, {});
     }else{
       fn(Util.noop);
     }
   }
 
-  private addCmd(cmd: Command)
+  private addCmd(cmd: Command, opts: {noremote?: bool;})
   {
-    if(this.useRemote){
+    if(this.useRemote && !opts.noremote){
       this.enqueueCmd(cmd);
       this.autosync && this.synchronize();
     }

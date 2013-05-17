@@ -130,7 +130,7 @@ export class Collection extends Container
         
         if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
-          return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()]);
+          return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()], opts);
         }
         
         item.release();
@@ -198,7 +198,7 @@ export class Collection extends Container
     if(keyPath){
       var itemKeyPath = _.initial(item.getKeyPath());
     
-      return this.storageQueue.add(keyPath, itemKeyPath, [item.id()])
+      return this.storageQueue.add(keyPath, itemKeyPath, [item.id()], {})
     }else{
       return Promise.resolved();
     }

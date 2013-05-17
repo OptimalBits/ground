@@ -48,12 +48,12 @@ export class SocketBackend {
           console.log(clientId+"TRYING TO CREATE");
           console.log("SESSION:"+session);
           if(!session) return cb(ServerError.INVALID_SESSION);
-          callback(server.create(session.userId, keyPath, doc), cb);
+          callback(server.create(session.userId, keyPath, doc, {}), cb);
         });
     
         socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          callback(server.put(clientId, session.userId, keyPath, doc), cb);
+          callback(server.put(clientId, session.userId, keyPath, doc, {}), cb);
         });
     
         socket.on('get', function(keyPath: string[], cb: (err?: ServerError, doc?: {}) => void){
@@ -63,7 +63,7 @@ export class SocketBackend {
     
         socket.on('del', function(keyPath: string[], cb: (err?: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
-          callback(server.del(clientId, session.userId, keyPath), cb);
+          callback(server.del(clientId, session.userId, keyPath, {}), cb);
         });
     
         // Collections / Sets

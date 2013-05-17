@@ -107,13 +107,15 @@ export class Sequence extends Container
   
   private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
   {
-    var promise = new Gnd.Promise();
-    
+    var promise;
     var seqItem = {
       model: item,
       id: id,
       insync: !(_.isNull(id) || _.isUndefined(id))
     };
+    
+    opts = Util.extendClone(this.opts, opts);
+    if(id) opts.id = id;
     
     var done = (id)=>{
       seqItem.id = id || seqItem.id;
@@ -122,7 +124,7 @@ export class Sequence extends Container
         seqItem.insync = true;
       });
     }
-
+//1,2,3,4,a
     var index = this.items.length;
     for(var i=0; i<this.items.length; i++){
       if(id && this.items[i].id === id){ //no dupicate CONTAINERS
@@ -134,39 +136,43 @@ export class Sequence extends Container
     };
     
     if(index === -1){
-      return promise.reject(Error('Tried to insert duplicate container'));
+      return Promise.rejected(Error('Tried to insert duplicate container'));
     }
-    
-    this.items.splice(index, 0, seqItem);
 
+    //Handle the case when we insert an item from the server that have a pending item on this position
+    while(opts.noremote && index > 0 && !this.items[index-1].insync){
+      index--;
+      refId = this.items[index].id;
+    }
+
+    this.items.splice(index, 0, seqItem);
     this.initItems(seqItem.model);
-    
     this.set('count', this.items.length);
-    this.emit('inserted:', item, index);
     
-    opts = Util.extendClone(this.opts, opts);
-    
-    if(!opts || (opts.nosync !== true)){
+    if(!opts || !opts.nosync){
       if(item.isPersisted()){
         this._keepSynced && item.keepSynced();
-        return this.insertPersistedItemBefore(refId, item).then(done);
+        promise = this.insertPersistedItemBefore(refId, item, opts).then(done);
       }else{
-        return item.save().then(()=>{
+        promise = item.save().then(()=>{
           this._keepSynced && item.keepSynced();
-          return this.insertPersistedItemBefore(refId, item).then(done);
+          return this.insertPersistedItemBefore(refId, item, opts).then(done);
         });
       }
     }else{
       this._keepSynced && item.keepSynced();
-      return promise.resolve();
+      promise = Promise.resolved();
     }
+
+    this.emit('inserted:', item, index);
+    return promise;
   }
 
-  private insertPersistedItemBefore(id: string, item: Model): Promise // <string>
+  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise // <string>
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
-    return this.storageQueue.insertBefore(keyPath, id, itemKeyPath, {});
+    return this.storageQueue.insertBefore(keyPath, id, itemKeyPath, opts);
   }
 
   push(item: Model, opts?): Promise
@@ -189,7 +195,7 @@ export class Sequence extends Container
 
   remove(idx: number, opts?): Promise
   {
-    var promise = new Promise();
+    var promise;
 
     var item = this.items[idx];
 
@@ -203,15 +209,18 @@ export class Sequence extends Container
     item.model.off('deleted:', this.deleteFn);
     
     this.set('count', this.items.length);
-    this.emit('removed:', item.model, idx);
     item.model.release();
     
     opts = Util.extendClone(this.opts, opts);
     
     if(!opts || !opts.nosync){
-      return this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts);
+      promise = this.storageQueue.deleteItem(this.getKeyPath(), item.id, opts);
+    }else{
+      promise = Promise.resolved();
     }
-    return promise.resolve();
+
+    this.emit('removed:', item.model, idx);
+    return promise;
   }
   
   move(startIdx: number, endIdx: number, opts?): Promise
@@ -244,12 +253,12 @@ export class Sequence extends Container
     
     this.on('insertBefore:', (id, itemKeyPath, refId)=>{
       this.model.findById(itemKeyPath, true, {}).then((item)=>{
-        this.insertItemBefore(refId, item, id, {nosync: true});
+        this.insertItemBefore(refId, item, id, {noremote: true});
       });
     });
 
     this.on('deleteItem:', (id) => {
-      this.deleteItem(id, {nosync: true});
+      this.deleteItem(id, {noremote: true});
     });
   }
 

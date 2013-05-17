@@ -37,10 +37,10 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   //
   // Basic Storage for Models (Follows CRUD semantics)
   //
-  create(keyPath: string[], doc: {}): Promise; // Promise<string>
-  put(keyPath: string[], doc: {}): Promise;
+  create(keyPath: string[], doc: {}, opts: {}): Promise; // Promise<string>
+  put(keyPath: string[], doc: {}, opts: {}): Promise;
   fetch(keyPath: string[]): Promise;
-  del(keyPath: string[]): Promise;
+  del(keyPath: string[], opts: {}): Promise;
   link?(keyPath: string[], targetKeyPath: string[]): Promise;
 }
 
