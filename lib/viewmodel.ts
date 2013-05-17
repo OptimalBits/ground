@@ -36,8 +36,8 @@ export interface IBinder {
 export class ViewModel extends Base 
 {  
   private binders: {[index: string]: IBinder;};
-  private contexts: {}[] = [];
   private boundBinders: Binder[] = [];
+  public  contexts: {}[] = [];
   
   public formatters: {[index: string]: (input: string)=>string;} = {};
   
