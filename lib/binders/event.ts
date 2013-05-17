@@ -53,9 +53,24 @@ export class EventBinder implements Binder
         }else{
           console.log("Warning: the given handler is not a function: "+keypath);
         }
+        return;
       }else{
-        console.log("Warning: not found an object instance of Gnd.Base: "+keypath[0]);
+        var handler = viewModel.resolveContext(keypath);
+        if (_.isFunction(handler)){
+          var ctx = 
+            obj || 
+            _.reduce(viewModel.contexts, (memo, ctx) => _.extend(memo, ctx), {});
+
+          var fn = _.bind(handler, ctx);
+          
+          var elementListener = (evt) => fn(el, evt);
+          $(el).on(eventName, elementListener);
+          this.bindings.push([obj, eventName, elementListener]);
+          return;
+        }
       }
+      
+      console.log("Warning: not found an object instance of Gnd.Base: "+keypath[0]);
     }
     
     for(var eventName in eventBindings){
