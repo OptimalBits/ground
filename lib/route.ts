@@ -53,7 +53,7 @@ var interval,
     req, 
     routeHandler, 
     basepath;
-    
+
 export function listen(root, cb) {
   if(_.isFunction(root)){
     cb = root;
@@ -62,17 +62,24 @@ export function listen(root, cb) {
   
   routeHandler = cb;
   basepath = location['origin'] + '/' + Util.trim(root);
-  
-  // Listen to all link clicks.
-  $("document").on('click', handleClickUrl);
-  
+    
   var url;
   if(using.historyApi){
+    // Listen to all link clicks.
+    $("document").on('click', handleClickUrl);
+    
     window.addEventListener("popstate", handlePopState);
     url = getRelativeUrl(location.href);
   }else{
     url = location.hash.replace(/^#!?/, '');
+    var fn = () => executeRoute(location.hash.replace(/^#!?/, ''), cb);
+    if ('onhashchange' in window) {
+      window.onhashchange = fn;
+    } else {
+      interval = setInterval(fn, 50);
+    }
   }
+
   executeRoute(url, cb);
 }
 
@@ -150,6 +157,8 @@ export function stop(){
   req = routeHandler = null;
   $("body").off('click', handleClickUrl);
   window.removeEventListener("popstate", handlePopState);
+  delete window.onhashchange;
+  clearInterval(interval);
 }
 
 export function redirect(url){
