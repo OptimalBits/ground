@@ -26,9 +26,10 @@ module Gnd
   export function $(element: Window): Query;
   export function $(element: Element): Query;
   export function $(selector: string, context?: HTMLElement): Query;
+  export function $(selector: string, context?: string): Query;
   export function $(selectorOrElement: any, context?: HTMLElement): Query
   {
-    var context = context || document
+    var ctx = context ? $(context)[0] : document;
     
     var
       query = new Query(),
@@ -57,13 +58,13 @@ module Gnd
           break;
         case '.': 
           var className = selector.slice(1);
-          push(context.getElementsByClassName(className));
+          push(ctx.getElementsByClassName(className));
           break;
         case '<':
           push([makeElement(selector)]);
           break;
         default:
-          push((selector != 'document' ? <any>context.getElementsByTagName(selector) : [document]));
+          push((selector != 'document' ? <any>ctx.getElementsByTagName(selector) : [document]));
       }
     }else{
       push([selectorOrElement]);
