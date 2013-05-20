@@ -119,6 +119,24 @@ export function asyncDebounce(fn) {
     }
   };
 };
+
+export function debounce(task: (...args:any[])=>Promise)
+{
+  var delayed, executing;
+    
+  return function(...args:any[]){
+    delayed = () => task.apply(this, args);
+    if(!executing){
+      executing = delayed();
+      delayed = null;
+      executing.then(() => {
+        executing = delayed ? delayed() : null;
+      });
+    }
+  }
+}
+
+
 /*
 export function debounce(task: ()=>Promise): Promise
 {
