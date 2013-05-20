@@ -18,7 +18,8 @@ module Gnd {
 export interface ViewArgs
 {
   html?: string;
-  style?: string;
+  styles?: {[index: string]: string;};
+  attr?: {[index: string]: string;};
   templateEngine?: (str: string) => (args: any) => string;
   templateStr?: string;
   templateUrl?: string;
@@ -45,66 +46,82 @@ export class View extends Base
   private selector: string;
   private html: string;
   private styles: {[index: string]: string;};
+  private attr: {[index: string]: string;};
   private templateStr: string;
   private templateUrl: string;
   private templateEngine: (str: string) => (args: any) => string;
   private cssUrl: string;
   
+  private _parent: View;
+  
   private isInitialized: bool;
 
+  private fragment: DocumentFragment;
   public root: HTMLElement; 
-  public fragment: DocumentFragment;
-  public parent: View;
+  
+  public nodes: HTMLElement[];
   public children: View[] = [];
   
   public onHidding: (el: Element, args: any, done: ()=>void) => void;
   public onShowing: (el: Element, args: any, done: ()=>void) => void;
 
-  constructor(selector: string, parent?: View, args?: ViewArgs)
+  constructor(args?: ViewArgs)
   {
     super();
+    
+    args = args || {};
 
     if((args.templateUrl || args.templateStr) && !args.templateEngine){
-      throw new Error('Template engine required');
+      throw Error('Template engine required');
     }
-
-    this.selector = selector;
     
-    if(parent){
-      if(parent instanceof View){
-        this.parent = parent;
-        parent.children.push(this);
-      }else{
-        args = args || parent;
-      }
-    }   
+    args.templateEngine = args.templateEngine || Util.noop;
     
     _.extend(this, args);
     
     this.onShowing = this.onHidding = 
-      (el: Element, args: any, done: ()=>void) => {
-        done();
+      (el: Element, args: any, done: ()=>void) => done();
+  }
+  
+  destroy()
+  {
+    this.clean();
+    super.destroy();
+  }
+  
+  parent(selector: Element): void;
+  parent(selector: string): void;
+  parent(selector: any, parent?: View): void
+  {
+    this.selector = selector;
+    
+    if(parent){
+      var oldParent = this._parent;
+      oldParent && oldParent.removeChild(this);
+      this._parent = parent;
+      parent.children.push(this);
     }
+  }
+  
+  removeChild(child: View): void
+  {
+    this.children = _.without(this.children, child);
   }
   
   /**
    *
    * Renders this view and all its subviews (if any)
    *
-   * Note: This method can only be called after being initialized.
-   *
    *
    * @param {Object} context object with arguments needed for the templates or
    * the view models.
    *
    */
-  render(context?: {}): Promise
+  render(context?: {}): Promise // <HTMLElement>
   {
-    var promise = new Promise();
-    
     context = context || {};
     
-    this.init((err?)=>{
+    return this.init().then(()=>{
       var html;
 
       if(this.template){
@@ -115,37 +132,50 @@ export class View extends Base
 
       this.fragment = $(html)[0];
 
-      if(!this.fragment) throw(new Error('Invalid html:\n'+html));
+      if(!this.fragment) throw(Error('Invalid html:\n'+html));
 
       //
       // TODO: We do not use this for now...
       // waitForImages(el, done);
       //
-      var parentRoot = this.parent ? this.parent.root : null;
+      var parent = this._parent;
+      var parentRoot = parent ? parent.root : null;
 
-      var target = this.root = (this.selector && $(this.selector, parentRoot)[0]) || 
-      document.body;
-
-      if(this.styles){
-        $(target).css(this.styles);
-      }
+      var target = this.root = 
+        (this.selector && $(this.selector, parentRoot)[0]) || document.body;
 
       //
       // we can use cloneNode here on the fragment if we want to keep a copy.
       //
+      this.nodes = _.toArray(this.fragment.childNodes);
+      
+      if(this.styles){
+        _.each(this.nodes, (node) => $(node).css(this.styles));
+      }
+      if(this.attr){
+        _.each(this.nodes, 
+          (node) => _.each(this.attr, 
+            (value, attr?) => $(node).attr(attr, value)));
+      }
+      
       target.appendChild(this.fragment);
-      _.each(this.children, (subview) => {
-        subview.render(context);
-      });
-      promise.resolve();
+      
+      return Promise.map(this.children, (child) => child.render(context))
+        .then(()=>this.nodes[0]);
     });
-    return promise;
   }
   
   clean()
   {
     if(this.root){
-      $(this.root).html('');
+      var nodes = this.nodes;
+      for (var i=0, len=nodes.length; i<len; i++){
+        try{
+          this.root.removeChild(nodes[i]);
+        }catch(err){
+          // ignore error since it is an unexisting node.
+        }
+      }
     }
   }
   
@@ -169,13 +199,7 @@ export class View extends Base
       done();
     }); 
   }
-  
-  destroy()
-  {
-    this.clean();
-    super.destroy();
-  }
-  
+    
   /**
    * 
    * Initializes the view.
@@ -187,27 +211,22 @@ export class View extends Base
    * @param {Function} done Callback called after initialization has been 
    * completed.
    */
-  private init(done: (err?: Error)=>void)
-  {
-    if(!this.isInitialized){
-      this.isInitialized = true;
-      
-      Util.fetchTemplate(this.templateUrl, this.cssUrl, (err?, templ?) => {
-        if(templ){
-          this.template = this.templateEngine(this.templateStr || templ);
-      
-          Util.asyncForEach(this.children, (subview, cb) => {
-            subview.init(cb);
-          }, done);
-        }else{
-          done(err);
-        }
-      });
-    }else{
-      done();
-    }
-  }
-  
+   private init(): Promise // <void>
+   {
+     if(!this.isInitialized){
+       this.isInitialized = true;
+       
+       return Util.fetchTemplate(this.templateUrl, this.cssUrl).then((templ) =>{
+         this.template = this.templateEngine(this.templateStr || templ);
+    
+         return Promise.map(this.children, (subview) =>{
+           return subview.init();
+         });
+       });
+     }else{
+       return Promise.resolved();
+     }
+   }
 }
 
 }

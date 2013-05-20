@@ -314,22 +314,23 @@ export function safeEmit(socket, ...args:any[]): Promise
 
 declare var curl;
 
-export function fetchTemplate(templateUrl?: string, 
-                              cssUrl?: string, 
-                              done?:(err?: Error, templ?: string)=>void)
+export 
+function fetchTemplate(templateUrl?: string, cssUrl?: string): Promise // <string>
 {
-  var items = [];
+  var items = [], promise = new Promise();
+  
   templateUrl && items.push('text!'+templateUrl);
   cssUrl && items.push('css!'+cssUrl);
-  done = done || Util.noop;
   
   try{
     curl(items, function(templ){
-      done(null, templ);
+      promise.resolve(templ);
     });
-  } catch(e){
-    done(e);
+  } catch(err){
+    promise.reject(err);
   }
+  
+  return promise;
 }
 
 // Expand an object with stringified keys e.g
