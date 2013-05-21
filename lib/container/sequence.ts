@@ -200,7 +200,7 @@ export class Sequence extends Container
     var item = this.items[idx];
 
     if(!item){
-      return promise.reject(Error('index out of bounds'));
+      return Promise.rejected(Error('index out of bounds'));
     } 
     this.items.splice(idx, 1);
     
