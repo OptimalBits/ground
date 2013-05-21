@@ -86,7 +86,7 @@ export class Promise extends Base
   
   static resolved(): Promise
   {
-    return new Promise(true);
+    return (new Promise()).resolve();
   }
   
   static rejected(err: Error): Promise
