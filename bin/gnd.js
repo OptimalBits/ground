@@ -77,7 +77,8 @@ function createApplication(dst, opts, cb)
     'support/app.tmpl.js': '/app/app.js',
     'support/main.tmpl.html': '/assets/templates/main.html',
     'support/models.tmpl.js': '/models/models.js',
-    'support/README.tmpl.md': '/README.md'
+    'support/README.tmpl.md': '/README.md',
+    '../third/curl.js': 'app/lib/curl.min.js'
   }
   
   var taskQueue = new gnd.TaskQueue();
