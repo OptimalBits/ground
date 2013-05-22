@@ -249,8 +249,6 @@ describe('Sequence Datatype', function(){
 
   describe('Move', function(){
     var seq;
-    var cow;
-    var sheep;
     beforeEach(function(done){
       getSequence(parade.id(), sm1, q1, true, function(animals){
         Animal.create({name: 'tiger'}, true).then(function(animal){
@@ -264,13 +262,7 @@ describe('Sequence Datatype', function(){
                         expect(animals.count).to.be(4);
                         q1.once('synced:', function(){
                           seq = animals;
-                          Animal.create({name: 'cow'}, true).then(function(animal){
-                            cow = animal;
-                            Animal.create({name: 'sheep'}, true).then(function(animal){
-                              sheep = animal;
-                              done();
-                            });
-                          });
+                          done();
                         });
                       });
                     });
@@ -388,357 +380,6 @@ describe('Sequence Datatype', function(){
                     });
                   });
                 });
-              });
-            });
-          });
-        });
-      });
-    });
-    describe('Synced collections', function(){
-      var socket3;
-      var sl3;
-      var ss3;
-      var q3;
-      var sm3;
-
-      var seq2;
-
-      function seqEqual(s1, s2){
-        var items2 = s2.filter(function() {return true});
-        s1.each(function(item, i){
-          expect(item).to.have.property('name', items2[i].name);
-        });
-      }
-
-      before(function(done){
-        socket3 = io.connect('/', {'force new connection': true});
-        sl3  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
-        ss3 = new Gnd.Storage.Socket(socket3);
-        q3  = new Gnd.Storage.Queue(sl3, ss3);
-        sm3 = new Gnd.Sync.Manager(socket3);
-        socket3.on('connect', done);
-      });
-
-      beforeEach(function(done){
-        getSequence(parade.id(), sm3, q3, true, function(animals){
-          seq2 = animals;
-          done();
-        });
-      });
-
-      it('Initial state equal', function(){
-        seqEqual(seq, seq2);
-      });
-      it('Move propagate from one sequence to another', function(done){
-        seq.move(0, 1).then(function(){
-          seq2.once('inserted:', function(){
-            seqEqual(seq, seq2);
-            done();
-          });
-        });
-      });
-      it('Multiple moves propagate from one sequence to another', function(done){
-        seq.move(0, 1).then(function(){
-          seq.move(0, 2).then(function(){
-            seq.move(0, 3).then(function(){
-              seq.move(2, 3).then(function(){
-                seq2.once('inserted:', function(){
-                  seq2.once('inserted:', function(){
-                    seq2.once('inserted:', function(){
-                      seq2.once('inserted:', function(){
-                        seqEqual(seq, seq2);
-                        done();
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-      it('remove propagates in both directions', function(done){
-        seq.remove(0).then(function(){
-          seq2.once('removed:', function(){
-            seqEqual(seq, seq2);
-            seq2.remove(0).then(function(){
-              seq.once('removed:', function(){
-                seqEqual(seq, seq2);
-                done();
-              });
-            });
-          });
-        });
-      });
-
-// 1,2,3,a
-//         \
-//          a b
-//           X
-// 1,2,3,   b a
-
-
-      it('insert propagates in both directions', function(done){
-        seq.push(cow).then(function(){
-          seq2.once('inserted:', function(){
-            seqEqual(seq, seq2);
-            seq2.push(sheep).then(function(){
-              seq.once('inserted:', function(){
-                seqEqual(seq, seq2);
-                done();
-              });
-            });
-          });
-        });
-      });
-      it('Moves propagate in both directions', function(done){
-        seq.move(0, 1).then(function(){
-          seq2.once('inserted:', function(){
-            seqEqual(seq, seq2);
-            seq2.move(1, 0).then(function(){
-              seq.once('inserted:', function(){
-                seqEqual(seq, seq2);
-                done();
-              });
-            });
-          });
-        });
-      });
-      it('Multiple moves propagate in both directions', function(done){
-        seq.move(0, 1).then(function(){
-          seq.move(0, 2).then(function(){
-            seq.move(0, 3).then(function(){
-              seq.move(2, 3).then(function(){
-                seq2.once('inserted:', function(){
-                  seq2.once('inserted:', function(){
-                    seq2.once('inserted:', function(){
-                      seq2.once('inserted:', function(){
-                        seqEqual(seq, seq2);
-                        seq2.move(0, 1).then(function(){
-                          seq2.move(1, 3).then(function(){
-                            seq2.move(2, 1).then(function(){
-                              seq2.move(3, 1).then(function(){
-                                seq.once('inserted:', function(){
-                                  seq.once('inserted:', function(){
-                                    seq.once('inserted:', function(){
-                                      seq.once('inserted:', function(){
-                                        seqEqual(seq, seq2);
-                                        done();
-                                      });
-                                    });
-                                  });
-                                });
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-      it('Simultaneous inserts leads to a consistent state', function(done){
-        var numInserts = 6;
-        var c = 0;
-        var c2 = 0;
-        function checkFinished() {
-          if(c === numInserts && c2 === numInserts){
-            console.log(_.pluck(seq.items, 'id'));
-            console.log(_.pluck(seq2.items, 'id'));
-            seq.off('inserted:', handleInsert);
-            seq.off('inserted:', handleInsert2);
-            seqEqual(seq, seq2);
-            done();
-          }
-        }
-        function handleInsert(){
-          c++;
-          console.log('-1 '+c);
-          checkFinished();
-        }
-        function handleInsert2(){
-          c2++;
-          console.log('-2 '+c2);
-          checkFinished();
-        }
-        seq.on('inserted:', handleInsert);
-        seq2.on('inserted:', handleInsert2);
-
-        seq.push(cow).then(function(){
-          seq.push(sheep).then(function(){
-            seq2.push(cow).then(function(){
-              seq2.push(sheep).then(function(){
-                seq.push(cow).then(function(){
-                  seq.push(sheep).then(function(){
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-      it('Simultaneous deletes lead to a consistent state', function(done){
-        var numDeletes = 4;
-        var c = 0;
-        var c2 = 0;
-        function checkFinished() {
-          if(c === numDeletes && c2 === numDeletes){
-            console.log(_.pluck(seq.items, 'id'));
-            console.log(_.pluck(seq2.items, 'id'));
-            seq.off('removed:', handleRemove);
-            seq.off('removed:', handleRemove2);
-            seqEqual(seq, seq2);
-            done();
-          }
-        }
-        function handleRemove(){
-          c++;
-          console.log('-1 '+c);
-          checkFinished();
-        }
-        function handleRemove2(){
-          c2++;
-          console.log('-2 '+c2);
-          checkFinished();
-        }
-        seq.on('removed:', handleRemove);
-        seq2.on('removed:', handleRemove2);
-
-        console.log(_.pluck(seq.items, 'id'));
-        seq.remove(3).then(function(){
-          seq2.remove(2).then(function(){
-            seq.remove(1).then(function(){
-              seq2.remove(0).then(function(){
-
-              });
-            });
-          });
-        });
-      });
-      it('Simultaneous deletes of same index lead to a consistent state', function(done){
-        var numDeletes = 2;
-        var c = 0;
-        var c2 = 0;
-        function checkFinished() {
-          if(c === numDeletes && c2 === numDeletes){
-            console.log(_.pluck(seq.items, 'id'));
-            console.log(_.pluck(seq2.items, 'id'));
-            seq.off('removed:', handleRemove);
-            seq.off('removed:', handleRemove2);
-            seqEqual(seq, seq2);
-            done();
-          }
-        }
-        function handleRemove(){
-          c++;
-          console.log('-1 '+c);
-          checkFinished();
-        }
-        function handleRemove2(){
-          c2++;
-          console.log('-2 '+c2);
-          checkFinished();
-        }
-        seq.on('removed:', handleRemove);
-        seq2.on('removed:', handleRemove2);
-
-        console.log(_.pluck(seq.items, 'id'));
-        seq.remove(2).then(function(){
-          seq2.remove(2).then(function(){
-            seq.remove(1).then(function(){
-              seq2.remove(1).then(function(){
-
-              });
-            });
-          });
-        });
-      });
-      it.skip('Simultaneous moves leads to a consistent state', function(done){
-        var numInserts = 2;
-        var c = 0;
-        var c2 = 0;
-        function checkFinished() {
-          if(c === numInserts && c2 === numInserts){
-            console.log(_.pluck(seq.items, 'id'));
-            console.log(_.pluck(seq2.items, 'id'));
-            seq.off('inserted:', handleInsert);
-            seq.off('inserted:', handleInsert2);
-            seqEqual(seq, seq2);
-            done();
-          }
-        }
-        function handleInsert(){
-          c++;
-          console.log('-1 '+c);
-          checkFinished();
-        }
-        function handleInsert2(){
-          c2++;
-          console.log('-2 '+c2);
-          checkFinished();
-        }
-        seq.on('inserted:', handleInsert);
-        seq2.on('inserted:', handleInsert2);
-
-        console.log('----init-----');
-        console.log(_.pluck(seq.items, 'id'));
-        seq.move(0, 1).then(function(){
-        console.log();
-        console.log(_.pluck(seq.items, 'id'));
-          // seq.move(0, 2).then(function(){
-            // seq.move(1, 3).then(function(){
-              seq2.move(2, 1).then(function(){
-        console.log();
-        console.log(_.pluck(seq2.items, 'id'));
-        // seq.move(0, 1).then(function(){
-                // seq2.move(1, 2).then(function(){
-                  // seq.move(0, 3).then(function(){
-              // seq2.once('inserted:', function(){
-              // seq.once('inserted:', function(){
-              // });
-                  // });
-                // });
-              });
-            // });
-          // });
-
-          //x,2,a,3
-          //1,b,2,x
-        });
-      });
-      it('Moves in both directions leads to a consistent local storage state', function(done){
-        // returns an array of local storage ids for this sequence
-        function getLsIds(seq){
-          var ls = seq.storageQueue.localStorage.store.get(seq.getKeyPath().join('@'));
-          var s = [];
-          function next(ls, i){
-            var item = ls[i];
-            if(item._id !== '##@_end'){
-              s.push(item);
-              next(ls, item.next);
-            }
-          }
-          next(ls, ls[0].next);
-          return _.map(s, function(item){
-            return item._id || item;
-          });
-        }
-
-        seq.move(0, 1).then(function(){
-          seq2.once('inserted:', function(){
-            seqEqual(seq, seq2);
-            expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
-            expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
-            seq2.move(1, 0).then(function(){
-              seq.once('inserted:', function(){
-                seqEqual(seq, seq2);
-                expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
-                expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
-                done();
               });
             });
           });
@@ -1211,6 +852,499 @@ describe('Sequence Datatype', function(){
       });
     });
   });
+
+  describe('Eventual consistency', function(){
+    var socket3;
+    var sl3;
+    var ss3;
+    var q3;
+    var sm3;
+
+    var seq;
+    var seq2;
+    var cow;
+    var sheep;
+    var cow2;
+    var sheep2;
+
+    before(function(done){
+      socket3 = io.connect('/', {'force new connection': true});
+      sl3  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+      ss3 = new Gnd.Storage.Socket(socket3);
+      q3  = new Gnd.Storage.Queue(sl3, ss3);
+      sm3 = new Gnd.Sync.Manager(socket3);
+      socket3.on('connect', done);
+    });
+
+    beforeEach(function(done){
+      getSequence(parade.id(), sm1, q1, true, function(animals){
+        Animal.create({name: 'tiger'}, true).then(function(animal){
+          animals.push(animal).then(function(){
+            Animal.create({name: 'dog'}, true).then(function(animal){
+              animals.push(animal).then(function(){
+                Animal.create({name: 'ant'}, true).then(function(animal){
+                  animals.push(animal).then(function(){
+                    Animal.create({name: 'shark'}, true).then(function(animal){
+                      animals.push(animal).then(function(){
+                        expect(animals.count).to.be(4);
+                        q1.once('synced:', function(){
+                          seq = animals;
+                          cow = new Animal({name: 'cow'});
+                          sheep = new Animal({name: 'cow'});
+                          getSequence(parade.id(), sm3, q3, true, function(animals){
+                            seq2 = animals;
+                            cow2 = new Animal({name: 'cow'});
+                            sheep2 = new Animal({name: 'cow'});
+                            done();
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    function seqEqual(s1, s2){
+      var items2 = s2.filter(function() {return true});
+      s1.each(function(item, i){
+        expect(item).to.have.property('name', items2[i].name);
+      });
+    }
+
+    function getLsIds(seq){
+      var ls = seq.storageQueue.localStorage.store.get(seq.getKeyPath().join('@'));
+      var s = [];
+      function next(ls, i){
+        var item = ls[i];
+        if(item._id !== '##@_end'){
+          s.push(item);
+          next(ls, item.next);
+        }
+      }
+      next(ls, ls[0].next);
+      var res = [];
+      _.each(s, function(item){
+        if(item.sync && item.sync === 'insync') {
+          res.push(item._id || item);
+        }
+      });
+      return res;
+    }
+
+    describe('Consistent sequences', function(){
+      it('Initial state equal', function(){
+        seqEqual(seq, seq2);
+      });
+      it('Move propagate from one sequence to another', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            done();
+          });
+        });
+      });
+      it('Multiple moves propagate from one sequence to another', function(done){
+        seq.move(0, 1).then(function(){
+          seq.move(0, 2).then(function(){
+            seq.move(0, 3).then(function(){
+              seq.move(2, 3).then(function(){
+                seq2.once('inserted:', function(){
+                  seq2.once('inserted:', function(){
+                    seq2.once('inserted:', function(){
+                      seq2.once('inserted:', function(){
+                        seqEqual(seq, seq2);
+                        done();
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('remove propagates in both directions', function(done){
+        seq.remove(0).then(function(){
+          seq2.once('removed:', function(){
+            seqEqual(seq, seq2);
+            seq2.remove(0).then(function(){
+              seq.once('removed:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+
+      it('insert propagates in both directions', function(done){
+        seq.push(cow).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            seq2.push(sheep2).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Moves propagate in both directions', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            seq2.move(1, 0).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Multiple moves propagate in both directions', function(done){
+        seq.move(0, 1).then(function(){
+          seq.move(0, 2).then(function(){
+            seq.move(0, 3).then(function(){
+              seq.move(2, 3).then(function(){
+                seq2.once('inserted:', function(){
+                  seq2.once('inserted:', function(){
+                    seq2.once('inserted:', function(){
+                      seq2.once('inserted:', function(){
+                        seqEqual(seq, seq2);
+                        seq2.move(0, 1).then(function(){
+                          seq2.move(1, 3).then(function(){
+                            seq2.move(2, 1).then(function(){
+                              seq2.move(3, 1).then(function(){
+                                seq.once('inserted:', function(){
+                                  seq.once('inserted:', function(){
+                                    seq.once('inserted:', function(){
+                                      seq.once('inserted:', function(){
+                                        seqEqual(seq, seq2);
+                                        done();
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous inserts leads to a consistent state', function(done){
+        var numInserts = 6;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numInserts && c2 === numInserts){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('inserted:', handleInsert);
+            seq.off('inserted:', handleInsert2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleInsert(){
+          c++;
+          // console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleInsert2(){
+          c2++;
+          // console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('inserted:', handleInsert);
+        seq2.on('inserted:', handleInsert2);
+
+        seq.push(cow).then(function(){
+          seq.push(sheep).then(function(){
+            seq2.push(cow2).then(function(){
+              seq2.push(sheep2).then(function(){
+                seq.push(cow).then(function(){
+                  seq.push(sheep).then(function(){
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous deletes lead to a consistent state', function(done){
+        var numDeletes = 4;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numDeletes && c2 === numDeletes){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('removed:', handleRemove);
+            seq.off('removed:', handleRemove2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleRemove(){
+          c++;
+          // console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleRemove2(){
+          c2++;
+          // console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('removed:', handleRemove);
+        seq2.on('removed:', handleRemove2);
+
+        console.log(_.pluck(seq.items, 'id'));
+        seq.remove(3).then(function(){
+          seq2.remove(2).then(function(){
+            seq.remove(1).then(function(){
+              seq2.remove(0).then(function(){
+
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous deletes of same index lead to a consistent state', function(done){
+        var numDeletes = 2;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numDeletes && c2 === numDeletes){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.pluck(seq2.items, 'id'));
+            seq.off('removed:', handleRemove);
+            seq.off('removed:', handleRemove2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleRemove(){
+          c++;
+          // console.log('-1 '+c);
+          checkFinished();
+        }
+        function handleRemove2(){
+          c2++;
+          // console.log('-2 '+c2);
+          checkFinished();
+        }
+        seq.on('removed:', handleRemove);
+        seq2.on('removed:', handleRemove2);
+
+        console.log(_.pluck(seq.items, 'id'));
+        seq.remove(2).then(function(){
+          seq2.remove(2).then(function(){
+            seq.remove(1).then(function(){
+              seq2.remove(1).then(function(){
+
+              });
+            });
+          });
+        });
+      });
+      it('Simultaneous inserts and deletes lead to a consistent state', function(done){
+        var numInserts = 3;
+        var c = 0;
+        var c2 = 0;
+        function checkFinished() {
+          if(c === numInserts && c2 === numInserts){
+            console.log(_.pluck(seq.items, 'id'));
+            console.log(_.map(seq.items, function(item){ return item.model.name; }));
+            console.log(_.pluck(seq2.items, 'id'));
+            console.log(_.map(seq2.items, function(item){ return item.model.name; }));
+            seq.off('inserted:', handleInsert);
+            seq.off('inserted:', handleInsert2);
+            seqEqual(seq, seq2);
+            done();
+          }
+        }
+        function handleInsert(){
+          c++;
+          checkFinished();
+        }
+        function handleInsert2(){
+          c2++;
+          checkFinished();
+        }
+        seq.on('inserted:', handleInsert);
+        seq2.on('inserted:', handleInsert2);
+
+        console.log(_.pluck(seq.items, 'id'));
+        seq.remove(0).then(function(){
+          seq.push(cow).then(function(){
+            console.log(_.pluck(seq.items, 'id'));
+            seq2.remove(2).then(function(){
+              seq2.insert(1, sheep2).then(function(){
+                seq.remove(2).then(function(){
+                  seq.insert(1, cow).then(function(){
+                    console.log(_.pluck(seq2.items, 'id'));
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+    describe('Consistent local storage', function(){
+      it('Simultaneous moves lead to a consistent state', function(done){
+        console.log(_.pluck(seq.items, 'id'));
+        console.log(_.map(seq.items, function(item){ return item.model.name; }));
+        seq.move(0, 1).then(function(){
+          console.log(_.pluck(seq.items, 'id'));
+          console.log(_.map(seq.items, function(item){ return item.model.name; }));
+          seq2.move(2, 1).then(function(){
+            console.log(_.pluck(seq2.items, 'id'));
+            console.log(_.map(seq2.items, function(item){ return item.model.name; }));
+            seq2.once('resynced:',function(){
+              console.log(_.pluck(seq.items, 'id'));
+              console.log(_.map(seq.items, function(item){ return item.model.name; }));
+              console.log(_.pluck(seq2.items, 'id'));
+              console.log(_.map(seq2.items, function(item){ return item.model.name; }));
+              seqEqual(seq, seq2);
+              done();
+            }, 100);
+          });
+        });
+      });
+      it('Moves in both directions leads to a consistent local storage state', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seqEqual(seq, seq2);
+            console.log(getLsIds(seq));
+            console.log(getLsIds(seq2));
+            expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+            expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+            seq2.move(1, 0).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                console.log(getLsIds(seq));
+                console.log(getLsIds(seq2));
+                expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+                expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Some moves in both directions leads to a consistent local storage state', function(done){
+        seq2.move(2, 1).then(function(){
+          seq.once('inserted:', function(){
+            seq2.move(1, 3).then(function(){
+              seq.once('inserted:', function(){
+                seqEqual(seq, seq2);
+                expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+                expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+                done();
+              });
+            });
+          });
+        });
+      });
+      it('Many moves in both directions leads to a consistent local storage state', function(done){
+        seq.move(0, 1).then(function(){
+          seq2.once('inserted:', function(){
+            seq.move(0, 2).then(function(){
+              seq2.once('inserted:', function(){
+                seq2.move(2, 1).then(function(){
+                  seq.once('inserted:', function(){
+                    seq2.move(3, 0).then(function(){
+                      seq.once('inserted:', function(){
+                        seq2.move(3, 0).then(function(){
+                          seq.once('inserted:', function(){
+                            seq2.move(3, 1).then(function(){
+                              seq.once('inserted:', function(){
+                                seq2.move(1, 3).then(function(){
+                                  seq.once('inserted:', function(){
+                                    seq2.move(2, 1).then(function(){
+                                      seq.once('inserted:', function(){
+                                        seq.move(0, 1).then(function(){
+                                          seq2.once('inserted:', function(){
+                                            seq.move(0, 1).then(function(){
+                                              seq2.once('inserted:', function(){
+                                                seq.move(1, 3).then(function(){
+                                                  seq2.once('inserted:', function(){
+                                                    console.log(_.map(seq.items, function(item){return item.id;}));
+                                                    console.log(_.map(seq2.items, function(item){return item.id;}));
+                                                    console.log(getLsIds(seq));
+                                                    console.log(getLsIds(seq2));
+                                                    seqEqual(seq, seq2);
+                                                    expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+                                                    expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+                                                    done();
+                                                  });
+                                                });
+                                              });
+                                            });
+                                          });
+                                        });
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+      it('Repeated moves lead to a consistent local storage state', function(done){
+        var count = 0;
+        function inserted(){
+          count++;
+          if(count === 5){
+            console.log(_.map(seq.items, function(item){return item.id;}));
+            console.log(_.map(seq2.items, function(item){return item.id;}));
+            console.log(getLsIds(seq));
+            console.log(getLsIds(seq2));
+            seqEqual(seq, seq2);
+            expect(_.isEqual(getLsIds(seq), getLsIds(seq2))).to.be.ok();
+            expect(_.isEqual(getLsIds(seq), _.map(seq2.items, function(item){return item.id;}))).to.be.ok();
+            seq2.off('inserted:', inserted);
+            done();
+          }
+        }
+        seq2.on('inserted:', inserted);
+        seq.move(0, 1).then(function(){
+          seq.move(0, 1).then(function(){
+            seq.move(0, 1).then(function(){
+              seq.move(0, 1).then(function(){
+                seq.move(1, 0).then(function(){
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
   describe('Generic Sequence Merging', function(){
     describe('Simple arrays', function(){
       var fns = {
@@ -1452,6 +1586,12 @@ describe('Sequence Datatype', function(){
           var commands = Gnd.Sequence.merge(source, target, fns2);
           expect(commands.length).to.be(0);
         });
+        // it('Pending items should be overwritten', function(){
+        //   // var source = [{id:1,insync:true}];
+        //   var target = [{id:1,insync:false},{id:2,insync:false},{id:2,insync:false}];
+        //   var commands = Gnd.Sequence.merge(source, target, fns2);
+        //   expect(commands.length).to.be(0);
+        // });
       });
     });
     describe('Sequence IStorage', function(){

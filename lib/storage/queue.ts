@@ -55,7 +55,7 @@ export class Queue extends Base implements IStorage
       return item.doc;
     },
     inSync: function(item){
-      return item.doc.__op === 'insync';
+      return item.doc.__op === 'insync' || item.doc.__op === 'rm';
     }
   };
 

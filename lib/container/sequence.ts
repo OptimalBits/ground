@@ -124,19 +124,27 @@ export class Sequence extends Container
         seqItem.insync = true;
       });
     }
-//1,2,3,4,a
-    var index = this.items.length;
-    for(var i=0; i<this.items.length; i++){
-      if(id && this.items[i].id === id){ //no dupicate CONTAINERS
-        index = -1;
-        break;
-      }else if(this.items[i].id === refId){
-        index = i;
-      }
-    };
+
+    var found = !!_.find(this.items, function(item){ return item.id === id; });
+    if(found) return Promise.rejected(Error('Tried to insert duplicate container'));
     
-    if(index === -1){
-      return Promise.rejected(Error('Tried to insert duplicate container'));
+
+    var index;
+    if(refId){
+      index = -1;
+      _.each(this.items, (item, i?)=>{
+        if(item.id === refId){
+          index = i;
+        }
+      });
+      if(index === -1){
+        //refId not found perform a resync
+        console.log('REFID not found. Resyncing');
+        return this.triggerResync();
+      }
+    }else{
+      //push last
+      index = this.items.length;
     }
 
     //Handle the case when we insert an item from the server that have a pending item on this position
@@ -280,6 +288,14 @@ export class Sequence extends Container
     });
   }
   
+  private triggerResync(): Promise
+  {
+    var keyPath = this.getKeyPath();
+    return this.storageQueue.all(keyPath, {}, {}).then((result) =>
+      result[1].then((items) => this.resync(items))
+    );
+  }
+
   public resync(remoteItems: any[]): Promise
   {
     return this.resyncMutex.enter(() => {

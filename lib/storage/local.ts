@@ -333,8 +333,10 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item || item.sync === 'rm') 
-      return promise.reject(new Error(''+ServerError.INVALID_ID));
+    if(!item){
+      // Already deleted
+      return promise.resolve();
+    }
 
     if(opts.insync || opts.noremote){ //noremote implies insync
       itemKeys[itemKeys[item.prev].next] = 'deleted';
@@ -358,6 +360,21 @@ export class Local implements IStorage {
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
     this.initSequence(itemKeys);
+
+    // Check for already inserted id
+    if(opts.id){
+    var found = _.find(itemKeys, function(item){ return item._id === opts.id || item._cid === opts.id; });
+    if(found){
+      var next = itemKeys[found.next];
+      if(next._id === id || next._cid === id){
+        //Already at the right place
+        return promise.resolve({id: opts.id, refId: id});
+      }else{
+        //Already in the sequence but not at the right place
+        return Promise.rejected(Error('Tried to insert duplicate container'));
+      }
+    }
+    }
 
     var refItem = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
@@ -405,7 +422,7 @@ export class Local implements IStorage {
     if(sid) item._id = sid;
     switch(item.sync) {
       case 'rm':
-        console.log(item);
+        console.log('Removing '+item);
         itemKeys[itemKeys[item.prev].next] = 'deleted';
         itemKeys[item.prev].next = item.next;
         itemKeys[item.next].prev = item.prev;
