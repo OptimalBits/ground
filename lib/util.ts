@@ -420,8 +420,7 @@ function deepExtend(doc, args, callFns?: bool): {}
       // TODO: use isPlainObject to avoid special cases.
       if(doc[key] && 
          args[key] && 
-         typeof args[key] === 'object' &&
-         !(args[key] instanceof Date)){
+         args[key].constructor === Object.prototype['constructor']){
         deepExtend(doc[key], args[key]);
       }else{
         doc[key] = args[key];
