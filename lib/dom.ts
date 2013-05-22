@@ -171,24 +171,33 @@ export class Query // implements QueryNodes
     var el = this[0];
     if(el.textContent){
       if(_.isUndefined(text)) return el.textContent;
-      _.each(this, (el) => {
-        el.textContent = text;
-      });
+      _.each(this, (el) => el.textContent = text);
     }else{
       if(_.isUndefined(text)) return el.innerText;
-      _.each(this, (el) => {
-        el.innerText = text;
-      });
+      _.each(this, (el) => el.innerText = text);
     }
+    return this;
   }
   
   html(html?: string){
     if(_.isUndefined(html)) return this[0].innerHTML;
-    _.each(this, (el) => {
-      el.innerHTML = html;
-    });
+    _.each(this, (el) => el.innerHTML = html);
+    return this;
   }
-
+  
+  remove(){
+    // TODO: remove also all events associated to this node.
+    _.each(this, (el) => this.removeNode(el));
+    return this;
+  }
+  
+  rect(){
+    if(this[0]) return this[0].getBoundingClientRect();
+  }
+  
+  private removeNode(el){
+    el.parentNode.removeChild(el);
+  }
 }
   
 /*
