@@ -70,6 +70,6 @@
   },
   "scripts": {
     "test": "mocha tests/*",
-    "prepublish": "./build.sh"
+    "prepublish": "grunt"
   }
 }
