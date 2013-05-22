@@ -66,7 +66,7 @@ Gnd.Route.listen(function(req) {
     //
     // Bind the App model (only used for keeping the filter links updated)
     // (TODO: Only use one viewmodel for the whole APP)
-    var appViewModel = new Gnd.ViewModel(Gnd.$('#filters')[0], {app: app});
+    var appViewModel = new Gnd.ViewModel('#filters', {app: app});
   
     //
     // Get the todos collection
