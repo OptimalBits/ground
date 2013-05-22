@@ -407,8 +407,6 @@ module Gnd {
     'altKey': 18,
     'metaKey': 91
   };
-    
-//$('document').on('keydown', keypressed('a').ctrl)
 
 export function keypressed(str:string, cb?): (evt) => void
 {
@@ -416,7 +414,7 @@ export function keypressed(str:string, cb?): (evt) => void
   var keys = [];
   
   _.each(str.split(''), (c) => {
-    keys.push(c.toLowerCase().charCodeAt(0))
+    keys.push(c.toUpperCase().charCodeAt(0))
   });
   
   cb && callbacks.push(cb);
@@ -429,19 +427,20 @@ export function keypressed(str:string, cb?): (evt) => void
       evt[modifier] && pressed.push(modifiers[modifier]);
     }
     
-    pressed.push(evt.charCode);
+    pressed.push(evt.which);
+    pressed = _.unique(pressed);
     
     if(pressed.length === keys.length && !_.difference(keys, pressed).length){
       _.each(callbacks, (cb) => cb());
     }
   }
   
-  for(var key in keyMapping){
-    handleEvent[key] = (cb) => {
-      cb && callbacks.push(cb); 
-      keys.push(keyMapping[key]);
-    }
-  }
+  _.each(keyMapping, (keyCode, key?) => handleEvent[key] = (cb) => {
+    cb && callbacks.push(cb); 
+    keys.push(keyCode);
+    return handleEvent;
+  });
+    
   return handleEvent;
 }
 
