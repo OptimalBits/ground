@@ -377,3 +377,68 @@ module Gnd.Ajax
   }
 } // Ajax
 
+module Gnd {
+
+  var keyMapping = {
+    'backspace': 8,
+    'enter': 13,
+    'caps': 20,
+    'esc': 27,
+    'space': 32,
+    'left': 37,
+    'right': 38,
+    'up': 39,
+    'down': 40,
+    'ctrl': 17,
+    'alt': 18,
+    'window': 91,
+    'cmd': 91,
+    'shift': 16,
+    'tab': 9
+  };
+  
+  var modifiers = {
+    'shiftKey': 16,
+    'ctrlKey': 17,
+    'altKey': 18,
+    'metaKey': 91
+  };
+    
+//$('document').on('keydown', keypressed('a').ctrl)
+
+export function keypressed(str:string, cb?): (evt) => void
+{
+  var callbacks = [];
+  var keys = [];
+  
+  _.each(str.split(''), (c) => {
+    keys.push(c.toLowerCase().charCodeAt(0))
+  });
+  
+  cb && callbacks.push(cb);
+  
+  var handleEvent = (evt) =>
+  {
+    var pressed = [];
+    
+    for(var modifier in modifiers){
+      evt[modifier] && pressed.push(modifiers[modifier]);
+    }
+    
+    pressed.push(evt.charCode);
+    
+    if(pressed.length === keys.length && !_.difference(keys, pressed).length){
+      _.each(callbacks, (cb) => cb());
+    }
+  }
+  
+  for(var key in keyMapping){
+    handleEvent[key] = (cb) => {
+      cb && callbacks.push(cb); 
+      keys.push(keyMapping[key]);
+    }
+  }
+  return handleEvent;
+}
+
+}
