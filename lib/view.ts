@@ -101,6 +101,7 @@ export class View extends Base
       this._parent = parent;
       parent.children.push(this);
     }
+    return this;
   }
   
   removeChild(child: View): void
