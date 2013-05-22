@@ -145,24 +145,19 @@ export class Query // implements QueryNodes
   
   css(styles: {[index: string]: string;})
   {
-    _.each(this, (el) => {
-      _.extend(el.style, styles);
-    });
+    _.each(this, (el) => _.extend(el.style, styles));
+    return this;
   }
   
   show()
   {
-    _.each(this, (el)=>{
-      show(el);
-    })
+    _.each(this, (el) => show(el));
     return this;
   }
   
   hide()
   {
-    _.each(this, (el)=>{
-      hide(el);
-    })
+    _.each(this, (el) => hide(el));
     return this;
   }
   
