@@ -89,9 +89,9 @@ export class View extends Base
     super.destroy();
   }
   
-  parent(selector: Element): void;
-  parent(selector: string): void;
-  parent(selector: any, parent?: View): void
+  parent(selector: Element): View;
+  parent(selector: string): View;
+  parent(selector: any, parent?: View): View
   {
     this.selector = selector;
     
