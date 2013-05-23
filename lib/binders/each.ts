@@ -32,6 +32,7 @@ export class EachBinder implements Binder
   private removedListener: (item: Model)=>void;
   private updatedListener: ()=>void;
   private callbacks;
+  private el;
   
   bind(el: Element, value: string, viewModel: ViewModel)
   {
@@ -68,6 +69,9 @@ export class EachBinder implements Binder
       this.collection = collection;
       
       parent.removeChild(el);
+      
+      this.el = el.cloneNode(true);
+      
       el.removeAttribute('data-each');
       el.removeAttribute('id');
       
@@ -181,6 +185,8 @@ export class EachBinder implements Binder
     this.collection.off('filterFn sorted: updated:', this.updatedListener);
     
     this.removeNodes();
+    
+    this.parent.appendChild(this.el);
   }
   
   private removeNode(id: string)
