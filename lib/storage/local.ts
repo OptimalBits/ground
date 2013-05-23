@@ -257,13 +257,14 @@ export class Local implements IStorage {
     key = keyValue ? keyValue.key : key;
 
     var all = [];
+    var visited = {};
 
     if(itemKeys.length === 0) return promise.resolve(all);
 
     var traverse = (i) => {
       var item = itemKeys[i];
       if(!item || item.next < 0) return; //last pointer
-
+        var itemId = item._id || item._cid;
         var itemKeyPath = this.parseKey(item.key);
         var op = item.sync;
         if(op !== 'rm'){// || !options.snapshot){
@@ -272,12 +273,14 @@ export class Local implements IStorage {
             var doc = itemKeyValue.value;
             if(!opts.snapshot) doc.__op = op; //why?
             var iDoc = {
-              id: item._id || item._cid,
+              id: itemId,
               doc: doc
             };
             all.push(iDoc);
           }
         }
+        if(visited[itemId]) return; //circular sequence
+        visited[itemId] = true;
         traverse(item.next);
     };
     
