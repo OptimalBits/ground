@@ -32,52 +32,15 @@ describe('Storage Queue', function(){
         });
       });
     });
-    describe('Traversal', function(){
-      it('next on empty sequence', function(done){
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.not.be.ok();
-          done();
-        });
-      });
-      it('next on a non persisted sequence', function(done){
-        storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
-          expect(id).to.be.ok();
-          storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.create(['animals'], {name:'prawn'}, {}).then(function(id){
-              expect(id).to.be.ok();
-              storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                storage.create(['animals'], {name:'shark'}, {}).then(function(id){
-                  expect(id).to.be.ok();
-                  storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                    storage.next(keyPath, null, {}).then(function(item){
-                      expect(item).to.be.an(Object);
-                      expect(item.doc).to.have.property('name', 'tiger');
-                      storage.next(keyPath, item.id, {}).then(function(item){
-                        expect(item).to.be.an(Object);
-                        expect(item.doc).to.have.property('name', 'prawn');
-                        storage.next(keyPath, item.id, {}).then(function(item){
-                          expect(item).to.be.an(Object);
-                          expect(item.doc).to.have.property('name', 'shark');
-                          done();
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-    });
     describe('Insert', function(){
       it('insertBefore as push', function(done){
         storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-            storage.next(keyPath, null, {}).then(function(item){
-              expect(item).to.be.an(Object);
-              expect(item.doc).to.have.property('name', 'tiger');
+            storage.all(keyPath, {}, {}).then(function(ret){
+              var items = ret[0];
+              expect(items).to.have.property('length',1);
+              expect(items[0].doc).to.have.property('name', 'tiger');
               done();
             });
           });
@@ -87,15 +50,17 @@ describe('Storage Queue', function(){
         storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(err){
-            storage.next(keyPath, null, {}).then(function(item){
-              expect(item).to.be.an(Object);
-              expect(item.doc).to.have.property('name', 'tiger');
+            storage.all(keyPath, {}, {}).then(function(ret){
+              var items = ret[0];
+              expect(items).to.have.property('length',1);
+              expect(items[0].doc).to.have.property('name', 'tiger');
               storage.create(['animals'], {name:'dog'}, {}).then(function(id){
                 expect(id).to.be.ok();
-                storage.insertBefore(keyPath, item.id, ['animals', id], {}).then(function(){
-                  storage.next(keyPath, null, {}).then(function(item){
-                    expect(item).to.be.an(Object);
-                    expect(item.doc).to.have.property('name', 'dog');
+                storage.insertBefore(keyPath, items[0].id, ['animals', id], {}).then(function(){
+                  storage.all(keyPath, {}, {}).then(function(ret){
+                    var items = ret[0];
+                    expect(items).to.have.property('length',2);
+                    expect(items[0].doc).to.have.property('name', 'dog');
                     done();
                   });
                 });
@@ -114,22 +79,13 @@ describe('Storage Queue', function(){
                 storage.create(['animals'], {name:'shark'}, {}).then(function(id){
                   expect(id).to.be.ok();
                   storage.insertBefore(keyPath, null, ['animals', id], {}).then(function(){
-                    storage.next(keyPath, null, {}).then(function(item){
-                      expect(item).to.be.an(Object);
-                      expect(item.doc).to.have.property('name', 'tiger');
-                      storage.next(keyPath, item.id, {}).then(function(item2){
-                        expect(item2).to.be.an(Object);
-                        expect(item2.doc).to.have.property('name', 'prawn');
-                        storage.next(keyPath, item2.id, {}).then(function(item){
-                          expect(item).to.be.an(Object);
-                          expect(item.doc).to.have.property('name', 'shark');
-                          storage.next(keyPath, null, {}).then(function(item){
-                            expect(item).to.be.an(Object);
-                            expect(item.doc).to.have.property('name', 'tiger');
-                            done();
-                          });
-                        });
-                      });
+                    storage.all(keyPath, {}, {}).then(function(ret){
+                      var items = ret[0];
+                      expect(items).to.have.property('length',3);
+                      expect(items[0].doc).to.have.property('name', 'tiger');
+                      expect(items[1].doc).to.have.property('name', 'prawn');
+                      expect(items[2].doc).to.have.property('name', 'shark');
+                      done();
                     });
                   });
                 });
@@ -151,25 +107,28 @@ describe('Storage Queue', function(){
         });
       });
       it('delete one item', function(done){
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.be.an(Object);
-          expect(item.doc).to.have.property('name', 'tiger');
-          storage.deleteItem(keyPath, item.id, {}).then(function(){
+        storage.all(keyPath, {}, {}).then(function(ret){
+          var items = ret[0];
+          expect(items).to.have.property('length',1);
+          expect(items[0].doc).to.have.property('name', 'tiger');
+          storage.deleteItem(keyPath, items[0].id, {}).then(function(){
             done();
           });
         });
       });
       it('deletion is persisted', function(done){
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.be.an(Object);
-          expect(item.doc).to.have.property('name', 'tiger');
-          storage.deleteItem(keyPath, item.id, {}).then(function(){
+        storage.all(keyPath, {}, {}).then(function(ret){
+          var items = ret[0];
+          expect(items).to.have.property('length',1);
+          expect(items[0].doc).to.have.property('name', 'tiger');
+          storage.deleteItem(keyPath, items[0].id, {}).then(function(){
             storage.once('synced:', function() {
               storage.all(keyPath, {}, {}).then(function(result){
-                var docs = result[0];
-                expect(docs).to.be.ok();
-                expect(docs).to.have.property('length', 0);
-                done();
+                result[1].then(function(docs){
+                  expect(docs).to.be.ok();
+                  expect(docs).to.have.property('length', 0);
+                  done();
+                });
               });
             });
           });
@@ -212,9 +171,11 @@ describe('Storage Queue', function(){
         });
       });
       it('all after delete', function(done){
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.be.ok();
-          storage.deleteItem(keyPath, item.id, {}).then(function(){
+        storage.all(keyPath, {}, {}).then(function(ret){
+          var items = ret[0];
+          expect(items).to.have.property('length',3);
+          expect(items[0].doc).to.have.property('name', 'tiger');
+          storage.deleteItem(keyPath, items[0].id, {}).then(function(){
             storage.all(keyPath, {}, {}).then(function(result){
               var docs = result[0];
               expect(docs).to.be.ok();
@@ -368,10 +329,11 @@ describe('Storage Queue', function(){
       });
       it('remove item while offline', function(done){
         socket.disconnect();
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.be.an(Object);
-          storage.deleteItem(keyPath, item.id, {}).then(function(){
-
+        storage.all(keyPath, {}, {}).then(function(ret){
+          var items = ret[0];
+          expect(items).to.have.property('length',2);
+          expect(items[0].doc).to.have.property('name', 'tiger');
+          storage.deleteItem(keyPath, items[0].id, {}).then(function(){
             storage.once('synced:', function(){
               storage.all(keyPath, {}, {}).then(function(result){
                 var docs = result[0];
@@ -402,10 +364,12 @@ describe('Storage Queue', function(){
         });
       });
       it('serverside remove while offline', function(done){
-        storage.next(keyPath, null, {}).then(function(item){
-          expect(item).to.be.an(Object);
+        storage.all(keyPath, {}, {}).then(function(ret){
+          var items = ret[0];
+          expect(items).to.have.property('length',2);
+          expect(items[0].doc).to.have.property('name', 'tiger');
           socket.disconnect();
-          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+item.id, null).then(function() {
+          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+items[0].id, null).then(function() {
             socket.once('connect', function(){
               storage.all(keyPath, {}, {}).then(function(result){
                 var docs = result[0];
@@ -441,9 +405,10 @@ describe('Storage Queue', function(){
         storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
           storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-            storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-              expect(item).to.be.an(Object);
-              expect(item.doc).to.have.property('name', 'tiger');
+            storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(ret){
+              var items = ret[0];
+              expect(items).to.have.property('length',1);
+              expect(items[0].doc).to.have.property('name', 'tiger');
               done();
             });
           });

@@ -417,7 +417,7 @@ listContainer may also have a type attribute:
     return traverse(null).then(() => all);
   }
 
-  next(keyPath: string[], id: string, opts: {}): Promise // <IDoc
+  private next(keyPath: string[], id: string, opts: {}): Promise // <IDoc
   {
     var promise = new Promise();
     
@@ -483,7 +483,7 @@ listContainer may also have a type attribute:
       var promise = new Promise();
 
       this.findContainer(ParentModel, modelId, seqName, id, (err, container?)=>{
-        if(!container || container.type === '_rip') return promise.reject(Error(''+ServerError.INVALID_ID));
+        if(!container || container.type === '_rip') return promise.resolve(); //promise.reject(Error(''+ServerError.INVALID_ID));
         this.removeFromSeq(container._id).then(() => promise.resolve(), (err) => promise.reject(err));
       });
       return promise;

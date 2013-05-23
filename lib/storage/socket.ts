@@ -59,11 +59,6 @@ export class Socket implements IStorage {
     return Gnd.Util.safeEmit(this.socket, 'all', keyPath, query, opts)
   }
   
-  next(keyPath: string[], id: string, opts: {}): Promise
-  {
-    return Gnd.Util.safeEmit(this.socket, 'next', keyPath, id, opts);
-  }
-
   deleteItem(keyPath: string[], id: string, opts: {}): Promise
   {
     return Gnd.Util.safeEmit(this.socket, 'deleteItem', keyPath, id, opts);

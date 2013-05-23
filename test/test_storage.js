@@ -107,15 +107,15 @@ return function(storage, storageType){
             storage.create(['animals'], {name:'tiger'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}).then(function(){
-                storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                  expect(item).to.be.an(Object);
-                  expect(item.doc).to.have.property('name', 'tiger');
+                storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                  expect(items).to.have.property('length',1);
+                  expect(items[0].doc).to.have.property('name','tiger');
                   storage.create(['animals'], {name:'dog'}).then(function(id2){
                     expect(id2).to.be.ok();
-                    storage.insertBefore(['parade', paradeId, 'animals'], item.id, ['animals', id2], {}).then(function(){
-                      storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                        expect(item).to.be.an(Object);
-                        expect(item.doc).to.have.property('name', 'dog');
+                    storage.insertBefore(['parade', paradeId, 'animals'], items[0].id, ['animals', id2], {}).then(function(){
+                      storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                        expect(items).to.have.property('length',2);
+                        expect(items[0].doc).to.have.property('name','dog');
                         done();
                       });
                     });
@@ -130,8 +130,9 @@ return function(storage, storageType){
             storage.create(['animals'], {name:'tiger'}).then(function(id1){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id1], {}).then(function(){
-                storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                  expect(item.doc).to.have.property('name', 'tiger');
+                storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                  expect(items).to.have.property('length',1);
+                  expect(items[0].doc).to.have.property('name','tiger');
                   done();
                 });
               });
@@ -177,8 +178,8 @@ return function(storage, storageType){
               expect(id1).to.be.ok();
               storage.insertBefore(['parade', paradeId, 'animals'], 'jklöjlöasdf', ['animals', id1], {}).fail(function(err){
                 expect(err).to.be.ok();
-                storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                  expect(item).to.not.be.ok();
+                storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                  expect(items).to.have.property('length',0);
                   done();
                 });
               });
@@ -236,75 +237,6 @@ return function(storage, storageType){
         });
       });
 
-      describe('traversal', function(){
-        var paradeId;
-        before(function(done){
-          storage.create(['parade'], {}).then(function(id){
-            expect(id).to.be.ok();
-            paradeId = id;
-            storage.create(['animals'], {name:'tiger'}).then(function(id){
-              expect(id).to.be.ok();
-              storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-                storage.create(['animals'], {name:'monkey'}).then(function(id){
-                  expect(id).to.be.ok();
-                  storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-                    storage.create(['animals'], {name:'prawn'}).then(function(id){
-                      expect(id).to.be.ok();
-                      storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-                        storage.create(['animals'], {name:'shark'}).then(function(id){
-                          expect(id).to.be.ok();
-                          storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-                            storage.create(['animals'], {name:'dog'}).then(function(id){
-                              expect(id).to.be.ok();
-                              storage.insertBefore(['parade', paradeId, 'animals'], null, ['animals', id], {}).then(function(){
-                                done();
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-        it('next', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            expect(item).to.be.an(Object);
-            expect(item.doc).to.have.property('name', 'tiger');
-            storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-              expect(item).to.be.an(Object);
-              expect(item.doc).to.have.property('name', 'monkey');
-              storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-                expect(item).to.be.an(Object);
-                expect(item.doc).to.have.property('name', 'prawn');
-                storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-                  expect(item).to.be.an(Object);
-                  expect(item.doc).to.have.property('name', 'shark');
-                  storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-                    expect(item).to.be.an(Object);
-                    expect(item.doc).to.have.property('name', 'dog');
-                    done();
-                  });
-                });
-              });
-            });
-          });
-        });
-        it('next on empty sequence', function(done){
-          storage.create(['parade'], {}).then(function(id){
-            expect(id).to.be.ok();
-            paradeId = id;
-            storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-              expect(item).to.not.be.ok();
-              done();
-            });
-          });
-        });
-      });
-
       describe('delete', function(){
         var paradeId;
         beforeEach(function(done){
@@ -340,29 +272,52 @@ return function(storage, storageType){
           });
         });
         it('delete first', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            expect(item).to.be.an(Object);
-            expect(item.doc).to.have.property('name', 'tiger');
-            storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-              storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                expect(item).to.be.an(Object);
-                expect(item.doc).to.have.property('name', 'monkey');
+          storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+            expect(items).to.have.property('length',5);
+            expect(items[0].doc).to.have.property('name','tiger');
+            storage.deleteItem(['parade', paradeId, 'animals'], items[0].id, {}).then(function(){
+              storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                expect(items).to.have.property('length',4);
+                expect(items[0].doc).to.have.property('name','monkey');
                 done();
               });
             });
           });
         });
         it('delete last', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-              storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item){
-                storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(item2){
-                  storage.next(['parade', paradeId, 'animals'], item2.id, {}).then(function(item){
-                    expect(item).to.be.an(Object);
-                    expect(item.doc).to.have.property('name', 'dog');
-                    storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-                      storage.next(['parade', paradeId, 'animals'], item2.id, {}).then(function(item){
-                        expect(item).to.not.be.ok();
+          storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+            expect(items).to.have.property('length',5);
+            expect(items[4].doc).to.have.property('name','dog');
+            storage.deleteItem(['parade', paradeId, 'animals'], items[4].id, {}).then(function(){
+              storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                expect(items).to.have.property('length',4);
+                done();
+              });
+            });
+          });
+        });
+        it('delete middle', function(done){
+          storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+            expect(items).to.have.property('length',5);
+            storage.deleteItem(['parade', paradeId, 'animals'], items[2].id, {}).then(function(){
+              storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items2){
+                expect(items2).to.have.property('length',4);
+                expect(items[3].doc).to.eql(items2[2].doc);
+                done();
+              });
+            });
+          });
+        });
+        it('delete all', function(done){
+          storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+            expect(items).to.have.property('length',5);
+            storage.deleteItem(['parade', paradeId, 'animals'], items[0].id, {}).then(function(){
+              storage.deleteItem(['parade', paradeId, 'animals'], items[1].id, {}).then(function(){
+                storage.deleteItem(['parade', paradeId, 'animals'], items[2].id, {}).then(function(){
+                  storage.deleteItem(['parade', paradeId, 'animals'], items[3].id, {}).then(function(){
+                    storage.deleteItem(['parade', paradeId, 'animals'], items[4].id, {}).then(function(){
+                      storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+                        expect(items).to.have.property('length',0);
                         done();
                       });
                     });
@@ -372,67 +327,19 @@ return function(storage, storageType){
             });
           });
         });
-        it('delete middle', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            expect(item.doc).to.have.property('name', 'tiger');
-            storage.next(['parade', paradeId, 'animals'], item.id, {}).then(function(itemPrev){
-              expect(itemPrev.doc).to.have.property('name', 'monkey');
-              storage.next(['parade', paradeId, 'animals'], itemPrev.id, {}).then(function(itemDel){
-                expect(itemDel.doc).to.have.property('name', 'prawn');
-                storage.next(['parade', paradeId, 'animals'], itemDel.id, {}).then(function(itemNext){
-                  expect(itemNext.doc).to.have.property('name', 'shark');
-                  storage.deleteItem(['parade', paradeId, 'animals'], itemDel.id, {}).then(function(){
-                    storage.next(['parade', paradeId, 'animals'], itemPrev.id, {}).then(function(item){
-                      expect(item.doc).to.eql(itemNext.doc);
-                      done();
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-        it('delete all', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            expect(item.doc).to.have.property('name', 'tiger');
-            storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-              storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                expect(item.doc).to.have.property('name', 'monkey');
-                storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-                  storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                    expect(item.doc).to.have.property('name', 'prawn');
-                    storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-                      storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                        expect(item.doc).to.have.property('name', 'shark');
-                        storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-                          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                            expect(item.doc).to.have.property('name', 'dog');
-                            storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-                              storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-                                expect(item).to.not.be.ok();
-                                done();
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
         it('delete non-existing item', function(done){
-          storage.deleteItem(['parade', paradeId, 'animals'], 'asdf', {}).fail(function(){
+          storage.deleteItem(['parade', paradeId, 'animals'], 'asdf', {}).then(function(){
+            //Already gone - no error
             done();
           });
         });
         it('delete already deleted item', function(done){
-          storage.next(['parade', paradeId, 'animals'], null, {}).then(function(item){
-            expect(item.doc).to.have.property('name', 'tiger');
-            storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).then(function(){
-              storage.deleteItem(['parade', paradeId, 'animals'], item.id, {}).fail(function(){
+          storage.all(['parade', paradeId, 'animals'], {}, {}).then(function(items){
+            expect(items).to.have.property('length',5);
+            expect(items[0].doc).to.have.property('name', 'tiger');
+            storage.deleteItem(['parade', paradeId, 'animals'], items[0].id, {}).then(function(){
+              storage.deleteItem(['parade', paradeId, 'animals'], items[0].id, {}).then(function(){
+                //Double delete should not raise an error
                 done();
               });
             });

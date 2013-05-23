@@ -249,16 +249,41 @@ export class Local implements IStorage {
   //
   all(keyPath: string[], query, opts) : Promise
   {
-    //TODO: optimize
+    var promise = new Promise();
+
+    var key = this.makeKey(keyPath);
+    var keyValue = this.traverseLinks(key);
+    var itemKeys = keyValue ? keyValue.value || [] : [];
+    key = keyValue ? keyValue.key : key;
+
     var all = [];
-    var traverse = (kp) => this.next(keyPath, kp, opts).then((next) => {
-      if(next){
-        all.push(next);
-        return traverse(next.id);
-      }
-    });
+
+    if(itemKeys.length === 0) return promise.resolve(all);
+
+    var traverse = (i) => {
+      var item = itemKeys[i];
+      if(!item || item.next < 0) return; //last pointer
+
+        var itemKeyPath = this.parseKey(item.key);
+        var op = item.sync;
+        if(op !== 'rm'){// || !options.snapshot){
+          var itemKeyValue = this.traverseLinks(item.key);
+          if(itemKeyValue){
+            var doc = itemKeyValue.value;
+            if(!opts.snapshot) doc.__op = op; //why?
+            var iDoc = {
+              id: item._id || item._cid,
+              doc: doc
+            };
+            all.push(iDoc);
+          }
+        }
+        traverse(item.next);
+    };
     
-    return traverse(null).then(() => all);
+    var first = itemKeys[0].next;
+    traverse(first);
+    return promise.resolve(all);
   }
 
   private initSequence(seq){
@@ -276,52 +301,6 @@ export class Local implements IStorage {
     }
   }
   
-  next(keyPath: string[], id: string, opts): Promise // <IDoc>
-  {
-    var promise = new Promise();
-    var options = _.defaults(opts, {snapshot: true});
-    var key = this.makeKey(keyPath);
-    var keyValue = this.traverseLinks(key);
-    var itemKeys = keyValue ? keyValue.value || [] : [];
-    key = keyValue ? keyValue.key : key;
-
-    // first item of empty sequence is not an error
-    if(itemKeys.length === 0 && !id) return promise.resolve();
-
-    id = id || '##@_begin';
-    var refItem = _.find(itemKeys, (item) => {
-      return item._id === id || item._cid === id;
-    });
-
-    if(refItem){
-      var item = itemKeys[refItem.next];
-      if(item.next < 0) return promise.resolve(); //last pointer
-
-      var itemKeyPath = this.parseKey(item.key);
-      var op = item.sync;
-      if(op !== 'rm' || !options.snapshot){
-        var itemKeyValue = this.traverseLinks(item.key);
-        if(itemKeyValue){
-          var doc = itemKeyValue.value;
-          if(!options.snapshot) doc.__op = op;
-          var iDoc = {
-            id: item._id || item._cid,
-            doc: doc
-          };
-          promise.resolve(iDoc);
-        }else{
-          promise.reject(InvalidKeyError());
-        }
-      }else{
-        return this.next(keyPath, item._id || item._cid, opts);
-      }
-    }else{
-      promise.reject(Error('reference item not found'))
-    }
-    return promise;
-    // cb(null, parseKey(item.key));
-  }
-
   deleteItem(keyPath: string[], id: string, opts): Promise
   {
     var promise = new Promise();

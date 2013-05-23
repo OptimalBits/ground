@@ -87,10 +87,6 @@ export class SocketBackend {
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.all(session.userId, keyPath, query, opts), cb);
         });
-        socket.on('next', function(keyPath: string[], id: string, opts, cb: (err: ServerError, doc?:IDoc) => void){
-          if(!session) return cb(ServerError.INVALID_SESSION);
-          callback(server.next(session.userId, keyPath, id, opts), cb);
-        });
         socket.on('deleteItem', function(keyPath: string[], id: string, opts, cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.deleteItem(clientId, session.userId, keyPath, id, opts), cb);

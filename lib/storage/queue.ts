@@ -341,16 +341,6 @@ export class Queue extends Base implements IStorage
     return promise;
   }
 
-  private next(keyPath: string[], id: string, opts: {}): Promise // <IDoc>
-  {
-    return this.localStorage.next(keyPath, id, opts).fail((err) => {
-      if(!this.useRemote){
-        throw err;
-      }
-      return this.remoteStorage.next(keyPath, id, opts);
-    });
-  }
-  
   deleteItem(keyPath: string[], id: string, opts: {}): Promise
   {
     return this.localStorage.deleteItem(keyPath, id, opts).then(() => 

@@ -151,15 +151,6 @@ export class Server {
     });
   }
   
-  next(userId: string, keyPath: string[], id: string, opts: {}): Promise //<IDoc>
-  {
-    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
-      if(allowed){
-        return this.storage.next(keyPath, id, opts);
-      }
-    });
-  }
-
   deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}): Promise
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed?) => {
