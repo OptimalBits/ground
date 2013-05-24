@@ -3,7 +3,7 @@ define(['gnd'], function(Gnd){
   
 localStorage.clear();
 
-describe('Model', function(){
+describe('Model Datatype', function(){
   Gnd.use.syncManager(socket);
   
   var storageQueue;
@@ -11,20 +11,41 @@ describe('Model', function(){
   var Animal = Gnd.Model.extend('animals');
   var animal;
   
-  before(function(done){
-    var storageLocal  = new Gnd.Storage.Local();
-    var storageSocket = new Gnd.Storage.Socket(socket);
-    
-    Gnd.use.storageQueue(storageLocal, storageSocket);
+  var socket1, sl1, ss1, q1, sm1;
+  var socket2, sl2, ss2, q2, sm2;
   
-    animal = new Animal();
+  before(function(done){
+    socket1 = io.connect('/', {'force new connection': true});
+    sl1  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+    ss1 = new Gnd.Storage.Socket(socket1);
+    storageQueue  = q1 = new Gnd.Storage.Queue(sl1, ss1);
+    sm1 = new Gnd.Sync.Manager(socket1);
     
-    storageQueue = Gnd.using.storageQueue;
-    
-    storageQueue.init(function(){
-      animal.save();
-      storageQueue.exec().then(done);
+    socket1.on('connect', function(){
+      socket2 = io.connect('/', {'force new connection': true});
+      sl2  = new Gnd.Storage.Local(new Gnd.Storage.Store.MemoryStore());
+      ss2 = new Gnd.Storage.Socket(socket2);
+      q2  = new Gnd.Storage.Queue(sl2, ss2);
+      sm2 = new Gnd.Sync.Manager(socket2);
+      
+      socket2.on('connect', function(){
+        Gnd.using.storageQueue = q1;
+        Gnd.using.syncManager = sm1;
+  
+        Animal.create().then(function(doc){
+          animal = doc;
+          storageQueue.init(function(){
+            storageQueue.exec().then(done);
+          });
+        });
+      });
     });
+  });
+  
+  beforeEach(function(){
+    Gnd.Model.__useDepot = true;
+    Gnd.using.storageQueue = q1;
+    Gnd.using.syncManager = sm1;
   });
   
   describe('Instantiation', function(){
@@ -32,11 +53,10 @@ describe('Model', function(){
       var instance = new Animal();
       expect(instance).to.be.a(Animal);
     });
-    /*
-    it('as a factory method', function(){
-      var instance = Animal();
+    it.skip('as a factory method', function(){
+      var instance = Animal.create();
       expect(instance).to.be.a(Animal);
-    });*/
+    });
   });
   
   describe('findById', function(){
@@ -71,59 +91,133 @@ describe('Model', function(){
     });
     
     it('another instance propagates changes', function(done){
-      var otherAnimal;
       
-      animal.keepSynced();
-      animal.once('changed:', function(){
-        expect(animal).to.have.property('legs');
-        expect(animal).to.have.property('tail');
-        expect(animal.legs).to.be(4);
-        expect(animal.tail).to.be(true);
-        otherAnimal.release();
-        done();
-      });
+      Gnd.Model.__useDepot = false;
+      
+      Animal.create({name: 'pinguin', legs: 2}, true).then(function(pinguin){
+        pinguin.save();
+        
+        expect(pinguin).to.have.property('legs');
+        expect(pinguin).to.have.property('name');
+        expect(pinguin.legs).to.be(2);
+         
+        pinguin.once('id', function(){
+          Gnd.using.storageQueue = q2;
+          Gnd.using.syncManager = sm2;
+          
+          Animal.findById(pinguin.id(), true).then(function(pinguin2){
+            expect(pinguin2).to.have.property('legs');
+            expect(pinguin2).to.have.property('name');
+            expect(pinguin2.legs).to.be(2);
+            
+            sm2.start(pinguin2.getKeyPath());
+          
+            pinguin2.once('legs', function(legs){
+              expect(pinguin2.legs).to.be(3);
+            
+              pinguin.on('changed:', function(){
+                expect(pinguin.name).to.be('super pinguin');
+                expect(pinguin.legs).to.be(2);
+              
+                expect(pinguin2.name).to.be('super pinguin');
+                expect(pinguin2.legs).to.be(2);
+              
+                pinguin.release();
+                pinguin2.release();
+                
+                done();
+              })
+            
+              pinguin2.set({name:'super pinguin', legs:2});
+            })
 
-      Animal.findById(animal.id()).then(function(doc){
-        expect(doc).to.have.property('_id');
-        expect(doc.id()).to.eql(animal.id());
-        doc.keepSynced();
-        otherAnimal = doc;
-        doc.set({legs:4, tail:true});
+            pinguin.set('legs', 3);
+          });
+        });
       });
+    });
+
+    it('not propagate changes when enabling nosync', function(done){
+ 
+      Gnd.Model.__useDepot = false;
+      
+      Animal.create({name: 'pinguin', legs: 2}, true).then(function(pinguin){
+        expect(pinguin).to.have.property('legs');
+        expect(pinguin).to.have.property('name');
+        expect(pinguin.legs).to.be(2);
+        
+        pinguin.save();
+         
+        pinguin.once('id', function(){
+          Gnd.using.storageQueue = q2;
+          Gnd.using.syncManager = sm2;
+          
+          Animal.findById(pinguin.id(), true).then(function(pinguin2){
+            expect(pinguin2).to.have.property('legs');
+            expect(pinguin2).to.have.property('name');
+            expect(pinguin2.legs).to.be(2);
+            
+            sm2.start(pinguin2.getKeyPath());
+          
+            pinguin2.once('legs', function(legs){
+              
+              pinguin.on('changed:', function(){
+                expect(true).to.be(false);
+              });
+            
+              pinguin2.set({name:'super pinguin', legs:2}, {nosync:true});
+                
+              q2.waitUntilSynced(function(){
+                expect(pinguin.name).to.be('pinguin');
+                expect(pinguin.legs).to.be(3);
+              
+                expect(pinguin2.name).to.be('super pinguin');
+                expect(pinguin2.legs).to.be(2);
+              
+                pinguin.release();
+                pinguin2.release();
+                
+                setTimeout(function(){
+                  done();
+                }, 100);
+              })
+            })
+          
+            pinguin.set('legs', 3);
+          });
+        });
+      });
+     
     });
     
     it('releasing an instance keeps other synchronized', function(done){
       
-      var oneFox = new Animal({name:'fox', legs:4});
-      storageQueue.once('synced:', function(){
-        expect(oneFox).to.have.property('_id');
+      Animal.create({name:'fox', legs:4}, true).then(function(oneFox){   
+        oneFox.save();
+           
+        storageQueue.waitUntilSynced(function(){
+          expect(oneFox).to.have.property('_id');
         
-        Animal.findById(oneFox._id).then(function(secondFox){
-          expect(secondFox).to.have.property('_id');
-          expect(secondFox).to.eql(secondFox);
+          Animal.findById(oneFox.id(), true).then(function(secondFox){
+            expect(secondFox).to.have.property('_id');
+            expect(secondFox).to.eql(secondFox);
           
-          secondFox.keepSynced();
-          
-          Animal.findById(oneFox._id).then(function(thirdFox){
-            expect(thirdFox).to.have.property('_id', secondFox._id);
-            expect(thirdFox).to.have.property('legs', secondFox.legs);
-            expect(thirdFox).to.have.property('name', secondFox.name);
+            Animal.findById(oneFox.id()).then(function(thirdFox){
+              expect(thirdFox).to.have.property('_id', secondFox._id);
+              expect(thirdFox).to.have.property('legs', secondFox.legs);
+              expect(thirdFox).to.have.property('name', secondFox.name);
             
-            thirdFox.keepSynced();
-            thirdFox.release();
-            secondFox.set('legs', 3);
+              thirdFox.keepSynced();
+              thirdFox.release();
+              secondFox.set('legs', 3);
+            });
           });
         });
-      });
-      
-      oneFox.save().then(function(){
-        oneFox.keepSynced();
         
         oneFox.once('changed:', function(){
           done();
         });
       });
-      
     });
   });
 
@@ -379,22 +473,48 @@ describe('Model', function(){
   });
 
   describe('Delete', function(){
-    it('deletes and propagates delete event', function(done){
-      var tempAnimal = new Animal();
-      tempAnimal.set({legs : 8, name:'spider'});
-      
-      tempAnimal.on('deleted:', function(){
-        Animal.findById(tempAnimal.id()).fail(function(err){
-          expect(err).to.be.ok();
-          done();
+    it('local delete propagates delete event', function(done){
+      Animal.create({legs : 8, name:'spider'}).then(function(tempAnimal){
+        tempAnimal.on('deleted:', function(){
+          Animal.findById(tempAnimal.id()).fail(function(err){
+            expect(err).to.be.ok();
+            done();
+          });
         });
-      });
       
-      tempAnimal.remove().then(function(){
-
+        tempAnimal.remove();
+        tempAnimal.release();
+      });
+    });
+    
+    it('remote delete propagates delete event', function(done){
+      Gnd.Model.__useDepot = false;
+      
+      Animal.create({legs : 8, name:'spider'}, true).then(function(tempAnimal){
+        tempAnimal.save();
+        
+        tempAnimal.on('deleted:', function(){
+          Animal.findById(tempAnimal.id()).fail(function(err){
+            expect(err).to.be.ok();
+            done();
+          });
+        });
+      
+        Gnd.using.storageQueue.waitUntilSynced(function(){
+          Gnd.using.storageQueue = q2;
+          Gnd.using.syncManager = sm2;
+          
+          Animal.findById(tempAnimal.id(), true).then(function(spider){
+            sm2.start(spider.getKeyPath());
+            
+            spider.remove();
+          });
+        });
       });
     });
   });
+  
+  
 });
 
 

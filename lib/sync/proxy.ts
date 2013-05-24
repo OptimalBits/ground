@@ -119,11 +119,7 @@ module Gnd.Sync {
   var _proxy;
   export function getProxy(): IProxy
   {
-    if(_proxy){
-      return _proxy;
-    }else{
-      return _proxy = new Proxy();
-    }
+    return _proxy ? _proxy : _proxy = new Proxy();
   }
 }
 

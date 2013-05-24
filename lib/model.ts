@@ -25,7 +25,6 @@
 /// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
 
-
 module Gnd {
 
 /**
@@ -35,6 +34,8 @@ module Gnd {
   for the synchronization mechanism to work properly 
   so that only one instance of every model exists at a given time.
 */
+// class SingeltonFactory // A factory that keeps a singleton for every kind of
+// instance based on a given key.
 class ModelDepot
 {
   private models = {};
@@ -44,9 +45,7 @@ class ModelDepot
     var create = (args) => {
       return ModelClass.fromJSON(args).then((instance) => {
         keepSynced && instance.keepSynced();
-        return instance.init().then(()=>{
-          return instance.autorelease();
-        });
+        return instance.init().then(()=> instance.autorelease())
       });
     }
     
@@ -65,7 +64,7 @@ class ModelDepot
       }
     }
     
-    var promise = this.models[this.key(keyPath)];
+    var promise = Model.__useDepot ? this.models[this.key(keyPath)] : null;
 
     if(!promise){
       if(fetch){
@@ -84,7 +83,7 @@ class ModelDepot
       this.setPromise(keyPath, promise);
     }
 
-    // Note. The promise returned will only retaing the model once, so be
+    // Note. The promise returned will only retain the model once, so be
     // careful with this...
     promise.then((model) => model.retain());
     
@@ -162,6 +161,7 @@ export interface IModel
 
 export class Model extends Base implements Sync.ISynchronizable
 {
+  static __useDepot: bool = true;
   static  __bucket: string;
   private __bucket: string;
   
@@ -250,17 +250,20 @@ export class Model extends Base implements Sync.ISynchronizable
   // TODO: Create must first try to find the model in the depot,
   // and "merge" the args argument with the model properties from the depot.
   // if not available it instantiate it and save it in the depot.  
-  static create(args: {}): Promise;
+  static create(args?: {}): Promise;
   static create(args: {}, keepSynced: bool): Promise;
-  static create(args: {}, keepSynced?: bool): Promise
+  static create(args?: {}, keepSynced?: bool): Promise
   {
     return overload({
       'Object Boolean': function(args, keepSynced){
         return modelDepot.getModel(this, args, keepSynced);
       },
-      'Object': function(args, cb){
+      'Object': function(args){
         return this.create(args, false);
       },
+      '': function(){
+        return this.create({});
+      }
     }).apply(this, arguments);
   }
   

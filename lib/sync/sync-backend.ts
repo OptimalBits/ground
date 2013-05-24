@@ -79,40 +79,32 @@ export class Hub {
           return;
         }
         var id = args.keyPath.join(':');
-        
-        console.log("MESSAGE:"+channel);
-        console.log(msg);
-        console.log("ID:"+id);
+        var clientId = args.clientId;
+                
+        //var room = sio.in(id).except(args.clientId);
+        console.log("About to emit: "+channel, args);
         switch(channel)
         {
           case 'update:':
-            sio.in(id).emit('update:', args.keyPath, args.doc);
+            sio.in(id).except(clientId).emit('update:', args.keyPath, args.doc);
             break;
           case 'delete:': 
-            sio.in(id).emit('delete:', args.keyPath);
+            sio.in(id).except(clientId).emit('delete:', args.keyPath);
             break;
           case 'add:':
-          console.log("Emitting ADD:"+id)
-            sio.in(id).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            sio.in(id).except(clientId).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'remove:':
-            sio.in(id).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            sio.in(id).except(clientId).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'insertBefore:':
-            console.log('Emitting inserbbefore'+id)
             sio.in(id).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
             break;
           case 'deleteItem:':
-            console.log('Emitting deleteItem'+id)
             sio.in(id).emit('deleteItem:', args.keyPath, args.id);
             break;
         }
       });
-      
-      // TODO: Implement "except" to avoid the sender to receive the message it sent
-      // Note that this has the implication that if you have several instances of one
-      // model or connection in the same browser, they will not be notificated, so
-      // some kind of intra model notification will be needed (Model Factory?)  
     }
   }
 
