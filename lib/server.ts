@@ -124,8 +124,8 @@ export class Server {
         return this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() =>
           this.storage.remove(keyPath, itemsKeyPath, itemIds, opts).then(() => {
             this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
-          });
-        });
+          })
+        );
       }
     });
   }
