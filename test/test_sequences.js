@@ -892,6 +892,8 @@ describe('Sequence Datatype', function(){
                           cow = new Animal({name: 'cow'});
                           sheep = new Animal({name: 'cow'});
                           getSequence(parade.id(), sm3, q3, true, function(animals){
+                            //Manually start sync with second sync manager
+                            sm3.start(animals.getKeyPath());
                             seq2 = animals;
                             cow2 = new Animal({name: 'cow'});
                             sheep2 = new Animal({name: 'cow'});

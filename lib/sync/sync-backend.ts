@@ -98,10 +98,10 @@ export class Hub {
             sio.in(id).except(clientId).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'insertBefore:':
-            sio.in(id).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
+            sio.in(id).except(clientId).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
             break;
           case 'deleteItem:':
-            sio.in(id).emit('deleteItem:', args.keyPath, args.id);
+            sio.in(id).except(clientId).emit('deleteItem:', args.keyPath, args.id);
             break;
         }
       });
