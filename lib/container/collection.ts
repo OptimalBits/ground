@@ -128,12 +128,15 @@ export class Collection extends Container
         
         opts = Util.extendClone(this.opts, opts);
         
+        item.autorelease();
+        
         if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
-          return this.storageQueue.remove(keyPath, itemKeyPath, [item.id(), item.cid()], opts);
+          var ids = {}
+          ids[item.cid()] = false; // order is important here!
+          ids[item.id()] = true;
+          return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
         }
-        
-        item.release();
       }
       return new Promise(true);
     });
@@ -259,7 +262,7 @@ export class Collection extends Container
     });
 
     this.on('remove:', (itemsKeyPath, itemId) => {
-      this.remove(itemId, true);
+      this.remove(itemId, {nosync: true});
     });
   }
   

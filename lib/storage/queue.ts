@@ -271,11 +271,22 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {}): Promise
+  // itemIds: {[index: string]: bool}
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise
   {
-    return this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {}).then(() => {
+    var localItemsIds = [];
+    var remoteItemIds = [];
+    
+    for(var id in itemIds){
+      if(itemIds[id]){
+        remoteItemIds.push(id);
+      }
+      localItemsIds.push(id);
+    }
+    
+    return this.localStorage.remove(keyPath, itemsKeyPath, localItemsIds, {}).then(() => {
       this.addCmd({
-        cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds
+        cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:remoteItemIds
       }, opts);
     });
   }
@@ -551,7 +562,7 @@ export class Queue extends Base implements IStorage
       })().ensure(() => syncFn());
       
     }else{
-      console.log("Queue error:"+err);
+      console.log("Queue error:"+ err, this.queue[0]);
       
       // HACK
       if(err.message == 'Invalid ObjectId'){

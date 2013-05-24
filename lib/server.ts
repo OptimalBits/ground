@@ -121,8 +121,8 @@ export class Server {
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
-        return this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() => {
-          return this.storage.remove(keyPath, itemsKeyPath, itemIds, opts).then(() => {
+        return this.rm.remove(userId, keyPath, itemsKeyPath, itemIds).then(() =>
+          this.storage.remove(keyPath, itemsKeyPath, itemIds, opts).then(() => {
             this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
           });
         });

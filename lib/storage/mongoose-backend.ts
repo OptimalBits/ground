@@ -223,6 +223,7 @@ export class MongooseStorage implements IStorage {
           promise.reject(err);
         }
       });
+      return promise;
     });
   }
   
