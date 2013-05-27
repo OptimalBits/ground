@@ -114,11 +114,9 @@ export class Queue extends Base implements IStorage
   fetch(keyPath: string[]): Promise
   {
     var promise = new Promise();
-    var remotePromise = new Promise();
     
     var fetchRemote = ()=>{
       return this.remoteStorage.fetch(keyPath).then((docRemote) => {
-        docRemote['_persisted'] = true;
         return this.localStorage.put(keyPath, docRemote, {}).then(() => {
           return docRemote;
         });
@@ -126,20 +124,15 @@ export class Queue extends Base implements IStorage
     }
     
     this.localStorage.fetch(keyPath).then((doc)=>{
+      var remotePromise = this.useRemote ? fetchRemote() : new Promise(doc);
+      
       doc['_id'] = _.last(keyPath);
       promise.resolve([doc, remotePromise]);
-      
-      if(this.useRemote){
-        fetchRemote().then((docRemote)=>{
-          remotePromise.resolve(docRemote);
-        })
-      }
     }, (err) => {
       if(!this.useRemote) return promise.reject(err);
 
       fetchRemote().then((docRemote)=>{
-        remotePromise.resolve(docRemote);
-        promise.resolve([docRemote, remotePromise]);
+        promise.resolve([docRemote, new Promise(docRemote)]);
       }).fail((err)=>{
         promise.reject(err);
       });
@@ -245,6 +238,7 @@ export class Queue extends Base implements IStorage
   {
     return this.localStorage.create(keyPath, args, opts).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
+      args['_persisted'] = true;
       this.addCmd({cmd:'create', keyPath: keyPath, args: args}, opts);
       return cid;
     });
