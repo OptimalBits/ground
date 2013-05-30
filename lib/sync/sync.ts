@@ -16,6 +16,7 @@
 */
 
 /// <reference path="proxy.ts" />
+/// <reference path="../log.ts" />
 /// <reference path="../base.ts" />
 /// <reference path="../storage/socket.ts" />
 
@@ -43,7 +44,7 @@ export class Manager extends Base {
         var doc = docs[0];
         
         Gnd.Util.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
-          console.log('Observe %s', doc.getKeyPath().join('.'))
+          log('Observe %s', doc.getKeyPath().join('.'))
         });
         
         // OBSOLETE?
@@ -59,7 +60,7 @@ export class Manager extends Base {
     // Socket Listeners
     //
     var updateFn = (keyPath, args) => {
-      console.log("Received update", keyPath, args);
+      log("Received update", keyPath, args);
       var key = keyPathToKey(keyPath);
       
       _.each(proxy.docs[key], function(doc: Base){
@@ -69,7 +70,7 @@ export class Manager extends Base {
     socket.on('update:', updateFn);
     
     var deleteFn = keyPath => {
-      console.log("Received delete", keyPath);
+      log("Received delete", keyPath);
       var key = keyPathToKey(keyPath);
       _.each(proxy.docs[key], function(doc){
         doc.emit('deleted:', doc); // rename event to 'delete:' ?
@@ -78,25 +79,25 @@ export class Manager extends Base {
     
     socket.on('delete:', deleteFn);
     var addFn = (keyPath, itemsKeyPath, itemIds) => {
-      console.log("Received add", arguments);
+      log("Received add", arguments);
       proxy.notify(keyPath, 'add:', itemsKeyPath, itemIds);
     }
     socket.on('add:', addFn);
     
     var removeFn = (keyPath, itemsKeyPath, itemIds) => {
-      console.log("Received remove", arguments);
+      log("Received remove", arguments);
       proxy.notify(keyPath, 'remove:', itemsKeyPath, itemIds);
     }
     socket.on('remove:', removeFn);
 
     var insertBeforeFn = (keyPath, id, itemKeyPath, refId) => {
-      console.log("Received insert", arguments);
+      log("Received insert", arguments);
       proxy.notify(keyPath, 'insertBefore:', id, itemKeyPath, refId);
     }
     socket.on('insertBefore:', insertBeforeFn);
 
     var deleteItemFn = (keyPath, id) => {
-      console.log("Received deleteItem", arguments);
+      log("Received deleteItem", arguments);
       proxy.notify(keyPath, 'deleteItem:', id);
     }
     socket.on('deleteItem:', deleteItemFn);
@@ -144,14 +145,14 @@ export class Manager extends Base {
   private start(keyPath: string[])
   {
     Gnd.Util.safeEmit(this.socket, 'observe', keyPath).then(() => {
-      console.log('Started observing', keyPath);
+      log('Started observing', keyPath);
     });
   }
   
   private stop(keyPath: string[])
   {
     Gnd.Util.safeEmit(this.socket, 'unobserve', keyPath).then(() => {
-      console.log('Stopped observing', keyPath);
+      log('Stopped observing', keyPath);
     });
   }
 }

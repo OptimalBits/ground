@@ -14,6 +14,7 @@
 */
 
 /// <reference path="container.ts" />
+/// <reference path="../log.ts" />
 /// <reference path="../using.ts" />
 /// <reference path="../base.ts" />
 /// <reference path="../model.ts" />
@@ -140,7 +141,7 @@ export class Sequence extends Container
       });
       if(index === -1){
         //refId not found perform a resync
-        console.log('REFID not found. Resyncing');
+        log('REFID not found. Resyncing');
         return this.triggerResync();
       }
     }else{

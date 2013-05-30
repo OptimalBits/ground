@@ -3,6 +3,7 @@
   MIT Licensed.
 */
 
+/// <reference path="../log.ts" />
 /// <reference path="../viewmodel.ts" />
 
 // TODO: Allow pipelining formatters.
@@ -69,7 +70,7 @@ export class TwoWayBinder implements Binder
         
       this.bindings.push([obj, keypath, modelListener, elemListener]);
     }else{
-      console.log("Warning: not found a valid model: "+attrBinding[0]);
+      log("Warning: not found a valid model: ", attrBinding[0]);
     }
   }
   

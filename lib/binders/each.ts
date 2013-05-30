@@ -3,6 +3,7 @@
   MIT Licensed.
 */
 
+/// <reference path="../log.ts" />
 /// <reference path="../viewmodel.ts" />
 /// <reference path="twoway.ts" />
 
@@ -175,7 +176,7 @@ export class EachBinder implements Binder
         .on('removed:', this.removedListener)
         .on('filterFn sorted: updated: inserted:', this.updatedListener);
     }else{
-      console.log("Warning: not found a valid collection: "+match[1]);
+      log("Warning: not found a valid collection: ", match[1]);
     }
   }
 
