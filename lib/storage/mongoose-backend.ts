@@ -307,7 +307,7 @@ listContainer may also have a type attribute:
 
   private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
     ParentModel.findById(parentId).exec((err, doc) => {
-      if(err) return cb(err);
+      if(!doc) return cb(err);
       this.listContainer.find()
         .where('_id').in(doc[name])
         .or([{type:'_begin'}, {type:'_end'}])
