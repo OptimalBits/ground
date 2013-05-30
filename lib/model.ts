@@ -377,6 +377,10 @@ export class Model extends Promise implements Sync.ISynchronizable
       Updates a model (in its storage) with the given args.
 
       update(args)
+      
+      TODO: 
+      Only store the models properties according to the
+      Schema.
   */
   update(args: {}): Promise
   {
@@ -447,6 +451,7 @@ export class Model extends Promise implements Sync.ISynchronizable
   /**
     Creates a collection filled with models according to the given parameters.
   */
+  static all(parent: Model, bucket: string): Promise;
   static all(parent: Model, argsOrKeypath?, bucket?: string): Promise
   {
     var allInstances = (parent, keyPath, args) =>
@@ -463,6 +468,9 @@ export class Model extends Promise implements Sync.ISynchronizable
       },
       'Model': function(parent){
         return this.all(parent, {}, this.__bucket);
+      },
+      'Model String': function(parent, bucket){
+        return this.all(parent, {}, bucket);
       },
       '': function(parent){
         return allInstances(null, [this.__bucket], {});
@@ -512,6 +520,7 @@ export class Model extends Promise implements Sync.ISynchronizable
 }
 
 // Virtual properties.
+// TODO: Add support for generating virtual properties.
 Model.prototype.id['isVirtual'] = true;
 
 }
