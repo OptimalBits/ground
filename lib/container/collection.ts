@@ -82,9 +82,10 @@ export class Collection extends Container
         this.resync(result[0]);
         result[1]
           .then((items) => this.resync(items))
-          .fail(() => this.resolve(this))
-          .then(() => this.resolve(this))
-          .then(() => this.release());
+          .ensure(() => {
+            this.resolve(this);
+            this.release();
+          })
       });
     }else{
       this.resolve(this);
