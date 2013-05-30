@@ -81,6 +81,13 @@
   
   <script>
     mocha.setup('bdd')
+    this.__extends = function (d, b) {
+      var name = d.name || d.toString().match(/^function\s*([^\s(]+)/)[1];
+      var __ = eval('(function(){return function '+name+'(){}})()');
+      __.constructor = function(){this.constructor = d};
+      __.prototype = b.prototype;
+      d.prototype = new __();
+    };
   
     var socket = io.connect();
     socket.once('connect', function(){
