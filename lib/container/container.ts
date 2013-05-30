@@ -66,7 +66,7 @@ module Gnd
     
     private static getItemIds(items: Model[])
     {
-      return _.map(items, function(item){return item.id()});
+      return _.map(items, (item) => item.id());
     }
     
     public static create(ContainerClass: IContainer,
