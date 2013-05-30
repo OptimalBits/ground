@@ -1,8 +1,8 @@
 #Introduction
 
-Ground is a compact, modern web development framework providing you with all the building blocks necessary to create realtime interactive web applications that are required to work seamlessly both online and offline.
+Ground is a compact, modern web development framework providing you with all the building blocks necessary to create rich, scalable, realtime interactive web applications that are required to work seamlessly both online and offline.
 
-Ground is light (15Kb + 5Kb of dependencies), and well suited for both desktop and mobile applications.
+Ground is light (25Kb + 5Kb of dependencies), and well suited for both desktop and mobile applications.
 
 In ground, most of the application logic is moved from the server to the client, whereas the server
 acts mostly as an scalable, efficient storage and synchronization controller.
