@@ -8,10 +8,11 @@ describe('Collection Datatype', function(){
   var storageSocket, storageQueue;
 
   var
-    Animal = Gnd.Model.extend('animals'),
+    animalSchema = new Gnd.Schema({name: String, legs: Number, pos: Number}),
+    Animal = Gnd.Model.extend('animals', animalSchema),
     Zoo = Gnd.Model.extend('zoo'),
     zoo;
-    
+
   var socket1, sl1, ss1, q1, sm1;
   var socket2, sl2, ss2, q2, sm2;
   /*
@@ -210,7 +211,7 @@ describe('Collection Datatype', function(){
               done();
             });
 
-            storageQueue.once('synced:', function(){
+            storageQueue.waitUntilSynced(function(){
               Animal.findById(leopard.id()).then(function(animal){
                 animal.keepSynced();
                 leopard.set('legs', 5);

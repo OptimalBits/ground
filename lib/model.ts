@@ -4,13 +4,13 @@
 */
 /**
   Model Class
-  
+
   This class represents a Model in a MVC architecture.
   The model supports persistent storage, offline operation 
   and automatic client<->server synchronization.
-  
+
   Events:
-  
+
   'updated:', emitted when the model has been updated.
   'resynced:', emitted when the model has been resynced.
   'deleted:', emitted when a model has been deleted.
@@ -25,10 +25,12 @@
 /// <reference path="storage/queue.ts" />
 /// <reference path="sync/sync.ts" />
 
+/// <reference path="models/schema.ts" />
+
 module Gnd {
 
 /**
-  ModelDepot
+  SingletonFactory
 
   Singleton class that keeps all the instanced models. This is fundamental
   for the synchronization mechanism to work properly 
@@ -40,105 +42,58 @@ class ModelDepot
 {
   private models = {};
 
-  getModel(ModelClass: IModel, args: {}, keepSynced: bool, keyPath?: string[]): Promise
+  getModel(ModelClass: IModel, args: {}, autosync: bool, keyPath?: string[]): Promise
   {
-    var create = (args) => {
-      return ModelClass.fromJSON(args).then((instance) => {
-        keepSynced && instance.keepSynced();
-        return instance.init().then(()=> instance.autorelease())
-      });
-    }
-    
+    var model;
     var fetch: bool = true;
+
     if(!keyPath){
+      fetch = false;
+
       if(args['_cid'] || args['_id']){
-        fetch = false;
         keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
-      }else{
-        return create(args).then((model) => {
-          var promise = new Promise(model);
-          this.setPromise(model.getKeyPath(), promise);
-          model.retain();
-          return promise;
-        });
       }
     }
-    
-    var promise = Model.__useDepot ? this.models[this.key(keyPath)] : null;
 
-    if(!promise){
-      if(fetch){
-        promise = using.storageQueue.fetch(keyPath).then((result) => {
-          return create(result[0]).then((instance) => {
-            instance.set(args);
-            result[1].then(function(doc){
-              instance.set(doc, {nosync: true});
-            });
-            return instance;
-          });
-        });
-      }else{
-        promise = create(args);
-      }
-      this.setPromise(keyPath, promise);
+    model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
+
+    if(!model){
+      var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
+      model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
+      this.setModel(model);
     }
 
-    // Note. The promise returned will only retain the model once, so be
-    // careful with this...
-    promise.then((model) => model.retain());
-    
-    return promise;
+    return model.retain();
   }
-  
-  getPromise(keyPath: string[]){
-    return this.models[this.key(keyPath)];
-  }
-  
+
   key(keyPath: string[])
   {
     return keyPath.join('/');
   }
-  
-  setModel(model: Model, promise?: Promise)
-  { 
+
+  setModel(model: Model)
+  {
     var models = this.models;
-    
-    promise = promise || new Promise(model);
-  
+
     var remoteKeyPath;
     var localKeyPath = this.key([model.bucket(), model.cid()]);
-    
-    models[localKeyPath] = promise;
-    
+
+    models[localKeyPath] = model;
+
     var setRemote = () => {
       remoteKeyPath = this.key(model.getKeyPath());
-      models[remoteKeyPath] = promise;
+      models[remoteKeyPath] = model;
     }
-    
-    if(!model.isPersisted()) {
-      model.once('id',setRemote);
-    }else{
+
+    if(model.isPersisted()) {
       setRemote();
+    }else{
+      model.once('id', setRemote);
     }
-    
+
     model.once('destroy: deleted:', () => {
       delete models[localKeyPath];
       remoteKeyPath && delete models[remoteKeyPath];
-    });
-
-    return promise;
-  }
-  
-  setPromise(keyPath: string[], promise: Promise)
-  {
-    var key = this.key(keyPath);
-    var models = this.models;
-    models[key] = promise;
-    
-    promise.then((model) => {
-      this.setModel(model, promise);
-    }, (err) => {
-      delete models[key];
     });
   }
 }
@@ -150,23 +105,40 @@ var modelDepot = new ModelDepot();
 
 export interface IModel 
 {
-  new (args: {}, bucket: string): Model;
+  new (args: {}, opts?: {}): Model;
+  new (args: {}, bucket?: string, opts?: {}): Model;
   __bucket: string;
+  schema(): Schema;
   create(args: {}, keepSynced?: bool): Promise;
-  fromJSON(args: {}): Promise;
+  fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   all(parent: Model, args: {}, bucket: string) : Promise;
   seq(parent: Model, args: {}, bucket: string) : Promise;
 }
 
-export class Model extends Base implements Sync.ISynchronizable
+export interface ModelOpts
+{
+  fetch?: bool;
+  autosync?: bool;
+  ready?: Promise;
+}
+
+export class Model extends Promise implements Sync.ISynchronizable
 {
   static __useDepot: bool = true;
-  static  __bucket: string;
+  static __bucket: string;
+  static __schema: Schema =
+    new Schema({_cid: String, _id: Schema.ObjectId, _persisted: Boolean});
+    
+  static schema(){
+    return this.__schema;
+  }
+  
   private __bucket: string;
-  
+  private __schema: Schema;
+
   private __rev: number = 0;
-  
+
   private _persisted: bool = false;
 
   // Dirty could be an array of modified fields
@@ -174,40 +146,68 @@ export class Model extends Base implements Sync.ISynchronizable
   // when receiving a resync event we could check if there is a 
   // conflict or not.
   private _dirty: bool = true;
-  
+
   private _keepSynced: bool = false;
-  
+
   private _cid: string;
   private _id: string;
-  
+
+  private opts: ModelOpts;
+
   private _storageQueue: Storage.Queue;
-  
+
   public _initial: bool = true;
-    
-  constructor(args: {}, bucket: string){
+
+  constructor(args: {}, opts?: ModelOpts);
+  constructor(args: {}, bucket?: any, opts?: ModelOpts){
     super();
-        
+    
     _.extend(this, args);
-    
+    _.defaults(this, this.__schema.toObject(this)); // TODO: opts.strict -> extend instead of defaults.
+
     this._cid = this._id || this._cid || Util.uuid();
-    this.__bucket = bucket;
-    
-    this.on('changed:', () => {
-      this._dirty = true;
-    });
-    
+
+    this.opts = (_.isString(bucket) ? opts : bucket) || {}
+    this.__bucket = _.isString(bucket) ? bucket : null;
+
+    this.on('changed:', () => this._dirty = true);
+
     this._storageQueue = 
       using.storageQueue || new Storage.Queue(using.memStorage);
-    
+
     if(this.isPersisted()){
-        this._initial = false;
+      this._initial = false;
     }else{
-      this._storageQueue.once('created:'+this.id(), (id) => {
-        this.id(id);
-      });
+      this._storageQueue.once('created:'+this.id(), (id) => this.id(id));
     }
+    
+    var ready = this.opts.ready || this;
+    if(this.opts.ready){
+      ready.then(()=> this.resolve(this), (err)=> this.reject(err));
+    }
+
+    var keyPath = this.getKeyPath();
+    if(keyPath && this.opts.fetch){
+      this._initial = false;
+      this.retain();
+      using.storageQueue.fetch(keyPath).then((result) => {
+        this.set(result[0], {nosync: true});// not sure if nosync should be true or not here...
+        result[1]
+          .then((doc) => {
+            this.set(doc, {nosync: true});
+          })
+          .ensure(() => {
+            this.resolve(this);
+            this.release();
+          });
+      }).fail((err) => this.reject(err)).ensure(() => this.release());
+    }else{
+      this.resolve(this);
+    }
+
+    this.opts.autosync && this.keepSynced();
   }
-  
+
   /**
    *
    *  Subclasses the Model class
@@ -217,23 +217,27 @@ export class Model extends Base implements Sync.ISynchronizable
    *  @return {IModel} A Model Subclass.
    *
    */
-  static extend(bucket: string)
+  static extend(bucket: string, schema: Schema)
   {
     var _this = this;
-    function __(args, _bucket) {
+    
+    function __(args, _bucket, opts) {
       var constructor = this.constructor;
-      _this.call(this, args, bucket || _bucket);
+      this.__schema = __['__schema'];
+      _this.call(this, args, bucket || _bucket, opts || _bucket);
       
       // Call constructor if different from Model constructor.
       if(constructor && (_this != constructor)){
         constructor.call(this, args);
       }
     }; 
-    
+
     Util.inherits(__, this);
-    
+
     // Copy Models static methods
     _.extend(__, {
+      __schema: Schema.extend(this.__schema, schema),
+      schema: this.schema,
       __bucket: bucket,
       extend: this.extend,
       create: this.create,
@@ -243,13 +247,13 @@ export class Model extends Base implements Sync.ISynchronizable
       fromJSON: this.fromJSON,
       fromArgs: this.fromArgs
     });
-    
+
     return __;
   }
 
   // TODO: Create must first try to find the model in the depot,
   // and "merge" the args argument with the model properties from the depot.
-  // if not available it instantiate it and save it in the depot.  
+  // if not available instantiate it and save it in the depot.  
   static create(args?: {}): Promise;
   static create(args: {}, keepSynced: bool): Promise;
   static create(args?: {}, keepSynced?: bool): Promise
@@ -266,7 +270,7 @@ export class Model extends Base implements Sync.ISynchronizable
       }
     }).apply(this, arguments);
   }
-  
+
   static findById(keyPathOrId, keepSynced?: bool, args?: {}): Promise
   {
     return overload({
@@ -287,7 +291,7 @@ export class Model extends Base implements Sync.ISynchronizable
       }, 
     }).apply(this, arguments);
   }
-  
+
   /**
     Removes a model from the storage.
   */
@@ -296,82 +300,79 @@ export class Model extends Base implements Sync.ISynchronizable
     var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
     return using.storageQueue.del(keyPath, {});
   }
-  
-  static fromJSON(args): Promise
+
+  static fromJSON(args, opts?): Model
   {
-    return new Promise(new this(args));
+    return new this(args, opts);
   }
-  
-  static fromArgs(args): Promise
+
+  static fromArgs(args, opts?): Model
   {
-    return this.fromJSON(args);
+    return this.fromJSON(args, opts);
   }
-  
+
   destroy(): void
   {
     using.syncManager && using.syncManager.unobserve(this);
     super.destroy();
   }
-  
+
   init(): Promise
   {
     return new Promise(this);
   }
-  
+
   id(id?: string): string 
   {
     if(id){
       this._id = id;
       this._persisted = true;
-      this.emit('id', id);
+      this.emit('_persisted', true);
+      this.emit('id', id); // DEPRECATED!
     }
     return this._id || this._cid;
   }
-  
+
   cid(): string
   {
     return this._cid;
   }
-  
+
   getName(): string
   {
     return "Model";
   }
-  
+
   getKeyPath(): string[]
   {
     return [this.__bucket, this.id()];
   }
-  
+
   getLocalKeyPath(): string[]
   {
     return [this.__bucket, this.cid()];
   }
-  
+
   isKeptSynced(): bool
   {
     return this._keepSynced;
   }
-  
+
   isPersisted(): bool
   {
-    return this._persisted;// || (this._state >= ModelState.CREATED);
+    return this._persisted;
   }
-  
+
   bucket(): string
   {
     return this.__bucket;
   }
-  
+
   save(): Promise
   {
     return this.update(this.toArgs());
   }
-  
-  //
-  // TODO: Should update be a static method instead? since
-  // we can have several instances of the same model it feels more correct.
-  //
+
   /*
       Updates a model (in its storage) with the given args.
 
@@ -382,16 +383,16 @@ export class Model extends Base implements Sync.ISynchronizable
     var
       bucket = this.__bucket,
       id = this.id();
-    
+      
     if(!this._dirty) return new Gnd.Promise(true);
-    
+
     if(this._initial){
       args['_initial'] = this._initial = false;
       this._storageQueue.once('created:'+id, (id) => {
         this.id(id);
       });
       Util.merge(this, args);
-      return this._storageQueue.create([bucket], this.toArgs(), {});
+      return this._storageQueue.create([bucket], this.toArgs(), args);
     }else{
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
@@ -411,52 +412,38 @@ export class Model extends Base implements Sync.ISynchronizable
       this.emit('deleted:', this);
     });
   }
-    
+
+  // autosync(enable: bool)
   keepSynced()
   {
     if(this._keepSynced) return;
-  
+
     this._keepSynced = true;
-    
+
     var startSync = () => {
-      using.syncManager && using.syncManager.observe(this);
+      if(this.isPersisted()){
+        using.syncManager && using.syncManager.observe(this);
+        this.off('_persisted', startSync);
+      }
     }
-  
+
     if (this.isPersisted()){
       startSync();
     }else{
-      this.once('id', startSync);
+      this.on('_persisted', startSync);
     }
-    
+
     this.on('changed:', (doc, options) => {
       if(!options || ((!options.nosync) && !_.isEqual(doc, options.doc))){
         this.update(doc);
       }
     });
   }
-  
+
   toArgs(){
-    var args = {
-      _persisted:this._persisted, 
-      _cid:this._cid
-    };
-    
-    for(var key in this){
-      if(!_.isUndefined(this[key])  &&  
-         !_.isNull(this[key])       &&
-         !_.isFunction(this[key])   &&
-         (key[0] !== '_')) {
-        
-        if(_.isFunction(this[key].toArgs)){
-          args[key] = this[key].toArgs();
-        }else if(!_.isObject(this[key])){
-          args[key] = this[key]
-        }
-      }
-    }
-    return args
+    return this.__schema.toObject(this);
   }
-  
+
   /**
     Creates a collection filled with models according to the given parameters.
   */
@@ -499,7 +486,7 @@ export class Model extends Base implements Sync.ISynchronizable
   {
     var allInstances = (parent, keyPath, args) =>
       Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
-    
+
     return overload({
       'Model Array Object': function(parent, keyPath, args){
         return allInstances(parent, keyPath, args);
