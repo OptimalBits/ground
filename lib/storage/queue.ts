@@ -117,6 +117,7 @@ export class Queue extends Base implements IStorage
     
     var fetchRemote = ()=>{
       return this.remoteStorage.fetch(keyPath).then((docRemote) => {
+        docRemote['_persisted'] = true;
         return this.localStorage.put(keyPath, docRemote, {}).then(() => {
           return docRemote;
         });
