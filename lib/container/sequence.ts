@@ -78,9 +78,10 @@ export class Sequence extends Container
       using.storageQueue.all(keyPath, {}, {}).then((result) => {
         this.resync(result[0]);
         result[1].then((items) => this.resync(items))
-          .then(() => this.resolve(this))
-          .fail(() => this.resolve(this))
-          .then(() => this.release());
+          .ensure(() => {
+            this.resolve(this);
+            this.release();
+          });
       });
     }else{
       this.resolve(this);
