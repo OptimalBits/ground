@@ -226,12 +226,10 @@ export class Collection extends Container
     opts = Util.extendClone(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
-      if(item.isPersisted()){
+      if(item.isPersisted() || !item._initial){
         return this.addPersistedItem(item);
       }else{
-        return item.save().then(()=>{
-          return this.addPersistedItem(item);
-        });
+        return item.save().then(() => this.addPersistedItem(item));
       }
     }
     return new Promise(true);

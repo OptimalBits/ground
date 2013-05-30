@@ -159,7 +159,7 @@ export class Sequence extends Container
     this.set('count', this.items.length);
     
     if(!opts || !opts.nosync){
-      if(item.isPersisted()){
+      if(item.isPersisted() || !item._initial){
         this._keepSynced && item.keepSynced();
         promise = this.insertPersistedItemBefore(refId, item, opts).then(done);
       }else{
