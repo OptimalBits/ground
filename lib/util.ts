@@ -30,6 +30,15 @@ export function uuid(a?,b?){
   return b;
 };
 
+// credits: https://gist.github.com/1200559/1c2b2093a661c4727958ff232cd12de8b8fb9db9
+export function adler32(s: string): number
+{
+  for(var b=65521,c=1,d=0,e=0,f; f=s.charCodeAt(e++); d=(d+c)%b){
+    c=(c+f)%b;
+  }
+  return(d<<16)|c;
+}
+
 export function refresh(){
     window.location.replace('');
 };
@@ -289,9 +298,8 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
     methods = subclass(parent.prototype);
     d = methods.constructor;
   }
-  function __() { this.constructor = d; }
-  __.prototype = parent.prototype;
-  d.prototype = new __();
+  
+  inherits(d, parent);
   
   _.extend(d.prototype, methods);
   
