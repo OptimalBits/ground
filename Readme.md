@@ -1,6 +1,6 @@
 #Introduction
 
-Ground is a compact, modern web development framework providing you with all the building blocks necessary to create rich, scalable, realtime interactive web applications that are required to work seamlessly both online and offline.
+Ground is a compact, modern web development framework that provides you a firm foundation to create rich, modular, scalable, realtime interactive web applications that are required to work seamlessly both online and offline.
 
 Ground is light (25Kb + 5Kb of dependencies), and well suited for both desktop and mobile applications.
 
@@ -147,7 +147,7 @@ by the framework internally to provide some smart features.
 
 Also note that the framework is taking care of the asynchronicity between calls, for example, the render
 function will fetch a template from the server, but the user does not need to wait for it before 
-calling the next *get* functions. This is achieved by using promises internally. 
+calling the next *get* functions.
 
 
 ##Entering the routes
@@ -551,7 +551,7 @@ Subcollections is a powerfull concept that allows us to define very complex hier
 
 ##Sequences
 
-Sequences provides a convenient way to represent a list of model instances. A sequence can be kept synchronized across many clients and is implemented as a Commutative Replicated Data Type (CRDT) meaning that all operations are commutative. This means tha sequences will eventually converge to a common state even when multiple client simultaneously modifies the same sequence.
+Sequences provides a convenient way to represent a list of model instances. A sequence can be kept synchronized across many clients and is implemented as a Commutative Replicated Data Type (CRDT) meaning that all operations are commutative. This implies that sequences will eventually converge to a common state even when multiple client simultaneously modifies the same sequence.
 
 A sequence is instantiated by using the *seq* function on a model:
 
@@ -602,9 +602,8 @@ performance and responsivity. The major implication of this is that you have alw
 your listeners before you emit, otherwise the event will be missed.
 
 
-
-
 ##Undo / Redo
+
 
 ##Offline
 
@@ -612,7 +611,6 @@ A modern web application should be able to work offline. Ground provides a compl
 
 
 #Views
-
 
 
 ##ViewModel and Declarative Bindings
