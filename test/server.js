@@ -209,12 +209,13 @@ app.del('/sessions',  function(req, res) {
 //
 // Mongoose test database
 //
+var mongooseDB = 'mongodb://localhost/GndTextDB';
 
-mongoose.connect('mongodb://localhost/testGingerSync', function(){
+mongoose.connect(mongooseDB, function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
     console.log(result);
     mongoose.disconnect(function(){
-      mongoose.connect('mongodb://localhost/testGingerSync');
+      mongoose.connect(mongooseDB);
 
       app.listen(10000);
       appSessions.listen(9999);
