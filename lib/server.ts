@@ -7,6 +7,7 @@
   the synchronization module.
 */
 
+/// <reference path="log.ts" />
 /// <reference path="storage/storage.ts" />
 /// <reference path="sync/sync-backend.ts" />
 /// <reference path="session/rightsmanager.ts" />
@@ -62,7 +63,7 @@ export class Server {
             this.syncHub && this.syncHub.update(clientId, keyPath, doc);
           }).fail((err)=>{
             // TODO: remove rights
-            console.log("Error updating document:"+keyPath+":"+err)
+            log("Error updating document:", keyPath, err)
           });
         });
       }

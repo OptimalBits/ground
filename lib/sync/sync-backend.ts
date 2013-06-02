@@ -13,6 +13,7 @@
   models and their IDs.
 */
 
+/// <reference path="../log.ts" />
 /// <reference path="../../third/underscore.d.ts" />
 
 module Gnd.Sync {
@@ -29,25 +30,23 @@ export class Hub {
       }
 
       sio.on('connection', (socket) => {
-        console.log("Socket %s connected in the Sync Module", socket.id);
+        log("Socket %s connected in the Sync Module", socket.id);
         
         socket.on('observe', function(keyPath: string[], cb:(err?: Error) => void){
           
-          console.log("Request to start observing:"+keyPath);
-          console.log(keyPath);
+          log("Request to start observing:", keyPath);
           
           if(!Array.isArray(keyPath)){
             cb && cb(new TypeError("keyPath must be a string[]"));
           }else{
             var id = keyPath.join(':');
-            console.log("ID:"+id)
             
             if(this.check){
               if (this.check(socket.id, keyPath)){
                 socket.join(id);
               }
             }else{
-              console.log("Socket %s started synchronization for id:%s", socket.id, keyPath);
+              log("Socket %s started synchronization for id:%s", socket.id, keyPath);
               socket.join(id);
             }
             cb();
@@ -55,10 +54,9 @@ export class Hub {
         });
     
         socket.on('unobserve', function(keyPath: string[], cb:(err?: Error) => void){
-          console.log("Request to stop observing:"+keyPath);
           var id = keyPath.join(':');
-          console.log("Socket %s stopped synchronization for id:%s", socket.id, id);
           socket.leave(id);
+          log("Socket %s stopped synchronization for id:%s", socket.id, id);
           cb();
         });
       });
@@ -74,15 +72,14 @@ export class Hub {
         var args = JSON.parse(msg);
         
         if(!_.isArray(args.keyPath)){
-          console.log("Error: keyPath must be an array:");
-          console.log(args.keyPath);
+          log("Error: keyPath must be an array:", args.keyPath);
           return;
         }
         var id = args.keyPath.join(':');
         var clientId = args.clientId;
                 
         //var room = sio.in(id).except(args.clientId);
-        console.log("About to emit: "+channel, args);
+        log("About to emit: ", channel, args);
         switch(channel)
         {
           case 'update:':
@@ -131,16 +128,14 @@ export class Hub {
   insertBefore(clientId: string, keyPath: string[], id: string, itemKeyPath: string[], refId: string)
   {
     var args = {keyPath: keyPath, id: id, itemKeyPath: itemKeyPath, refId: refId, clientId: clientId};
-    console.log('insertBefore-synchub');
-    console.log(args);
+    log('insertBefore-synchub', args);
     this.pubClient.publish('insertBefore:', JSON.stringify(args));
   }
 
   deleteItem(clientId: string, keyPath: string[], id: string)
   {
     var args = {keyPath: keyPath, id: id, clientId: clientId};
-    console.log('deleteItem-synchub');
-    console.log(args);
+    log('deleteItem-synchub', args);
     this.pubClient.publish('deleteItem:', JSON.stringify(args));
   }
 }

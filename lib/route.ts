@@ -8,6 +8,7 @@
   the specified DOM nodes in the hierarchy.
 */
 
+/// <reference path="log.ts" />
 /// <reference path="base.ts" />
 /// <reference path="task.ts" />
 /// <reference path="overload.ts" />
@@ -129,27 +130,25 @@ function executeRoute(url, routeHandler){
     
     routeHandler(req);
     
-    if(req){
-      if(req.index == index ){
-        req.isNotFound = true;
-        req.queue.end();
-      }
+    if(req.index == index ){
+      req.isNotFound = true;
+      req.queue.end();
+    }
     
-      req.queue.wait(function(isCancelled){
-        if(req.isNotFound){
-          if(req.notFoundFn){
-            req.index = 1;
-            req.initNode('body');
-            req.notFoundFn.call(req, req);
-            var queue = new TaskQueue();
-            enqueueNode(queue, req.node())
-          }else{
-            console.log('Undefined route:'+url);
-            return;
+    req.queue.wait(function(isCancelled){
+      if(req.isNotFound){
+        if(req.notFoundFn){
+          req.index = 1;
+          req.initNode('body');
+          req.notFoundFn.call(req, req);
+          var queue = new TaskQueue();
+          enqueueNode(queue, req.node())
+        }else{
+          log('Undefined route:'+url);
+          return;
           }
         }
-      });
-    }
+    });
   }
 }
 

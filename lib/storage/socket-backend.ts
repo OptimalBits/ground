@@ -6,6 +6,7 @@
   Socket.io server backend.
 */
 
+/// <reference path="../log.ts" />
 /// <reference path="../server.ts" />
 /// <reference path="../error.ts" />
 /// <reference path="../../third/socket.io.d.ts" />
@@ -22,16 +23,12 @@ function scb(cb){
 
 function callback(promise, cb){
   promise.then((val)=>{
-    console.log("CALLBACK:"+val);
     cb(null, val);
   }).fail((err)=>{
     cb(err.message)
   });
 }
   
-
-
-
 module Gnd {
 export class SocketBackend {
   constructor(socketManager: any, server: Server){
@@ -45,8 +42,7 @@ export class SocketBackend {
         
         // Models
         socket.on('create', function(keyPath: string[], doc: {}, cb: (err: ServerError, key?: string) => void){
-          console.log(clientId+"TRYING TO CREATE");
-          console.log("SESSION:"+session);
+          log("Request to create instance:", clientId, keyPath, session);
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.create(session.userId, keyPath, doc, {}), cb);
         });
