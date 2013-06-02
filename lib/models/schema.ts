@@ -150,7 +150,7 @@ module Gnd
       
       _.each(this.compiledSchema, (type: SchemaType, property?) => {
         var src = obj[property];
-        if(src){
+        if(!_.isUndefined(src)){
           result[property] = 
             (extra && extra[property] && extra[property].toObject(src)) ||
             type.toObject(src);
