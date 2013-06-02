@@ -6,8 +6,9 @@
   Storage Queue
 */
 
-/// <reference path="../error.ts" />
 /// <reference path="storage.ts" />
+/// <reference path="query.ts" />
+/// <reference path="../error.ts" />
 /// <reference path="../promise.ts" />
 /// <reference path="../container/sequence.ts" />
 
@@ -177,7 +178,7 @@ export class Queue extends Base implements IStorage
   // CHALLENGE: This method must be ATOMIC, and this only holds if using
   // a synchronouse local store.
   private updateLocalCollection(keyPath: string[], 
-                                query: {}, 
+                                query: IStorageQuery, 
                                 options: {},
                                 newItems: any[]): Promise // Promise<{}[]>
   {
@@ -185,6 +186,8 @@ export class Queue extends Base implements IStorage
       storage = this.localStorage,
       itemKeyPath = [_.last(keyPath)],
       result = [];
+    
+    query = query || {};
     
     newItems = newItems || [];
     options = _.extend({snapshot: false}, options);
@@ -201,10 +204,12 @@ export class Queue extends Base implements IStorage
         
       // Gather item ids to be removed from localStorage 
       _.each(oldItems, (oldItem) => {
-        if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
-          itemsToRemove.push(oldItem._cid, oldItem._id);
-        }else if(oldItem.__op !== 'rm'){
-          result.push(oldItem);
+        if(Query.match(query.cond || {}, oldItem)){
+          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
+            itemsToRemove.push(oldItem._cid, oldItem._id);
+          }else if(oldItem.__op !== 'rm'){
+            result.push(oldItem);
+          }
         }
       });
         
@@ -230,7 +235,9 @@ export class Queue extends Base implements IStorage
       ).fail(); // catch this failure to avoid propagation.
     
     // We cannot get the local items, so lets write all we got from remote
-    }).fail(() => storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true}));
+    }).fail(() => 
+      storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true})
+      .then(() => newItems));
   }
 
   // Put all local storage operations in a task queue, so that they are
@@ -286,7 +293,7 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: {}, options: {}): Promise
+  find(keyPath: string[], query: IStorageQuery, options: {}): Promise
   {
     var promise = new Promise();
     var remotePromise = new Promise();

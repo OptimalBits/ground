@@ -925,11 +925,94 @@ describe('Collection Datatype', function(){
   });
   
   describe('Queries', function(){
-    it.skip('find models in collection limiting result');
+    it('find models in orphan collection', function(done){
+      var NUM_TIGERS = 10;
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'tiger', legs: i}).save();
+      }
 
-    it.skip('find models in collection paginating');
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'panther'}).save();
+      }
+      
+      var query = {
+        cond: {name: 'tiger'}
+      }
+      
+      storageQueue.waitUntilSynced(function(){
+        Animal.find(query).then(function(tigers){
+          tigers.each(function(tiger){
+            expect(tiger).to.have.property('name');
+            expect(tiger.name).to.be('tiger');
+          });
+          expect(tigers.count).to.be.greaterThan(9);
+          done();
+        });
+      });
+    });
+    
+    it('find models in collection limiting result', function(done){
+      var NUM_TIGERS = 10;
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'tiger', legs: i}).save();
+      }
+
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'panther'}).save();
+      }
+      
+      var query = {
+        cond: {name: 'tiger'},
+        opts: {limit: 5}
+      }
+      
+      storageQueue.waitUntilSynced(function(){
+        Animal.find(query).then(function(tigers){
+          console.log(tigers);
+          tigers.each(function(tiger){
+            expect(tiger).to.have.property('name');
+            expect(tiger.name).to.be('tiger');
+          });
+          expect(tigers.count).to.be(5);
+          done();
+        });
+      });
+    
+    });
+
+    it('find models in collection sorting', function(done){
+      var NUM_TIGERS = 10;
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'horse', legs: parseInt(1000*Math.random()+1)}).save();
+      }
+
+      for(var i=0; i<NUM_TIGERS; i++){
+        Animal.create({name: 'panther'}).save();
+      }
+      
+      var query = {
+        cond: {name: 'horse'},
+        opts: {sort: {legs: 1}, limit: 8}
+      }
+      
+      storageQueue.waitUntilSynced(function(){
+        Animal.find(query).then(function(horses){
+          var legs = 0;
+          console.log(horses)
+          horses.each(function(horse){
+            expect(horse).to.have.property('name');
+            expect(horse.name).to.be('horse');
+            expect(horse).to.have.property('legs');
+            expect(legs).to.be.within(0, horse.legs);
+            legs = horse.legs;
+          });
+          expect(horses.count).to.be(8);
+          done();
+        });
+      });
+    });
   
-    it.skip('find models in collection sorting and paginating');
+    it.skip('find models in collection paginating');
   });
   
   describe('Orphan collections', function(){

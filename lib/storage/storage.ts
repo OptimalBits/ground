@@ -47,10 +47,17 @@ export interface IStorage extends ISetStorage, ISeqStorage {
 //
 //  Set / Collection Storage (unordered)
 //
+
+export interface IStorageQuery {
+  fields?: String;
+  cond?: {};
+  opts?: {};
+}
+
 export interface ISetStorage {
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; // Promise<void>
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; //Promise<void>
-  find(keyPath: string[], query: {}, opts: {}): Promise; // Promise<any[]>
+  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise; // Promise<any[]>
 }
 
 //

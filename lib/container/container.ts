@@ -27,6 +27,7 @@ module Gnd
   {
     key?: string;
     nosync?: bool;
+    query?: IStorageQuery;
   }
   
   export class Container extends Promise implements Sync.ISynchronizable

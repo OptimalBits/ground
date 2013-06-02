@@ -42,9 +42,9 @@ export class Collection extends Container
   public sortByFn: () => number; //public sortByFn: string;
   public sortOrder: string = 'asc';
   
-  constructor(model: IModel, collectionName?: string, parent?: Model, items?: Model[])
+  constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: Model[])
   {
-    super(model, collectionName, parent, items);
+    super(model, opts, parent, items);
     
     var _this = this;
     this.updateFn = function(args){
@@ -78,7 +78,7 @@ export class Collection extends Container
     var keyPath = this.getKeyPath();
     if(keyPath && !this.opts.nosync){
       this.retain();
-      using.storageQueue.find(keyPath, {}, {}).then((result) => {
+      using.storageQueue.find(keyPath, opts.query, {}).then((result) => {
         this.resync(result[0]);
         result[1]
           .then((items) => this.resync(items))

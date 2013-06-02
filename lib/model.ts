@@ -112,7 +112,8 @@ export interface IModel
   create(args: {}, keepSynced?: bool): Promise;
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
-  all(parent: Model, args: {}, bucket: string) : Promise;
+  find(query: IStorageQuery): Promise;
+  all(parent?: Model, args?: {}, bucket?: string) : Promise;
   seq(parent: Model, args: {}, bucket: string) : Promise;
 }
 
@@ -235,17 +236,22 @@ export class Model extends Promise implements Sync.ISynchronizable
     Util.inherits(__, this);
 
     // Copy Models static methods
+    var statics = 
+      ['schema',
+       'extend',
+       'create',
+       'findById',
+       'find',
+       'all',
+       'seq',
+       'fromJSON',
+       'fromArgs'];
+
+    _.each(statics, (method) => __[method] = this[method]);
+      
     _.extend(__, {
       __schema: Schema.extend(this.__schema, schema),
-      schema: this.schema,
       __bucket: bucket,
-      extend: this.extend,
-      create: this.create,
-      findById: this.findById,
-      all: this.all,
-      seq: this.seq,
-      fromJSON: this.fromJSON,
-      fromArgs: this.fromArgs
     });
 
     return __;
@@ -396,7 +402,7 @@ export class Model extends Promise implements Sync.ISynchronizable
         this.id(id);
       });
       Util.merge(this, args);
-      return this._storageQueue.create([bucket], this.toArgs(), args);
+      return this._storageQueue.create([bucket], args, {});
     }else{
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
@@ -448,11 +454,20 @@ export class Model extends Promise implements Sync.ISynchronizable
     return this.__schema.toObject(this);
   }
 
+  static find(query: IStorageQuery): Promise
+  {
+    var opts = {
+      key: this.__bucket, 
+      query: query
+    }
+    return Container.create(Collection, this, opts);
+  }
+
   /**
     Creates a collection filled with models according to the given parameters.
   */
-  static all(parent: Model, bucket: string): Promise;
-  static all(parent: Model, argsOrKeypath?, bucket?: string): Promise
+  static all(parent: Model, bucket?: string): Promise;
+  static all(parent?: Model, argsOrKeypath?, bucket?: string): Promise
   {
     var allInstances = (parent, keyPath, args) =>
       Container.create(Collection, this, {key: _.last(keyPath)}, parent);

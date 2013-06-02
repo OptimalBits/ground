@@ -227,11 +227,11 @@ export class MongooseStorage implements IStorage {
     });
   }
   
-  find(keyPath: string[], query: {}, opts: {}): Promise
+  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise
   {
     return this.getModel(keyPath).then((found)=>{
       if(keyPath.length === 1){
-        return this.findAll(found.Model);
+        return this.findAll(found.Model, query);
       }else{
         var id = keyPath[keyPath.length-2];
         var setName = _.last(keyPath);
@@ -240,36 +240,35 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  private findAll(Model: IMongooseModel): Promise
+  private findAll(Model: IMongooseModel, query: IStorageQuery): Promise
   {
     var promise = new Promise();
-    Model
-      .find({})
-      .exec(function(err, doc){
-        if(err){
-          promise.reject(err);
-        }else{
-          promise.resolve(doc);
-        }
-      });
+    console.log(query)
+    Model.find(query.cond, query.fields, query.opts, (err, doc?) => {
+      if(err){
+        promise.reject(err);
+      }else{
+        promise.resolve(doc);
+      }
+    });
     return promise;
   }
 
   private findById(Model: IMongooseModel, 
                    id: string, 
                    setName: string,
-                   query: {},
+                   query: IStorageQuery,
                    opts: {}): Promise
   {
-    var query = query || {fields:null, cond:null, options:null};
+    query = query || {};
+    
     var promise = new Promise();
     
-    // TODO: add definition types for Query object to allow using dot syntax.
     Model
       .findById(id)
       .select(setName)
-      .populate(setName, query['fields'], query['cond'], query['options'])
-      .exec(function(err, doc){
+      .populate(setName, query.fields, query.cond, query.opts)
+      .exec((err, doc) => {
         if(err){
           promise.reject(err);
         }else{
