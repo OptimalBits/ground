@@ -180,6 +180,12 @@ export class View extends Base
     }
   }
   
+  refresh(): Promise
+  {
+    this.clean();
+    return this.render();
+  }
+  
   disable(disable)
   {
     console.log(this+" does not implement disable")
