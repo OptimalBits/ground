@@ -1207,6 +1207,32 @@ describe('Sequence Datatype', function(){
           });
         });
       });
+      //Doesn't pass
+      it.skip('Repeated moves lead to a consistent state', function(done){
+        var count = 0;
+        function inserted(){
+          count++;
+          if(count === 8){
+            console.log(_.map(seq.items, function(item){return item.id;}));
+            console.log(_.map(seq2.items, function(item){return item.id;}));
+            seqEqual(seq, seq2);
+            seq.off('inserted:', inserted);
+            seq2.off('inserted:', inserted);
+            done();
+          }
+          console.log(count);
+        }
+        seq.on('inserted:', inserted);
+        seq2.on('inserted:', inserted);
+        seq.move(0, 1).then(function(){
+          seq2.move(2, 3).then(function(){
+            seq.move(0, 1).then(function(){
+              seq.move(0, 1).then(function(){
+              });
+            });
+          });
+        });
+      });
     });
     describe('Consistent local storage', function(){
       it('Simultaneous moves lead to a consistent state', function(done){

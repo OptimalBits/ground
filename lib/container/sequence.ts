@@ -127,8 +127,22 @@ export class Sequence extends Container
       });
     }
 
-    var found = !!_.find(this.items, function(item){ return item.id === id; });
-    if(found) return Promise.rejected(Error('Tried to insert duplicate container'));
+    var found;
+    for(var i=this.items.length-1; i>=0; i--) {
+      if(this.items[i].id === id){
+        found = this.items[i];
+        break;
+      }
+    }
+    // var found = _.find(this.items, function(item){ return item.id === id; });
+    if(found){
+      var next = this.items[i+1];
+      if((!refId && !next) || refId === next.id){
+        return Promise.resolved(); //already at the right place
+      }else{
+        return Promise.rejected(Error('Tried to insert duplicate container'));
+      }
+    }
     
 
     var index;
