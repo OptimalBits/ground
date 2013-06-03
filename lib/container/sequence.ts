@@ -278,7 +278,7 @@ export class Sequence extends Container
     return Gnd.Promise.map(commands, (cmd) => {
       switch(cmd.cmd) {
         case 'insertBefore':
-          return this.model.create(cmd.doc, false).then((instance) =>
+          return this.model.create(cmd.doc, true).then((instance) =>
             this.insertItemBefore(cmd.refId, instance, cmd.newId, opts));
           break;
         case 'removeItem':
