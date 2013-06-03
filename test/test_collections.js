@@ -968,7 +968,6 @@ describe('Collection Datatype', function(){
       
       storageQueue.waitUntilSynced(function(){
         Animal.find(query).then(function(tigers){
-          console.log(tigers);
           tigers.each(function(tiger){
             expect(tiger).to.have.property('name');
             expect(tiger.name).to.be('tiger');
