@@ -165,7 +165,11 @@ export class Model extends Promise implements Sync.ISynchronizable
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
     super();
     
-    _.extend(this, args);
+    //_.extend(this, args);
+    // Experimental...
+    args = args || {};
+    this.resync(args);
+    
     _.defaults(this, this.__schema.toObject(this)); // TODO: opts.strict -> extend instead of defaults.
 
     this._cid = this._id || this._cid || Util.uuid();
@@ -184,9 +188,12 @@ export class Model extends Promise implements Sync.ISynchronizable
       this._storageQueue.once('created:'+this.id(), (id) => this.id(id));
     }
     
-    var ready = this.opts.ready || this;
+    var ready = new Promise();
     if(this.opts.ready){
-      ready.then(()=> this.resolve(this), (err)=> this.reject(err));
+      this.opts.ready.then(() => 
+        ready.then(() => this.resolve(this), (err)=> this.reject(err)));
+    }else{
+      ready.then(() => this.resolve(this), (err)=> this.reject(err));
     }
 
     var keyPath = this.getKeyPath();
@@ -194,21 +201,25 @@ export class Model extends Promise implements Sync.ISynchronizable
       this._initial = false;
       this.retain();
       using.storageQueue.fetch(keyPath).then((result) => {
-        this.set(result[0], {nosync: true});// not sure if nosync should be true or not here...
+        this.resync(result[0]);// not sure if nosync should be true or not here...
         result[1]
-          .then((doc) => {
-            this.set(doc, {nosync: true});
-          })
+          .then((doc) => this.resync(doc))
           .ensure(() => {
-            this.resolve(this);
+            ready.resolve(this);
             this.release();
           });
-      }).fail((err) => this.reject(err)).ensure(() => this.release());
+      }).fail((err) => ready.reject(err)).ensure(() => this.release());
     }else{
-      this.resolve(this);
+      ready.resolve(this);
     }
 
     this.opts.autosync && this.keepSynced();
+  }
+  
+  resync(args): void
+  {
+    // this.schema.populate(args) // populates instances from schema definition
+    this.set(args, {nosync: true});
   }
 
   /**
