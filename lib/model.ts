@@ -61,6 +61,8 @@ class ModelDepot
       var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
       model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
       this.setModel(model);
+    }else{
+      autosync && model.keepSynced();
     }
 
     return model.retain();
