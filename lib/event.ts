@@ -16,9 +16,10 @@
 //
 
 /// <reference path="../third/underscore.d.ts" />
+/// <reference path="util" />
 
 module Gnd {
-
+  
 export class EventEmitter {
   private _listeners;
   private _namespaces;
@@ -42,10 +43,10 @@ export class EventEmitter {
     */
   on(eventNames, listener) {
     var events = eventNames.split(' '), listeners = this.getListeners();
-  
+
     for(var i=0, len=events.length;i<len;i++){
       var eventAndNamespace = events[i].split('/'), event, namespace;
-    
+
       if(eventAndNamespace.length > 1){
         namespace = eventAndNamespace[0];
         event = eventAndNamespace[1];
@@ -69,7 +70,7 @@ export class EventEmitter {
           namespaces[namespace][event] = [listener];
         }
       }
-    
+
       this.emit('newListener', event, listener);
     }
     return this;
@@ -79,18 +80,35 @@ export class EventEmitter {
     * Emits the specified event running all listeners associated with it
     * 
     * @param {String} eventName Name of the event to execute the listeners of
-    * @param {Mixed} arguments You can pass as many arguments as you want after the event name. These will be passed to the listeners
+    * @param {Mixed} arguments You can pass as many arguments as you want after 
+    * the event name. These will be passed to the listeners
     * @returns {Object} The current instance of EventEmitter to allow chaining
     */
   emit(eventName, ...args:any[]) {
+    args.unshift(eventName);
+    Util.enqueue(() => this._emit.apply(this, args));
+    return this;
+  }
+  
+  /**
+  * Like Emit but the event is delivered in the same event loop.
+  * This method is used for special cases where high performance is required,
+  * or a more deterministic behaviour is desired.
+  *
+  */
+  beam(eventName, ...args:any[]) {
+    args.unshift(eventName);
+    return this._emit.apply(this, args);
+  }
+  
+  private _emit(eventName, ...args:any[]) {
     var listeners = this.getListeners()
     if(listeners['*']){
-      this._fire(listeners['*'], arguments)
+      this._fire(listeners['*'], args)
     }
     if(listeners[eventName]){
-      //var args = _.rest(arguments)
-      this._fire(listeners[eventName], args)
-    }		
+      this._fire(listeners[eventName], args);
+    }
     return this
   }
   
