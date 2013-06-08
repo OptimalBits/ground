@@ -242,15 +242,20 @@ export class MongooseStorage implements IStorage {
 
   private findAll(Model: IMongooseModel, query: IStorageQuery): Promise
   {
+    query = query || {};
+    
     var promise = new Promise();
-    console.log(query)
-    Model.find(query.cond, query.fields, query.opts, (err, doc?) => {
-      if(err){
-        promise.reject(err);
-      }else{
-        promise.resolve(doc);
-      }
-    });
+    
+    Model
+      .find(query.cond, query.fields, query.opts)
+      .exec((err, doc?) => {
+        if(err){
+          promise.reject(err);
+        }else{
+          promise.resolve(doc);
+        }
+      });
+    
     return promise;
   }
 
