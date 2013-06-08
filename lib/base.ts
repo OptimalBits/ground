@@ -79,8 +79,6 @@ export class Base extends EventEmitter implements ISettable, IGettable
     
     if(changed){
       if(!obj){
-        // obj = Util.expandProperty({}, keyOrObj, val);
-        // All group resources buggar
         obj = {};
         obj[keyOrObj] = val;
       }
@@ -119,7 +117,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
       if(isVirtual) options.nosync = true;
       
       this.setProperty(keypath, val);
-      this.emit(keypath, val, oldVal, options)
+      this.beam(keypath, val, oldVal, options);
       return true;
     }else{
       return false;
