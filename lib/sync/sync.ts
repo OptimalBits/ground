@@ -44,7 +44,7 @@ export class Manager extends Base {
         var doc = docs[0];
         
         Gnd.Util.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
-          log('Observe %s', doc.getKeyPath().join('.'))
+          log('Observe', doc.getKeyPath().join('/'))
         });
         
         // OBSOLETE?
