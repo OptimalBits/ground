@@ -208,6 +208,8 @@ module Gnd
     
     public static compileType(type, definition)
     {
+      var types = Schema.types;
+      
       if(type instanceof Schema){
         return type;
       }
