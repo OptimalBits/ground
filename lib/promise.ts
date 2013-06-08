@@ -10,6 +10,7 @@
 
 
 module Gnd {
+"use strict";
 
 function isPromise(promise){
   return (promise instanceof Object) && (promise.then instanceof Function);
@@ -47,11 +48,12 @@ interface Future {
 // in the same turn in the proper order.
 //export class Promise<T> {
 
+var CancelError = Error('Operation Cancelled');
 export class Promise extends Base
 {
   fulfilledFns : any[] = [];
   rejectedFns: any[] = [];
-  value : any;
+  _value : any;
   reason: Error;
   isFulfilled : bool;
   
@@ -81,6 +83,14 @@ export class Promise extends Base
       })(i);
     }
   
+    return promise;
+  }
+  
+  static delay(ms: number): Promise // <void>
+  {
+    var promise = new Promise();
+    var timeout = setTimeout(()=>promise.resolve(), ms);
+    promise.fail(()=>clearTimeout(timeout));
     return promise;
   }
   
@@ -138,13 +148,15 @@ export class Promise extends Base
           }
         }catch(err){
           promise.reject(err);
-          console.log(err.stack);
+          if(err !== CancelError){
+            console.log(err.stack);
+          }
         }
       }
     }
     
-    if(!_.isUndefined(this.value)){
-      this.fire(wrapper(onFulfilled), this.value);
+    if(!_.isUndefined(this._value)){
+      this.fire(wrapper(onFulfilled), this._value);
     }else if(!_.isUndefined(this.reason)){
       this.fire(wrapper(onRejected, true), this.reason);
     }else{   
@@ -191,7 +203,7 @@ export class Promise extends Base
     if(this.isFulfilled) return;
     this.abort();
     
-    this.value = value || null;
+    this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
     return this;
   }
@@ -207,6 +219,11 @@ export class Promise extends Base
     return this;
   }
   
+  cancel()
+  {
+    this.reject(CancelError);
+  }
+  
   abort(){
     this.isFulfilled = true;
   }
@@ -214,9 +231,7 @@ export class Promise extends Base
   private fireNext(cb, value){
     var stack = (new Error())['stack'];
      
-    Util.nextTick(() => {
-      cb.call(this, value);
-    });
+    Util.enqueue(() => cb.call(this, value));
   }
   
   private fire(cb, value){
