@@ -13,8 +13,6 @@
 /// <reference path="base.ts" />
 /// <reference path="promise.ts" />
 
-
-
 module Gnd.Util {
 
 export function noop(){};
@@ -63,13 +61,11 @@ export function release(objs: any){
 //
 declare var process;
 
-var nextTick;
+export var nextTick;
 if((typeof process !== 'undefined') && (process.nextTick)){
   nextTick = process.nextTick;
 }else{
-  nextTick = (fn) => {
-    setTimeout(fn, 0);
-  }
+  nextTick = (fn) => setTimeout(fn, 0);
   /*
   nextTick = (fn) => {
     var script = <HTMLScriptElement>document.createElement('script');
@@ -82,8 +78,6 @@ if((typeof process !== 'undefined') && (process.nextTick)){
   }
   */
 }
-
-export var nextTick;
 
 export function trim(str: string, maxLen?: number, suffix?: string): string
 {
@@ -147,45 +141,6 @@ export function debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
     !executing && execute();
   }
 }
-
-
-/*
-export function debounce(task: ()=>Promise): Promise
-{
-  var 
-    delayedFunc = null,
-    executing = null;
-  
-  return function debounced() {
-    var context = this,
-      args = arguments,
-      nargs = args.length,
-      cb = args[nargs-1],
-      delayed = function() {
-        executing = task;
-        task.apply(context, args).then(){
-        
-        });
-      };
-  
-    args[nargs-1] = function(){
-      cb.apply(context, arguments);
-      executing = null;
-      if(delayedFunc){
-        var f = delayedFunc;
-        delayedFunc = null;
-        f();
-      }
-    };
-  
-    if(executing){
-      delayedFunc = delayed;
-    }else{
-      delayed();
-    }
-  };
-}
-*/
 
 export 
 function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number): Promise
@@ -314,14 +269,14 @@ export function safeEmit(socket, ...args:any[]): Promise
   var promise = new Promise();
    
   function errorFn(){
-    var err = new Error('Socket disconnected');
+    var err = Error('Socket disconnected');
     promise.reject(err);
   };
   
   function proxyCb(err, res){
     socket.removeListener('disconnect', errorFn);
     if(err){
-      err = new Error(err);
+      err = Error(err);
       promise.reject(err);
     }else{
       promise.resolve(res);
@@ -453,5 +408,41 @@ export function isVirtualProperty(prop: any): bool
 {
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
+
+//
+// Shared handler queue processing (see whenjs)
+//
+// Credit to Twisol (https://github.com/Twisol) for suggesting
+// this type of extensible queue + trampoline approach for
+// next-tick conflation.
+
+var handlerQueue = [];
+
+/**
+  * Enqueue a task. If the queue is not currently scheduled to be
+  * drained, schedule it.
+  * @param {function} task
+*/
+export function enqueue(task) {
+  if(handlerQueue.push(task) === 1) {
+    nextTick(drainQueue);
+  }
+}
+
+/**
+  * Drain the handler queue entirely, being careful to allow the
+  * queue to be extended while it is being processed, and to continue
+  * processing until it is truly empty.
+  */
+function drainQueue() {
+  var task, i = 0;
+
+  while(task = handlerQueue[i++]) {
+    task();
+  }
+
+  handlerQueue = [];
+}
+
 
 } // Gnd.Util
