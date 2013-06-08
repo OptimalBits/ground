@@ -374,10 +374,8 @@ describe('Collection Datatype', function(){
             Zoo.findById(zoo.id(), true).then(function(anotherZoo){
               expect(anotherZoo).to.be.an(Object);
 
-              var otherAnimals = anotherZoo.all(Animal);
-              expect(otherAnimals).to.be.an(Object);
-
-              otherAnimals.once('resynced:', function(){
+              anotherZoo.all(Animal).then(function(otherAnimals){
+                expect(otherAnimals).to.be.an(Object);
 
                 animals.once('removed:', function(item){
                   expect(item).to.be.an(Object);
@@ -434,10 +432,8 @@ describe('Collection Datatype', function(){
             Zoo.findById(zoo.id(), true).then(function(anotherZoo){
               expect(anotherZoo).to.be.an(Object);
               
-              var otherAnimals = anotherZoo.all(Animal);
-              expect(otherAnimals).to.be.an(Object);
-                
-              otherAnimals.once('resynced:', function(){
+              anotherZoo.all(Animal).then(function(otherAnimals){
+                expect(otherAnimals).to.be.an(Object);
                   
                 animals.once('removed:', function(item){
                   expect(item).to.be.an(Object);

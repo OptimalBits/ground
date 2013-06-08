@@ -22,17 +22,18 @@ describe('Events', function(){
     obj.emit('test', 'foobar');
   });
 
-  it('listening to several events', function(){
+  it('listening to several events', function(done){
     var counter = 3;
     obj.on('foo bar baz', function(val){
       counter--;
+      if(counter === 0) done();
     });
     
     obj.emit('bar', 'foo');
     obj.emit('baz', 'bar');
     obj.emit('foo', 'baz');
 
-    expect(counter).to.be(0);
+    //expect(counter).to.be(0);
   });
   
   it('listen to namespaced events', function(done){
@@ -107,18 +108,18 @@ describe('Events', function(){
     obj.emit('bar', 32);
   });
   
-  it('remove all events', function(){
+  it('remove all events', function(done){
     var counter = 4;
     obj.on('flip flop swap swop', function(val){
       counter--;
+      expect(counter).to.be.within(0, 4);
+      if(counter == 0) done();
     });
 
     obj.emit('flip', 'foo');
     obj.emit('flop', 'bar');
     obj.emit('swap', 'baz');
     obj.emit('swop', 'foo');
-  
-    expect(counter).to.be(0);
     
     obj.off();
     
@@ -126,8 +127,6 @@ describe('Events', function(){
     obj.emit('flop', 'bar');
     obj.emit('swap', 'baz');
     obj.emit('swop', 'foo');
-    
-    expect(counter).to.be(0);
   });
   
   it('destructor cleans all the events', function(){
@@ -155,12 +154,13 @@ describe('Events', function(){
     });
     obj.once('test', function(){
       counter+=1;
+      expect(counter).to.be.within(1,2);
+      if(counter == 2) done();
     });
 
     obj.emit('test');
 
-    expect(counter).to.be(2);
-    done();
+//    expect(counter).to.be(2);
   });
 });
 
