@@ -42,6 +42,7 @@ class ModelDepot
 {
   private models = {};
 
+  // Deprecate args since they should always go via a resync call...
   getModel(ModelClass: IModel, args: {}, autosync: bool, keyPath?: string[]): Promise
   {
     var model;
@@ -58,8 +59,10 @@ class ModelDepot
     model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
 
     if(!model){
-      var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
-      model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
+      //var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
+      //model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
+      model = new ModelClass({_cid: keyPath[1]}, {fetch: fetch, autosync: autosync});
+      model.resync(args);
       this.setModel(model);
     }else{
       autosync && model.keepSynced();
@@ -165,10 +168,8 @@ export class Model extends Promise implements Sync.ISynchronizable
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
     super();
     
-    //_.extend(this, args);
-    // Experimental...
     args = args || {};
-    this.resync(args);
+    _.extend(this, args);
     
     _.defaults(this, this.__schema.toObject(this)); // TODO: opts.strict -> extend instead of defaults.
 
