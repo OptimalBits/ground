@@ -55,13 +55,14 @@ class ModelDepot
         keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
       }
     }
-
+    
     model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
 
     if(!model){
       //var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
       //model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
-      model = new ModelClass({_cid: keyPath[1]}, {fetch: fetch, autosync: autosync});
+      model = new ModelClass(keyPath && {_cid: keyPath[1]}, 
+                             {fetch: fetch, autosync: autosync});
       model.resync(args);
       this.setModel(model);
     }else{
