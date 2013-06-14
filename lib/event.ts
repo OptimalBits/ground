@@ -83,25 +83,8 @@ export class EventEmitter {
     * @param {Mixed} arguments You can pass as many arguments as you want after 
     * the event name. These will be passed to the listeners
     * @returns {Object} The current instance of EventEmitter to allow chaining
-    */
+    */  
   emit(eventName, ...args:any[]) {
-    args.unshift(eventName);
-    Util.enqueue(() => this._emit.apply(this, args));
-    return this;
-  }
-  
-  /**
-  * Like Emit but the event is delivered in the same event loop.
-  * This method is used for special cases where high performance is required,
-  * or a more deterministic behaviour is desired.
-  *
-  */
-  beam(eventName, ...args:any[]) {
-    args.unshift(eventName);
-    return this._emit.apply(this, args);
-  }
-  
-  private _emit(eventName, ...args:any[]) {
     var listeners = this.getListeners()
     if(listeners['*']){
       this._fire(listeners['*'], args)

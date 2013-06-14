@@ -122,7 +122,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
       
       this.setProperty(keypath, val);
       
-      eventCage.push(() => this.beam(keypath, val, oldVal, options));
+      eventCage.push(() => this.emit(keypath, val, oldVal, options));
       return true;
     }else{
       return false;
