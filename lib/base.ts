@@ -118,6 +118,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
       var val = this.willChange ? this.willChange(keypath, val) : val;
       
       // Virtual properties shall not trigger sync on serverside
+      // TODO. this is model specific and should be handled in schemas...
       if(isVirtual) options.nosync = true;
       
       this.setProperty(keypath, val);
