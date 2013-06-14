@@ -150,20 +150,26 @@ export class View extends Base
       //
       this.nodes = _.toArray(this.fragment.childNodes);
       
-      if(this.styles){
-        _.each(this.nodes, (node) => $(node).css(this.styles));
-      }
+      var styles = _.extend({visibility: 'hidden'}, this.styles);
+      this.applyStyles(styles);
+      
       if(this.attr){
         _.each(this.nodes, 
           (node) => _.each(this.attr, 
             (value, attr?) => $(node).attr(attr, value)));
       }
       
+      
       target.appendChild(this.fragment);
       
       return Promise.map(this.children, (child) => child.render(context))
+        .then(() => this.applyStyles({visibility: ''}))
         .then(()=>this.nodes[0]);
     });
+  }
+  
+  private applyStyles(styles){
+    _.each(this.nodes, (node) => $(node).css(styles));
   }
   
   clean()
