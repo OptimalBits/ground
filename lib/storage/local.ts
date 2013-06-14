@@ -9,6 +9,7 @@
 /// <reference path="storage.ts" />
 /// <reference path="../cache.ts" />
 /// <reference path="../error.ts" />
+/// <reference path="../log.ts" />
 /// <reference path="store/store.ts" />
 /// <reference path="store/local-storage.ts" />
 
@@ -404,7 +405,7 @@ export class Local implements IStorage {
     if(sid) item._id = sid;
     switch(item.sync) {
       case 'rm':
-        console.log('Removing '+item);
+        log('Removing ', item);
         itemKeys[itemKeys[item.prev].next] = 'deleted';
         itemKeys[item.prev].next = item.next;
         itemKeys[item.next].prev = item.prev;
