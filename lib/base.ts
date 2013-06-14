@@ -64,17 +64,17 @@ export class Base extends EventEmitter implements ISettable, IGettable
   set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, options?: {})
   {
-    var changed = false, obj;
+    var changed = false, obj, eventCage = [];
       
     if(typeof keyOrObj == 'object'){
       options = val || {};
       obj = <Object>keyOrObj;
       _.each(obj, (val, key?: string) => {
-        changed = this._set(key, val, options) ? true : changed;
+        changed = this._set(key, val, options, eventCage) ? true : changed;
       });
     }else{
       options = options || {};
-      changed = this._set(keyOrObj, val, options)
+      changed = this._set(keyOrObj, val, options, eventCage);
     }
     
     if(changed){
@@ -82,6 +82,10 @@ export class Base extends EventEmitter implements ISettable, IGettable
         obj = {};
         obj[keyOrObj] = val;
       }
+      
+      // Release all the events at once
+      _.each(eventCage, (emitter) => emitter());
+      
       this.emit('changed:', obj, options);
     }
     return this;
@@ -104,7 +108,7 @@ export class Base extends EventEmitter implements ISettable, IGettable
     Util.expandProperty(this, keypath, val);
   }
 
-  private _set(keypath: string, val, options): bool
+  private _set(keypath: string, val, options, eventCage): bool
   {    
     var oldProp = this.getProperty(keypath);
     var isVirtual = Util.isVirtualProperty(oldProp);
@@ -117,7 +121,8 @@ export class Base extends EventEmitter implements ISettable, IGettable
       if(isVirtual) options.nosync = true;
       
       this.setProperty(keypath, val);
-      this.beam(keypath, val, oldVal, options);
+      
+      eventCage.push(() => this.beam(keypath, val, oldVal, options));
       return true;
     }else{
       return false;
