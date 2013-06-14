@@ -146,7 +146,7 @@ export class Model extends Promise implements Sync.ISynchronizable
 
   private __rev: number = 0;
 
-  private _persisted: bool = false;
+  private _persisted: bool;
 
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
