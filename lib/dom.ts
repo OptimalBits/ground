@@ -145,7 +145,7 @@ export class Query // implements QueryNodes
   
   css(styles: {[index: string]: string;})
   {
-    _.each(this, (el) => _.extend(el.style, styles));
+    _.each(this, (el) => el.style && _.extend(el.style, styles));
     return this;
   }
   
