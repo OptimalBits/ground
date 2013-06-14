@@ -49,12 +49,12 @@ module Gnd
           var id = selector.slice(1);
           el = document.getElementById(id);
           if(el && el.parentNode) {
-      	    // Handle the case where IE, Opera, and Webkit return items
-      		  // by name instead of ID
-      		  if(el.id === id){
+            // Handle the case where IE, Opera, and Webkit return items
+            // by name instead of ID
+            if(el.id === id){
               push([el]);
-      		  }
-      	  }
+            }
+          }
           break;
         case '.': 
           var className = selector.slice(1);
