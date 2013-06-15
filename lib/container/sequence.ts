@@ -298,6 +298,11 @@ export class Sequence extends Container
         case 'removeItem':
           return this.deleteItem(cmd.id, opts);
           break;
+        case 'update':
+          //ModelDepot will be used so create doesn't create a new instance
+          return this.model.create(cmd.doc).then((instance) =>
+            instance.resync(cmd.doc));
+          break;
         default:
           throw Error('Invalid command:'+cmd);
       }
@@ -326,6 +331,7 @@ export class Sequence extends Container
   {
     var insertCommands: MergeCommand[] = [];
     var removeCommands: MergeCommand[] = [];
+    var updateCommands: MergeCommand[] = [];
     var remainingItems = [];
 
     var sourceIds = _.map(source, function(item){
@@ -354,6 +360,12 @@ export class Sequence extends Container
       if(fns.inSync(targetItem)){
         sourceItem = source[j];
         if(fns.id(targetItem) === fns.id(sourceItem)){
+          updateCommands.push({
+            cmd: 'update',
+            // id: fns.id(sourceItem),
+            keyPath: fns.keyPath(sourceItem), //TODO: not always needed
+            doc: fns.doc(sourceItem)
+          });
           i++;
         }else{
           insertCommands.push({
@@ -409,7 +421,7 @@ export class Sequence extends Container
     // return the sequence of commands that transforms the target sequence according
     // to the source
     // it is important that the removecommands come before the insertcommands
-    return removeCommands.concat(insertCommands);
+    return removeCommands.concat(insertCommands).concat(updateCommands);
   }
 }
 

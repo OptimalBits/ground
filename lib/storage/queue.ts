@@ -148,7 +148,6 @@ export class Queue extends Base implements IStorage
     return Gnd.Promise.map(commands, (cmd) => {
       switch(cmd.cmd) {
         case 'insertBefore':
-          console.log('EX: insertBefore');
           // item.doc._cid = item.doc._id; // ??
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts).then(() => {
             return this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
@@ -156,8 +155,10 @@ export class Queue extends Base implements IStorage
           });
           break;
         case 'removeItem':
-          console.log('EX: removeItem');
           return this.localStorage.deleteItem(keyPath, cmd.id, opts);
+          break;
+        case 'update':
+          return this.localStorage.put(cmd.keyPath, cmd.doc, opts);
           break;
         default:
           throw new Error('Invalid command: '+cmd);

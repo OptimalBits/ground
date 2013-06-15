@@ -636,6 +636,29 @@ describe('Sequence Datatype', function(){
         });
       });
     });
+    it('merges remote changes in items', function(done){
+      var paradeId = parade.id();
+      Gnd.using.storageQueue = q1;
+      Gnd.using.syncManager = sm1;
+      Parade.findById(paradeId).then(function(parade){
+        parade.keepSynced();
+        parade.seq(Animal).then(function(animals){
+          expect(animals).to.be.an(Object);
+          animals.push(Animal.create({name: 'tiger'})).then(function(){
+            q1.waitUntilSynced(function(){
+              var animalId = animals.items[0].model.id();
+              ss1.put(['animals', animalId], {name: 'panther'}).then(function(){
+                parade.seq(Animal).then(function(animals2){
+                  expect(animals2.count).to.be(1);
+                  expect(animals2.items[0].model.name).to.be('panther');
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
     it('other sequence name', function(done){
       getSequence(parade.id(), sm2, q2, false, 'animals2', function(nosyncedAnimals){
         nosyncedAnimals.push((new Animal({name:"tiger"})).autorelease()).then(function(err){
@@ -1398,7 +1421,7 @@ describe('Sequence Datatype', function(){
           var source = [1,2,3,4,5];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(1);
+          expect(commands.length).to.be(5);
           expect(commands[0]).to.have.property('cmd', 'insertBefore');
           expect(commands[0]).to.have.property('newId', 5);
           expect(commands[0]).to.have.property('refId', null);
@@ -1407,7 +1430,7 @@ describe('Sequence Datatype', function(){
           var source = [5,1,2,3,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(1);
+          expect(commands.length).to.be(5);
           expect(commands[0]).to.have.property('cmd', 'insertBefore');
           expect(commands[0]).to.have.property('newId', 5);
           expect(commands[0]).to.have.property('refId', 1);
@@ -1416,7 +1439,7 @@ describe('Sequence Datatype', function(){
           var source = [1,2,5,3,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(1);
+          expect(commands.length).to.be(5);
           expect(commands[0]).to.have.property('cmd', 'insertBefore');
           expect(commands[0]).to.have.property('newId', 5);
           expect(commands[0]).to.have.property('refId', 3);
@@ -1425,7 +1448,7 @@ describe('Sequence Datatype', function(){
           var source = [6,1,2,5,3,4,7];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(3);
+          expect(commands.length).to.be(7);
           expect(commands[0]).to.have.property('cmd', 'insertBefore');
           expect(commands[0]).to.have.property('newId', 6);
           expect(commands[0]).to.have.property('refId', 1);
@@ -1440,7 +1463,7 @@ describe('Sequence Datatype', function(){
           var source = [1,2,5,6,7,3,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(3);
+          expect(commands.length).to.be(7);
           expect(commands[0]).to.have.property('cmd', 'insertBefore');
           expect(commands[0]).to.have.property('newId', 5);
           expect(commands[0]).to.have.property('refId', 3);
@@ -1469,7 +1492,7 @@ describe('Sequence Datatype', function(){
           var source = [1,2,3];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(1);
+          expect(commands.length).to.be(4);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 4);
         });
@@ -1477,7 +1500,7 @@ describe('Sequence Datatype', function(){
           var source = [2,3,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(1);
+          expect(commands.length).to.be(4);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 1);
         });
@@ -1485,7 +1508,7 @@ describe('Sequence Datatype', function(){
           var source = [1,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(2);
+          expect(commands.length).to.be(4);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 2);
           expect(commands[1]).to.have.property('cmd', 'removeItem');
@@ -1511,7 +1534,7 @@ describe('Sequence Datatype', function(){
           var source = [2,3,4,1];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(6);
+          expect(commands.length).to.be(7);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 2);
           expect(commands[1]).to.have.property('cmd', 'removeItem');
@@ -1527,23 +1550,27 @@ describe('Sequence Datatype', function(){
           expect(commands[5]).to.have.property('cmd', 'insertBefore');
           expect(commands[5]).to.have.property('newId', 4);
           expect(commands[5]).to.have.property('refId', 1);
+          expect(commands[6]).to.have.property('cmd', 'update');
         });
         it('move right to left', function(){
           var source = [4,1,2,3];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(2);
+          expect(commands.length).to.be(5);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 4);
           expect(commands[1]).to.have.property('cmd', 'insertBefore');
           expect(commands[1]).to.have.property('newId', 4);
           expect(commands[1]).to.have.property('refId', 1);
+          expect(commands[2]).to.have.property('cmd', 'update');
+          expect(commands[3]).to.have.property('cmd', 'update');
+          expect(commands[4]).to.have.property('cmd', 'update');
         });
         it('move multiple', function(){
           var source = [3,1,4,2];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(4);
+          expect(commands.length).to.be(6);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 3);
           expect(commands[1]).to.have.property('cmd', 'removeItem');
@@ -1554,6 +1581,8 @@ describe('Sequence Datatype', function(){
           expect(commands[3]).to.have.property('cmd', 'insertBefore');
           expect(commands[3]).to.have.property('newId', 4);
           expect(commands[3]).to.have.property('refId', 2);
+          expect(commands[4]).to.have.property('cmd', 'update');
+          expect(commands[5]).to.have.property('cmd', 'update');
         });
       });
       describe('Replacing items', function(){
@@ -1561,7 +1590,7 @@ describe('Sequence Datatype', function(){
           var source = [1,2,5,4];
           var target = [1,2,3,4];
           var commands = Gnd.Sequence.merge(source, target, fns);
-          expect(commands.length).to.be(2);
+          expect(commands.length).to.be(5);
           expect(commands[0]).to.have.property('cmd', 'removeItem');
           expect(commands[0]).to.have.property('id', 3);
           expect(commands[1]).to.have.property('cmd', 'insertBefore');
@@ -1607,7 +1636,7 @@ describe('Sequence Datatype', function(){
           var source = [{id:1,insync:true},{id:2,insync:true}];
           var target = [{id:1,insync:true},{id:2,insync:false},{id:2,insync:true}];
           var commands = Gnd.Sequence.merge(source, target, fns2);
-          expect(commands.length).to.be(0);
+          expect(commands.length).to.be(2);
         });
         it('All pending items should be kept', function(){
           var source = [];
@@ -1681,6 +1710,12 @@ describe('Sequence Datatype', function(){
             case 'removeItem':
               return sequence.deleteItem(cmd.id, {nosync: true});
               break;
+            case 'update':
+              //ModelDepot will be used so create doesn't create a new instance
+              return Animal.create(cmd.doc).then(function(instance){
+                return instance.resync(cmd.doc);
+              });
+              break;
             default:
               throw new Error('Invalid command: '+cmd);
           }
@@ -1747,7 +1782,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, source.slice(0,1)).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(2);
             expect(commands[0]).to.have.property('cmd', 'insertBefore');
             expect(commands[0]).to.have.property('newId', 2);
             expect(commands[0]).to.have.property('refId', null);
@@ -1765,7 +1800,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, source.slice(1,2)).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(2);
             expect(commands[0]).to.have.property('cmd', 'insertBefore');
             expect(commands[0]).to.have.property('newId', 1);
             expect(commands[0]).to.have.property('refId', 2);
@@ -1784,7 +1819,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, source.slice(0,1).concat(source.slice(2,3))).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(3);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, source);
@@ -1802,7 +1837,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, source.concat([{ id: 4, doc: { _id:14 } }])).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(4);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, source);
@@ -1818,7 +1853,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, [{ id: 4, doc: { _id:14 } }].concat(source)).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(4);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, source);
@@ -1834,7 +1869,7 @@ describe('Sequence Datatype', function(){
           ];
           populateSeq(animals, [source[0],source[2]]).then(function(){
             var commands = Gnd.Sequence.merge(source, animals.items, fns);
-            expect(commands.length).to.be(1);
+            expect(commands.length).to.be(3);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, source);
@@ -1872,7 +1907,7 @@ describe('Sequence Datatype', function(){
           oldSeq.push(oldSeq.shift());
           populateSeq(animals, oldSeq).then(function(){
             var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
-            expect(commands.length).to.be(2);
+            expect(commands.length).to.be(4);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, newSeq);
@@ -1892,7 +1927,7 @@ describe('Sequence Datatype', function(){
           oldSeq.unshift(oldSeq.pop());
           populateSeq(animals, oldSeq).then(function(){
             var commands = Gnd.Sequence.merge(newSeq, animals.items, fns);
-            expect(commands.length).to.be(4);
+            expect(commands.length).to.be(5);
             execCmds(animals, commands).then(function(){
               console.log(animals.items);
               seqEqual(animals, newSeq);
