@@ -55,6 +55,8 @@ export class View extends Base
   private _parent: View;
   
   private isInitialized: bool;
+  
+  private refreshMutex = Mutex();
 
   private fragment: DocumentFragment;
   public root: HTMLElement; 
@@ -188,8 +190,10 @@ export class View extends Base
   
   refresh(): Promise
   {
-    this.clean();
-    return this.render();
+    return this.refreshMutex(()=>{
+      this.clean();
+      return this.render();
+    });
   }
   
   disable(disable)
