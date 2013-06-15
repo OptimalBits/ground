@@ -31,7 +31,7 @@ export class Collection extends Container
   public deleteFn: (model: Model) => void;
   
   // Mutex
-  private resyncMutex: Mutex = new Mutex();
+  private resyncMutex = Mutex();
   
   // Links
   private linkAddFn: (item: Model) => void;
@@ -267,7 +267,7 @@ export class Collection extends Container
   
   public resync(items: any[]): Promise
   {
-    return this.resyncMutex.enter(()=>{
+    return this.resyncMutex(()=>{
       var 
         itemsToRemove = [],
         itemsToAdd = [];

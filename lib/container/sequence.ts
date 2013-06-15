@@ -49,7 +49,7 @@ export class Sequence extends Container
   public deleteFn: (model: Model) => void;
     
   // Mutex
-  private resyncMutex: Mutex = new Mutex();
+  private resyncMutex = Mutex();
   
   constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: ISeqModel[])
   {
@@ -319,7 +319,7 @@ export class Sequence extends Container
 
   public resync(remoteItems: any[]): Promise
   {
-    return this.resyncMutex.enter(() => {
+    return this.resyncMutex(() => {
       var commands = Sequence.merge(remoteItems, this.items, Sequence.mergeFns);
       return this.execCmds(commands).then(() => {
         this.emit('resynced:')

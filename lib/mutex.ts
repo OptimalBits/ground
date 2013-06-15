@@ -11,7 +11,6 @@
 
 /// <reference path="promise" />
 
-
 module Gnd {
   
 export interface Handler
@@ -21,30 +20,27 @@ export interface Handler
   wait?: Promise;
 }
 
-export class Mutex
-{
-  private queue: Handler[] = [];
+export function Mutex(){
+  var queue = [];
   
-  enter(handler: Handler): Promise
-  {
+  return function(handler){
     handler.promise = new Promise();
     handler.wait = handler.promise.then(handler);
     
-    this.queue.push(handler);
-    if(this.queue.length === 1){
-      this.exec(handler);
+    queue.push(handler);
+    if(queue.length === 1){
+      exec(handler);
     }
     return handler.wait;
   }
   
-  private exec(handler)
-  {    
+  function exec(handler){
     handler.promise.resolve();
     handler.wait.then(() => {
-      this.queue.shift();
-      var next = this.queue[0];
-      if(next) this.exec(next);
-    })
+      queue.shift();
+      var next = queue[0];
+      if(next) exec(next);
+    });
   }
 }
 
