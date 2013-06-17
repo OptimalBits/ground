@@ -36,7 +36,7 @@ export function Mutex(){
   
   function exec(handler){
     handler.promise.resolve();
-    handler.wait.then(() => {
+    handler.wait.ensure(() => {
       queue.shift();
       var next = queue[0];
       if(next) exec(next);
