@@ -253,6 +253,7 @@ export class Collection extends Container
       Promise.map(itemIds, (itemId: string)=>{
         if(!this.findById(itemId)){
           return this.model.findById(itemsKeyPath.concat(itemId), true, {}).then((item)=>{
+            item.release();
             return this.addItem(item, {nosync: true});
           });
         }
@@ -264,7 +265,7 @@ export class Collection extends Container
       this.remove(itemId, {nosync: true});
     });
   }
-  
+
   public resync(items: any[]): Promise
   {
     return this.resyncMutex(()=>{

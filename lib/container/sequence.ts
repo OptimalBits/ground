@@ -278,6 +278,7 @@ export class Sequence extends Container
     this.on('insertBefore:', (id, itemKeyPath, refId)=>{
       this.model.findById(itemKeyPath, true, {}).then((item)=>{
         this.insertItemBefore(refId, item, id, {noremote: true});
+        item.release();
       });
     });
 
@@ -292,17 +293,14 @@ export class Sequence extends Container
     return Gnd.Promise.map(commands, (cmd) => {
       switch(cmd.cmd) {
         case 'insertBefore':
-          return this.model.create(cmd.doc, true).then((instance) =>
-            this.insertItemBefore(cmd.refId, instance, cmd.newId, opts));
-          break;
+          return this.model.create(cmd.doc, true).then((item) =>
+            this.insertItemBefore(cmd.refId, item.autorelease(), cmd.newId, opts));
         case 'removeItem':
           return this.deleteItem(cmd.id, opts);
-          break;
         case 'update':
-          //ModelDepot will be used so create doesn't create a new instance
-          return this.model.create(cmd.doc).then((instance) =>
-            instance.resync(cmd.doc));
-          break;
+          var item = this['find']((item) => cmd.doc._id == item.id());
+          item && item.resync(cmd.doc);
+          return Promise.resolved();
         default:
           throw Error('Invalid command:'+cmd);
       }
