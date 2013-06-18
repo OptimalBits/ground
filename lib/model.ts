@@ -65,6 +65,7 @@ class ModelDepot
                              {fetch: fetch, autosync: autosync});
       model.resync(args);
       this.setModel(model);
+      model.autorelease();
     }else{
       autosync && model.keepSynced();
     }
@@ -210,7 +211,9 @@ export class Model extends Promise implements Sync.ISynchronizable
             ready.resolve(this);
             this.release();
           });
-      }).fail((err) => ready.reject(err)).ensure(() => this.release());
+      }, (err) => {
+        ready.reject(err).ensure(() => this.release());
+      });
     }else{
       ready.resolve(this);
     }
