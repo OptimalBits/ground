@@ -59,6 +59,8 @@ export class Hub {
           log("Socket %s stopped synchronization for id:%s", socket.id, id);
           cb();
         });
+        
+        socket.emit('ready');
       });
 
       subClient.subscribe('update:');

@@ -37,22 +37,20 @@ export class Manager extends Base {
     var proxy = getProxy();
         
     var connectFn = () => {
+      log("Connected to socket");
       var socket = this.socket;
       
-      // Call re-sync for all models in this manager...
+      log(proxy.docs)
+      
+      // re-observe all models in this manager...
       _.each(proxy.docs, (docs: Sync.ISynchronizable[], id?: string) => {
         var doc = docs[0];
-        
+
         Gnd.Util.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
           log('Observe', doc.getKeyPath().join('/'))
         });
         
-        // OBSOLETE?
-        Gnd.Util.safeEmit(socket, 'resync', doc.getKeyPath()).then((newdoc) => {
-          for(var i=0, len=docs.length; i<len; i++){
-            docs[i].set(newdoc, {nosync: true});
-          }
-        });
+        // TODO: We need to also resync in case the server has new data
       });
     }
     
@@ -102,15 +100,13 @@ export class Manager extends Base {
     }
     socket.on('deleteItem:', deleteItemFn);
     
-    socket.once('connect', connectFn);
-    socket.on('reconnect', connectFn);
+    socket.on('ready', connectFn);
     
     this.cleanUpFn = () => {
       var off = _.bind(socket.removeListener, socket);
       
       // Remove connection listeners
-      off('connect', connectFn);
-      off('reconnect', connectFn);
+      off('ready', connectFn);
       
       // Remove event listeners.
       off('update:', updateFn);
