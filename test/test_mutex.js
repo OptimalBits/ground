@@ -4,10 +4,10 @@ define(['gnd'], function(Gnd){
 describe('Mutex', function(){
   
   it('no queued synchronous operation', function(done){
-    var mutex = new Gnd.Mutex();
+    var mutex = Gnd.Mutex();
     
     var entered = false;
-    mutex.enter(function(){
+    mutex(function(){
       expect(entered).to.be(false);
       entered = true;
       return 42
@@ -22,7 +22,7 @@ describe('Mutex', function(){
     var mutex = new Gnd.Mutex();
     
     var entered = false;
-    mutex.enter(function(){
+    mutex(function(){
       var promise = new Gnd.Promise();
       expect(entered).to.be(false);
       entered = true;
@@ -58,21 +58,21 @@ describe('Mutex', function(){
       return 42;
     }
     
-    mutex.enter(function(){
+    mutex(function(){
       counter++;
       return op1(counter);
     }).then(function(result){
       expect(result).to.be(40);
     });
     
-    mutex.enter(function(){
+    mutex(function(){
       counter++;
       return op2(counter);
     }).then(function(result){
       expect(result).to.be(41);
     });
     
-    mutex.enter(function(){
+    mutex(function(){
       counter++;
       return op3(counter);
     }).then(function(result){
@@ -101,7 +101,7 @@ describe('Mutex', function(){
       return 42;
     }
     
-    mutex.enter(function(){
+    mutex(function(){
       var promise = new Gnd.Promise();
       counter++;
       setTimeout(function(){
@@ -112,7 +112,7 @@ describe('Mutex', function(){
       expect(result).to.be(40);
     });
     
-    mutex.enter(function(){
+    mutex(function(){
       var promise = new Gnd.Promise();
       counter++;
       setTimeout(function(){
@@ -124,7 +124,7 @@ describe('Mutex', function(){
       expect(result).to.be(41);
     });
     
-    mutex.enter(function(){
+    mutex(function(){
       var promise = new Gnd.Promise();
       counter++;
       setTimeout(function(){
