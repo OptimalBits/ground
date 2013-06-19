@@ -23,6 +23,7 @@ module Gnd
    *
    */
   
+  export function $(element: Element[]): Query;
   export function $(element: Window): Query;
   export function $(element: Element): Query;
   export function $(selector: string, context?: HTMLElement): Query;
@@ -66,6 +67,8 @@ module Gnd
         default:
           push((selector != 'document' ? <any>ctx.getElementsByTagName(selector) : [document]));
       }
+    }else if(_.isArray(selectorOrElement)){
+      push(selectorOrElement);
     }else{
       push([selectorOrElement]);
     }
