@@ -114,6 +114,15 @@ export class Query // implements QueryNodes
     });
     return this;
   }
+  
+  one(eventNames: string, handler: (evt) => void): Query
+  {
+    var wrapper = (evt) => {
+      handler(evt);
+      this.off(eventNames, wrapper);
+    }
+    return this.on(eventNames, wrapper);
+  }
 
   trigger(eventNames: string)
   {
@@ -177,20 +186,54 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  html(html?: string){
+  html(html?: string)
+  {
     if(_.isUndefined(html)) return this[0].innerHTML;
     _.each(this, (el) => el.innerHTML = html);
     return this;
   }
   
-  remove(){
+  remove()
+  {
     // TODO: remove also all events associated to this node.
     _.each(this, (el) => this.removeNode(el));
     return this;
   }
   
+  empty()
+  {
+    _.each(this, (el) => {
+      while (el.hasChildNodes()) {
+        el.removeChild(el.lastChild);
+      }
+    });
+    return this;
+  }
+  
+  addClass(classNames)
+  {
+    _.each(this, (el) => {
+      var oldClassNames = _.compact(el.className.split(' '));
+      el.className = _.union(oldClassNames, classNames.split(' ')).join(' ');
+    });
+  }
+  
+  removeClass(classNames)
+  {
+    _.each(this, (el) => {
+      var oldClassNames = _.compact(el.className.split(' '));
+      el.className = 
+        _.difference(oldClassNames, classNames.split(' ')).join(' ');
+    });
+  }
+  
   rect(){
     if(this[0]) return this[0].getBoundingClientRect();
+  }
+  
+  parent()
+  {
+    return $(_.map(this, (el) => el.parentNode));
   }
   
   private removeNode(el){
