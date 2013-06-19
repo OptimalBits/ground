@@ -95,6 +95,11 @@ describe('DOM', function(){
       
     });
     
+    it.skip('empty');
+    it.skip('add class names');
+    it.skip('remove class names');
+    it.skip('rect');
+    it.skip('parent');
     
 });
 
