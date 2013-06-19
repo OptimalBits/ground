@@ -7,6 +7,8 @@ var path = require('path');
 module.exports.lib = path.join(__dirname, 'dist/gnd.min.js');
 module.exports.map = path.join(__dirname, 'dist/gnd.js.map');
 module.exports.debug = path.join(__dirname, 'dist/gnd.js');
+module.exports.base = path.join(__dirname, 'dist/gnd.min');
+module.exports.debugBase = path.join(__dirname, 'dist/gnd');
 
 module.exports.third = {
   curl: path.join(__dirname, 'third/curl.js'),
