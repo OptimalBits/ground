@@ -1451,7 +1451,7 @@ var Cache = ginger.Base.extend({
     var old = this.map[key], value;
     if(old){
       value = this._ls.getItem(this._key(key, old.time));
-      this.setItem(key, value); // Touch to update timestamp.
+      value && this.setItem(key, value); // Touch to update timestamp.
     }
     return value;
   },
