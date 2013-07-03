@@ -32,7 +32,7 @@ httpServer.listen(app.get('port'), function () {
 
 */
 
-/// <reference path="./node.d.ts" />
+/// <reference path="node.d.ts" />
 
 export declare module SocketIO {
 	export var version : string;
