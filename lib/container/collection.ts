@@ -19,12 +19,21 @@
 
 module Gnd {
   
-  /**
-    Collection.find()
-    Animal.find(zoo, 'birds', {type: 'bird'})
-  */
+/**
+  Collection.find()
+  Animal.find(zoo, 'birds', {type: 'bird'})
+*/  
+export interface CollectionEvents
+{
+  on(evt: string, ...args: any[]);
+  on(evt: 'updated:', model: Model, args:any);
+  on(evt: 'sorted:', items: Model[], oldItems: Model[]);
+  on(evt: 'added:', item: Model);
+  on(evt: 'removed:', item: Model);
+  on(evt: 'resynced:');
+}
 
-export class Collection extends Container
+export class Collection extends Container implements CollectionEvents
 {
   // Even handlers
   public updateFn: (model: Model, args) => void;
