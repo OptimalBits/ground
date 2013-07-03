@@ -91,7 +91,7 @@ export class Local implements IStorage {
     this.store = store || new Storage.Store.LocalStore();
   }
 
-  create(keyPath: string[], doc: any): Promise
+  create(keyPath: string[], doc: any): Promise<string>
   {
     var promise = new Promise();
     if(!doc._cid){
@@ -102,7 +102,7 @@ export class Local implements IStorage {
     return promise.resolve(doc._cid);
   }
   
-  fetch(keyPath: string[]): Promise
+  fetch(keyPath: string[]): Promise<any>
   {
     var promise = new Promise();
     var keyValue = this.traverseLinks(this.makeKey(keyPath));
@@ -114,7 +114,7 @@ export class Local implements IStorage {
     return promise;
   }
   
-  put(keyPath: string[], doc: {}): Promise
+  put(keyPath: string[], doc: {}): Promise<void>
   {
     var 
       key = this.makeKey(keyPath),
@@ -131,7 +131,7 @@ export class Local implements IStorage {
     return Promise.resolved();
   }
     
-  del(keyPath: string[]): Promise
+  del(keyPath: string[]): Promise<void>
   {
     this.traverseLinks(this.makeKey(keyPath), (key)=>{
       this.store.del(this.makeKey(keyPath));
@@ -139,7 +139,7 @@ export class Local implements IStorage {
     return new Promise(true);
   }
     
-  link(newKeyPath: string[], oldKeyPath: string[]): Promise
+  link(newKeyPath: string[], oldKeyPath: string[]): Promise<void>
   {
     // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
     var oldKey = this.makeKey(oldKeyPath);
@@ -161,7 +161,7 @@ export class Local implements IStorage {
   //  
   // Save as an Object where key = itemId, value = add|rm|synced
   // 
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise<void>
   {
     var
       key = this.makeKey(keyPath),
@@ -172,7 +172,7 @@ export class Local implements IStorage {
 
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
       this.createCollectionLink(keyPath[0]);
-      return Promise.resolved();
+      return Promise.resolved<void>();
     }
     
     key = keyValue ? keyValue.key : key;
@@ -184,7 +184,7 @@ export class Local implements IStorage {
     return Promise.resolved();
   }
   
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise<void>
   {
     var 
       key = this.makeKey(keyPath),
@@ -207,11 +207,11 @@ export class Local implements IStorage {
       this.store.put(keyValue.key, keysToDelete);
       return Promise.resolved()
     }else{
-      return Promise.rejected(InvalidKeyError());
+      return Promise.rejected<void>(InvalidKeyError());
     }
   }
   
-  find(keyPath: string[], query: {}, opts) : Promise
+  find(keyPath: string[], query: {}, opts) : Promise<any[]>
   {
     var result = {};
     
@@ -248,7 +248,7 @@ export class Local implements IStorage {
   //
   // ISeqStorage
   //
-  all(keyPath: string[], query, opts) : Promise
+  all(keyPath: string[], query, opts) : Promise<any[]>
   {
     var promise = new Promise();
 
@@ -305,7 +305,7 @@ export class Local implements IStorage {
     }
   }
   
-  deleteItem(keyPath: string[], id: string, opts): Promise
+  deleteItem(keyPath: string[], id: string, opts): Promise<void>
   {
     var promise = new Promise();
     var key = this.makeKey(keyPath);
@@ -333,7 +333,7 @@ export class Local implements IStorage {
     return promise.resolve()
   }
   
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise //  Promise<{id, refId}>
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise<{id: string; refId: string}>
   {
     id = id || '##@_end';
     var promise = new Promise();
@@ -386,7 +386,7 @@ export class Local implements IStorage {
     return promise.resolve({id: newItem._id || newItem._cid, refId: refId});
   }
 
-  ack(keyPath: string[], id: string, sid: string, opts): Promise
+  ack(keyPath: string[], id: string, sid: string, opts): Promise<void>
   {
     var key = this.makeKey(keyPath);
     var keyValue = this.traverseLinks(key);

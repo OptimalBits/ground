@@ -37,11 +37,11 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   //
   // Basic Storage for Models (Follows CRUD semantics)
   //
-  create(keyPath: string[], doc: {}, opts: {}): Promise; // Promise<string>
-  put(keyPath: string[], doc: {}, opts: {}): Promise;
-  fetch(keyPath: string[]): Promise;
-  del(keyPath: string[], opts: {}): Promise;
-  link?(keyPath: string[], targetKeyPath: string[]): Promise;
+  create(keyPath: string[], doc: {}, opts: {}): Promise<string>;
+  put(keyPath: string[], doc: {}, opts: {}): Promise<void>;
+  fetch(keyPath: string[]): Promise<any>;
+  del(keyPath: string[], opts: {}): Promise<void>;
+  link?(keyPath: string[], targetKeyPath: string[]): Promise<void>;
 }
 
 //
@@ -55,9 +55,9 @@ export interface IStorageQuery {
 }
 
 export interface ISetStorage {
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; // Promise<void>
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise; //Promise<void>
-  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise; // Promise<any[]>
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise<void>
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise<void>
+  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise<any[]>
 }
 
 //
@@ -71,10 +71,10 @@ export interface IDoc {
 }
 
 export interface ISeqStorage {
-  all(keyPath: string[], query: {}, opts: {}): Promise; //<Idoc[]>;
-  deleteItem(keyPath: string[], id: string, opts: {}): Promise; //
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise; //<{id, refId}>
-  ack?(keyPath: string[], id: string, sid: string, opts: {}): Promise;
+  all(keyPath: string[], query: {}, opts: {}): Promise<any[]>;
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise<{id: string; refId: string;}>
+  ack?(keyPath: string[], id: string, sid: string, opts: {}): Promise<void>;
 }
 
 }

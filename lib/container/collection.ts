@@ -205,7 +205,7 @@ export class Collection extends Container implements CollectionEvents
     this.linkAddFn = this.linkRemoveFn = this.linkUpdateFn = null;
   }
   
-  private addPersistedItem(item: Model): Promise
+  private addPersistedItem(item: Model): Promise<void>
   {
     var keyPath = this.getKeyPath();
     if(keyPath){
@@ -213,11 +213,11 @@ export class Collection extends Container implements CollectionEvents
     
       return this.storageQueue.add(keyPath, itemKeyPath, [item.id()], {})
     }else{
-      return Promise.resolved();
+      return Promise.resolved<void>();
     }
   }
 
-  private addItem(item: Model, opts): Promise
+  private addItem(item: Model, opts): Promise<void>
   {
     if(this.findById(item.id())) return new Promise().resolve();
     
@@ -238,10 +238,10 @@ export class Collection extends Container implements CollectionEvents
       if(item.isPersisted() || !item._initial){
         return this.addPersistedItem(item);
       }else{
-        return item.save().then(() => this.addPersistedItem(item));
+        return item.save().then<void>(() => this.addPersistedItem(item));
       }
     }
-    return new Promise(true);
+    return Promise.resolved<void>();
   }
   
   // This function feel a bit hacky
@@ -299,8 +299,8 @@ export class Collection extends Container implements CollectionEvents
       })
     
       return this.remove(itemsToRemove, {nosync: true})
-        .then(() => Promise.map(_.unique(itemsToAdd), (args) => (<any>this.model).create(args)))
-        .then((models) => this.add(models, {nosync: true}))
+        .then(() => Promise.map<Model>(_.unique(itemsToAdd), (args) => (<any>this.model).create(args)))
+        .then((models: Model[]) => this.add(models, {nosync: true}))
         .then(()=> {this.emit('resynced:')});
     });
   }

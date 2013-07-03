@@ -30,7 +30,7 @@ module Gnd
     query?: IStorageQuery;
   }
   
-  export class Container extends Promise implements Sync.ISynchronizable
+  export class Container extends Promise<Container> implements Sync.ISynchronizable
   {
     public storageQueue: Storage.Queue;
   

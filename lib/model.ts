@@ -110,7 +110,7 @@ export interface IModel
   new (args: {}, bucket?: string, opts?: {}): Model;
   __bucket: string;
   schema(): Schema;
-  create(args: {}, keepSynced?: bool): Promise;
+  create(args: {}, keepSynced?: bool): Promise<Model>;
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
   find(query: IStorageQuery): Promise;
@@ -279,9 +279,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   // TODO: Create must first try to find the model in the depot,
   // and "merge" the args argument with the model properties from the depot.
   // if not available instantiate it and save it in the depot.  
-  static create(args?: {}): Promise;
-  static create(args: {}, keepSynced: bool): Promise;
-  static create(args?: {}, keepSynced?: bool): Promise
+  static create(args?: {}): Promise<Model>;
+  static create(args: {}, keepSynced: bool): Promise<Model>;
+  static create(args?: {}, keepSynced?: bool): Promise<Model>
   {
     return overload({
       'Object Boolean': function(args, keepSynced){
@@ -320,7 +320,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   /**
     Removes a model from the storage.
   */
-  static removeById(keypathOrId): Promise
+  static removeById(keypathOrId): Promise<void>
   {
     var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
     return using.storageQueue.del(keyPath, {});
@@ -393,7 +393,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     return this.__bucket;
   }
 
-  save(): Promise
+  save(): Promise<void>
   {
     return this.update(this.toArgs());
   }
@@ -407,7 +407,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       Only store the models properties according to the
       Schema.
   */
-  update(args: {}): Promise
+  update(args: {}): Promise<any>
   {
     var
       bucket = this.__bucket,
@@ -428,13 +428,13 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       // although we will never get the event anyways, and besides we should
       // update the localStorage in any case...
       // Hopefully a singleton Model will solve this problems...
-      return this._storageQueue.put([bucket, id], args, {}).then(()=>{
+      return this._storageQueue.put([bucket, id], args, {}).then((): void =>{
         this.emit('updated:', this, args);
       });
     }
   }
 
-  remove(): Promise
+  remove(): Promise<void>
   {
     return Model.removeById(this.getKeyPath()).then(()=> {
       using.syncManager && using.syncManager.unobserve(this);

@@ -41,14 +41,14 @@ export interface AddRule {
   (userId: string, 
    keyPath: string[],
    itemsKeyPath: string[],
-   itemIds:string[]): Promise;
+   itemIds:string[]): Promise<void>;
 }
 
 export interface RemoveRule {
   (userId: string,
    keyPath: string[], 
    itemsKeyPath: string[], 
-   itemIds:string[]): Promise;
+   itemIds:string[]): Promise<void>;
 }
 
 export interface Rules
@@ -100,7 +100,7 @@ export class RulesManager
   applyAdd(userId: string, 
            keyPath: string[],
            itemsKeyPath: string[],
-           itemIds:string[]): Promise
+           itemIds:string[]): Promise<void>
   {
     var rule = <AddRule>this.matchRule(this.rules.add, keyPath);
     if(rule){
@@ -112,7 +112,7 @@ export class RulesManager
   applyRemove(userId: string,
               keyPath: string[],
               itemsKeyPath: string[],
-              itemIds:string[]): Promise
+              itemIds:string[]): Promise<void>
   {
     var rule = <RemoveRule>this.matchRule(this.rules.remove, keyPath);
     if(rule){
@@ -158,7 +158,7 @@ export class RightsManager
   checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise;
   checkRights(userId: string, keyPath: string[], rights: any): Promise
   {
-    var promise = new Promise;
+    var promise = new Promise();
     if(this.acl){
       this.acl.isAllowed(userId, keyPath.join('/'), rights, (err?, allowed?) =>{
         if(err){
@@ -173,7 +173,7 @@ export class RightsManager
     return promise;
   }
   
-  create(userId: string, keyPath: string[], doc: any): Promise
+  create(userId: string, keyPath: string[], doc: any): Promise<string>
   {
     if(this.rulesManager){
       this.rulesManager.applyCreate(userId, keyPath, doc);
@@ -203,19 +203,19 @@ export class RightsManager
   add(userId: string, 
       keyPath: string[],
       itemsKeyPath: string[],
-      itemIds:string[]): Promise
+      itemIds:string[]): Promise<void>
   {
     if(this.rulesManager){
       return this.rulesManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds);
     }else{
-      return Promise.resolved();
+      return Promise.resolved<void>();
     }
   }
   
   remove(userId: string, 
          keyPath: string[], 
          itemsKeyPath: string[], 
-         itemIds:string[]): Promise
+         itemIds:string[]): Promise<void>
   {
     if(this.rulesManager){
       return this.rulesManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds);

@@ -18,9 +18,7 @@ module Gnd.Util {
 export function noop(){};
 
 export function assert(cond, msg){
-  if(!cond){
-    console.log('Assert failed:%s', msg);
-  }
+  !cond && console.log('Assert failed:%s', msg);
 };
 
 export function uuid(a?,b?){
@@ -143,7 +141,10 @@ export function debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
 }
 
 export 
-function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number): Promise
+function delayed<T>(task: Promise<T>,
+                    start: ()=>void,
+                    end: ()=>void,
+                    delay: number): Promise<void>
 {
   var waiting;
 
@@ -152,7 +153,7 @@ function delayed(task: Promise, start: ()=>void, end: ()=>void, delay: number): 
     start();
   }, delay);
   
-  return task.then(()=>{
+  return task.then((value: T) => {
     clearTimeout(timer);
     waiting && end();
   });
@@ -264,9 +265,9 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
 /**
   A safe emit wrapper for socket.io that handles connection errors.
 */
-export function safeEmit(socket, ...args:any[]): Promise
+export function safeEmit<T>(socket, ...args:any[]): Promise<T>
 {
-  var promise = new Promise();
+  var promise = new Promise<T>();
    
   function errorFn(){
     var err = Error('Socket disconnected');

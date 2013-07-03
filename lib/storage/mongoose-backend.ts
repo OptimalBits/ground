@@ -86,11 +86,10 @@ export class MongooseStorage implements IStorage {
     }));
   }
   
-  create(keyPath: string[], doc: any): Promise
+  create(keyPath: string[], doc: any): Promise<string>
   {
-    return this.getModel(keyPath).then((found) => {
-      var promise = new Promise();
-      
+    return this.getModel(keyPath).then<string>((found) => {
+      var promise = new Promise<string>();
       var instance = new found.Model(doc);
       instance.save(function(err, doc){  
         if(!err){
@@ -104,10 +103,10 @@ export class MongooseStorage implements IStorage {
     });
   }
   
-  put(keyPath: string[], doc: any): Promise
+  put(keyPath: string[], doc: any): Promise<void>
   {
-    return this.getModel(keyPath).then(function(found){
-      var promise = new Promise();
+    return this.getModel(keyPath).then<void>(function(found){
+      var promise = new Promise<void>();
       found.Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
         if(!err){
           // Note: isEqual should only check the properties present in doc!
@@ -115,7 +114,7 @@ export class MongooseStorage implements IStorage {
             // only if doc modified synchronize
             // Why is this out commented?
             //this.sync && this.sync.update(keyPath, doc);
-            promise.resolve(doc);
+            promise.resolve();
           } 
         }else{
           promise.reject(err);
@@ -136,7 +135,7 @@ export class MongooseStorage implements IStorage {
       });
   */
   
-  fetch(keyPath: string[]): Promise
+  fetch(keyPath: string[]): Promise<any>
   {
     return this.getModel(keyPath).then((found) => {
       var promise = new Promise()
@@ -151,10 +150,10 @@ export class MongooseStorage implements IStorage {
     });
   }
   
-  del(keyPath: string[]): Promise
+  del(keyPath: string[]): Promise<void>
   {
-    return this.getModel(keyPath).then((found) => {
-      var promise = new Promise();
+    return this.getModel(keyPath).then<void>((found) => {
+      var promise = new Promise<void>();
       found.Model.remove({_id:_.last(keyPath)}, (err?)=>{
         if(!err){
           promise.resolve();
@@ -166,10 +165,10 @@ export class MongooseStorage implements IStorage {
     });    
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise
+  add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise<void>
   {    
-    return this.getModel(keyPath).then((found) => {
-      var promise = new Promise();
+    return this.getModel(keyPath).then<void>((found) => {
+      var promise = new Promise<void>();
       var id = keyPath[keyPath.length-2];
       var setName = _.last(keyPath);
       if(found.Model.add){
@@ -204,12 +203,12 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any): Promise
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any): Promise<void>
   {
     if(itemIds.length === 0) return Promise.resolved(); //nothing to do
     
-    return this.getModel(keyPath).then((found) => {
-      var promise = new Promise();
+    return this.getModel(keyPath).then<void>((found) => {
+      var promise = new Promise<void>();
       
       var id = keyPath[keyPath.length-2];  
       var setName = _.last(keyPath);
@@ -227,9 +226,9 @@ export class MongooseStorage implements IStorage {
     });
   }
   
-  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise
+  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise<any[]>
   {
-    return this.getModel(keyPath).then((found)=>{
+    return this.getModel(keyPath).then<any[]>((found)=>{
       if(keyPath.length === 1){
         return this.findAll(found.Model, query);
       }else{
@@ -240,7 +239,7 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  private findAll(Model: IMongooseModel, query: IStorageQuery): Promise
+  private findAll(Model: IMongooseModel, query: IStorageQuery): Promise<any[]>
   {
     query = query || {};
     
@@ -263,7 +262,7 @@ export class MongooseStorage implements IStorage {
                    id: string, 
                    setName: string,
                    query: IStorageQuery,
-                   opts: {}): Promise
+                   opts: {}): Promise<any[]>
   {
     query = query || {};
     
@@ -408,8 +407,8 @@ listContainer may also have a type attribute:
   }
 
   // cb: (err: Error, result?: any[]
-  // Note: This code is copy paste of Local.ts
-  all(keyPath: string[], query: {}, opts: {}): Promise
+  // Note: This code is copy paste of Local.ts (no, its not anymore...)
+  all(keyPath: string[], query: {}, opts: {}): Promise<any[]>
   {  
     var all = [];
     var traverse = (kp) => this.next(keyPath, kp, opts).then((next) => {
@@ -422,7 +421,7 @@ listContainer may also have a type attribute:
     return traverse(null).then(() => all);
   }
 
-  private next(keyPath: string[], id: string, opts: {}): Promise // <IDoc
+  private next(keyPath: string[], id: string, opts: {}): Promise<{id: string; refId: string;}>
   {
     var promise = new Promise();
     
@@ -479,9 +478,9 @@ listContainer may also have a type attribute:
     });
   }
 
-  deleteItem(keyPath: string[], id: string, opts: {}): Promise
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
   {
-    return this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then<void>((found) => {
       var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
@@ -495,7 +494,7 @@ listContainer may also have a type attribute:
     });
   }
   
-  private getModel(keyPath: string[]): Promise // Promise<[FoundModel]>
+  private getModel(keyPath: string[]): Promise<FoundModel>
   {
     //
     // ex. /cars/1234/engines/3456/carburetors

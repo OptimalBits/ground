@@ -16,13 +16,13 @@ module Gnd {
 export interface Handler
 {
   () : void;
-  promise?: Promise;
-  wait?: Promise;
+  promise?: Promise<void>;
+  wait?: Promise<void>;
 }
 
 export function Mutex(){
   var queue = [];
-  
+
   return function(handler){
     handler.promise = new Promise();
     handler.wait = handler.promise.then(handler);
@@ -33,7 +33,7 @@ export function Mutex(){
     }
     return handler.wait;
   }
-  
+
   function exec(handler){
     handler.promise.resolve();
     handler.wait.ensure(() => {
@@ -45,4 +45,3 @@ export function Mutex(){
 }
 
 }
-

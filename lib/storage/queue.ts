@@ -112,7 +112,7 @@ export class Queue extends Base implements IStorage
     return promise;
   }
   
-  fetch(keyPath: string[]): Promise
+  fetch(keyPath: string[]): Promise<any>
   {
     var promise = new Promise();
     
@@ -142,26 +142,25 @@ export class Queue extends Base implements IStorage
     return promise;
   }
 
-  private execCmds(keyPath: string[], commands: MergeCommand[]): Promise
+  private execCmds(keyPath: string[], commands: MergeCommand[]): Promise<void[]>
   {
     var opts = {insync: true};
-    return Gnd.Promise.map(commands, (cmd) => {
+    return Gnd.Promise.map<any>(commands, (cmd: MergeCommand) => {
       switch(cmd.cmd) {
+        /*
         case 'insertBefore':
-          // item.doc._cid = item.doc._id; // ??
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts).then(() => {
             return this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
               Util.extendClone({ id:cmd.newId }, opts));
           });
-          break;
         case 'removeItem':
           return this.localStorage.deleteItem(keyPath, cmd.id, opts);
-          break;
+          
         case 'update':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts);
-          break;
+          */
         default:
-          throw new Error('Invalid command: '+cmd);
+          return new Promise(Error('Invalid command: '+cmd));
       }
     });
   }
@@ -243,7 +242,7 @@ export class Queue extends Base implements IStorage
 
   // Put all local storage operations in a task queue, so that they are
   // guaranteed to be executed in a deterministic order
-  create(keyPath: string[], args:{}, opts: {}): Promise // Promise<cid: string>
+  create(keyPath: string[], args:{}, opts: {}): Promise<string>
   {
     return this.localStorage.create(keyPath, args, opts).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
@@ -253,21 +252,21 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  put(keyPath: string[], args:{}, opts: {}): Promise
+  put(keyPath: string[], args:{}, opts: {}): Promise<void>
   {
-    return this.localStorage.put(keyPath, args, opts).then(()=>{
+    return this.localStorage.put(keyPath, args, opts).then<void>(()=>{
       this.addCmd({cmd:'update', keyPath: keyPath, args: args}, opts);
     });
   }
   
-  del(keyPath: string[], opts: {}): Promise
+  del(keyPath: string[], opts: {}): Promise<void>
   {
     return this.localStorage.del(keyPath, opts).then(()=>{
       this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
     });
   }
   
-  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {})
+  add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {}): Promise<void>
   {
     return this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => {
       this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds}, opts);
@@ -275,7 +274,7 @@ export class Queue extends Base implements IStorage
   }
   
   // itemIds: {[index: string]: bool}
-  remove(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise
+  remove(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise<void>
   {
     var localItemsIds = [];
     var remoteItemIds = [];
@@ -294,7 +293,7 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: IStorageQuery, options: {}): Promise
+  find(keyPath: string[], query: IStorageQuery, options: {}): Promise<any[]>
   {
     var promise = new Promise();
     var remotePromise = new Promise();
@@ -325,7 +324,7 @@ export class Queue extends Base implements IStorage
     return promise;
   }
   
-  all(keyPath: string[], query: {}, opts: {}): Promise
+  all(keyPath: string[], query: {}, opts: {}): Promise<any[]>
   {
     var promise = new Promise();
     var remotePromise = new Promise();
@@ -355,14 +354,14 @@ export class Queue extends Base implements IStorage
     return promise;
   }
 
-  deleteItem(keyPath: string[], id: string, opts: {}): Promise
+  deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
   {
     return this.localStorage.deleteItem(keyPath, id, opts).then(() => 
       this.addCmd({cmd:'deleteItem', keyPath: keyPath, id: id}, opts)
     );
   }
   
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise<{id: string; refId: string;}>
   {
     return this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts).then((res) => {
       this.addCmd({cmd:'insertBefore',
@@ -370,7 +369,8 @@ export class Queue extends Base implements IStorage
                   id: id,
                   itemKeyPath: itemKeyPath, 
                   cid: res.id}, opts);
-      return res.id;
+      //return res.id; // wrong?
+      return res;
     });
   }
   
@@ -547,11 +547,11 @@ export class Queue extends Base implements IStorage
       
       var opts = {insync: true};
       
-      (() => { 
+      ((): Promise<void> => { 
         switch(cmd.cmd){
           case 'add':
             return storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts)
-              .then(() => storage.add(cmd.keyPath,
+              .then<void>(() => storage.add(cmd.keyPath,
                                       cmd.itemsKeyPath, 
                                       cmd.itemIds,
                                       opts));

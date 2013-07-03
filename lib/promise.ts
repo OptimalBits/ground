@@ -49,7 +49,8 @@ interface Future {
 //export class Promise<T> {
 
 var CancelError = Error('Operation Cancelled');
-export class Promise extends Base
+
+export class Promise<T> extends Base
 {
   fulfilledFns : any[] = [];
   rejectedFns: any[] = [];
@@ -57,14 +58,14 @@ export class Promise extends Base
   reason: Error;
   isFulfilled : bool;
   
-  static map(elements: any[], fn: (item)=>Promise): Promise
+  static map<U>(elements: any[], fn: (item: any)=>Promise<U>): Promise<U[]>
   {
     elements = _.isArray(elements) ? elements : [elements];
     
     var
       len = elements.length,
       counter = len,
-      promise = new Promise(),
+      promise = new Promise<U>(),
       results = []; results.length = len;
     
     if(!len){
@@ -86,20 +87,20 @@ export class Promise extends Base
     return promise;
   }
   
-  static delay(ms: number): Promise // <void>
+  static delay(ms: number): Promise<void>
   {
-    var promise = new Promise();
+    var promise = new Promise<void>();
     var timeout = setTimeout(()=>promise.resolve(), ms);
     promise.fail(()=>clearTimeout(timeout));
     return promise;
   }
   
-  static resolved(value?): Promise
+  static resolved<U>(value?: U): Promise<U>
   {
     return (new Promise()).resolve(value);
   }
   
-  static rejected(err: Error): Promise
+  static rejected<U>(err: Error): Promise<U>
   {
     return new Promise(err);
   }
@@ -115,15 +116,10 @@ export class Promise extends Base
     }
   }
 
-/*  
-  // Declaration using generics (typescript >= 0.9.0)
-  then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise
-  then<U>(onFulfilled: (value: T) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>
-  then<U>(onFulfilled: (value: T) => U, onRejected?: (reason: Error) => void): Promise<U>
-  */
-  then(onFulfilled: (value: any) => void, onRejected?: (reason: Error) => void): Promise;
-  then(onFulfilled: (value: any) => Promise, onRejected?: (reason: Error) => void): Promise;
-  then(onFulfilled: (value: any) => any, onRejected?: (reason: Error) => void): Promise
+  then<U>(onFulfilled: (value: T) => U, onRejected?: (reason: Error) => void): Promise<U>;
+  then<U>(onFulfilled: (value: T) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>;
+  then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise<void>;
+  then(onFulfilled: (value: T) => any, onRejected?: (reason: Error) => void): Promise<any>
   {
     var promise = new Promise();
     
@@ -140,7 +136,7 @@ export class Promise extends Base
           if(isPromise(result)){
             result.then((val) => { 
               promise.resolve(val);
-            }, (err) =>{
+            }, (err) => {
               promise.reject(err);
             });
           }else{
@@ -248,6 +244,7 @@ export class Promise extends Base
 
 Promise.prototype['otherwise'] = Promise.prototype.fail;
 
+/*
 export class PromiseQueue {
   private promises : Promise[];
   
@@ -265,6 +262,7 @@ export class PromiseQueue {
     }, cb)
   }
 }
+*/
 
 }
 
