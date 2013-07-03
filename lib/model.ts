@@ -8,12 +8,6 @@
   This class represents a Model in a MVC architecture.
   The model supports persistent storage, offline operation 
   and automatic client<->server synchronization.
-
-  Events:
-
-  'updated:', emitted when the model has been updated.
-  'resynced:', emitted when the model has been resynced.
-  'deleted:', emitted when a model has been deleted.
 */
 
 /// <reference path="using.ts" />
@@ -128,10 +122,17 @@ export interface ModelOpts
 {
   fetch?: bool;
   autosync?: bool;
-  ready?: Promise;
+  ready?: Promise<void>;
 }
 
-export class Model extends Promise implements Sync.ISynchronizable
+export interface ModelEvents
+{
+  on(evt: string, ...args: any[]);
+  on(evt: 'updated:', model: Model, args:any);
+  on(evt: 'deleted:', model: Model);
+}
+
+export class Model extends Promise<Model> implements Sync.ISynchronizable, ModelEvents
 {
   static __useDepot: bool = true;
   static __bucket: string;
