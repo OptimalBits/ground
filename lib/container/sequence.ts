@@ -28,7 +28,16 @@ export interface ISeqModel {
   id: string;
 };
 
-export class Sequence extends Container
+export interface SequenceEvents
+{
+  on(evt: string, ...args: any[]);
+  on(evt: 'updated:', model: Model, args:any);
+  on(evt: 'inserted:', item: Model[], index: number);
+  on(evt: 'removed:', item: Model, index: number);
+  on(evt: 'resynced:');
+}
+
+export class Sequence extends Container implements SequenceEvents
 { 
   static mergeFns = {
     id: function(item){
