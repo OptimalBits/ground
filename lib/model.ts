@@ -216,6 +216,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
         ready.reject(err).ensure(() => this.release());
       });
     }else{
+      if(this._id) this._initial = true;
       ready.resolve(this);
     }
 
@@ -226,6 +227,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     // this.schema.populate(args) // populates instances from schema definition
     this.set(args, {nosync: true});
+    if(args._id) this._initial = false;
   }
 
   /**
