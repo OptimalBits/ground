@@ -145,12 +145,11 @@ export class Queue extends Base implements IStorage
   private execCmds(keyPath: string[], commands: MergeCommand[]): Promise<void[]>
   {
     var opts = {insync: true};
-    return Gnd.Promise.map<any>(commands, (cmd: MergeCommand) => {
+    return Gnd.Promise.map(commands, (cmd: MergeCommand) => {
       switch(cmd.cmd) {
-        /*
         case 'insertBefore':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts).then(() => {
-            return this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
+            this.localStorage.insertBefore(keyPath, cmd.refId, cmd.keyPath,
               Util.extendClone({ id:cmd.newId }, opts));
           });
         case 'removeItem':
@@ -158,7 +157,6 @@ export class Queue extends Base implements IStorage
           
         case 'update':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts);
-          */
         default:
           return new Promise(Error('Invalid command: '+cmd));
       }
