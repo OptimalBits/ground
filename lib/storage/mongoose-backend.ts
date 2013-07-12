@@ -20,6 +20,7 @@
 
 */
 /// <reference path="storage.ts" />
+/// <reference path="../model.ts" />
 /// <reference path="../error.ts" />
 
 declare module 'mongoose' {
@@ -71,19 +72,76 @@ interface FoundModel
   id: string;
 }
 
+export interface IModels
+{
+  [indexer: string]: IModel;
+}
+
 export class MongooseStorage implements IStorage {
-  private models : any;
+  private models: any = {};
   private listContainer: any;
   private transaction: any;
   
-  constructor(models, mongoose){
-    this.models = models;
-    
+  constructor(models: IModels, mongoose){
+    this.compileModels(models, mongoose);
+  }
+
+  /**
+    Compiles Gnd models into Mongoose Models.
+  */
+  private compileModels(models: IModels, mongoose){
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: { type: String },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       modelId: { type: String }
     }));
+    
+    for(var name in models){
+      var model = models[name];
+      var schema = model.schema(); // Todo: replace ObjectId by mongoose.Schema.ObjectId
+      var bucket = model.__bucket;
+      if(bucket){
+        var mongooseSchema = this.translateSchema(mongoose, schema);
+        console.log(mongooseSchema)
+        this.models[bucket] = 
+          mongoose.model(bucket, new mongoose.Schema(mongooseSchema));
+      }
+    }
+  }
+  
+  private translateSchema(mongoose, schema: Schema): any
+  {
+    // Translate ObjectId, Sequences and Collections since they have special
+    // syntax.
+    console.log(schema)
+    return schema.map((key, value) => {
+      if(key != '_id'){
+        var res;
+        if(value.definition.type){
+          res = _.clone(value.definition);
+        }else{
+          res = {type: value.definition};
+        }
+        
+        switch(res.type){
+          case Gnd.Schema.ObjectId:
+            res.type = mongoose.Schema.ObjectId;
+            break;
+          case Gnd.Schema.Abstract:
+            break;
+          case Gnd.Sequence:
+            console.log(res)
+            res = [{ type: mongoose.Schema.ObjectId,
+                     ref: 'Animal' }];
+            //res.type = mongoose.Schema.ObjectId;
+            
+            break;
+        }   
+        
+             
+        return res;
+      }
+    });
   }
   
   create(keyPath: string[], doc: any): Promise<string>
@@ -91,7 +149,7 @@ export class MongooseStorage implements IStorage {
     return this.getModel(keyPath).then<string>((found) => {
       var promise = new Promise<string>();
       var instance = new found.Model(doc);
-      instance.save(function(err, doc){  
+      instance.save(function(err, doc){
         if(!err){
           doc.__rev = 0;
           promise.resolve(doc._id);
@@ -502,11 +560,11 @@ listContainer may also have a type attribute:
     var promise = new Promise();
     var last = keyPath.length - 1;
     var index = last - last & 1;
-    var collection = keyPath[index]; //TODO rename?
+    var bucket = keyPath[index]; //TODO rename?
     
-    if(collection in this.models){
+    if(bucket in this.models){
       promise.resolve({
-        Model: this.models[collection], 
+        Model: this.models[bucket], 
         id: this.models[keyPath[last]]
       });
     }else{
