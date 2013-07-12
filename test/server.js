@@ -19,7 +19,10 @@ var express = require('express'),
     oneMinute = 60*1000,
     uuid = require('node-uuid'),
     Cookies = require('cookies'),
-    acl = require('acl');
+    acl = require('acl'),
+    requirejs = require('requirejs');
+
+var models = requirejs('fixtures/models');
 
 app.use(passport.initialize());
 
@@ -209,7 +212,7 @@ app.del('/sessions',  function(req, res) {
 //
 // Mongoose test database
 //
-var mongooseDB = 'mongodb://localhost/GndTextDB';
+var mongooseDB = 'mongodb://localhost/GndTestDB';
 
 mongoose.connect(mongooseDB, function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
