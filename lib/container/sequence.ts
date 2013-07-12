@@ -20,6 +20,7 @@
 /// <reference path="../model.ts" />
 /// <reference path="../overload.ts" />
 /// <reference path="../mutex.ts" />
+/// <reference path="../models/schema.ts" />
 
 module Gnd {
 
@@ -35,6 +36,27 @@ export interface SequenceEvents
   on(evt: 'inserted:', item: Model[], index: number);
   on(evt: 'removed:', item: Model, index: number);
   on(evt: 'resynced:');
+}
+
+export class SequenceSchemaType extends SchemaType
+{
+  public static type = Sequence;
+  
+  constructor(model: IModel, bucket: string)
+  {
+    super({type: Sequence, ref:{model: model, bucket: bucket}});
+  }
+  
+  toObject(obj)
+  {
+    // undefined since a sequence is never serialized.
+  }
+  
+  get(model, args?, opts?)
+  {
+    var def = this.definition;
+    return model.seq(def.ref.model, args, def.ref.bucket);
+  }
 }
 
 export class Sequence extends Container implements SequenceEvents
