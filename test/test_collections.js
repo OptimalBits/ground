@@ -1,5 +1,5 @@
 /*global socket:true, io:true*/
-define(['gnd'], function(Gnd){
+define(['gnd', 'fixtures/models'], function(Gnd, models){
 "use strict";
 
 localStorage.clear();
@@ -8,9 +8,8 @@ describe('Collection Datatype', function(){
   var storageSocket, storageQueue;
 
   var
-    animalSchema = new Gnd.Schema({name: String, legs: Number, pos: Number}),
-    Animal = Gnd.Model.extend('animals', animalSchema),
-    Zoo = Gnd.Model.extend('zoo'),
+    Animal = models.Animal,
+    Zoo = models.Zoo,
     zoo;
 
   var socket1, sl1, ss1, q1, sm1;
@@ -748,8 +747,8 @@ describe('Collection Datatype', function(){
     
     });
 
-    /*
-    it('added item via keepsynced is available offline', function(done){
+    
+    it.skip('added item via keepsynced is available offline', function(done){
       // This test checks that if one collection item has been added to a collection
       // due to that the collection is kept synced, it should be made offline.
       // unfortunatelly is a test difficult to implement, we need a separate browser session
@@ -757,18 +756,17 @@ describe('Collection Datatype', function(){
       done();
     });
     
-    it('removed item via keepsynced is not available offline', function(done){
+    it.skip('removed item via keepsynced is not available offline', function(done){
       // This test checks that if one collection item has been removed from a collection
       // due to that the collection is kept synced, it should be made offline.
       // unfortunatelly is a test difficult to implement, we need a separate browser session
       // for it.
       done();
     });
-    */
+    
   });
   
   describe('Sorted collection', function(){
-    //TODO: rewrite
     it('add items to sorted collection', function(done){
       var item1 = new Animal({name:'leopard', pos:3}),
           item2 = new Animal({name:'tiger', pos:6}),
@@ -917,7 +915,13 @@ describe('Collection Datatype', function(){
         });
       });
     });
-    
+  });
+  
+  describe('Filtered collection', function(){
+    //TODO: rewrite
+    it('add items generate events', function(done){
+      
+    });
   });
   
   describe('Queries', function(){

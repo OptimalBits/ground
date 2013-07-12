@@ -1,13 +1,12 @@
 /*global socket:true, io:true*/
-define(['gnd'], function(Gnd){
+define(['gnd', 'fixtures/models'], function(Gnd, models){
 "use strict";
 
 localStorage.clear();
 
 describe('Sequence Datatype', function(){
-  var animalSchema = new Gnd.Schema({name: String, legs: Number});
-  var Animal = Gnd.Model.extend('animals', animalSchema);
-  var Parade = Gnd.Model.extend('parade');
+  var Animal = models.Animal;
+  var Parade = models.Parade;
   
   var parade;
   
@@ -44,6 +43,8 @@ describe('Sequence Datatype', function(){
     
     Parade.findById(paradeId).then(function(parade){
       if(keepSynced) parade.keepSynced();
+      // parade.get('animals').then(function(animals){
+      // })
       parade.seq(Animal, seqName).then(function(animals){
         expect(animals).to.be.an(Object);
         if(keepSynced){

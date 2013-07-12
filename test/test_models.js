@@ -1,4 +1,4 @@
-define(['gnd'], function(Gnd){
+define(['gnd', 'fixtures/models'], function(Gnd, models){
 "use strict";
   
 localStorage.clear();
@@ -8,9 +8,7 @@ describe('Model Datatype', function(){
 
   var storageQueue;
 
-  var animalSchema = new Gnd.Schema({name: String, legs: Number});
-
-  var Animal = Gnd.Model.extend('animals', animalSchema);
+  var Animal = models.Animal;
   var animal;
 
   var socket1, sl1, ss1, q1, sm1;
