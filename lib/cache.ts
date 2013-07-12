@@ -21,8 +21,6 @@
 
 /// <reference path="base.ts" />
 
-var ls = localStorage;
-
 interface IndexElem {
   next: number;
   prev: number;
@@ -174,7 +172,7 @@ export class Cache extends Base {
   getItem(key){
     var old = this.map[key], tVal, value;
     if(old){
-      tVal = this.deserialize(ls[key]);
+      tVal = this.deserialize(localStorage[key]);
       value = tVal.value;
       value && this.setItem(key, value); // Touch to update timestamp.
     }
@@ -194,7 +192,7 @@ export class Cache extends Base {
     if(this.makeRoom(requested)){
       this.size += requested;
     
-      ls[key] = this.serialize(time, value);
+      localStorage[key] = this.serialize(time, value);
 
       if(old){
         idx = old.idx;
@@ -235,10 +233,11 @@ export class Cache extends Base {
   }
   
   private remove(key){
-    delete ls[key];
+    delete localStorage[key];
   }
   
   private populate(){
+    var ls = localStorage;
     var that = this;
     var i, len, key, tVal, size, list = [];
     this.size = 0;
