@@ -151,7 +151,7 @@ export class Sequence extends Container implements SequenceEvents
     if(id) opts.id = id;
     
     var done = (id)=>{
-      seqItem.id = id || seqItem.id;
+      seqItem.id = id.id || seqItem.id;
       this.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
         seqItem.id = sid;
         seqItem.insync = true;
@@ -473,7 +473,7 @@ _.each(methods, function(method) {
 
 export interface MergeFunctions {
   id: (item: {}) => string;
-  keyPath: (item: {}) => string;
+  keyPath: (item: {}) => string[];
   doc: (item: {}) => {};
   inSync: (item: {}) => bool;
 }
@@ -483,7 +483,7 @@ export interface MergeCommand {
   id?: string;
   refId?: string;
   newId?: string;
-  keyPath?: string;
+  keyPath?: string[];
   doc?: {};
 }
 
