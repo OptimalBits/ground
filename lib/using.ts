@@ -20,6 +20,8 @@
 
 module Gnd
 {
+  var window = typeof window === 'undefined' ? {} : window;
+  
   var defaults = {
     template: function(str: string): (args: any) => string
     {
