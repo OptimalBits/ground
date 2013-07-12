@@ -362,6 +362,19 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     return this._cid;
   }
+  
+  // TODO: define GetOptions interface, we need it to perform queries
+  // when getting collections
+  get(key?: string, args?:{}, opts?: {})
+  {
+   var value = super.get(key);
+   if(value){
+     return value;
+   }else{
+     // Check if it is a lazy property and populate it if so.
+     return this.__schema.get(this, key, args, opts);
+   }
+  } 
 
   getName(): string
   {
