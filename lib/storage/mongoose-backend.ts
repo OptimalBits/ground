@@ -82,14 +82,16 @@ export class MongooseStorage implements IStorage {
   private listContainer: any;
   private transaction: any;
   
-  constructor(models: IModels, mongoose){
+  constructor(models: IModels, mongoose)
+  {
     this.compileModels(models, mongoose);
   }
 
   /**
     Compiles Gnd models into Mongoose Models.
   */
-  private compileModels(models: IModels, mongoose){
+  private compileModels(models: IModels, mongoose)
+  {
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: { type: String },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
@@ -102,7 +104,6 @@ export class MongooseStorage implements IStorage {
       var bucket = model.__bucket;
       if(bucket){
         var mongooseSchema = this.translateSchema(mongoose, schema);
-        console.log(mongooseSchema)
         this.models[bucket] = 
           mongoose.model(bucket, new mongoose.Schema(mongooseSchema));
       }
@@ -113,7 +114,6 @@ export class MongooseStorage implements IStorage {
   {
     // Translate ObjectId, Sequences and Collections since they have special
     // syntax.
-    console.log(schema)
     return schema.map((key, value) => {
       if(key != '_id'){
         var res;
@@ -130,15 +130,13 @@ export class MongooseStorage implements IStorage {
           case Gnd.Schema.Abstract:
             break;
           case Gnd.Sequence:
-            console.log(res)
-            res = [{ type: mongoose.Schema.ObjectId,
-                     ref: 'Animal' }];
-            //res.type = mongoose.Schema.ObjectId;
-            
+          case Gnd.Collection:
+            // we use as reference the pluralized collection name for the model
+            // this is not fully documentet in Mongoose but seems to work...
+            res = [{ type: mongoose.Schema.ObjectId, 
+                     ref: res.ref.model.__bucket }];
             break;
-        }   
-        
-             
+        }
         return res;
       }
     });
