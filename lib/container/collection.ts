@@ -33,6 +33,22 @@ export interface CollectionEvents
   on(evt: 'resynced:');
 }
 
+export class CollectionSchemaType extends SchemaType
+{
+  public static type = Collection;
+  
+  constructor(model: IModel, bucket: string)
+  {
+    super({type: Collection, ref:{model: model, bucket: bucket}});
+  }
+
+  get(model, args?, opts?)
+  {
+    var def = this.definition;
+    return model.all(def.ref.model, args, def.ref.bucket);
+  }
+}
+
 export class Collection extends Container implements CollectionEvents
 {
   // Even handlers
