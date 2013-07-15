@@ -21,13 +21,19 @@
    (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
 
-//import _ = module('underscore');
+// import _ = module('underscore');
+
+/// <reference path="lib/models/schema.ts" />
 
 /// <reference path="lib/task.ts" />
 /// <reference path="lib/server.ts" />
 /// <reference path="lib/session/sessionmanager.ts" />
 /// <reference path="lib/storage/socket-backend.ts" />
 /// <reference path="lib/storage/mongoose-backend.ts" />
+
+
+/// <reference path="lib/container/sequence.ts" />
+/// <reference path="lib/container/collection.ts" />
 
 declare var define;
 
