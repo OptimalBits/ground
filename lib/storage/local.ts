@@ -114,7 +114,7 @@ export class Local implements IStorage {
     return promise;
   }
   
-  put(keyPath: string[], doc: {}): Promise<void>
+  put(keyPath: string[], doc: {}, opts: {}): Promise<void>
   {
     var 
       key = this.makeKey(keyPath),
