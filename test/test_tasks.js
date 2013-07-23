@@ -166,7 +166,7 @@ describe('Promises and Tasks', function(){
     promise.resolve();
   });
 
-  it('simple promise queue with 2 promises triggers after second', function(){
+  it.skip('simple promise queue with 2 promises triggers after second', function(){
     var promise1 = new Gnd.Promise(), promise2 = new Gnd.Promise();
     var queue = new Gnd.PromiseQueue(promise1, promise2);
     
