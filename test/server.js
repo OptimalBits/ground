@@ -34,6 +34,10 @@ app.use(cabinet(staticDir+'node_modules/expect.js', {
   ignore: ['.git', 'node_modules', '*~', 'examples']
 }));
 
+app.use(cabinet(staticDir+'third', {
+  ignore: ['.git', 'node_modules', '*~', 'examples']
+}));
+
 app.use(cabinet(staticDir,
   {
     ignore: ['.git', 'node_modules', '*~', 'examples', '*.js'],
@@ -43,7 +47,6 @@ app.use(cabinet(staticDir,
     }
   },
   function(url){
-    console.log("FILE Changed:"+url);
     if(url.indexOf('.ts') !== -1){
       sio.sockets.emit('file_changed:', url);
     }
@@ -52,7 +55,6 @@ app.use(cabinet(staticDir,
 
 app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   sio.sockets.emit('file_changed:', url);
-  console.log(url);
 }));
 
 app.use(express.bodyParser());
@@ -77,7 +79,7 @@ var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 app.put('/animals/:id', function(req, res){
   console.log("Updating animals:");
   console.log(req.body);
-  models.animals.update({_id:req.params.id}, req.body, function(err){
+  mongooseStorage.models.animals.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
     res.send(204);
   });
@@ -88,7 +90,7 @@ app.put('/zoos/:zooId/animals/:id', function(req, res){
 });
 
 app.del('/zoos/:zooId/animals/:id', function(req, res){
-  models.zoo.findById(req.params.zooId, function(err, zoo){
+  mongooseStorage.models.zoo.findById(req.params.zooId, function(err, zoo){
     if (err) {
       throw new Error('Error remove animal:'+req.params.id+' from Zoo:'+req.params.zooId+' '+err);
     } else {
@@ -103,7 +105,9 @@ app.del('/zoos/:zooId/animals/:id', function(req, res){
 
 app.put('/parade/:seqId/seq/animals/:id', function(req, res){
   console.log('pushing '+req.params.id+' to '+req.params.seqId);
-  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], null, ['animals', req.params.id], {}).then(function(){
+  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], 
+                                 null, 
+                                 ['animals', req.params.id], {}).then(function(){
     res.send(204);
   }).fail(function(err){
     return Error('Error in test service')
@@ -112,7 +116,8 @@ app.put('/parade/:seqId/seq/animals/:id', function(req, res){
 
 app.del('/parade/:seqId/seq/animals/:id', function(req, res){
   console.log('deleting '+req.params.id+' from '+req.params.seqId);
-  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'], req.params.id, {}).then(function(){
+  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'],
+                               req.params.id, {}).then(function(){
     res.send(204);
   }).fail(function(err){
      return Error('Error in test service');
