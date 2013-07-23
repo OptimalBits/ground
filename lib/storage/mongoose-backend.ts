@@ -77,14 +77,25 @@ export interface IModels
   [indexer: string]: IModel;
 }
 
+export interface IMongooseModels
+{
+  [indexer: string]: IModel;
+}
+
 export class MongooseStorage implements IStorage {
   public models: any = {};
   private listContainer: any;
   private transaction: any;
   
+  constructor(models: IMongooseModels)
   constructor(models: IModels, mongoose)
+  constructor(models: any, mongoose?)
   {
-    this.compileModels(models, mongoose);
+    if(mongoose){
+      this.compileModels(models, mongoose);
+    }else{
+      this.models = models;
+    }
   }
 
   /**
@@ -97,7 +108,7 @@ export class MongooseStorage implements IStorage {
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       modelId: { type: String }
     }));
-    
+
     for(var name in models){
       var model = models[name];
       var schema = model.schema();
