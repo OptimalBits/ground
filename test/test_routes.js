@@ -1,4 +1,4 @@
-define(['gnd', 'jquery'], function(Gnd, $){
+define(['gnd'], function(Gnd){
 
 var route = Gnd.Route;
 
