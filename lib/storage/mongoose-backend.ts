@@ -78,7 +78,7 @@ export interface IModels
 }
 
 export class MongooseStorage implements IStorage {
-  private models: any = {};
+  public models: any = {};
   private listContainer: any;
   private transaction: any;
   
@@ -100,7 +100,7 @@ export class MongooseStorage implements IStorage {
     
     for(var name in models){
       var model = models[name];
-      var schema = model.schema(); // Todo: replace ObjectId by mongoose.Schema.ObjectId
+      var schema = model.schema();
       var bucket = model.__bucket;
       if(bucket){
         var mongooseSchema = this.translateSchema(mongoose, schema);
