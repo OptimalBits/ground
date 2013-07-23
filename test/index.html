@@ -5,20 +5,13 @@
   <link rel="stylesheet" href="mocha.css" />
   <script src="expect.js"></script>
   <script src="mocha.js"></script>
+  <script src="underscore.js"></script>
   <script src="socket.io/socket.io.js"></script>
   
   <script type="text/javascript">
     curl = {
            baseUrl: '/',
            packages: {
-             'jquery': {
-               path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
-               main:'jquery.min'
-             },
-             'underscore':{
-               path:'https://raw.github.com/amdjs/underscore/master/',
-               main:'underscore-min'
-             },
              'gnd': {
                 main: 'gnd.ts?',
              },
@@ -94,10 +87,9 @@
       socket.on('file_changed:', function(url){
         document.location.reload(true)
       });
-      curl(['underscore'], function(_){  
-        curl(['test/test_cache'], function(){
-          curl(['test/test_session',
-                'test/test_mutex',
+      curl(['test/test_cache'], function(){
+        curl(['test/test_session',
+              'test/test_mutex',
                 'test/test_dom',
                 'test/test_util',
                 'test/test_storage_memory',
@@ -110,22 +102,18 @@
                 'test/test_sequences',
                 'test/test_tasks',
                 'test/test_events',
+                
                 'test/test_viewmodel',
+                
                 'test/test_view',
+                
                 'test/test_routes',
-                'test/test_models',
-                'test/test_collections',
                 'test/test_base',
                  //'test/test_declare',
+                
                 ], function(Storage){
-                  // We need to run this first.
-            /*
-
-            */
-            mocha
-                .run()
-                .globals(['socket']) // acceptable globals
-          });
+          // We need to run this first.
+          mocha.run().globals(['socket']) // acceptable globals
         });
       });
     });
