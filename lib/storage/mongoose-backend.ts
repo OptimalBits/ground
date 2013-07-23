@@ -87,11 +87,17 @@ export class MongooseStorage implements IStorage {
   private listContainer: any;
   private transaction: any;
   
-  constructor(models: IMongooseModels)
-  constructor(models: IModels, mongoose)
-  constructor(models: any, mongoose?)
+  // constructor(models: IMongooseModels, mongoose, legacy?: bool)
+  // constructor(models: IModels, mongoose, legacy?: bool)
+  constructor(models: any, mongoose, legacy?: bool)
   {
-    if(mongoose){
+    this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
+      type: { type: String },
+      next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
+      modelId: { type: String }
+    }));
+
+    if(!legacy){
       this.compileModels(models, mongoose);
     }else{
       this.models = models;
@@ -103,12 +109,6 @@ export class MongooseStorage implements IStorage {
   */
   private compileModels(models: IModels, mongoose)
   {
-    this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
-      type: { type: String },
-      next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      modelId: { type: String }
-    }));
-
     for(var name in models){
       var model = models[name];
       var schema = model.schema();
