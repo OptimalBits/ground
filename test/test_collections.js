@@ -919,8 +919,8 @@ describe('Collection Datatype', function(){
   
   describe('Filtered collection', function(){
     //TODO: rewrite
-    it('add items generate events', function(done){
-      
+    it.skip('add items generate events', function(done){
+      done();
     });
   });
   
@@ -981,7 +981,8 @@ describe('Collection Datatype', function(){
 
     it('find models in collection sorting', function(done){
       var NUM_TIGERS = 10;
-      for(var i=0; i<NUM_TIGERS; i++){
+      var NUM_HORSES = 10;
+      for(var i=0; i<NUM_HORSES; i++){
         Animal.create({name: 'horse', legs: parseInt(1000*Math.random()+1)}).save();
       }
 
@@ -991,7 +992,7 @@ describe('Collection Datatype', function(){
       
       var query = {
         cond: {name: 'horse'},
-        opts: {sort: {legs: 1}, limit: 8}
+        opts: {sort: {legs: 1}, limit: NUM_HORSES}
       }
       
       storageQueue.waitUntilSynced(function(){
@@ -1005,7 +1006,7 @@ describe('Collection Datatype', function(){
             expect(legs).to.be.within(0, horse.legs);
             legs = horse.legs;
           });
-          expect(horses.count).to.be(8);
+          expect(horses.count).to.be(NUM_HORSES);
           done();
         });
       });
