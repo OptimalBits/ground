@@ -8,8 +8,6 @@
   This class represents a unordered collection of models.
   The collection supports persistent storage, offline and
   automatic client<->server synchronization.
-  
-  Events:
 */
 /// <reference path="container.ts" />
 /// <reference path="../base.ts" />
