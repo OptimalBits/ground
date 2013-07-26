@@ -20,6 +20,9 @@
 */
 // Error.prototype.stack = Error.prototype.stack || '';
 
+/**
+  @module Gnd
+*/
 module Gnd {
 "use strict";
 
@@ -38,7 +41,35 @@ export interface IGettable
   get(key: string): any;
 }
 
-export class Base extends EventEmitter implements ISettable, IGettable
+export interface BaseEvents
+{
+  on(evt: string, ...args: any[]);
+  /**
+  * Fired when any property changes.
+  *
+  * @event changed:
+  * @param obj {any} 
+  * @param options {any}
+  */
+  on(evt: 'changed:', obj: any, options: any); // TODO: Define options interface
+  
+  /**
+  * Fired when the object is destroyed.
+  *
+  * @event destroy:
+  */
+  on(evt: 'destroy:');
+}
+
+/**
+ * The {{#crossLink "Base"}}{{/crossLink}} class is the base class for all 
+ * objects in Ground.
+ *
+ * @class Base
+ * @extends EventEmitter
+ * @constructor
+ **/
+export class Base extends EventEmitter implements ISettable, IGettable, BaseEvents
 {
   private _refCounter: number = 1;
   private _bindings: any = {};
@@ -54,13 +85,25 @@ export class Base extends EventEmitter implements ISettable, IGettable
   }
   
   /**
-    set - Sets a property and notifies any listeners attached to it if changed.
-    
-    Code smell: when setting a whole object of properties, if one of them
-    is a function, nosync will be set to true and none of the properties will
-    be synchronized...
-  */
+   *  Sets a property and notifies any listeners attached to it if changed.
+   *
+   *  Code smell: when setting a whole object of properties, if one of them
+   *  is a function, nosync will be set to true and none of the properties will
+   *  be synchronized...
+   *  
+   * @method set
+   * @param {String} keypath 
+   * @param {Object} val
+   * @param {Object} [opts]
+   */
   set(keypath: string, val: any, opts?: {});
+  
+  /**
+   *  
+   * @method set
+   * @param {Object} doc object with properties to set.
+   * @param {Object} [opts]
+   */
   set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, options?: {})
   {
@@ -135,8 +178,12 @@ export class Base extends EventEmitter implements ISettable, IGettable
   }
   
   /**
-    get - Gets a property. Accepts key paths for accessing deep properties.
-  */
+   *  Gets a property.
+   *
+   * @method get 
+   * @param {Object} key property to get.
+   * @returns {any}
+   */
   get(key: string): any
   {
     var 
@@ -157,16 +204,20 @@ export class Base extends EventEmitter implements ISettable, IGettable
   
   
   /**
-   * bind - Creates a binding between two keys.
+   * Creates a binding between two keys.
    * 
-   * @param {String} key Key to bind in the source object
-   * @param {Object} object Target object to bind this objects key
-   * @param [{String}] objectKey The key in the destination object to bind the key
-   *
    * Note: If the keys have different values when binding, the caller will get
-   * the value of the target object key
+   * the value of the target object key.
+   *
+   * @method bind
+   * @param {String} key Key to bind in the source object
+   * @param {Base} object Target object to bind this objects key
+   * @param {String} [objectKey] The key in the destination object to bind the
+   * key in this object.
+   *
+   * 
    */
-  bind(key, object, objectKey){
+  bind(key: string, object: Base, objectKey: string){
     var dstKey = objectKey || key
 
     this.unbind(key)
@@ -185,10 +236,14 @@ export class Base extends EventEmitter implements ISettable, IGettable
     return this
   }
   /**
-    unbind - Removes a binding.
-
+   *
+   * Removes a binding.
+   *
+   * @method unbind
+   * @param {String} key Key to unbind.
+   *
   */
-  unbind(key)
+  unbind(key: string)
   {
     var bindings = this._bindings
     if( (bindings!=null) && (bindings[key]) ){
@@ -232,6 +287,13 @@ export class Base extends EventEmitter implements ISettable, IGettable
     this.endUndoSet(key)
   }
   
+  /**
+   * Destroys this object. Removes all event listeners and cleans itself up.
+   * Note: this method should never be called directly.
+   *  
+   * @method destroy
+   *
+   */
   destroy()
   {
     this.emit('destroy:');
@@ -242,6 +304,13 @@ export class Base extends EventEmitter implements ISettable, IGettable
     // TODO: nullify this object.
   }
   
+  /**
+   * Retains a reference of this object.
+   *  
+   * @method retain
+   * @chainable
+   *
+   */
   retain(): Base
   {
     if(this._destroyed){
@@ -251,6 +320,13 @@ export class Base extends EventEmitter implements ISettable, IGettable
     return this;
   }
   
+  /**
+   * Releases a reference of this object.
+   *  
+   * @method release
+   * @chainable
+   *
+   */
   release(): Base
   {
     this._refCounter--;
@@ -272,11 +348,17 @@ export class Base extends EventEmitter implements ISettable, IGettable
     return this;
   }
   
+  /**
+   * Autoreleases a reference of this object.
+   * i.e. releases the object in the next event loop.
+   *  
+   * @method autorelease
+   * @chainable
+   *
+   */
   autorelease(): Base
   {
-    Util.nextTick(()=>{
-      this.release();
-    });
+    Util.nextTick(() => this.release());
     return this;
   }
   
