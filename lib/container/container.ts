@@ -89,12 +89,12 @@ module Gnd
       
       this.storageQueue = 
         new Gnd.Storage.Queue(using.memStorage, using.storageQueue, false);
-    
-      this.items = items || [];
+
+      this.items = items ? _.clone(items) : [];
       
       this.model = model;
       this.parent = parent;
-    
+
       this.resyncFn = (items) => this.resync(items);
     }
     
