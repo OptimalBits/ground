@@ -55,6 +55,26 @@ module.exports = function(grunt) {
         src: ['dist/gnd.min.js'],
         dest: 'dist/'
       }
+    },
+    
+    // Constants for the Gruntfile so we can easily change the path for
+    // our environments.
+    BASE_PATH: './',
+    DEVELOPMENT_PATH: './',
+    
+    // The YUIDoc plugin to generate documentation for code files.
+    yuidoc: {
+      compile: {
+        name: '<%= pkg.name %>',
+        description: '<%= pkg.description %>',
+        version: '<%= pkg.version %>',
+        url: '<%= pkg.homepage %>',
+        options: {
+          extension: '.ts', // Default '.js' <comma-separated list of file extensions>
+          paths: '<%= DEVELOPMENT_PATH %>' + 'lib/',
+          outdir: '<%= BASE_PATH %>' + 'docs/'
+        }
+      }
     }
   });
 
@@ -62,7 +82,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-typescript');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-compress');
+  grunt.loadNpmTasks('grunt-contrib-yuidoc');
 
   // Default task(s).
   grunt.registerTask('default', ['typescript', 'uglify', 'compress']);
+  grunt.registerTask('docs', ['yuidoc']);
 };
