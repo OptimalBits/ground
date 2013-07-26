@@ -66,11 +66,11 @@ export class ViewModel extends Base
 
   destroy()
   {
-    this.unbind();
+    this.cleanup();
     super.destroy();
   }
   
-  unbind(bindings?: Binder[])
+  cleanup(bindings?: Binder[])
   {
     _.each(bindings || this.boundBinders, (binder) => {
       binder.unbind();
