@@ -101,7 +101,7 @@ export class TaskQueue {
         this.executeTasks();
       });
     }else if(this.isEnded || this.isCancelled){
-      this.endPromise.resolve(this.isCancelled);
+      this.endPromise.resolve();
     }
   }
 }

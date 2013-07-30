@@ -74,10 +74,10 @@ export class ViewModel extends Base
     
     this.binders = {
       bind: Binders.TwoWayBinder,
-      each: EachBinder,
-      show: ShowBinder,
-      'class': ClassBinder,
-      event: EventBinder
+      each: Binders.EachBinder,
+      show: Binders.ShowBinder,
+      'class': Binders.ClassBinder,
+      event: Binders.EventBinder
     }
     
     _.extend(this.binders, binders);

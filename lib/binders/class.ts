@@ -8,7 +8,7 @@
 /**
   @module Binders
 */
-module Gnd {
+module Gnd.Binders {
 
 /**
   The Class binder allows to bind classnames to properties. It is possible to

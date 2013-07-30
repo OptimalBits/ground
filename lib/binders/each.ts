@@ -10,7 +10,7 @@
 /**
   @module Binders
 */
-module Gnd {
+module Gnd.Binders {
 
   // TODO: Add a "done" callback to support asynchronous operations on
   // the callbacks.

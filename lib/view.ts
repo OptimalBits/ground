@@ -288,17 +288,15 @@ export class View extends Base
     @method init
     @return {Promise} resolved after initialization has been completed.
    */
-   private init(): Promise // <void>
+   private init(): Promise<void>
    {
      if(!this.isInitialized){
        this.isInitialized = true;
        
-       return Util.fetchTemplate(this.templateUrl, this.cssUrl).then((templ) =>{
+       return Util.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
          this.template = this.templateEngine(this.templateStr || templ);
     
-         return Promise.map(this.children, (subview) =>{
-           return subview.init();
-         });
+         return Promise.map(this.children, (subview) => subview.init());
        });
      }else{
        return Promise.resolved();

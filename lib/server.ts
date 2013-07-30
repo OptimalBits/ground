@@ -131,9 +131,9 @@ export class Server {
     });
   }
 
-  find(userId: string, keyPath: string[], query: {}, opts: {}): Promise
+  find(userId: string, keyPath: string[], query: {}, opts: {}): Promise<any[]>
   {
-    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then<any[]>((allowed?) => {
       if(allowed){
         return this.storage.find(keyPath, query, opts);
       }
@@ -143,9 +143,9 @@ export class Server {
   //
   // Sequences
   //
-  all(userId: string, keyPath: string[], query: {}, opts: {}) : Promise //<IDoc[]>
+  all(userId: string, keyPath: string[], query: {}, opts: {}) : Promise<any[]>
   {
-    return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed?) => {
+    return this.rm.checkRights(userId, keyPath, Rights.GET).then<any[]>((allowed?) => {
       if(allowed){
         return this.storage.all(keyPath, query, opts);
       }
