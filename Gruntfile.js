@@ -72,7 +72,8 @@ module.exports = function(grunt) {
         options: {
           extension: '.ts', // Default '.js' <comma-separated list of file extensions>
           paths: '<%= DEVELOPMENT_PATH %>' + 'lib/',
-          outdir: '<%= BASE_PATH %>' + 'docs/'
+          outdir: '<%= BASE_PATH %>' + 'docs/',
+          themedir: "docstheme/gndtheme"
         }
       }
     }
