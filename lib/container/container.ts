@@ -27,7 +27,7 @@ module Gnd
   {
     key?: string;
     nosync?: bool;
-    query?: IStorageQuery;
+    query?: Storage.IStorageQuery;
   }
   
   /**

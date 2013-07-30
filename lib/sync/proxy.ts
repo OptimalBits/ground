@@ -24,18 +24,49 @@
 
 /// <reference path="../base.ts" />
 
+/**
+  @module Gnd
+  @submodule Sync
+*/
 module Gnd.Sync {
  
   /**
-    An abstract class representing a synchronizable object.
+    An interface representing a synchronizable object.
+    
+    @class Sync.ISynchronizable
   */
   export interface ISynchronizable extends ISettable
   {
+    /**
+      Checks if the instance has autosync enabled.
+    
+      @method isKeptSynced
+      @return {Boolean} true if autosync enabled, false otherwise.
+    */
     isKeptSynced:() => bool;
+    
+    /**
+      Gets the key path for this document.
+    
+      @method getKeyPath
+      @return {KeyPath} 
+    */
     getKeyPath:() => string[];
+    
+    /**
+      Emits events.
+      
+      @method emit
+    */
     emit:(event: string, ...params: any[]) => void;
   };
   
+  /**
+  
+  
+    @class Sync.IProxy
+    
+  */
   export interface IProxy
   {
     docs: {
@@ -46,6 +77,13 @@ module Gnd.Sync {
     notify(keyPath: string[], ...args:any[]);
   }
   
+  /**
+  
+  
+    @class Sync.Proxy
+    @extends Base
+    @uses IProxy
+  */
   class Proxy extends Base implements IProxy
   {
     public docs: {
@@ -57,6 +95,10 @@ module Gnd.Sync {
       Returns true when it is the first time an object is being observed.
       (note that several instances of the same object can be observed at a given
        time)
+       
+       @method observe
+       @param doc {Sync.ISynchronizable} doc to start observation.
+       @return {Boolean} true if it is the first time an object is being observed.
     */
     observe(doc: Sync.ISynchronizable): bool
     {
@@ -73,6 +115,10 @@ module Gnd.Sync {
     /**
       Stops observing the given doc.
       Returns true if no other instances of the given doc are being observed.
+      
+      @method unobserve
+      @param doc {Sync.ISynchronizable} doc to stop observation.
+      @return {Boolean} true if no more instances of the given doc are being observed.
     */
     unobserve(doc: Sync.ISynchronizable): bool
     {
@@ -94,7 +140,18 @@ module Gnd.Sync {
       }
     }
     
-    // notify([displays, '123123213'], 'update:', args);
+    /**
+      Notifies a changed to a given document.
+      
+      example:
+      
+          proxy.notify([displays, '123123213'], 'update:', args);
+      
+      @method notify
+      @param keyPath {KeyPath} key path pointing to the document to be notified.
+      @param args* {Any} any number of arguments to be passed to the observer.
+    */
+    
     notify(keyPath: string[], ...args:any[])
     {
       var key = keyPathToKey(keyPath);

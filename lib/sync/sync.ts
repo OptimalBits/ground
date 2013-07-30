@@ -20,9 +20,23 @@
 /// <reference path="../base.ts" />
 /// <reference path="../storage/socket.ts" />
 
+/**
+  @module Gnd
+  @submodule Sync
+*/
 module Gnd.Sync
 {
-
+  /**
+    This class takes care of keeping synchronized documents between clients
+    and servers.
+    
+    This class is used internally by the framework.
+  
+    @class Sync.Manager
+    @extends Base
+    @constructor
+    @param socket {Socket} a socket.io client instance.
+  */
 export class Manager extends Base {
   private socket;
  
@@ -124,6 +138,15 @@ export class Manager extends Base {
     super.destroy();
   }
   
+  /**
+    Starts observing a given document. When a document is being observed,
+    the server will start sending it updates when something related to the document
+    has been updated.
+    
+    @method observe
+    @param doc {Sync.ISynchronizable} a document that implements the 
+    ISynchronizable interface.
+  */
   observe(doc: Sync.ISynchronizable)
   {
     if(getProxy().observe(doc)){
@@ -131,6 +154,13 @@ export class Manager extends Base {
     }
   }
 
+  /**
+    Stops observing a given document.
+    
+    @method unobserve
+    @param doc {Sync.ISynchronizable} a document that implements the 
+    ISynchronizable interface.
+  */
   unobserve(doc: Sync.ISynchronizable)
   { 
     if(getProxy().unobserve(doc)){

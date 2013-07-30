@@ -8,7 +8,8 @@
 /// <reference path="twoway.ts" />
 
 /**
-  @module Binders
+@module Gnd
+@submodule Binders
 */
 module Gnd.Binders {
 
@@ -45,6 +46,7 @@ interface Callbacks
          
   @class EachBinder
   @implements Binder
+  @namespace Binders
 */
 export class EachBinder implements Binder
 {

@@ -17,6 +17,10 @@
 
 declare var curl;
 
+/**
+  @module Gnd
+  @submodule Route
+*/
 module Gnd.Route {
 
 interface Node
@@ -45,9 +49,18 @@ interface Middleware
 // Listen to changes in location hash, and routes to the specified routes. 
 // route([root='/':String], callback:Function)
 //
+/**
+  Url Route management.
+  
+  This class provides hierarchical url routing that maps the hierarchical structure
+  of the DOM.
+  
+  For a complete description of the route manager check the [guide](http://gnd.io/#Routing)
 
+  @class Route
+*/
 interface Route {
-  listen: (root: String, cb: ()=>void) => void;
+  listen: (root?: String, cb?: ()=>void) => void;
 };
 
 var interval, 
@@ -55,7 +68,14 @@ var interval,
     routeHandler, 
     basepath;
 
-export function listen(root, cb) {
+/**
+  Listen to changes in the url and calls the route handler accordingly.
+    
+  @method listen
+  @param [root=""] {String} specify the root url.
+  @param [cb] {Function} route handler.
+*/    
+export function listen(root?: string, cb?) {
   if(_.isFunction(root)){
     cb = root;
     root = '';

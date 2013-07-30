@@ -12,6 +12,10 @@
 /// <reference path="../promise.ts" />
 /// <reference path="../container/sequence.ts" />
 
+/**
+  @module Gnd
+  @submodule Storage
+*/
 module Gnd.Storage {
 "use strict";
   
@@ -41,7 +45,23 @@ module Gnd.Storage {
   This class allows offline support for the classes that need to
   save data in a remote storage. The Queue will save first all
   data in a local storage, and synchronize with the remote
-  storage as soon as it is available.
+  storage as soon as it is available. It also caches all content that is 
+  accessed via its methods.
+  
+  The queue also provides methods to read data from the storages. This methods
+  take care of accessing first the cached versions if any, and then tries the
+  remote ones (and cache accordingly).
+  
+  This is an internal class used by the framework and should never be used 
+  otherwise.
+  
+  @class Storage.Queue
+  @extends Base
+  @uses Storage.IStorage
+  @constructor
+  @param local {Storage.IStorage} storage instance to use as local storage.
+  @param [remote] {Storage.IStorage} storage instance to use as server storage.
+  @param [autosync=true] {Boolean} specify if auto synchronization should be enabled.
 */
 export class Queue extends Base implements IStorage
 {
@@ -93,13 +113,28 @@ export class Queue extends Base implements IStorage
     this.autosync = typeof autosync === 'undefined' ? true : autosync;
   }
   
+  /**
+    Initializes the queue. This method should be called after creating a queue
+    to load the serialized queue.
+    
+    @method init
+    @param cb {Function} callback called after initializing the queue.
+  */
   init(cb:(err?: Error) => void)
   {
     this.loadQueue();
     cb();
   }
   
-  exec()
+  /**
+    Explicitly executes the queue. This method will start executing commands
+    in the queue until the whole queue is processed. If the queue has been
+    created with *autosync=true* then this method should not be called.
+    
+    @method exec
+    @return {Promise} promise resolved after executing all the commands.
+  */
+  exec(): Promise
   {
     var promise = new Promise();
     if(!this.currentTransfer && this.queue.length === 0){
@@ -112,6 +147,12 @@ export class Queue extends Base implements IStorage
     return promise;
   }
   
+  /**
+    Fetches a document from the storages. It will try first with the local
+    storage, and after that the remote one.
+  
+    @param keyPath {KeyPath} key path pointing to the document to fetch.
+  */
   fetch(keyPath: string[]): Promise<any>
   {
     var promise = new Promise();
@@ -372,6 +413,9 @@ export class Queue extends Base implements IStorage
     });
   }
   
+  /**
+    
+  */
   synchronize()
   {
     var done = <(err?, sid?)=>void>_.bind(this.completed, this);
@@ -473,6 +517,13 @@ export class Queue extends Base implements IStorage
     }
   }
   
+  /**
+    Waits until all commands have been executed.
+    
+    @method waitUntilSynced
+    @param cb {Function} Callback called after executing all commands or called
+    directly if there are no commands left in the queue.
+  */
   public waitUntilSynced(cb:()=>void)
   {
     if(this.queue.length > 0){
@@ -482,6 +533,12 @@ export class Queue extends Base implements IStorage
     }
   }
   
+  /**
+    Checks if the queue is empty.
+    
+    @method isEmpty
+    @return {Boolean} true if empty, false otherwise.
+  */
   public isEmpty(){
     return !this.queue.length;
   }

@@ -18,10 +18,27 @@ interface KeyValue {
   value: any;
 }
 
+/**
+@module Gnd
+@submodule Storage
+*/
 module Gnd.Storage {
 
 var InvalidKeyError = () => Error('Invalid Key');
 
+/**
+  Generic Storage implementation for local storages.
+  
+  Provide an implementation of the IStore interface to create local storages,
+  a Memory and HTML5 LocalStorage stores are provided by the framework.
+
+  @class Storage.Local
+  @extends IStorage
+  
+  @constructor
+  @param [store=Storage.Store.LocalStore] specifies what store to use. Defaults
+  to LocalStorage.
+*/
 export class Local implements IStorage {
   private store: Store.IStore;
 
@@ -87,7 +104,7 @@ export class Local implements IStorage {
     }
   }
 
-  constructor(store: Storage.Store.IStore) {
+  constructor(store?: Storage.Store.IStore) {
     this.store = store || new Storage.Store.LocalStore();
   }
 

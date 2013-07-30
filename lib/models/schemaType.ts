@@ -11,18 +11,7 @@
 /// <reference path="schema" />
 
 module Gnd
-{   
-  /*
-  class Schema{
-    public static ObjectId = 'ObjectId';
-    public static Abstract = 'Abstract';
-
-    // needed?
-    public static Mixed;
-    public static Buffer;
-  }
-  */
-  
+{  
   export interface ISchemaType
   {
     type;
@@ -30,9 +19,12 @@ module Gnd
   }
    
   /**
+    This class is the base class for all schema types, including the Schema class
+    itself, allowing nesting schemas.
   
     @class SchemaType
     @constructor
+    @param definition {Any}
   */
   export class SchemaType
   { 
@@ -44,16 +36,33 @@ module Gnd
       this.definition = definition;
     }
     
+    /**
+      Validates a value against the types definition. This method should be
+      overrided by SchemaType subclasses.
+    
+      @method validate
+      @param val {Any} value to be validated.
+    */
     validate(val: any): Promise<bool>
     {
       return new Promise(true);
     }
     
+    /**
+      Converts the given object to a plain object according to this type 
+      definition. This method should be overrided by SchemaType subclasses.
+     
+      @method toObject
+      @param obj {Any} object to be "serialized"
+    */
     toObject(obj)
     {
       return obj;
     }
 
+    /**
+      Returns the default value for this type definition.
+    */
     default()
     {
       return this.definition.default;

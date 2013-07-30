@@ -6,9 +6,6 @@
   Schema.
   Inspired by Moongosejs, to be used both in server and client side.
 */
-/**
-
-*/
 
 /// <reference path="schemaType" />
 /// <reference path="../promise" />
@@ -55,11 +52,30 @@ module Gnd
       this.compiledSchema = this.compile(schema || {});
     }
     
+    /**
+      Validates a given property against a given value. Returns a promise that
+      is resolved to a boolean determining if the validation passes or fails.
+      
+      @method validate
+      @param [property] {String} property to evaluate.
+      @param [value] {Any} value to be validated.
+    */
+    validate(property: string, value: any): Promise<bool>;
+    
+    /**
+      Validate an object against this schema. Returns a promise that
+      is resolved to a boolean determining if the validation passes or fails.
+      
+      @method validate
+      @param obj {Any} object to validate.
+    */
+    
     validate(obj: any, property?: string, value?: any): Promise<bool>
     {
       if(property){
         return this.compiledSchema[property].validate(value);
       }else{
+        // TODO: Implement validation
         return new Promise<bool>(true);
         /*
         return Promise.map(_.keys(this.schema), (property) =>
@@ -97,18 +113,33 @@ module Gnd
       });
       return result;
     }
-
+    /**
+      Gets an object property using the schema type custom getter.
+      This is currently used by Collections and Sequences to provide lazy
+      instantiation.
+      
+      @method get
+      @param obj {Any} object from where to try to get the property.
+      @param key {string} key to use for retrieving the property.
+      @param [args] {Object} arguments to be passed to the gettter.
+      @param [opts] {Object} options to be passed to the getter.
+    */
     //get(obj: any, args?: {}, opts?);
     get(obj: any, key?: string, args?: {}, opts?: {})
     {
       if(_.isString(key)){
         var schema = this.schema[key];
         return schema && schema.get && schema.get(obj, args, opts);
-      }else{
-        return schema;
       }
     }
-
+    
+    /**
+      Returns a plain object with all the default values according to the
+      schema definition.
+    
+      @method default
+      @return {Object} plain object with default values.
+    */
     default(){
       var result = {}, empty = true;
       _.each(this.compiledSchema, (type: SchemaType, property?) => {
@@ -146,16 +177,32 @@ module Gnd
     /**
       Extends a schema with the properties of another Schema creatign a new Schema.
       Note that it will overwrite existing properties with new ones.
+      
+      @method extend
+      @static
+      @param parent {Schema} parent schema to be extended.
+      @param [child] {Schema} child schema to extend the parent with.
+      @return {Schema} a new schema extended from the given parent and child 
+      schemas.
     */
     public static extend(parent: Schema, child?: Schema): Schema
     {
       return new Schema(_.extend({}, parent.schema, child ? child.schema : {}));
     }
     
+    /**
+      Compiles a Schema type from its definition. Mostly used internally by the
+      Schema class.
+    
+      @method compileType
+      @param type {Schema | SchemaType}
+      @param definition {Object}
+    */
     public static compileType(type, definition)
     {
       var types = Schema.types;
       
+      // Wouldnt be enough with type instanceof SchemaType ? (since Schema inherits from SchemaType)
       if(type instanceof Schema || type instanceof SchemaType){
         return type;
       }
@@ -171,6 +218,14 @@ module Gnd
       }
     }
     
+    /**
+      Maps every schema key and value to a new object. This method is useful when
+      translating the schema to specific backend, such as mongoose.
+      
+      @method map
+      @param iter {Function} (key, value) => any
+      @return {Object} mapped object.
+    */
     public map(iter: (key, value) => any)
     {
       var result = {};
@@ -180,8 +235,21 @@ module Gnd
       });
       return result;
     }
-
+    
+    /**
+      @property ObjectId
+      @type String
+      @final
+      @static
+    */
     public static ObjectId = 'ObjectId';
+    
+    /**
+      @property Abstract
+      @type String
+      @final
+      @static
+    */
     public static Abstract = 'Abstract';
 
     // needed?

@@ -113,7 +113,7 @@ export interface IModel
   create(args: {}, keepSynced?: bool): Promise<Model>;
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
-  find(query: IStorageQuery): Promise;
+  find(query: Storage.IStorageQuery): Promise;
   all(parent?: Model, args?: {}, bucket?: string) : Promise;
   seq(parent: Model, args: {}, bucket: string) : Promise;
 }
@@ -725,7 +725,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @static
     @return {Collection} Collection with the models that fulfill the query.
   */
-  static find(query: IStorageQuery): Promise<Collection>
+  static find(query: Storage.IStorageQuery): Promise<Collection>
   {
     var opts = {
       key: this.__bucket,

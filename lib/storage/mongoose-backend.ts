@@ -39,7 +39,11 @@ declare module "underscore" {
   export function initial (array : any[], n? : number) : any[];
 }
 
-module Gnd {
+/**
+  @module Gnd
+  @submodule Storage
+*/
+module Gnd.Storage {
  
 function makeKey(keyPath: string[]): string {
   return keyPath.join('@');
@@ -82,7 +86,16 @@ export interface IMongooseModels
   [indexer: string]: IModel;
 }
 
-export class MongooseStorage implements IStorage {
+/**
+  [MongooseJS](http://mongoosejs.com) implementation of IStorage.
+
+  @class Storage.MongooseStorage
+  @extends Storage.IStorage
+  @constructor
+  @param models {Any} Object mapping model buckets and models.
+  @param mongoose {Mongoose} A valid mongoose instance.
+*/
+export class MongooseStorage implements Storage.IStorage {
   public models: any = {};
   private listContainer: any;
   private transaction: any;
@@ -293,7 +306,7 @@ export class MongooseStorage implements IStorage {
     });
   }
   
-  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise<any[]>
+  find(keyPath: string[], query: Storage.IStorageQuery, opts: {}): Promise<any[]>
   {
     return this.getModel(keyPath).then<any[]>((found)=>{
       if(keyPath.length === 1){
@@ -306,7 +319,7 @@ export class MongooseStorage implements IStorage {
     });
   }
 
-  private findAll(Model: IMongooseModel, query: IStorageQuery): Promise<any[]>
+  private findAll(Model: IMongooseModel, query: Storage.IStorageQuery): Promise<any[]>
   {
     query = query || {};
     
@@ -328,7 +341,7 @@ export class MongooseStorage implements IStorage {
   private findById(Model: IMongooseModel, 
                    id: string, 
                    setName: string,
-                   query: IStorageQuery,
+                   query: Storage.IStorageQuery,
                    opts: {}): Promise<any[]>
   {
     query = query || {};

@@ -6,7 +6,9 @@
 /// <reference path="../viewmodel.ts" />
 
 /**
-  @module Binders
+@module Gnd
+@submodule Binders
+
 */
 module Gnd.Binders {
 
@@ -26,6 +28,7 @@ module Gnd.Binders {
     
     @class ShowBinder
     @implements Binder
+    @namespace Binders
   */
 export class ShowBinder implements Binder 
 {

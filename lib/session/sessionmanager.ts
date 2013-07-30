@@ -5,13 +5,51 @@
 module Gnd
 {
   
+/**
+  A session storage interface. This interface can be implemented using any
+  available storage in the server.
+  
+  @class ISessionStore
+*/
 export interface ISessionStore
 {
+  /**
+  
+    @method save
+    @param sessionId {String} the session id.
+    @param session {Object} plain object with the session data.
+    @param cb {Function} nodejs style callback with the save result.
+  */
   save(sessionId: string, session: {}, cb: (err?: Error) => void);
+  
+  /**
+  
+    @method load
+    @param sessionId {String} the session id.
+    @param cb {Function} nodejs style callback with load result.
+  */
   load(sessionId: string, cb: (err?: Error, session?: {}) => void);
+  
+  /**
+  
+    @method remove
+    @param sessionId {String} the session id.
+    @param cb {Function} nodejs style callback with the remove result.
+  */
   remove(sessionId: string, cb: (err?: Error) => void);
 }
 
+/**
+  This class provides a server side manager for user sessions.
+
+  @class SessionManager
+  @constructor
+  @param [cookieId] {String} cookie id to use by this manager.
+  @param [cookieParser] {Function} (cookie: string) => {} a function that
+  can parse a cookie string and return a object with pairs of cookieIds and
+  values.
+  @param [store] {ISessionStore} a session storage.
+*/
 export class SessionManager
 {
   private expire: number;
@@ -78,6 +116,14 @@ export class SessionManager
   }
 }
 
+/**
+  A Memory based implementation of the ISessionStore interface.
+
+  @class MemorySessionStore
+  @extends ISessionStore
+  @constructor
+  @param [expireTime=1000*60*69] expiration time of the session in milliseconds.
+*/
 export class MemorySessionStore implements ISessionStore
 {
   private sessions = {};

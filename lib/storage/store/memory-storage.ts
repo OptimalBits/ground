@@ -10,6 +10,12 @@
 /// <reference path="../../cache.ts" />
 
 module Gnd.Storage.Store {
+  /**
+    IStore implementation using a Plain Javascript Object.
+      
+    @class Storage.Store.MemoryStore
+    @extends Storage.Store.IStore
+  */
   export class MemoryStore implements IStore {
     store = {};
     get(key: string): any {

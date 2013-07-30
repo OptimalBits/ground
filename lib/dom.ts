@@ -530,7 +530,7 @@ module Gnd.Ajax
     @params obj {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function get(url: string, obj: {}): Promise
+  export function get(url: string, obj?: {}): Promise
   {
     return base('GET', url, obj);
   }
@@ -566,10 +566,10 @@ module Gnd.Ajax
   
     @method get
     @params url {String} url where to perform the operation.
-    @params obj {Object} Plain object with data to send to the server.
+    @params [obj] {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function del(url: string, obj: {}): Promise
+  export function del(url: string, obj?: {}): Promise
   {
     return base('DELETE', url, obj);
   }
@@ -599,7 +599,7 @@ module Gnd.Ajax
     }
   }
   
-  function base(method: string, url: string, obj: {}): Promise
+  function base(method: string, url: string, obj?: {}): Promise
   {
     var promise = new Promise();
     
@@ -624,7 +624,7 @@ module Gnd.Ajax
     }
     xhr.open(method, url);
     xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify(obj));
+    xhr.send(JSON.stringify(obj || {}));
 
     return promise;
   }
