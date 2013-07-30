@@ -7,20 +7,45 @@
 /// <reference path="../viewmodel.ts" />
 /// <reference path="twoway.ts" />
 
+/**
+  @module Binders
+*/
 module Gnd {
 
-//
-//  Syntax: data-each="collection: itemContextName"
-//  Ex: data-each="todos: todo" data-bind="todo.description"
-//  data-each="todos: todo [| added:callback0] [removed: callback1]"
-//
-
+  // TODO: Add a "done" callback to support asynchronous operations on
+  // the callbacks.
 interface Callbacks
 {
   added?: (node: Node, item: Model) => void;
   removed?: (node: Node) => void;
 }
 
+/**
+  The Each binder is used to bind collections to HTML Elements. Using this
+  binder it is possible to define a dynamic list of elements that are bound
+  to their Collection or Sequence counterparts.
+  
+  It is possible to define *added* and *removed* event callbacks to perform
+  operations such as animations when an item is added or removed to the DOM.
+  
+  The binder works by defining a item alias for a collection or sequence,
+  after that the alias can be used to bind properties with the *TwoWayBinder*
+  
+      Syntax: data-each="collection: itemContextName [| added:callback0] [| removed: callback1]"
+      
+      callback signature: 
+        added(el: HTMLElement, item: Model);
+        removed(el: HTMLElement);
+      
+      Example: 
+      
+        <lu data-each="todos: todo">
+          <li data-bind="todo.description | added: todo.addedTodo | removed: todo.removedTodo"></li>
+        </lu>
+         
+  @class EachBinder
+  @implements Binder
+*/
 export class EachBinder implements Binder
 {
   private items: Element[] = [];

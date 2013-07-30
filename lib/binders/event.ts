@@ -5,8 +5,22 @@
 
 /// <reference path="../viewmodel.ts" />
 
-module Gnd {
+/**
+  @module Binders
+*/
+module Gnd.Binders {
 
+  /**
+    The Event binder is used to bind events to HTML elements.
+    
+        Syntax: data-event="eventName1: keypath1; eventName2: keypath2; eventName3: keypath3"
+    
+        Examples: 
+          data-bind = "click: todo.createTodo"
+  
+    @class EventBinder
+    @implements Binder
+  */
 export class EventBinder implements Binder
 {
   private bindings: any[][] = [];
@@ -23,9 +37,6 @@ export class EventBinder implements Binder
     return eventBindings;
   }
   
-  //
-  // Syntax: data-event="eventName1: keypath1; eventName2: keypath2; eventName3: keypath3"
-  //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
     var eventBindings = this.parse(value);

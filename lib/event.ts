@@ -20,6 +20,12 @@
 
 module Gnd {
   
+  /**
+  * This class provides emitting and listening of events.
+  *
+  * @class EventEmitter
+  *
+  */
 export class EventEmitter {
   private _listeners;
   private _namespaces;
@@ -37,11 +43,13 @@ export class EventEmitter {
   /**
     * Assigns a listener to the specified event
     * 
-    * @param {String} eventName Name of the event to assign the listener to
+    * @method on
+    * @param {String} eventName Names of the event to assign the listener to separated by spaces.
     * @param {Function} listener Function to be executed when the specified event is emitted
-    * @returns {Object} The current instance of EventEmitter to allow chaining
+    * @chainable
     */
-  on(eventNames, listener) {
+  on(eventNames: string, listener): EventEmitter
+  {
     var events = eventNames.split(' '), listeners = this.getListeners();
 
     for(var i=0, len=events.length;i<len;i++){
@@ -79,30 +87,34 @@ export class EventEmitter {
   /**
     * Emits the specified event running all listeners associated with it
     * 
+    * @method emit
     * @param {String} eventName Name of the event to execute the listeners of
     * @param {Mixed} arguments You can pass as many arguments as you want after 
     * the event name. These will be passed to the listeners
-    * @returns {Object} The current instance of EventEmitter to allow chaining
+    * @chainable
     */  
-  emit(eventName, ...args:any[]) {
+  emit(eventName: string, ...args:any[]): EventEmitter
+  {
     var listeners = this.getListeners()
     if(listeners['*']){
-      this._fire(listeners['*'], args)
+      this.fireEvent(listeners['*'], args)
     }
     if(listeners[eventName]){
-      this._fire(listeners[eventName], args);
+      this.fireEvent(listeners[eventName], args);
     }
     return this
   }
   
   /**
-    * Removes the specified listener
+    * Removes the specified listener.
     * 
-    * @param [{String}] eventName Name of the event to remove the listener from
+    * @method off
+    * @param [{String}] eventNames Names of the events to remove the listener from separated by spaces
     * @param [{Function}] listener Listener function to be removed
-    * @returns {Object} The current instance of EventEmitter to allow chaining
+    * @chainable
     */
-  off(eventNames?, listener?) {
+  off(eventNames?: string, listener?): EventEmitter
+  {
     if(listener){
       var events = eventNames.split(' ')
       
@@ -120,10 +132,12 @@ export class EventEmitter {
   /**
     * Returns an array of listeners for the specified event name
     * 
+    * @method listeners
     * @param {String} eventName Name of the event to get the listeners for
     * @returns {Array} An array of listeners for the specified event
     */
-  listeners(eventName) {
+  listeners(eventName: string)
+  {
     var listeners = this.getListeners()
     return listeners[eventName] = listeners[eventName] || [];
   }
@@ -131,11 +145,13 @@ export class EventEmitter {
   /**
     * Assigns a listener to the specified event removes its self after the first run
     * 
+    * @method once
     * @param {String} eventName Name of the event to assign the listener to
     * @param {Function} listener Function to be executed when the specified event is emitted
-    * @returns {Object} The current instance of EventEmitter to allow chaining
+    * @chainable
     */
-  once(eventName, listener) {
+  once(eventName, listener): EventEmitter
+  {
     var self = this
   
     function wrapper() {
@@ -148,8 +164,9 @@ export class EventEmitter {
   /**
     * Removes all listeners from the specified (namespaced) events
     * 
+    * @method removeAllListeners
     * @param {String} eventName Name of the event to remove the listeners from
-    * @returns {Object} The current instance of EventEmitter to allow chaining
+    * @chainable
   */
   removeAllListeners(eventNames) {
     var listeners = this._listeners;
@@ -167,7 +184,16 @@ export class EventEmitter {
     return this;
   }
   
-  namespace(namespace) {
+  /**
+   * Creates a namespace to isolate events.
+   *
+   *
+   * @method namespace 
+   *
+   *
+  */
+  namespace(namespace) // TODO: Define EventEmitterNamespace
+  {
     var self = this;
     var namespaced = {
       self:self, 
@@ -186,7 +212,7 @@ export class EventEmitter {
     return namespaced;
   }
   
-  _fire(eventListeners, args){
+  private fireEvent(eventListeners, args){
     var listeners = [], i, len=eventListeners.length;
     for(i=0;i<len;i++){
       listeners[i] = eventListeners[i];
@@ -196,7 +222,7 @@ export class EventEmitter {
     }
   }
   
-  _removeListener(event, listener){
+  private _removeListener(event, listener){
    var listeners = this._listeners, index;
      
     if(listeners && listeners[event]) { 

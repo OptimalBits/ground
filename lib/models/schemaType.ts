@@ -29,6 +29,11 @@ module Gnd
     new (definition): SchemaType;
   }
    
+  /**
+  
+    @class SchemaType
+    @constructor
+  */
   export class SchemaType
   { 
     public static type: any = Object;

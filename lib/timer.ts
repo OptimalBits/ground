@@ -22,6 +22,11 @@ module Gnd {
   
   The timer will emit a ended: event when the timer has reached its duration,
   and 'stopped:' if the timer was stopped by the user.
+  
+  @class Timer
+  @extends Base
+  @constructor
+  @param resolution {Numbers}
 */
 export class Timer extends Base
 {
@@ -47,12 +52,13 @@ export class Timer extends Base
     super.destroy();
   }
   
-  /**
-    start(resolution, duration)
+  /**  
+    Starts the timer with the given optionally duration in milliseconds.
     
-    Starts a new timer with the given optionally duration in milliseconds.
+    @method start
+    @param duration {Number}
   */
-  start(duration)
+  start(duration: number)
   {
     clearTimeout(this.timer);
     if(duration){
@@ -62,11 +68,23 @@ export class Timer extends Base
     this.duration && this.iter();
   }
   
+  /**  
+    Checks if the timer is currently running.
+    
+    @method isRunning
+    @return {Boolean}
+  */
   isRunning(): bool
   {
     return (this.timer !== null);
   }
   
+  /**  
+    Stops the current timer.
+    
+    @method start
+    @param duration {Number}
+  */
   stop()
   {
     clearTimeout(this.timer);

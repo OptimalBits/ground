@@ -13,6 +13,9 @@
 
 /// <reference path="promise" />
 
+/**
+  @module Gnd
+*/
 module Gnd
 {
   /*
@@ -23,6 +26,21 @@ module Gnd
    *
    */
   
+   /**
+     @class Gnd
+     @static
+   */
+   
+   /**
+     Query factory method. 
+     
+     This function is compatible with jQuery $ function (although with much
+     less functionality)
+   
+     @for Gnd
+     @method $
+     @param selector {String}
+   */
   export function $(element: Element[]): Query;
   export function $(element: Window): Query;
   export function $(element: Element): Query;
@@ -79,10 +97,25 @@ export interface QueryNodes{
   [index: number]: HTMLElement;
 }
 
+/**
+ * This class implements a minimal subset of jQuery methods, mostly used internally
+ * by the framework, but it is exposed publicly for convenience.
+ *
+ * @class Query
+ * @constructor
+ */
 export class Query // implements QueryNodes
 {
   public length: number;
   
+  /**
+   * Listen to DOM events.
+   *
+   * @method on
+   * @params eventNames {String} list of events to listen separated by spaces.
+   * @params handler {Function} Callback function
+   * @chainable
+   */
   on(eventNames: string, handler: (evt) => void): Query
   {
     _.each(eventNames.split(' '), (eventName) => {
@@ -99,6 +132,31 @@ export class Query // implements QueryNodes
     return this;
   }
   
+  /**
+   * Listen just once to DOM events.
+   *
+   * @method one
+   * @params eventNames {String} list of events to listen separated by spaces.
+   * @params handler {Function} Callback function.
+   * @chainable
+   */
+  one(eventNames: string, handler: (evt) => void): Query
+  {
+    var wrapper = (evt) => {
+      handler(evt);
+      this.off(eventNames, wrapper);
+    }
+    return this.on(eventNames, wrapper);
+  }
+  
+  /**
+   * Stop listening to DOM events.
+   *
+   * @method off
+   * @params eventNames {String} list of events to stop listen to separated by spaces.
+   * @params handler {Function} Callback function.
+   * @chainable
+   */
   off(eventNames: string, handler: (evt) => void): Query
   {
     _.each(eventNames.split(' '), (eventName) => {
@@ -115,15 +173,13 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  one(eventNames: string, handler: (evt) => void): Query
-  {
-    var wrapper = (evt) => {
-      handler(evt);
-      this.off(eventNames, wrapper);
-    }
-    return this.on(eventNames, wrapper);
-  }
-
+  /**
+   * Trigger DOM events.
+   *
+   * @method trigger
+   * @params eventNames {String} list of events to trigger
+   * @chainable
+   */
   trigger(eventNames: string)
   {
     _.each(eventNames.split(' '), (eventName) => {
@@ -143,6 +199,25 @@ export class Query // implements QueryNodes
     return this;
   }
   
+  /**
+   * Gets DOM attributes.
+   *
+   * @method attr
+   * @params attr {String} Attribute name to get.
+   * @return {Any} attribute value.
+   */
+  attr(attr: string): any;
+  
+  /**
+   * Sets DOM attributes.
+   *
+   * @method attr
+   * @params attr {String} Attribute name to set.
+   * @params value {Any} Attribute value to set.
+   * @chainable
+   */
+  attr(attr: string, value: any): Query;
+  
   attr(attr: string, value?: any)
   {
     if(!_.isUndefined(value)){
@@ -155,24 +230,60 @@ export class Query // implements QueryNodes
     }
   }
   
+  /**
+   * Sets DOM styles.
+   *
+   * @method css
+   * @params styles {Object} Object mapping styles and its values.
+   * @chainable
+   */
   css(styles: {[index: string]: string;})
   {
     _.each(this, (el) => el.style && _.extend(el.style, styles));
     return this;
   }
   
+  /**
+   * Shows DOM Elements
+   *
+   * @method show
+   * @chainable
+   */
   show()
   {
     _.each(this, (el) => show(el));
     return this;
   }
-  
+
+  /**
+   * Hide DOM Elements
+   *
+   * @method hide
+   * @chainable
+   */
   hide()
   {
     _.each(this, (el) => hide(el));
     return this;
   }
+
+  /**
+   * Sets a text string as content for the matched set of elements.
+   *
+   * @method text
+   * @param text {String} text to fill the DOM elements with.
+   * @chainable
+   */
+  text(text: string): Query;
   
+  /**
+   * Gets a text string as content for the first matched element.
+   *
+   * @method text
+   * @return {String} first DOM element content.
+   */
+  text(): string;
+   
   text(text?: string)
   {
     var el = this[0];
@@ -185,7 +296,24 @@ export class Query // implements QueryNodes
     }
     return this;
   }
+
+  /**
+   * Sets a html string as content for the matched set of elements.
+   *
+   * @method html
+   * @param text {String} html string to fill the DOM elements with.
+   * @chainable
+   */
+  html(html: string): Query;
   
+  /**
+   * Gets a html string as content for the first matched element.
+   *
+   * @method html
+   * @return {String} first DOM element content.
+   */
+  html(): string;
+
   html(html?: string)
   {
     if(_.isUndefined(html)) return this[0].innerHTML;
@@ -193,14 +321,28 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  remove()
+  /**
+   * Remove all matched elements from their parents.
+   *
+   * @method remove
+   * @chainable
+   *
+   */
+  remove(): Query
   {
     // TODO: remove also all events associated to this node.
     _.each(this, (el) => this.removeNode(el));
     return this;
   }
-  
-  empty()
+
+  /**
+   * Empty all matched elements.
+   *
+   * @method empty
+   * @chainabe
+   *
+   */  
+  empty(): Query
   {
     _.each(this, (el) => {
       while (el.hasChildNodes()) {
@@ -210,28 +352,62 @@ export class Query // implements QueryNodes
     return this;
   }
   
-  addClass(classNames)
+  /**
+   *
+   * Add classnames to the matched set of DOM elements.
+   * 
+   * @method addClass
+   * @params classNames {String} List of classnames separated by spaces.
+   * @chainable
+   */
+  addClass(classNames: string): Query
   {
     _.each(this, (el) => {
       var oldClassNames = _.compact(el.className.split(' '));
       el.className = _.union(oldClassNames, classNames.split(' ')).join(' ');
     });
+    return this;
   }
   
-  removeClass(classNames)
+  /**
+   *
+   * Remove classnames from the matched set of DOM elements.
+   * 
+   * @method removeClass
+   *
+   * @params classNames {String} List of classnames separated by spaces.
+   * @chainable
+   */
+  removeClass(classNames): Query
   {
     _.each(this, (el) => {
       var oldClassNames = _.compact(el.className.split(' '));
       el.className = 
         _.difference(oldClassNames, classNames.split(' ')).join(' ');
     });
+    return this;
   }
   
-  rect(){
+  /**
+   *
+   * Calculates the bounding client rectangle of the first matched DOM element.
+   * 
+   * @return {Object} Returns a object with left, top, width and height
+   */
+  rect()
+  {
     if(this[0]) return this[0].getBoundingClientRect();
   }
   
-  parent()
+  /**
+   *
+   * Get all parents from the matched set of DOM elements.
+   * 
+   * @params classNames {String} List of classnames separated by spaces.
+   * @return {Query} set of parents for all the matched elements.
+   * TODO: remove possible duplicates.
+   */
+  parent(): Query
   {
     return $(_.map(this, (el) => el.parentNode));
   }
@@ -240,17 +416,6 @@ export class Query // implements QueryNodes
     el.parentNode.removeChild(el);
   }
 }
-  
-/*
- * DOM selector
- *
- * Usage:
- *   $('div');
- *   $('#name');
- *   $('.name');
- *
- * http://jsperf.com/simple-jquery-selector-vs-140medley/2
- */
 
 export function isElement(object) {
   return object && object.nodeType === Node.ELEMENT_NODE
@@ -351,21 +516,59 @@ export function serialize(obj) {
 // Ajax
 // 
 //------------------------------------------------------------------------------
-
+/**
+  @class Ajax
+  @static Ajax
+*/
 module Gnd.Ajax
-{   
+{
+  /**
+    Performs a HTTP GET operation.
+  
+    @method get
+    @params url {String} url where to perform the operation.
+    @params obj {Object} Plain object with data to send to the server.
+    @returns {Promise} Promise with the result of the operation.
+  */
   export function get(url: string, obj: {}): Promise
   {
     return base('GET', url, obj);
   }
+  
+  /**
+    Performs a HTTP PUT operation.
+  
+    @method put
+    @params url {String} url where to perform the operation.
+    @params obj {Object} Plain object with data to send to the server.
+    @returns {Promise} Promise with the result of the operation.
+  */
   export function put(url: string, obj: {}): Promise
   {
     return base('PUT', url, obj);
   }
+  
+  /**
+    Performs a HTTP POST operation.
+  
+    @method post
+    @params url {String} url where to perform the operation.
+    @params obj {Object} Plain object with data to send to the server.
+    @returns {Promise} Promise with the result of the operation.
+  */
   export function post(url: string, obj: {}): Promise
   {
     return base('POST', url, obj);
   }
+  
+  /**
+    Performs a HTTP DELETE operation.
+  
+    @method get
+    @params url {String} url where to perform the operation.
+    @params obj {Object} Plain object with data to send to the server.
+    @returns {Promise} Promise with the result of the operation.
+  */
   export function del(url: string, obj: {}): Promise
   {
     return base('DELETE', url, obj);
@@ -454,6 +657,24 @@ module Gnd {
     'metaKey': 91
   };
 
+/**
+  This function returns a key handler suitable for DOM keydown events.
+  
+  It provides a chainable API where the last link should provide a callback
+  that is executed when the event matches the key and modifiers.
+  
+  This function allows to register handlers to key presses including
+  key modifiers such as shift, ctrl, alt and meta.
+  
+  @for Gnd
+  @method keypressed
+  @example 
+      
+      Gnd.$('document').on('keydown', Gnd.keypressed('a').ctrl().alt(function(){
+          // Called when a + ctrl + alt is pressed
+      });
+  
+**/
 export function keypressed(str:string, cb?): (evt) => void
 {
   var callbacks = [];

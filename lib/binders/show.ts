@@ -5,16 +5,32 @@
 
 /// <reference path="../viewmodel.ts" />
 
-module Gnd {
+/**
+  @module Binders
+*/
+module Gnd.Binders {
 
+  /**
+    The show binder is used to show or hide some HTML Element based on the
+    value of the bound property. A trueish value will show the element while a
+    falsy value will hide it. 
+    
+    An optional *bang* operator can be used to reverse the logic, making the binder
+    a *hide* binder instead of *show*.
+    
+        Syntax: data-show="[!]keypath"
+
+        Example: 
+          data-show="todo.isCompleted"
+          data-show="!todo.notActive"
+    
+    @class ShowBinder
+    @implements Binder
+  */
 export class ShowBinder implements Binder 
 {
   private bindings: any[][] = [];
   
-  //
-  // Syntax: data-show="[!]keypath"
-  // Example: data-show="todo.isCompleted"
-  //
   bind(el: Element, value: string, viewModel: ViewModel)
   {
     var

@@ -128,10 +128,54 @@ export interface ModelOpts
 export interface ModelEvents
 {
   on(evt: string, ...args: any[]);
-  on(evt: 'updated:', model: Model, args:any);
+  /**
+  * Fired when a model property changes.
+  *
+  * @event updated:
+  * @param model {Model}
+  * @param args {any}
+  * @deprecated
+  */
+  on(evt: 'updated:', model: Model, args:any); // Obsolete?
+  
+  /**
+  * Fired when a model has been removed from the storage.
+  *
+  * @event deleted:
+  * @param model {Model}
+  */
   on(evt: 'deleted:', model: Model);
 }
 
+/**
+  The {{#crossLink "Model"}}{{/crossLink}} class is used to represent data
+  based on a predefined {{#crossLink "Schema"}}{{/crossLink}}. The Model can be
+  automatically synchronized with a server storage, as well as cached locally, 
+  and provides property validation.
+ 
+  Models are subclasses of Promise. This is because the data in a Model is
+  filled lazily when retrieven from the storage. This allows us to start using
+  the model before all its data has been populated from the server. The promise
+  resolves after the best possible data (cached or server side) has populated
+  the model, effectivelly given the posibility to wait until the model has 
+  received all its data.
+ 
+  The base Schema for models (the schema that all Models inherit):
+  
+       Base model schema:
+       {
+         _id: ObjectId,
+         _cid: String,
+         persisted: bool,
+       }
+       
+  @class Model
+  @extends Promise
+  @constructor
+  @param args {Any}
+  @param [bucket] {String}
+  @param [opts] {ModelOpts}
+ **/
 export class Model extends Promise<Model> implements Sync.ISynchronizable, ModelEvents
 {
   static __useDepot: bool = true;
@@ -232,12 +276,26 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 
   /**
    *
-   *  Subclasses the Model class
+   *  Subclasses the Model class. Use this method to subclass a Model. This method
+   *  takes care of automatic schema subclassing and inheritance of some important
+   *  static methods from the Model class.
    *
+   *  @method extend
+   *  @static
    *  @param {String} bucket A string representing a placeholder in the 
    *  storage where to save the model.
+   *  @param {Schema} schema Schema that defines the data of this model.
    *  @return {IModel} A Model Subclass.
    *
+   *  @example
+     var AnimalSchema = new Schema({
+       legs: Number,
+       name: String
+     });
+     
+     var Animal = model.extend('animals', AnimalSchema);
+     
+     var tiger = Animal.create({name: 'tiger', legs: 4});
    */
   static extend(bucket: string, schema: Schema)
   {
@@ -280,14 +338,31 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 
   // TODO: Create must first try to find the model in the depot,
   // and "merge" the args argument with the model properties from the depot.
-  // if not available instantiate it and save it in the depot.  
+  // if not available instantiate it and save it in the depot.
+  
+  /**
+   *
+   *  Instantiates a Model. Models are never instantiated using new. The reason
+   *  for this is that every instance must be unique for one model, in fact forcing
+   *  the singleton pattern for model instances. 
+   *
+   *  @method create
+   *  @static
+   *  @param {Any} [args] Optional arguments to fill the model properties with.
+   *  @param {Boolean} [autosync=false] Set to true to keep the model automatically synchronized with the storage.
+   *  @return {Model} A Model instance.
+   *
+   *  @example     
+     
+     var tiger = Animal.create({_id: '1234', name: 'tiger', legs: 4});
+   */
   static create(args?: {}): Promise<Model>;
-  static create(args: {}, keepSynced: bool): Promise<Model>;
-  static create(args?: {}, keepSynced?: bool): Promise<Model>
+  static create(args: {}, autosync: bool): Promise<Model>;
+  static create(args?: {}, autosync?: bool): Promise<Model>
   {
     return overload({
       'Object Boolean': function(args, keepSynced){
-        return modelDepot.getModel(this, args, keepSynced);
+        return modelDepot.getModel(this, args, autosync);
       },
       'Object': function(args){
         return this.create(args, false);
@@ -298,17 +373,34 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     }).apply(this, arguments);
   }
 
-  static findById(keyPathOrId, keepSynced?: bool, args?: {}): Promise
+  /**
+   *
+   *  Finds a Model by its Id. 
+   *
+   *  @method findById
+   *  @static
+   *  @param {String||[]} [keyPathOrId] keypath or id of the model to find.
+   *  @param {Boolean} [autosync=false] Set to true to keep the model automatically synchronized with the storage.
+   *  @param {Any} [args] Optional arguments to set to the found model instance.
+   *  @return {Model} A Model instance.
+   *
+   *  @example     
+     
+     var tiger = Animal.findById(['animals', '1234']);
+     
+     var tiger = Animal.findById('1234');
+   */
+  static findById(keyPathOrId, autosync?: bool, args?: {}): Model
   {
     return overload({
-      'Array Boolean Object': function(keyPath, keepSynced, args){
-        return modelDepot.getModel(this, args, keepSynced, keyPath);
+      'Array Boolean Object': function(keyPath, autosync, args){
+        return modelDepot.getModel(this, args, autosync, keyPath);
       },
-      'String Boolean Object': function(id, keepSynced, args){
-        return this.findById([this.__bucket, id], keepSynced, args);
+      'String Boolean Object': function(id, autosync, args){
+        return this.findById([this.__bucket, id], autosync, args);
       },
-      'String Boolean': function(id, keepSynced){
-        return this.findById(id, keepSynced, {});
+      'String Boolean': function(id, autosync){
+        return this.findById(id, autosync, {});
       },
       'String Object': function(id, args){
         return this.findById(id, false, args);
@@ -320,35 +412,88 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   }
 
   /**
-    Removes a model from the storage.
-  */
+   *
+   *  Removes a model from the storage.
+   *
+   *  @method removeById
+   *  @static
+   *  @param {String||[]} [keyPathOrId] keypath or id of the model to find.
+   *  @return {Promise} A promise that is resolved when the model instance has
+   *  been removed.
+   *
+   *  @example     
+     
+     Animal.removeById(['animals', '1234']).then(function(){
+       // tiger removed
+     }, function(err){
+       console.log(err);
+     });
+   */
   static removeById(keypathOrId): Promise<void>
   {
     var keyPath = _.isArray(keypathOrId) ? keypathOrId : [this.__bucket, keypathOrId];
     return using.storageQueue.del(keyPath, {});
   }
 
+  /**
+    @method fromJSON
+    @deprecated
+  */
   static fromJSON(args, opts?): Model
   {
     return new this(args, opts);
   }
 
+  /**
+    @method fromArgs
+    @deprecated
+  */
   static fromArgs(args, opts?): Model
   {
     return this.fromJSON(args, opts);
   }
 
+  /**
+    Destroys the model. This memory is called automatically by the memory 
+    management system and should never be called directly.
+
+    @method destroy
+    @protected
+  */
   destroy(): void
   {
     using.syncManager && using.syncManager.unobserve(this);
     super.destroy();
   }
 
+  /**  
+    @method init
+    @deprecated
+  */
   init(): Promise
   {
     return new Promise(this);
   }
 
+  /**
+    Sets the model instance persistend id. This method is called internally
+    by the framework and should never be used by the user. Server side ids are
+    generated by the server when a model instance is persisted in the storage.
+    
+    @method id
+    @param id {String} an global unique id string.
+  */
+  id(id: string);
+  
+  /**
+    Gets the model instance id. This method returns the persistent id if 
+    available, otherwise just the client id.
+    
+    @method id
+    @return {String} persistent or client id.
+  */
+  id(): string;
+    
   id(id?: string): string 
   {
     if(id){
@@ -360,6 +505,13 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     return this._id || this._cid;
   }
 
+  /**
+    Gets the client id. The client id is a unique id that is always assigned to
+    a model client side. 
+    
+    @method cid
+    @return {String} client id.
+  */
   cid(): string
   {
     return this._cid;
@@ -370,7 +522,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   get(key?: string, args?:{}, opts?: {})
   {
    var value = super.get(key);
-   if(value){
+   if(!_.isUndefined(value)){
      return value;
    }else{
      // Check if it is a lazy property and populate it if so.
@@ -378,49 +530,106 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
    }
   } 
 
+  /**
+    Gets the name of this Model.
+    
+    @method getName
+    @return {String} The model name.
+  */
   getName(): string
   {
     return "Model";
   }
 
+  /**
+    Gets the keypath for this model instance. Note that if the instance has not
+    yet been persisted, this function returns the same keypath as 
+    
+    @method getKeyPath
+    @return {Array} keypath for this instance.
+  */
   getKeyPath(): string[]
   {
     return [this.__bucket, this.id()];
   }
 
+  /**
+    Gets the local keypath for this model instance. Note that if the instance has not
+    yet been persisted, this function returns the same keypath as 
+    
+    @method getLocalKeyPath
+    @return {Array} keypath for this instance.
+  */
   getLocalKeyPath(): string[]
   {
     return [this.__bucket, this.cid()];
   }
 
+  /**
+    Checks if this model instance is kept automatically synced with the 
+    storages.
+    
+    @method isKeptSynced
+    @return {Boolean}
+    @deprecated Use isAutosync instead.
+  */
   isKeptSynced(): bool
   {
     return this._keepSynced;
   }
-
+  
+  /**
+    Checks if this model instance is kept automatically synced with the 
+    storages.
+    
+    @method isAutosync
+    @return {Boolean}
+  */
+  isAutosync(): bool
+  {
+    return this._keepSynced;
+  }
+  
+  /**
+    Checks if this model instance is persisted on a server storage.
+    
+    @method isPersisted
+    @return {Boolean}
+  */  
   isPersisted(): bool
   {
     return this._persisted;
   }
 
+  /**
+    Gets the bucket where this model is being store.
+    
+    @method bucket
+    @return {String}
+  */
   bucket(): string
   {
     return this.__bucket;
   }
 
+  /**
+    Triggers a manual update operation with the current model instance state.
+  
+    @method save
+    @return {Promise<void>} Promise resolved when the operation is completed.
+  */
   save(): Promise<void>
   {
     return this.update(this.toArgs());
   }
 
-  /*
+  /**
       Updates a model (in its storage) with the given args.
 
-      update(args)
+      @method update
+      @return {Promise<void>} Promise resolved when the operation is completed.
       
-      TODO: 
-      Only store the models properties according to the
-      Schema.
+      TODO: make private
   */
   update(args: {}): Promise<any>
   {
@@ -428,7 +637,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       bucket = this.__bucket,
       id = this.id();
       
-    if(!this._dirty) return new Gnd.Promise(true);
+    if(!this._dirty) return Gnd.Promise.resolved();
 
     if(this._initial){
       args['_initial'] = this._initial = false;
@@ -444,11 +653,19 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       // update the localStorage in any case...
       // Hopefully a singleton Model will solve this problems...
       return this._storageQueue.put([bucket, id], args, {}).then((): void =>{
+        // Obsolete?
         this.emit('updated:', this, args);
       });
     }
   }
-
+  
+  /**
+    Removes this instance from the storage. The instance will still be kept in
+    memory, and it is the users duty to release it.
+  
+    @method remove
+    @return {Promise<void>}
+  */
   remove(): Promise<void>
   {
     return Model.removeById(this.getKeyPath()).then(()=> {
@@ -457,7 +674,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     });
   }
 
-  // autosync(enable: bool)
+  // TODO: implement autosync(enable: bool)
+  
+  /**
+    Tells the model to enable autosync. After calling this method the instance
+    will be kept automatically in sync with its server side counterpart.
+  
+    @method keepSynced
+  */
   keepSynced()
   {
     if(this._keepSynced) return;
@@ -484,14 +708,27 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     });
   }
 
-  toArgs(){
+  /**
+    Returns a plain object with all the properties of the model according to
+    its schema.
+    
+    @method toArgs
+  */
+  toArgs(): any
+  {
     return this.__schema.toObject(this);
   }
 
-  static find(query: IStorageQuery): Promise
+  /**
+    Gets a model collection that fullfills the query condition.
+
+    @static
+    @return {Collection} Collection with the models that fulfill the query.
+  */
+  static find(query: IStorageQuery): Promise<Collection>
   {
     var opts = {
-      key: this.__bucket, 
+      key: this.__bucket,
       query: query
     }
     return Container.create(Collection, this, opts);
@@ -499,6 +736,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 
   /**
     Creates a collection filled with models according to the given parameters.
+    
+    @method all
+    @static
+    @param {Model} parent
+    @param {Mixed} [args]
+    @param {String} [bucket]
+    
+    @return {Collection} collection with all the models
   */
   static all(parent: Model, bucket?: string): Promise;
   static all(parent?: Model, argsOrKeypath?, bucket?: string): Promise
@@ -533,8 +778,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   }
 
   /**
-    Returns the sequence determined by a parent model and
-    the given model class.
+    Creates a sequence filled with models according to the given parameters.
+    
+    @method seq
+    @static
+    @param {Model} parent
+    @param {Mixed} [args]
+    @param {String} [bucket]
+    @return {Sequence} sequence with all the models.
   */
   static seq(parent: Model): Promise;
   static seq(parent: Model, args: {}, bucket: string): Promise;

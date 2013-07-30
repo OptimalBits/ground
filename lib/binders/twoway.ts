@@ -8,13 +8,32 @@
 
 // TODO: Allow pipelining formatters.
 
-module Gnd {
+/**
+  @module Binders
+*/
+module Gnd.Binders {
 
-//
-// Syntax: "attr0: keyPath; attr1: keyPath "
-//
-// Syntax: "attr0: keyPath | formatter0; attr1: keyPath | formatter1"
-//
+/**
+  Two way binder is used to bind a model property and some attribute on a given
+  HTML element.
+  Most HTML elements can only bind one way, i.e. change its content based on
+  the binding propery, while some others such as *input* elements where the value
+  attribute can work in both directions.
+
+  In one data-bind attribute is possible to bind several attributes to 
+  different key paths. It is also possible to apply formatters before the
+  final attribute is assigned.
+  
+      Syntax: data-bind = "attr0: keyPath [| formatter0][; attr1: keyPath [| formatter1]...]"
+
+      Examples: 
+        data-bind = "text: todo.description"
+        data-bind = "alt: todo.shortDesc; href: todo.imgUrl"1
+        data-bind = "text: todo.meta.date | dateFormatter"
+  
+  @class TwoWayBinder
+  @implements Binder
+*/
 export class TwoWayBinder implements Binder
 {
   // [ [model, onKeypathFn, eventListener], [...], ...] 

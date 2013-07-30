@@ -1,5 +1,5 @@
 /**
-  Ground Web Framework (c) 2011-2012 Optimal Bits Sweden AB
+  Ground Web Framework (c) 2011-2013 Optimal Bits Sweden AB
   MIT Licensed.
 */
 /**
@@ -27,19 +27,24 @@ export interface ViewArgs
 }
 
 /**
- *
- *  View Class
- *
- *  This class encapsulate a view based on HTML and CSS. Views are part of
- *  a hierarchy. Every view can be attached to a parent view, spawning a 
- *  tree structure that maps the DOM.
- *
- *  The mechanics works by giving a selector and a parent (both optional).
- *  The selector will be used to find the root node for the given view within
- *  the parent. Typically the selector is just an id of some div element that 
- *  is defined on the parent view.
- *
- */
+   View Class
+ 
+   This class encapsulate a view based on HTML and CSS. Views are part of
+   a hierarchy. Every view can be attached to a parent view, spawning a 
+   tree structure that maps to the DOM.
+ 
+   The view hierarchy works by associating a selector and a parent (both optional)
+   to the view.
+   
+   The selector will be used to find the root node for the given view within
+   the parent. Typically the selector is just an id of some div element that 
+   is defined on the parent view.
+   
+   @class View
+   @extends Base
+   @constructor
+   @param [args] {ViewArgs}
+ **/
 export class View extends Base
 {
   private template: (args: any) => string;
@@ -64,7 +69,22 @@ export class View extends Base
   public nodes: HTMLElement[];
   public children: View[] = [];
   
+  /**
+   Define this property to perform animations or effects when hidding the view.
+    
+    
+    @property onHidding
+    @type {Function} (el: Element, args: any, done: () => void) => void
+  
+  */
   public onHidding: (el: Element, args: any, done: ()=>void) => void;
+  
+  /**
+   Define this property to perform animations or effects when showing the view.
+    
+    @property onShowing
+    @type {Function} (el: Element, args: any, done: () => void) => void
+  */
   public onShowing: (el: Element, args: any, done: ()=>void) => void;
 
   constructor(args?: ViewArgs)
@@ -91,6 +111,15 @@ export class View extends Base
     super.destroy();
   }
   
+  /**
+    Sets the parent for this view. This function creates a father-child 
+    relationship between two views, where a DOM element is associated to the
+    parent so that this view knows where it should render itself.
+  
+    @method parent
+    @param selector {Element | String}
+    @param [parent] {View}
+  */
   parent(selector: Element): View;
   parent(selector: string): View;
   parent(selector: any, parent?: View): View
@@ -106,6 +135,12 @@ export class View extends Base
     return this;
   }
   
+  /**
+    Removes a Child view from this view.
+  
+    @method removeChild
+    @param child {View} child view to be removed from this view.
+  **/
   removeChild(child: View): void
   {
     this.children = _.without(this.children, child);
@@ -115,16 +150,16 @@ export class View extends Base
    *
    * Renders this view and all its subviews (if any)
    *
-   *
+   * @method render
    * @param {Object} context object with arguments needed for the templates or
    * the view models.
-   *
+   * @returns {Promise}
    */
-  render(context?: {}): Promise // <HTMLElement>
+  render(context?: {}): Promise<HTMLElement>
   {
     context = context || {};
     
-    return this.init().then(()=>{
+    return this.init().then<HTMLElement>(()=>{
       var html;
 
       if(this.template){
@@ -166,7 +201,7 @@ export class View extends Base
       
       return Promise.map(this.children, (child) => child.render(context))
         .then(() => this.applyStyles({visibility: ''}))
-        .then(()=>this.nodes[0]);
+        .then(() => this.nodes[0]);
     });
   }
   
@@ -174,6 +209,11 @@ export class View extends Base
     _.each(this.nodes, (node) => $(node).css(styles));
   }
   
+  /**
+   Cleans this view removing it from the DOM.
+  
+   @method clean
+  */
   clean()
   {
     if(this.root){
@@ -188,6 +228,12 @@ export class View extends Base
     }
   }
   
+  /**
+    Refresh the view and subhierarchy, i.e., clean it and re-render again.
+    
+    @method refresh
+    @returns {Promise}
+  */
   refresh(): Promise
   {
     return this.refreshMutex(()=>{
@@ -201,6 +247,13 @@ export class View extends Base
     console.log(this+" does not implement disable")
   }
   
+  /**
+    Hides this view.
+    
+    @method hide
+    @param args {Any} args to be passed to the onHidding callback.
+    @param done {Function} called after finalizing hidding the view.
+  */
   hide(args, done)
   {
     this.root && this.onHidding(this.root, args, ()=>{
@@ -209,6 +262,13 @@ export class View extends Base
     });
   }
   
+  /**
+    Shows this view.
+    
+    @method show
+    @param args {Any} args to be passed to the onHidding callback.
+    @param done {Function} called after finalizing showing the view.
+  */
   show(args, done) 
   {
     this.root && this.onShowing(this.root, args, ()=>{
@@ -217,16 +277,16 @@ export class View extends Base
     }); 
   }
     
-  /**
-   * 
-   * Initializes the view.
-   *
-   * This method must be called at least once before the view can be rendered.
-   * Tipically this method will fetch templates and css files from the server
-   * asynchronously.
-   * 
-   * @param {Function} done Callback called after initialization has been 
-   * completed.
+   /**
+    
+    Initializes the view.
+   
+    This method must be called at least once before the view can be rendered.
+    Tipically this method will fetch templates and css files from the server
+    asynchronously.
+   
+    @method init
+    @return {Promise} resolved after initialization has been completed.
    */
    private init(): Promise // <void>
    {

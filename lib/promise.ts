@@ -16,40 +16,20 @@ function isPromise(promise){
   return (promise instanceof Object) && (promise.then instanceof Function);
 }
 
-// TODO: We might want to implement the interface according to
-// the new W3C specification (http://dom.spec.whatwg.org/#futures)
-/*
-interface FutureResolver {
-  void accept(optional any value);
-  void resolve(optional any value);
-  void reject(optional any value);
-};
-
-callback FutureInit = void (FutureResolver resolver);
-callback AnyCallback = any (optional any value);
-
-[Constructor(FutureInit init)]
-interface Future {
-  static Future accept(any value);
-  static Future resolve(any value); // same as any(value)
-  static Future reject(any value);
-
-  static Future _any(any... values); // exposed as "any" in JavaScript, without "_"
-  static Future every(any... values);
-  static Future some(any... values);
-
-  Future then([TreatUndefinedAs=Missing] optional AnyCallback acceptCallback, [TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
-  Future catch([TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
-  void done([TreatUndefinedAs=Missing] optional AnyCallback acceptCallback, [TreatUndefinedAs=Missing] optional AnyCallback rejectCallback);
-};
-*/
-
 // TODO: Use local event queue to guarantee that all callbacks are called 
 // in the same turn in the proper order.
 //export class Promise<T> {
 
 var CancelError = Error('Operation Cancelled');
 
+/**
+  Promise implementation of http://dom.spec.whatwg.org/#promises
+
+  @class Promise
+  @extends Base
+  @constructor
+  @param [value] {Any}
+ **/
 export class Promise<T> extends Base
 {
   fulfilledFns : any[] = [];
@@ -58,6 +38,17 @@ export class Promise<T> extends Base
   reason: Error;
   isFulfilled : bool;
   
+  
+  /**
+    Maps every element of the array using an asynchronous function that returns
+    a Promise.
+    
+    @method map
+    @static
+    @param elements {Array}
+    @param iter {Function}
+    @return {Promise} A promise that resolves when all elements have been mapped.
+  **/
   static map<U>(elements: any[], fn: (item: any)=>Promise<U>): Promise<U[]>
   {
     elements = _.isArray(elements) ? elements : [elements];
@@ -65,7 +56,7 @@ export class Promise<T> extends Base
     var
       len = elements.length,
       counter = len,
-      promise = new Promise<U>(),
+      promise = new Promise<U[]>(),
       results = []; results.length = len;
     
     if(!len){
@@ -87,6 +78,17 @@ export class Promise<T> extends Base
     return promise;
   }
   
+  /**
+    Returns a Promise that resolves after the given amount of milliseconds have
+    passed.
+    
+    static delay(ms: number): Promise
+    
+    @method delay
+    @static
+    @param ms {Number}
+    @return {Promise} A promise that resolves after the given milliseconds.
+  **/
   static delay(ms: number): Promise<void>
   {
     var promise = new Promise<void>();
@@ -95,11 +97,27 @@ export class Promise<T> extends Base
     return promise;
   }
   
+  /**
+    Creates an already resolved promise
+    
+    @method resolved
+    @static
+    @param value {Any} Value to use as resolved value.
+    @return {Promise} A resolved promise.
+  **/
   static resolved<U>(value?: U): Promise<U>
   {
     return (new Promise()).resolve(value);
   }
   
+  /**
+    Creates an already rejected promise
+    
+    @method rejected
+    @static
+    @param err {Error} Reason for the rejection.
+    @return {Promise} A rejected promise.
+  **/
   static rejected<U>(err: Error): Promise<U>
   {
     return new Promise(err);
@@ -116,6 +134,19 @@ export class Promise<T> extends Base
     }
   }
 
+
+  /**
+  
+    Then method waits for a promise to resolve or reject, and returns a new
+    promise that resolves directly if the onFulfilled callback returns a value,
+    or if the onFulfilled callback returns a promise then when 
+    the returned promise resolves.
+  
+    @method then
+    @param [onFulfilled] {Function}
+    @param [onRejected] {Function}
+    @return {Promise} A promise according to the rules specified 
+  **/
   then<U>(onFulfilled: (value: T) => U, onRejected?: (reason: Error) => void): Promise<U>;
   then<U>(onFulfilled: (value: T) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>;
   then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise<void>;
@@ -163,17 +194,35 @@ export class Promise<T> extends Base
     return promise;
   }
   
-  fail(onRejected?: (reason: Error) => any)
+  /**
+    This method is syntactic sugar for then when only caring about a promise
+    rejection.
+    
+    @method fail
+    @param onRejected {Function}
+  **/
+  fail(onRejected?: (reason: Error) => any): Promise
   {
     return this.then(null, onRejected || Util.noop);
   }
   
+  /**
+    @method resolveOrReject
+    @deprecated
+  */
   resolveOrReject(err?: Error, value?: any)
   {
     if(err) this.reject(err);
     else this.resolve(value);
   }
   
+  /**
+    Ensures that the callback is called when the promise resolves or rejects.
+    
+    @method ensure
+    @param always {Function} callback to be executed always independetly if the 
+    project was resolved or rejected.
+  **/
   ensure(always: () => any)
   {
     var alwaysOnSuccess = (result) => {
@@ -193,8 +242,14 @@ export class Promise<T> extends Base
     return this.then(alwaysOnSuccess, alwaysOnFailure);
   }
   
-  //resolve(value?: T): Promise<T>
-  resolve(value?: any): Promise
+  /**
+    Resolves the promise with the given value.
+  
+    @method resolve
+    @param value {Any} value to resolve this promise with.
+    @chainable
+  */
+  resolve(value?: T): Promise<T>
   {
     if(this.isFulfilled) return;
     this.abort();
@@ -203,9 +258,15 @@ export class Promise<T> extends Base
     this.fireCallbacks(this.fulfilledFns, value);
     return this;
   }
-  
-  //reject(reason: Error): Promise<T>  
-  reject(reason: Error): Promise
+
+  /**
+    Resolves the promise with the given value.
+
+    @method reject
+    @param reason {Error} value to resolve this promise with.
+    @chainable
+  */
+  reject(reason: Error): Promise<T>
   {
     if(this.isFulfilled) return;
     this.abort();
@@ -215,11 +276,20 @@ export class Promise<T> extends Base
     return this;
   }
   
+  /**
+    Cancels the promise (rejects with reason CancelError)
+    
+    @chainable
+  **/
   cancel()
   {
-    this.reject(CancelError);
+    return this.reject(CancelError);
   }
   
+  /**
+    @method abort
+    @deprecated
+  */
   abort(){
     this.isFulfilled = true;
   }

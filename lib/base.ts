@@ -77,6 +77,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   private _destroyedTrace: string;
   private _undoMgr: UndoManager = new UndoManager();
   
+  // OBSOLETE?
   constructor (){
     super();
     if(!(this instanceof Base)){
@@ -204,7 +205,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   
   
   /**
-   * Creates a binding between two keys.
+   * Creates a binding between two properties. 
+   * Binded properties will be updated automatically as long as set method 
+   * is used to updata them.
    * 
    * Note: If the keys have different values when binding, the caller will get
    * the value of the target object key.
@@ -215,9 +218,8 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    * @param {String} [objectKey] The key in the destination object to bind the
    * key in this object.
    *
-   * 
    */
-  bind(key: string, object: Base, objectKey: string){
+  bind(key: string, object: Base, objectKey?: string){
     var dstKey = objectKey || key
 
     this.unbind(key)
@@ -292,7 +294,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    * Note: this method should never be called directly.
    *  
    * @method destroy
-   *
+   * @protected
    */
   destroy()
   {
@@ -322,6 +324,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   
   /**
    * Releases a reference of this object.
+   *
+   * When all references of an object reaches zero, the object is automatically
+   * destroyed (calling the destroy method) 
    *  
    * @method release
    * @chainable
@@ -362,6 +367,12 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     return this;
   }
   
+  /**
+  * Checks if the object has been destroyed.
+  *
+  * @method isDestroyed
+  * @return {Boolean}
+  */
   isDestroyed(): bool
   {
     return this._refCounter === 0;

@@ -5,14 +5,30 @@
 
 /// <reference path="../viewmodel.ts" />
 
+/**
+  @module Binders
+*/
 module Gnd {
 
+/**
+  The Class binder allows to bind classnames to properties. It is possible to
+  bind a set of classnames to one property and also to negate the property's
+  key path to invert the logic.
+  
+        Syntax: data-class="className0 className1 ...classNameN: [!]keypath1; className10 className11 ...className1N: [!]keypath2 ..."
+        
+        Examples: 
+      
+          <div data-class=""></div>
+         
+    @class ClassBinder
+    @implements Binder
+*/
 export class ClassBinder implements Binder
 {
   private bindings: any[][] = [];
   
   //
-  // Syntax: data-class="className0 className1 ... classNameN: [!]keypath1; className10 className11 ... className1N: [!]keypath2 ..."
   //
   bind(el: Element, value: string, viewModel: ViewModel)
   {

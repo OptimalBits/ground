@@ -30,6 +30,22 @@ module Gnd
     query?: IStorageQuery;
   }
   
+  /**
+   The {{#crossLink "CONTAINER"}}{{/crossLink}} class is used as base class for
+   model containers. For example Collection and Sequence are subclasses of
+   Container.
+   
+   The container class also provides the preferred factory method for instantiating 
+   Collections and Sequences.
+ 
+    @class Container
+    @extends Promise
+    @constructor
+    @param model {IModel}
+    @param [opts] {ContainerOptions}
+    @param [parent] {Model}
+    @param [items] {Model[]}
+   **/
   export class Container extends Promise<Container> implements Sync.ISynchronizable
   {
     public storageQueue: Storage.Queue;
@@ -41,7 +57,14 @@ module Gnd
     
     public resyncFn: (items: any[]) => void;
     
-    //
+    /**
+      Filtering function to be used for this Container.
+      This function defines the filtering function to be used by this container.
+  
+      @property filterFn
+      @type Function
+      @default undefined
+    **/
     public filterFn: (item: Model) => bool = null;
 
     // Prototypes for underscore imported methods.
@@ -70,6 +93,17 @@ module Gnd
       return _.map(items, (item) => item.id());
     }
     
+    /**
+      Factory method for container subclasses.
+      
+      @method create
+      @static
+      @param ContainerClass {IContainer} Container subclass
+      @param model {IModel} Model class
+      @param [opts] {ContainerOptions}
+      @param [parent] {Model}
+      @param [items] {Any[]}
+    */
     public static create(ContainerClass: IContainer,
                          model: IModel, 
                          opts?: ContainerOptions,
@@ -118,11 +152,23 @@ module Gnd
       return this.resync(docs).then(() => this);
     }
     
+    /**
+      Saves this container to the storages manually.
+      
+      @method save
+      @return {Promise}
+    */
     save(): Promise
     {
       return this.storageQueue.exec();
     }
     
+    /**
+      Gets the keypath for this container.
+      
+      @method getKeyPath
+      @returns {String[]}
+    */
     getKeyPath(): string[]
     {
       if(this.opts.key){
@@ -130,7 +176,14 @@ module Gnd
         return [this.opts.key];
       }
     }
+
+    /**
     
+      Enables autosync for this container, meaning that the container will
+      be kept synchronized with its server side counterpart.
+    
+      @method keepSynced
+    */
     keepSynced(): void
     {  
       this.startSync();
@@ -140,11 +193,35 @@ module Gnd
       });
     }
   
+    /**
+      Checks if this container is kept automatically synced with the 
+      storages.
+    
+      @method isKeptSynced
+      @return {Boolean}
+      @deprecated
+    */
     isKeptSynced(): bool
     {
       return this._keepSynced;
     }
     
+    /**
+      Checks if this container is kept automatically synced with the 
+      storages.
+    
+      @method isAutosync
+      @return {Boolean}
+    */
+    isAutosync(): bool
+    {
+      return this._keepSynced;
+    }
+    
+    /**
+      @method filtered
+      @deprecated
+    */
     filtered(result: (err: Error, models?: Model[])=>void)
     {
       if(this.filterFn){
@@ -154,6 +231,12 @@ module Gnd
       }
     }
   
+    /**
+      Checks if this container if filtered by some filter function.
+    
+      @method isFiltered
+      @return {Boolean}
+    */
     isFiltered(item: Model): bool
     {
       return this.filterFn ? this.filterFn(item) : true;

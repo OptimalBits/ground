@@ -33,6 +33,28 @@ export interface IBinder {
   new (): Binder;
 }
 
+/**
+  This class represents the Model of the View. 
+  
+  It is used to cleanly separate the view from the model by defining bindings
+  using special attributes in the views HTML code.
+  
+  Most methods in this function are just utility methods used by the binders
+  and never used directly.
+
+  @class ViewModel
+  @constructor
+  @param el {HTMLElement} The root element where the view is rendered.
+  @param context {Object} object containing mappings of properties to values
+  that are passed to the ViewModel.
+  @param [formatters] {Object} object containing properties and formatter functions 
+  as values. A formatter function takes a value as only argument and returns the
+  re-formatted value.
+  @param [binders] {IBinder} optional extra binders.
+  
+  @example
+  
+*/
 export class ViewModel extends Base 
 {  
   private binders: {[index: string]: IBinder;};
@@ -51,7 +73,7 @@ export class ViewModel extends Base
     this.formatters =  formatters || this.formatters;
     
     this.binders = {
-      bind: TwoWayBinder,
+      bind: Binders.TwoWayBinder,
       each: EachBinder,
       show: ShowBinder,
       'class': ClassBinder,
@@ -70,6 +92,13 @@ export class ViewModel extends Base
     super.destroy();
   }
   
+  /**
+    Cleans all the bindings.
+  
+    @method cleanup
+    @param [bindings] {Binder[]} optional array of binders, if none given
+    it will clean the bound binders available in the view model.
+  */
   cleanup(bindings?: Binder[])
   {
     _.each(bindings || this.boundBinders, (binder) => {
@@ -78,6 +107,13 @@ export class ViewModel extends Base
     !bindings && (this.boundBinders = []);
   }
 
+  /**
+    Resolves a keypath by traversing all available contexts.
+    
+    @method resolveContext
+    @param keyPath {String[]} An array with properties defining a keyPath.
+    @return {Base} A base object or undefined if none found.
+  */
   resolveContext(keyPath: string[]): Base
   { 
     var 
@@ -89,6 +125,15 @@ export class ViewModel extends Base
     }
   }
   
+  /**
+    Finds a context with the given property. Contexts are always examined from
+    top to bottom, meaning that last pushed contexts takes precedence on context
+    at the bottom of the stack.
+    
+    @method findContext
+    @param prop {String}
+    @return {Any} context containing the requested property.
+  */
   findContext(prop: string): any
   {
     for(var i=this.contexts.length-1; i >= 0; i--){
@@ -98,11 +143,22 @@ export class ViewModel extends Base
     }
   }
   
+  /**
+    push a context in the context stack.
+    
+    @method pushContext
+    @param context {Object}
+  */
   pushContext(context: {})
   {
     this.contexts.push(context);
   }
-  
+
+  /**
+    pop a context from the context stack.
+    
+    @method popContext
+  */
   popContext()
   {
     this.contexts.pop();
@@ -111,6 +167,9 @@ export class ViewModel extends Base
   /**
     Binds a node and all of its children recursively.
 
+    @method bindNode
+    @param node {Element}
+    @return {Binder[]} An array with all the created bindings
   */
   bindNode(node: Element): Binder[]
   {

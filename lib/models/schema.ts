@@ -7,22 +7,7 @@
   Inspired by Moongosejs, to be used both in server and client side.
 */
 /**
-var AnimalSchema = new Schema({
-  name: String,
-  lengs: Number
-});
 
-var Animal = Model.extend('animals', AnimalSchema);
-
-Animal.findById();
-Animal.findOne({})
-
-Base model schema:
-{
-  _id: ObjectId,
-  _cid: String,
-  persisted: bool,
-}
 */
 
 /// <reference path="schemaType" />
@@ -30,18 +15,40 @@ Base model schema:
 
 module Gnd
 { 
-  /*
+  
   export interface SchemaDefinition{
     [index: string]: SchemaType;
   }
-  */
+  
+  /**
+    Schemas allows to define data structures that can be used both client and
+    server side effectively simplifying the synchronization and validation 
+    of data.
+    
+    The syntax of the Schema is heavily inspired by [Mongoose](http://mongoosejs.com).
+    
+    Schemas are normally used to create Models.
+    
+    Examples:
+    
+        var AnimalSchema = new Schema({
+          name: String,
+          lengs: Number
+        });
 
+        var Animal = Model.extend('animals', AnimalSchema);
+    
+    @class Schema
+    @extends SchemaType
+    @constructor
+    @param schema {SchemaDefinition}
+  */
   export class Schema extends SchemaType
   {
     private compiledSchema: {};
     private schema: {};
     
-    constructor(schema?: {})
+    constructor(schema?: SchemaDefinition)
     {
       super(this);
       this.schema = schema;
@@ -62,11 +69,13 @@ module Gnd
     }
   
     /**
-      toObject - Takes the corresponding properties from the given obj
+      Takes the corresponding properties from the given obj
       according to the schema and returns them in a plain object compatible
       with JSON.stringify.
-      
-      extra is an object pairing properties with Schemas. This is useful
+    
+      @method toObject
+      @param obj {Any}
+      @param [extra] {Object} an object pairing properties with Schemas. This is useful
       to override some properties Schemas in run time.
     */
     toObject(obj: any, extra?: {[index: string]: Schema;}): any
