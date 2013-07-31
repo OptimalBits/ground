@@ -847,3 +847,10 @@ a {
 .indexview kbd {
   background: #383838;
 }
+#footer {
+  border: 1px solid #2A2A2A;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: center;
+  padding: 20px;
+  letter-spacing: 1px;
+}
