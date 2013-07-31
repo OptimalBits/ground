@@ -799,6 +799,7 @@ h1 {
 #api-list h2, 
 .constructor, 
 .constructor h2,
+.indexview h2,
 .constructor h3,
 .apidocs .constructor h4,
 .constructor p,
@@ -840,12 +841,9 @@ a {
     background: #FCFBFA;
 }
 
-#content-wrapper pre {
-  background-color: #3F3F3F;
-  outline: dashed 1px #585858;
-  padding: 25px;
-  margin: 20px 0px;
-  font-family: Courier;
-  color:#f9f9f9;
-  font-family: 14px;
+.indexview {
+  color:#f2f2f2;
+}
+.indexview kbd {
+  background: #383838;
 }
