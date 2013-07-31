@@ -38,9 +38,9 @@ module Gnd
   {
     public historyApi: bool;
     public template: (str: string) => (args: any) => string;
-    public localStorage: IStorage;
-    public remoteStorage: IStorage;
-    public memStorage: IStorage;
+    public localStorage: Storage.IStorage;
+    public remoteStorage: Storage.IStorage;
+    public memStorage: Storage.IStorage;
     public storageQueue: Storage.Queue;
     public localQueue: Storage.Queue;
     
@@ -67,21 +67,22 @@ module Gnd
       using.template = templFn;
     },
     storage: {
-      local: function(storage: IStorage){
+      local: function(storage: Storage.IStorage){
         using.localStorage = storage;
         using.storageQueue = new Storage.Queue(storage, using.remoteStorage);
       },
-      remote: function(storage: IStorage){
+      remote: function(storage: Storage.IStorage){
         using.remoteStorage = storage;
         if(using.localStorage){
           using.storageQueue = new Gnd.Storage.Queue(using.localQueue, storage);
         }
       },
-      mem: function(storage: IStorage){
+      mem: function(storage: Storage.IStorage){
         using.memStorage = storage;
       }
     },
-    storageQueue: function(localStorage: IStorage, remoteStorage: IStorage){
+    storageQueue: function(localStorage: Storage.IStorage,
+                           remoteStorage: Storage.IStorage){
       using.storageQueue = new Storage.Queue(localStorage, remoteStorage);
     },
     historyApi: function(use: bool){

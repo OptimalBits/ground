@@ -9,8 +9,22 @@
 /// <reference path="storage.ts" />
 /// <reference path="../util.ts" />
 
+/**
+  @module Gnd
+  @submodule Storage
+*/
 module Gnd.Storage {
-
+  /**
+    Implementation of the IStorage interface using sockets (Socket.io).
+  
+    This class is used internally by the framework to communicate with its
+    server side counterpart {{#crossLink "SocketBackend"}}{{/crossLink}}
+  
+    @class Storage.Socket
+    @uses Storage.IStorage
+    @constructor
+    @param socket {Socket} A socket.io client instance.
+  */
 export class Socket implements IStorage {
   private socket : any;
   

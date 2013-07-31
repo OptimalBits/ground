@@ -13,20 +13,50 @@
 /// <reference path="base.ts" />
 /// <reference path="promise.ts" />
 
+/**
+  @module Gnd
+  @submodule Storage
+*/
 module Gnd.Util {
 
+/**
+  Assorted utilities.
+    
+  @class Util
+*/
+
+/**
+    @method noop
+*/
 export function noop(){};
 
+/**
+    @method assert
+    @param cond {Boolean} condition that must be true.
+    @param msg {String} message output if assertion not valid.
+*/
 export function assert(cond, msg){
   !cond && console.log('Assert failed:%s', msg);
 };
 
+/**
+  Generates a uuid
+
+  @method uuid
+  @return {String} string with a uuid.
+*/
 export function uuid(a?,b?){
   for(b=a='';a++<36;b+=a*51&52?(a^15?8^Math.random()*(a^20?16:4):4).toString(16):'-');
   return b;
 };
 
-// credits: https://gist.github.com/1200559/1c2b2093a661c4727958ff232cd12de8b8fb9db9
+/**
+  Computes the adler32 checksum of a string.
+  
+  credits: https://gist.github.com/1200559/1c2b2093a661c4727958ff232cd12de8b8fb9db9
+  @method adler32
+  @param s {String} string from where to compute adler32 checksum.
+*/ 
 export function adler32(s: string): number
 {
   for(var b=65521,c=1,d=0,e=0,f; f=s.charCodeAt(e++); d=(d+c)%b){
@@ -35,10 +65,22 @@ export function adler32(s: string): number
   return(d<<16)|c;
 }
 
+/**
+  Refreshes the browser.
+  
+  @method refresh
+*/
 export function refresh(){
-    window.location.replace('');
+  window.location.replace('');
 };
 
+/**
+  Retains the given objects (see reference count for details).
+
+  @method retain
+  @param objs* {Array | Any} object or objects to retain. If any of the objs
+  is null or undefined, nothing is done for that obj.
+*/
 export function retain(objs){
   var items = _.isArray(objs) ? objs :arguments;
   _.each(items, function(obj){
@@ -46,6 +88,13 @@ export function retain(objs){
   });
 };
 
+/**
+  Release the given objects (see reference count for details).
+ 
+  @method release
+  @param objs* {Array | Any} object or objects to release. If any of the objs
+    is null or undefined, nothing is done for that obj.
+*/
 export function release(...objs: Base[]);
 export function release(objs: any){
   var items = _.isArray(objs) ? objs :arguments;
@@ -54,6 +103,14 @@ export function release(objs: any){
   });
 };
 
+
+/**
+
+  http://jsperf.com/test002/5
+  
+  @method nextTick
+  @param 
+*/
 //
 // http://jsperf.com/test002/5
 //
@@ -77,6 +134,14 @@ if((typeof process !== 'undefined') && (process.nextTick)){
   */
 }
 
+/**
+  Trims a string.
+  
+  @method trim
+  @param str {String} the string to trim.
+  @param [maxLen] {Number} 
+  @param [suffix] {String}
+*/
 export function trim(str: string, maxLen?: number, suffix?: string): string
 {
   str = str.replace(/^\s+|\s+$/g,'');
@@ -88,7 +153,10 @@ export function trim(str: string, maxLen?: number, suffix?: string): string
   return str;
 };
 
-// TODO: Add an optional timeout parameter.
+/**
+    @method asyncDebounce
+    @deprecated
+*/
 export function asyncDebounce(fn) {
   fn = fn || noop;
   var delayedFunc = null, executing = null;
@@ -121,6 +189,12 @@ export function asyncDebounce(fn) {
   };
 };
 
+/**
+  Wraps a function that returns a promise into a debounced function.
+
+  @method debounce
+  @param task {Function} a function that returns a Promise
+*/
 export function debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
 {
   var delayed, executing;
@@ -140,6 +214,21 @@ export function debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
   }
 }
 
+/**
+  Waits for a promise to be resolved, if it does not resolve in the given
+  time it will call *start* and when the promise is finally resolved it will
+  call *end*. 
+  
+  This function is useful to display waiting widgets for operations
+  that take more than a certain amount of time to complete.
+
+  @method delayed
+  @param task {Promise}
+  @param start {Function}
+  @param end {Function}
+  @param delay {Number} 
+  @return {Promise} a promise resolved when the task is resolved.
+*/
 export 
 function delayed<T>(task: Promise<T>,
                     start: ()=>void,
@@ -158,9 +247,17 @@ function delayed<T>(task: Promise<T>,
     waiting && end();
   });
 }
- 
-// Search Filter. returns true if any of the fields of the 
-// obj includes the search string.
+
+/**
+  Search Filter. returns true if any of the fields of the 
+  obj includes the search string.
+  
+  @method searchFilter
+  @param obj {Object} object to check the search string.
+  @param search {String} search string.
+  @param fields {Array} array of string with the fields to search for.
+  @return {Boolean} true if the object includes the search string.
+*/ 
 export function searchFilter(obj: {}, search: string, fields: string []): bool
 {
   if(search){
@@ -176,8 +273,13 @@ export function searchFilter(obj: {}, search: string, fields: string []): bool
     return true;
   }
 };
-  
-// Apply asynchronous functions to every element in the array in parallel
+
+/**
+  Apply asynchronous functions to every element in the array in parallel
+
+  @method asyncForEach
+  @deprecated
+*/
 export function asyncForEach(array, fn, cb) {
   var completed = 0;
     
@@ -207,8 +309,13 @@ export function asyncForEach(array, fn, cb) {
      iter(array, 1);
   }
 };
-  
-// Credits: https://github.com/caolan/async
+
+/**
+    @method asyncForEachSeries
+    @deprecated
+    
+    Credits: https://github.com/caolan/async
+*/
 export function asyncForEachSeries(arr, fn, cb){
   cb = cb || noop;
   if (!arr.length) {
@@ -233,6 +340,9 @@ export function asyncForEachSeries(arr, fn, cb){
   iterate();
 }
 
+/**
+    @method inherits
+*/
 export function inherits(ctor, superCtor){
   ctor._super = superCtor;
   if(Object.create){
@@ -244,6 +354,9 @@ export function inherits(ctor, superCtor){
   }
 };
 
+/**
+    @method extend
+*/
 export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
   var methods;
   var d = function Derived(){
@@ -264,6 +377,8 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
 
 /**
   A safe emit wrapper for socket.io that handles connection errors.
+
+    @method safeEmit
 */
 export function safeEmit<T>(socket, ...args:any[]): Promise<T>
 {
@@ -299,8 +414,15 @@ export function safeEmit<T>(socket, ...args:any[]): Promise<T>
 
 declare var curl;
 
+/**
+  @example
+  
+      fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
+          
+    @method fetchTemplate
+*/
 export 
-function fetchTemplate(templateUrl?: string, cssUrl?: string): Promise // <string>
+function fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
 {
   var items = [], promise = new Promise();
   
@@ -318,22 +440,28 @@ function fetchTemplate(templateUrl?: string, cssUrl?: string): Promise // <strin
   return promise;
 }
 
-// Expand an object with stringified keys e.g
-// {
-//   'a.b.c': 1,
-//   'a.b.x': 2,
-//   'b':3
-// }
-// =>
-// {
-//   a: {
-//     b: {
-//       c: 1,
-//       x: 2
-//     }
-//   },
-//   b: 3
-// }
+
+/**
+  Expand an object with stringified keys e.g
+
+      {
+        'a.b.c': 1,
+        'a.b.x': 2,
+        'b':3
+      }
+      =>
+      {
+        a: {
+          b: {
+            c: 1,
+            x: 2
+          }
+        },
+        b: 3
+      }
+    
+  @method expand
+*/
 export function expand(args: {}): {}
 {
   var obj = {};
@@ -343,8 +471,12 @@ export function expand(args: {}): {}
   });
   return obj;
 }
+ 
+/**
+  Expand a single property and decorate the object obj with it
 
-// Expand a single property and decorate the object obj with it
+  @method expandProperty
+*/
 export function expandProperty(obj: {}, keyPath: string, value: any): {}
 {
   var path = keyPath.split('.');
@@ -394,35 +526,50 @@ function deepExtend(doc, args, callFns?: bool): {}
   return doc;
 }
 
-// Merge a doc with an object containing unexpanded properties
+ 
+/**
+  Merge a doc with an object containing unexpanded properties
+
+  @method merge
+*/
 export function merge(doc, args): {}
 {
   return deepExtend(doc, expand(args));
 }
 
+/**
+    @method extendClone
+*/
 export function extendClone(a: {}, b: {}): {}
 {
   return _.extend(_.clone(a), b);
 }
 
+/**
+    @method isVirtualProperty
+*/
 export function isVirtualProperty(prop: any): bool
 {
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }
 
-//
-// Shared handler queue processing (see whenjs)
-//
-// Credit to Twisol (https://github.com/Twisol) for suggesting
-// this type of extensible queue + trampoline approach for
-// next-tick conflation.
+
 
 var handlerQueue = [];
 
 /**
-  * Enqueue a task. If the queue is not currently scheduled to be
-  * drained, schedule it.
-  * @param {function} task
+  Enqueue a task. If the queue is not currently scheduled to be
+  drained, schedule it.
+  
+  From [whenjs](https://github.com/cujojs/when)
+  Shared handler queue processing 
+  
+  Credit to Twisol (https://github.com/Twisol) for suggesting
+  this type of extensible queue + trampoline approach for
+  next-tick conflation.
+  
+  @method enqueue
+  @param {function} task
 */
 export function enqueue(task) {
   if(handlerQueue.push(task) === 1) {
@@ -431,11 +578,13 @@ export function enqueue(task) {
 }
 
 /**
-  * Drain the handler queue entirely, being careful to allow the
-  * queue to be extended while it is being processed, and to continue
-  * processing until it is truly empty.
-  */
-function drainQueue() {
+  Drain the handler queue entirely, being careful to allow the
+  queue to be extended while it is being processed, and to continue
+  processing until it is truly empty.
+
+  @method drainQueue
+*/
+export function drainQueue() {
   var task, i = 0;
 
   while(task = handlerQueue[i++]) {
@@ -447,3 +596,4 @@ function drainQueue() {
 
 
 } // Gnd.Util
+  

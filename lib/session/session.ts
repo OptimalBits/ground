@@ -11,10 +11,6 @@
     - Passport enabled.
 */
 
-/*
-  Gnd.ActiveSession keeps an instance of the session object.
-*/
-
 /// <reference path="../base.ts" />
 /// <reference path="../dom.ts" />
 /// <reference path="../promise.ts" />
@@ -24,6 +20,13 @@
 module Gnd
 {
 
+  /**
+    Static class that keeps a session with the server and provide
+    methods for login, 
+  
+    @class Session
+    @static
+  */
 export class Session extends Base
 {
   userId: string;
@@ -31,27 +34,66 @@ export class Session extends Base
   static sessionId: string;
   timeout: number;
   
+  /**
+    url pointing to the backend session REST interface.
+  
+    @property url
+    @type String
+    @static
+    @default '/sessions/'
+  */
   static url = '/sessions/';
+  
+  /**
+    The login Id of the current logged user.
+  
+    @property loginId
+    @type String
+    @readOnly
+  */
   static loginId: string;
   
+  /**
+    Tries to login into the server
+  
+    @method login
+  */
   static login(loginId: string, passwd: string): Promise
   {
-    return Ajax.post(Session.url, {username: loginId, password:passwd});
+    this.loginIg = loginId;
+    return Ajax.post(Session.url, {username: loginId, password: passwd});
   }
   
+  /**
+    Swaps the current user
+    Do we need this method?
+  */
+  /*
   static swap(loginId: string, passwd: string)
   {
+    this.loginIg = loginId;
     return Ajax.put(Session.url, {username: loginId, password:passwd});
   }
+  */
   
+  /**
+    Logs out from ths erver.
+    
+    @return {Promise} promise resolved when the logout has been completed.
+  */
   static logout(): Promise
   {
-    return Ajax.del(Session.url, {});
+    return Ajax.del(Session.url);
   }
-
+  
+  /**
+    Checks if the user has been authenticated.
+    
+    @return {Promise} a promise resolved if authenticated, rejected otherwise.
+  */
   static authenticated(): Promise
   {
-    return Ajax.get(Session.url, {});
+    return Ajax.get(Session.url);
   }
 }
 

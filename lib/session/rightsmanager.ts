@@ -51,6 +51,20 @@ export interface RemoveRule {
    itemIds:string[]): Promise<void>;
 }
 
+/**
+  Rules interface.
+  
+  A rules object containes rules for operations that imply the creation or
+  destruction of resources.
+  
+  A rules object must be defined for every application, with the specific
+  rights relationships for that application.
+
+  Note: Documentation incomplete needs to be much more detailed and provide 
+  examples.
+
+  @class Rules
+*/
 export interface Rules
 {
   create?: {[index: string]: CreateRule;};
@@ -60,7 +74,7 @@ export interface Rules
   remove?: {[index: string]: RemoveRule;};
 }
 
-export class RulesManager 
+class RulesManager 
 {
   private rules: Rules;
   private acl: Acl;
@@ -141,6 +155,15 @@ export class RulesManager
   }
 }
 
+/**
+  This class is used internally by the framework to provide rights for the users.
+  
+  
+  @class RightsManager
+  @constructor
+  @param acl {Acl} an instance of the Acl module.
+  @param rules {Rules} rules to be used by this rights manager.
+*/
 export class RightsManager 
 {
   private acl: Acl;

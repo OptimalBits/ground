@@ -30,6 +30,16 @@ function callback(promise, cb){
 }
   
 module Gnd {
+  
+  /**
+    Server backend for socket.io. Works in tandem with 
+    {{#crossLink "Storage.Socket"}}{{/crossLink}}
+  
+    @class SocketBackend
+    @constructor
+    @param socketManager {Socket} A socket.io server instance.
+    @param server {Server} a Gnd server instance.
+  */
 export class SocketBackend {
   constructor(socketManager: any, server: Server){
     

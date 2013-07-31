@@ -20,14 +20,31 @@
 // TODO: Improve error handling after ACL rights setting.
 module Gnd {
 
+  /**
+    This is the main server class that glues all server components together.
+    
+    The server class itself is not used directly, it is instead plugged in a
+    a server backend, for example {{#crossLink "SocketBackend"}}{{/crossLink}}.
+    
+    The backend is the class that actually talks to all the clients connected to
+    the server, while it proxies its actions to the more general Server class.
+    
+    @class Server
+    @constructor
+    @param persistentStorage {Storage.IStorage} an instance of a persistent
+      storage implementation.
+    @param [sessionManager] {SessionManager} an instance of a session manager.
+    @param [syncHub] {Sync.Hub} an instance of a synchronization hub.
+    @param [rightsManager] {RightsManager} an instance of a rights manager.
+  */
 export class Server {
-  public storage: IStorage;
+  public storage: Storage.IStorage;
   
   private syncHub: Sync.Hub;
   private rm: RightsManager;
   public sessionManager: SessionManager;
 
-  constructor(persistentStorage: IStorage, 
+  constructor(persistentStorage: Storage.IStorage, 
               sessionManager?: SessionManager,
               syncHub?: Sync.Hub,
               rightsManager?: RightsManager)

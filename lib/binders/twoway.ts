@@ -9,7 +9,9 @@
 // TODO: Allow pipelining formatters.
 
 /**
-  @module Binders
+@module Gnd
+@submodule Binders
+
 */
 module Gnd.Binders {
 
@@ -31,9 +33,11 @@ module Gnd.Binders {
         data-bind = "alt: todo.shortDesc; href: todo.imgUrl"1
         data-bind = "text: todo.meta.date | dateFormatter"
   
-  @class TwoWayBinder
+  @class Binders.TwoWayBinder
   @implements Binder
+  
 */
+
 export class TwoWayBinder implements Binder
 {
   // [ [model, onKeypathFn, eventListener], [...], ...] 
