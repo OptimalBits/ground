@@ -464,7 +464,10 @@ export class Collection extends Container implements CollectionEvents
       return this.remove(itemsToRemove, {nosync: true})
         .then(() => Promise.map<Model>(_.unique(itemsToAdd), (args) => (<any>this.model).create(args)))
         .then((models: Model[]) => this.add(models, {nosync: true}))
-        .then(() => this.emit('resynced:'));
+        .then(() =>{
+          // We must not return this here!.
+          this.emit('resynced:');
+        });
     });
   }
 }
