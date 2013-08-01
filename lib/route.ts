@@ -659,9 +659,7 @@ class Request {
   }
   
   // ( templateUrl, [locals, cb])
-  private _render(templateUrl, css, locals, cb){
-    var self = this;
-  
+  private _render(templateUrl, css, locals, cb){  
     if(_.isObject(css)){
       cb = locals;
       locals = css;
@@ -676,36 +674,50 @@ class Request {
     }
   
     cb = cb || Util.noop;
-  
-    var items = ['text!'+templateUrl];
+    
+    var items = [], templ;
+    if(templateUrl[0] == '#'){
+      templ = Gnd.$(templateUrl).html();
+    }else{
+      items = ['text!'+templateUrl];
+    }
+    
     css && items.push('css!'+css);
-  
-    curl(items, function(templ){
-      applyTemplate(templ);
-    });
-  
-    function applyTemplate(templ){
+    
+    var applyTemplate = (templ) => {
       var args;
       if(_.isString(locals)){
-        args[locals] = self.data;
+        args[locals] = this.data;
       }else if(_.isObject(locals) && !_.isEmpty(locals)){
         args = locals;
-      }else if(_.isObject(self.data)){
-        args = self.data;
+      }else if(_.isObject(this.data)){
+        args = this.data;
       }else{
         args = {};
       }
       var html = using.template(templ)(args);
       
-      if(self.el){
-        self.el.innerHTML = html;
+      if(this.el){
+        this.el.innerHTML = html;
         cb();
-        //waitForImages(self.el, cb);
+        //waitForImages(this.el, cb);
       }else{
         cb();
       }
     }
-
+    
+    if(items.length){
+      curl(items, function(fetched){
+        if(templ){
+          applyTemplate(templ);
+        }else{
+          applyTemplate(fetched);
+        }
+      });
+    }else{
+      applyTemplate(templ);
+    }
+    /*
     function waitForImages(el, cb) {
       var
         $images = $('img', el),
@@ -729,6 +741,7 @@ class Request {
         cb();
       }
     }
+    */
   }
   
   private _load(urls, cb){
