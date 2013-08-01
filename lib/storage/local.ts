@@ -114,6 +114,7 @@ export class Local implements IStorage {
     if(!doc._cid){
       doc._cid = Util.uuid();
     }
+    this.createCollectionLink(keyPath[0]);
     this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
     
     return promise.resolve(doc._cid);
@@ -188,7 +189,8 @@ export class Local implements IStorage {
       newIdKeys = {};
 
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
-      this.createCollectionLink(keyPath[0]);
+      // should be redundant...
+      // this.createCollectionLink(keyPath[0]);
       return Promise.resolved<void>();
     }
     
@@ -253,8 +255,8 @@ export class Local implements IStorage {
     
     if(keyPath.length === 1){
       var keyValue = this.traverseLinks(keyPath[0]);
-      if(keyValue) return new Promise(getItems(keyValue.value));
-      else return Promise.rejected(InvalidKeyError());
+      return keyValue ? new Promise<any[]>(getItems(keyValue.value)) : 
+                        new Promise<any[]>([]);
     }else{
       return this.fetch(keyPath).then((collection) => getItems(collection), 
         // This is wrong but necessary due to how .all api works right now...
