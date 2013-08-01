@@ -20,7 +20,12 @@ var express = require('express'),
     uuid = require('node-uuid'),
     Cookies = require('cookies'),
     acl = require('acl'),
-    requirejs = require('requirejs');
+    requirejs = require('requirejs'),
+    posix = require('posix');
+
+// Increase limits to avoid problems with cabinet. 
+var limits = posix.setrlimit('nofile', {soft: 8000, hard: 8000});
+limits = posix.getrlimit('nofile');
 
 var models = requirejs('fixtures/models');
 
@@ -59,7 +64,7 @@ app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
 
 app.use(express.bodyParser());
 
-var mongooseStorage = new Gnd.MongooseStorage(models, mongoose);
+var mongooseStorage = new Gnd.Storage.MongooseStorage(models, mongoose);
 var TEST_COOKIE = 'testCookie';
 
 var pubClient = redis.createClient(6379, "127.0.0.1"),
@@ -78,7 +83,6 @@ var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 //
 app.put('/animals/:id', function(req, res){
   console.log("Updating animals:");
-  console.log(req.body);
   mongooseStorage.models.animals.update({_id:req.params.id}, req.body, function(err){
     if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
     res.send(204);
