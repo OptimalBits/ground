@@ -376,35 +376,55 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
 }
 
 /**
-  A safe emit wrapper for socket.io that handles connection errors.
+  A safe emit wrapper for socket.io that handles connection errors as well
+  as wait for connections and/or reconnections.
 
-    @method safeEmit
+  @method safeEmit
 */
 export function safeEmit<T>(socket, ...args:any[]): Promise<T>
 {
   var promise = new Promise<T>();
    
   function errorFn(){
-    var err = Error('Socket disconnected');
-    promise.reject(err);
+    promise.reject(Error('Socket disconnected'));
   };
   
   function proxyCb(err, res){
     socket.removeListener('disconnect', errorFn);
     if(err){
-      err = Error(err);
-      promise.reject(err);
+      promise.reject(Error(err));
     }else{
       promise.resolve(res);
     }
   };
   
-  //args[args.length-1] = proxyCb;
-  args.push(proxyCb)
+  args.push(proxyCb);
   
-  if(socket.socket.connected){
+  function emit(){
     socket.once('disconnect', errorFn);
     socket.emit.apply(socket, args);
+  }
+  
+  function delayedEmit(connectedEvent, failedEvent){
+    function errorFn(){
+      socket.removeListener(succeedFn, errorFn);
+      promise.reject(Error('Socket connection failed'));
+    }
+    function succeedFn(){
+      socket.removeListener(failedEvent, errorFn);
+      emit();
+    }
+    
+    socket.once(failedEvent, errorFn);
+    socket.once(connectedEvent, succeedFn);
+  }
+  
+  if(socket.socket.connected){
+    emit()
+  }else if(socket.socket.connecting){
+    delayedEmit('connect', 'connect_failed');
+  }else if(socket.socket.reconnecting){
+    delayedEmit('reconnect', 'reconnect_failed');
   }else{
     errorFn();
   }
