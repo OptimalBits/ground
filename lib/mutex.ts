@@ -15,7 +15,7 @@ module Gnd {
   
 export interface Handler
 {
-  () : Promise;
+  () : any;
   promise?: Promise<any>;
   wait?: Promise<any>;
 }
