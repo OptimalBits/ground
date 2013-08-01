@@ -854,3 +854,10 @@ a {
   padding: 20px;
   letter-spacing: 1px;
 }
+/* override loading background */
+/* Loading spinners. */
+#bd.loading .apidocs,
+#api-list.loading .yui3-tabview-panel {
+    background: url(../img/spinner.gif) no-repeat center 70px;
+    min-height: 150px;
+}
