@@ -1,9 +1,8 @@
-define(['gnd'], function(Gnd){
-  
+define(['gnd', 'fixtures/models'], function(Gnd, models){
+
 describe('ViewModel', function(){
-  var Animal = Gnd.Model.extend('animals');
-  var Zoo = Gnd.Model.extend('zoo');
-  
+  var Animal = models.Animal;
+  var Zoo = models.Zoo;
   
   describe('data-bind', function(){
     beforeEach(function() {
@@ -27,7 +26,8 @@ describe('ViewModel', function(){
       var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: feline.foo.bar');
       
-      var feline = new Animal({name: 'tiger', foo: {bar: 'baz'}});
+      var feline = new Gnd.Base();
+      _.extend(feline, ({name: 'tiger', foo: {bar: 'baz'}}));
       
       var vm = new Gnd.ViewModel(el, {feline: feline});
       expect(Gnd.$(el).text()).to.be.eql('baz');
@@ -40,28 +40,28 @@ describe('ViewModel', function(){
 
     it('bind to several attributes', function(){
       var el = document.createElement('div');
-      Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.description ');
+      Gnd.setAttr(el, 'data-bind', 'text: tiger.name; title: tiger.desc ');
       
       var tiger = new Animal({
         name: 'tiger',
-        description: 'put description here...'
+        desc: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
       
       expect(Gnd.$(el).text()).to.be.eql('tiger');
       expect(el.title).to.be.eql('put description here...');
       
-      tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
+      tiger.set('desc', 'The tiger (Panthera tigris) is the largest cat species');
       expect(el.title).to.be.eql('The tiger (Panthera tigris) is the largest cat species');
     });
     
     it('bind to several attributes and use formatters', function(){
       var el = document.createElement('div');
-      Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.description | lowercase');
+      Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.desc | lowercase');
       
       var tiger = new Animal({
         name: 'tiger',
-        description: 'PUT DESCRIPTION HERE...'
+        desc: 'PUT DESCRIPTION HERE...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger}, {
         uppercase: function(str){ return str.toUpperCase();},
@@ -71,7 +71,7 @@ describe('ViewModel', function(){
       expect(Gnd.$(el).text()).to.be.eql('TIGER');
       expect(el.title).to.be.eql('put description here...');
       
-      tiger.set('description', 'The tiger (Panthera tigris) is the largest cat species');
+      tiger.set('desc', 'The tiger (Panthera tigris) is the largest cat species');
       expect(el.title).to.be.eql('the tiger (panthera tigris) is the largest cat species');
     });
     
@@ -114,7 +114,7 @@ describe('ViewModel', function(){
       
       var tiger = new Animal({
         name: 'tiger',
-        description: 'put description here...'
+        desc: 'put description here...'
       });
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
       
@@ -139,7 +139,7 @@ describe('ViewModel', function(){
       var tiger = new Animal({
         selected: true,
         name: 'tiger',
-        description: 'put description here...'
+        desc: 'put description here...'
       });
       
       var vm = new Gnd.ViewModel(el, {tiger: tiger});
@@ -162,18 +162,18 @@ describe('ViewModel', function(){
       el = document.createElement('input');
       el.setAttribute('type', 'text');
       el.checked = false;
-      el.setAttribute('data-bind', 'value: tiger.description');
+      el.setAttribute('data-bind', 'value: tiger.desc');
       
       var vm2 = new Gnd.ViewModel(el, {tiger: tiger});
       expect(el.value).to.be('put description here...');
 
-      tiger.set('description', 'foobar');
+      tiger.set('desc', 'foobar');
       expect(el.value).to.be('foobar');
       
       el.value = 'quxbaz';
       el.setAttribute('value', 'quxbaz');
       Gnd.$(el).trigger('change');
-      expect(tiger.description).to.be('quxbaz');
+      expect(tiger.desc).to.be('quxbaz');
     });
     
     it('unbind elements', function(){
@@ -206,7 +206,7 @@ describe('ViewModel', function(){
       expect(el21.title).to.be.eql('1');
       expect(el22.title).to.be.eql('3');
     
-      vm.unbind();
+      vm.cleanup();
       
       tiger.set('name', 'no listen');
       leopard.set('name', 'no listen');
@@ -262,7 +262,8 @@ describe('ViewModel', function(){
   
   describe('data-class', function(){
     it('adds classes to element', function(){
-      var feline = new Animal({name: 'tiger', useClasses:true});
+      var feline = new Gnd.Base();
+      _.extend(feline, {name: 'tiger', useClasses:true});
       
       var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.useClasses');
@@ -288,8 +289,9 @@ describe('ViewModel', function(){
     });
     
     it('several class sets bound to an element', function(){
-      var feline = new Animal({name: 'tiger', a:true, b:false, c:false});
-      
+      var feline = new Gnd.Base();
+      _.extend(feline, {name: 'tiger', a:true, b:false, c:false});
+           
       var el = document.createElement('div');
       el.setAttribute('data-class', 'classA classB classC: feline.a; classU classV: feline.b; classY classB: feline.c');
       el.className = 'classU';

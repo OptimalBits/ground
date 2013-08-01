@@ -632,8 +632,6 @@ describe('Collection Datatype', function(){
     //  the local cache should be updated with the added item.
     //
     it.skip('serverside add item while offline', function(done){
-    
-    
       done();
     });
     
@@ -743,8 +741,6 @@ describe('Collection Datatype', function(){
     });
     
     it.skip('serverside remove item from collection offline generates removed event when going online', function(done){
-    
-    
     });
 
     
@@ -762,6 +758,18 @@ describe('Collection Datatype', function(){
       // unfortunatelly is a test difficult to implement, we need a separate browser session
       // for it.
       done();
+    });
+    
+    it.skip('an instantiated collection from a non persisted model includes only local items', function(){
+      /*
+      A collection instantiated from a model that is not yet persisted should not
+      try to get items from the server:
+      
+        // cow.isPersisted() === false
+        cow.all() -> only local items if any, shall not try to get from server.
+        
+        // But as soon as the collection is persisted, all items must be synchronized.
+      */
     });
     
   });
@@ -801,7 +809,9 @@ describe('Collection Datatype', function(){
     it('sort collection multiple times', function(done){
       var Parent = Gnd.Model.extend('itemparent');
       var parent = new Parent();
-      var Item = Gnd.Model.extend('item');
+      var Item = Gnd.Model.extend('item', new Gnd.Schema({
+        val: Number, val2: Number, val3: Number
+      }));
       
       var item1 = new Item({ val : 1, val2 : 5 , val3 : 10 } ),
           item2 = new Item({ val : 5, val2 : 4 , val3 : 11}),
