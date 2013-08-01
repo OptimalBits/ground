@@ -477,7 +477,9 @@ export class Sequence extends Container implements SequenceEvents
   {
     return this.resyncMutex(() => {
       var commands = Sequence.merge(remoteItems, this.items, Sequence.mergeFns);
-      return this.execCmds(commands).then(() => this.emit('resynced:'));
+      return this.execCmds(commands).then(() => {
+        this.emit('resynced:');
+      });
     });
   }
 
