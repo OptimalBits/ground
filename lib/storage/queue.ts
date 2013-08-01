@@ -332,26 +332,29 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: IStorageQuery, options: {}): Promise<any[]>
+  find(keyPath: string[], query: IStorageQuery, opts: {noremote?:bool}): Promise<any[]>
   {
     var promise = new Promise();
     var remotePromise = new Promise();
+    var useRemote = this.useRemote && !opts.noremote;
     
-    var localOpts = _.extend({snapshot:true}, options);
+    var localOpts = _.extend({snapshot:true}, opts);
     
-    var findRemote = () => this.remoteStorage.find(keyPath, query, options)
-      .then((remote) => this.updateLocalCollection(keyPath, query, options, remote));
+    var findRemote = () => this.remoteStorage.find(keyPath, query, opts)
+      .then((remote) => this.updateLocalCollection(keyPath, query, opts, remote));
     
-    this.localStorage.find(keyPath, query, localOpts).then((result)=>{
-      promise.resolve([result, remotePromise]);
+    this.localStorage.find(keyPath, query, localOpts).then((items)=>{
+      promise.resolve([items, remotePromise]);
       
-      if(this.useRemote){
+      if(useRemote){
         findRemote()
           .then((itemsRemote) => remotePromise.resolve(itemsRemote))
           .fail((err) => remotePromise.reject(err));
+      }else{
+        remotePromise.resolve(items)
       }
     }, (err) => {
-      if(!this.useRemote) return promise.reject(err);
+      if(!useRemote) return promise.reject(err);
 
       findRemote().then((itemsRemote)=>{
         remotePromise.resolve(itemsRemote);
