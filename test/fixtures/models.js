@@ -4,6 +4,9 @@ define(['gnd'], function(Gnd){
 
   var AnimalSchema = new Gnd.Schema({
     name: String,
+    desc: String,
+    selected: Boolean,
+    visible: Boolean,
     legs: Number,
     tail: Boolean,
     pos: Number});
