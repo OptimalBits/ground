@@ -216,9 +216,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     super();
     
     args = args || {};
-    _.extend(this, args);
+    _.extend(this, this.__schema.toObject(args));
     
-    _.defaults(this, this.__schema.toObject(this)); // TODO: opts.strict -> extend instead of defaults.
+    // TODO: opts.strict = false 
 
     this._cid = this._id || this._cid || Util.uuid();
 
@@ -269,8 +269,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
   resync(args): void
   {
-    // this.schema.populate(args) // populates instances from schema definition
-    this.set(args, {nosync: true});
+    // TODO: opts.strict = false 
+    var strictArgs = this.__schema.toObject(args)
+    this.set(strictArgs, {nosync: true});
     if(args._id) this._initial = false;
   }
 
@@ -521,18 +522,28 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     return this._cid;
   }
   
-  // TODO: define GetOptions interface, we need it to perform queries
-  // when getting collections
+  /**
+    Gets a given property from the model. For some properties this function
+    populates the property when getting it, allowing lazy properties in models.
+  
+    TODO: define GetOptions interface, we need it to perform queries
+    when getting collections
+    
+    @method get
+    @param key {String}
+    @param args {Object}
+    @param opts {GetOptions}
+  */
   get(key?: string, args?:{}, opts?: {})
   {
    var value = super.get(key);
-   if(!_.isUndefined(value)){
-     return value;
-   }else{
+   if(_.isUndefined(value)){
      // Check if it is a lazy property and populate it if so.
-     return this.__schema.get(this, key, args, opts);
+     value = this.__schema.get(this, key, args, opts);
+     if (!_.isUndefined(value)) this[key] = value;
    }
-  } 
+   return value;
+  }
 
   /**
     Gets the name of this Model.

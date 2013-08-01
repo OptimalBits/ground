@@ -15,6 +15,7 @@ Ground is written in [Typescript](http://www.typescriptlang.org/), for modularit
 
 - Designed and optimized for Node.js servers.
 - Hierarchical routing system simplifies routing by matching the DOM hierarchical nature.
+- Define models and use them both client and server side.
 - Models, Collections and Sequences with property **bindings**, **persistence** and client-server **synchronization**.
 - **Offline** support.
 - *Declarative Bindings* for easily connecting views and models.
@@ -699,9 +700,6 @@ Ground provides a ver minimal Promise implementation that follows [Promise /A+](
 <a href="http://promises-aplus.github.com/promises-spec"><img src="http://promises-aplus.github.com/promises-spec/assets/logo-small.png" alt="Promises/A+ logo" align="right" /></a>
 
 TODO: Examples:
-
-
-##Undo / Redo
 
 
 ##Offline

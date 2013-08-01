@@ -101,7 +101,7 @@ export class SequenceSchemaType extends SchemaType
   get(model, args?, opts?)
   {
     var def = this.definition;
-    return model.seq(def.ref.model, args, def.ref.bucket);
+    return model.seq(def.ref.model, args || {}, def.ref.bucket);
   }
 }
 
