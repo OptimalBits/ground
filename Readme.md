@@ -883,6 +883,3 @@ Attributes can be read and wrote similar to jQuery:
 
 #[Reference](http://gnd.io/api)
 
-
-In progress
-
