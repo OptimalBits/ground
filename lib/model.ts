@@ -681,10 +681,11 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     will be kept automatically in sync with its server side counterpart.
   
     @method keepSynced
+    @chainable
   */
-  keepSynced()
+  keepSynced(): Model
   {
-    if(this._keepSynced) return;
+    if(this._keepSynced) return this;
 
     this._keepSynced = true;
 
@@ -706,6 +707,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
         this.update(doc);
       }
     });
+    return this;
   }
 
   /**
