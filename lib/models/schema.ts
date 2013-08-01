@@ -100,15 +100,16 @@ module Gnd
 
       _.each(this.compiledSchema, (type: SchemaType, property?) => {
         var src = obj[property];
+        var value;
+        
         if(!_.isUndefined(src)){
-          result[property] = 
-            (extra && extra[property] && extra[property].toObject(src)) ||
+          value = (extra && extra[property] && extra[property].toObject(src)) ||
             type.toObject(src);
         }else{
-          var value = type.default();
-          if(!_.isUndefined(value)){
-            result[property] = value;
-          }
+          value = type.default();
+        }
+        if(!_.isUndefined(value)){
+          result[property] = value;
         }
       });
       return result;
