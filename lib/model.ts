@@ -521,18 +521,28 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     return this._cid;
   }
   
-  // TODO: define GetOptions interface, we need it to perform queries
-  // when getting collections
+  /**
+    Gets a given property from the model. For some properties this function
+    populates the property when getting it, allowing lazy properties in models.
+  
+    TODO: define GetOptions interface, we need it to perform queries
+    when getting collections
+    
+    @method get
+    @param key {String}
+    @param args {Object}
+    @param opts {GetOptions}
+  */
   get(key?: string, args?:{}, opts?: {})
   {
    var value = super.get(key);
-   if(!_.isUndefined(value)){
-     return value;
-   }else{
+   if(_.isUndefined(value)){
      // Check if it is a lazy property and populate it if so.
-     return this.__schema.get(this, key, args, opts);
+     value = this.__schema.get(this, key, args, opts);
+     if (!_.isUndefined(value)) this[key] = value;
    }
-  } 
+   return value;
+  }
 
   /**
     Gets the name of this Model.
