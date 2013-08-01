@@ -86,6 +86,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-yuidoc');
 
   // Default task(s).
-  grunt.registerTask('default', ['typescript', 'uglify', 'compress']);
+  grunt.registerTask('default', ['typescript', 'uglify', 'compress', 'yuidoc']);
   grunt.registerTask('docs', ['yuidoc']);
+  grunt.registerTask('build', ['typescript', 'uglify', 'compress']);
 };
