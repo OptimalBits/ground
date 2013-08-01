@@ -216,9 +216,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     super();
     
     args = args || {};
-    _.extend(this, args);
+    _.extend(this, this.__schema.toObject(args));
     
-    _.defaults(this, this.__schema.toObject(this)); // TODO: opts.strict -> extend instead of defaults.
+    // TODO: opts.strict = false 
 
     this._cid = this._id || this._cid || Util.uuid();
 
@@ -269,8 +269,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
   resync(args): void
   {
-    // this.schema.populate(args) // populates instances from schema definition
-    this.set(args, {nosync: true});
+    // TODO: opts.strict = false 
+    var strictArgs = this.__schema.toObject(args)
+    this.set(strictArgs, {nosync: true});
     if(args._id) this._initial = false;
   }
 
