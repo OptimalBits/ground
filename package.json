@@ -23,7 +23,8 @@
     "dist",
     "bin",
     "lib",
-    "third"
+    "third",
+    "docs"
   ],
   "homepage": "http://gnd.io",
   "license": "MIT",
