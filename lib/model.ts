@@ -357,15 +357,19 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
      var tiger = Animal.create({_id: '1234', name: 'tiger', legs: 4});
    */
   static create(args?: {}): Promise<Model>;
+  static create(autosync: bool): Promise<Model>;
   static create(args: {}, autosync: bool): Promise<Model>;
   static create(args?: {}, autosync?: bool): Promise<Model>
   {
     return overload({
-      'Object Boolean': function(args, keepSynced){
+      'Object Boolean': function(args, autosync){
         return modelDepot.getModel(this, args, autosync);
       },
       'Object': function(args){
         return this.create(args, false);
+      },
+      'Boolean': function(autosync){
+        return this.create({}, autosync);
       },
       '': function(){
         return this.create({});
