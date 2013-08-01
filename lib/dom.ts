@@ -670,25 +670,45 @@ module Gnd {
   @method keypressed
   @example 
       
+      // Attaching keydown events directly to the DOM 
       Gnd.$('document').on('keydown', Gnd.keypressed('a').ctrl().alt(function(){
           // Called when a + ctrl + alt is pressed
       });
-  
+      
+      // Attaching key events to view model events
+      room.onKeyPress = Gnd.keypressed().enter(function(evt){
+        sendMessage();
+      });
+      
+      var viewModel = new Gnd.ViewModel('#msgbox', { 
+        room: room
+      });
+      
+      //
+      // <input id="msgbox" type="text" data-event="keypress: room.onKeyPress">
+      //
+
 **/
-export function keypressed(str:string, cb?): (evt) => void
+export function keypressed(str?: string, cb?): (evtOrEl, evt?) => void
 {
   var callbacks = [];
   var keys = [];
   
-  _.each(str.split(''), (c) => {
-    keys.push(c.toUpperCase().charCodeAt(0))
-  });
+  if(_.isString(str)){
+    _.each(str.split(''), (c) => {
+      keys.push(c.toUpperCase().charCodeAt(0))
+    });
+  }else{
+    cb = str;
+  }
   
   cb && callbacks.push(cb);
   
-  var handleEvent = (evt) =>
+  var handleEvent = (evtOrEl, evt?) =>
   {
     var pressed = [];
+    
+    evt = !_.isUndefined(evtOrEl.which) ? evtOrEl : evt;
     
     for(var modifier in modifiers){
       evt[modifier] && pressed.push(modifiers[modifier]);
@@ -698,7 +718,7 @@ export function keypressed(str:string, cb?): (evt) => void
     pressed = _.unique(pressed);
     
     if(pressed.length === keys.length && !_.difference(keys, pressed).length){
-      _.each(callbacks, (cb) => cb());
+      _.each(callbacks, (cb) => cb(evt));
     }
   }
   
