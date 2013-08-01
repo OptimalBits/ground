@@ -44,7 +44,7 @@ module Gnd
     @param model {IModel}
     @param [opts] {ContainerOptions}
     @param [parent] {Model}
-    @param [items] {Model[]}
+    @param [items] {Array} array of models
    **/
   export class Container extends Promise<Container> implements Sync.ISynchronizable
   {
@@ -94,7 +94,9 @@ module Gnd
     }
     
     /**
-      Factory method for container subclasses.
+      Factory method for container subclasses. If a parent is defined, and
+      the parent has autosync enabled, then the container will also be 
+      autosynced.
       
       @method create
       @static
@@ -102,7 +104,7 @@ module Gnd
       @param model {IModel} Model class
       @param [opts] {ContainerOptions}
       @param [parent] {Model}
-      @param [items] {Any[]}
+      @param [items] {Array}
     */
     public static create(ContainerClass: IContainer,
                          model: IModel, 
@@ -185,14 +187,16 @@ module Gnd
       be kept synchronized with its server side counterpart.
     
       @method keepSynced
+      @chainable
     */
-    keepSynced(): void
+    keepSynced(): Container
     {  
       this.startSync();
   
       this['map']((item) => {
         item.keepSynced()
       });
+      return this;
     }
   
     /**
@@ -201,7 +205,7 @@ module Gnd
     
       @method isKeptSynced
       @return {Boolean}
-      @deprecated
+      @deprecated Use isAutosync instead.
     */
     isKeptSynced(): bool
     {
