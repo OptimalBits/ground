@@ -63,6 +63,21 @@ export interface CollectionEvents
   on(evt: 'resynced:');
 }
 
+/**
+  Collection Schema Type. This class can be used to define collection types
+  in schemas.
+    
+      var ChatSchema = new Schema({
+          rooms: new ColectionSchemaType(Room, 'rooms');
+      });
+
+  @class CollectionSchemaType
+  @extends SchemaType
+  @constructor
+  @param mode {IModel} A model class defining the type of items to store in the
+  sequence.
+  @param bucket {String} Bucket where the items are stored in the server.
+*/
 export class CollectionSchemaType extends SchemaType
 {
   public static type = Collection;
