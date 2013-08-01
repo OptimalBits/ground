@@ -320,6 +320,13 @@ function enqueueNode(queue: TaskQueue, node: Node): void {
                node.after);
 }
 
+/**
+  Represents a request operation in the routing system.
+  
+  Instances of this class are created by Route.listen and are used to define
+  the route to be consumed and to act upon.
+  
+*/
 class Request {
   
   private wantsRedirect: bool;
@@ -595,6 +602,16 @@ class Request {
     return this;
   }
   
+  /**
+    Renders a template into the current DOM node.
+    
+    @method render
+    @param templateUrlOrSelector {String} An url or a selector id where to
+    fetch the template.
+    @param [locals] {Object} local properties to be used in the template.
+    @param [css] {String} An url to a css file
+    @param [cb] {Function} Callback called when the rendering has been completed.
+  */
   public render(templateUrl: string): Request;
   public render(templateUrl: string, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, locals: {}, cb?: (err?: Error)=>void): Request;
