@@ -435,7 +435,7 @@ export class Collection extends Container implements CollectionEvents
   /**
     Resync the given items to this collection
   
-    @param items {Model[]}
+    @param items {Array} array of items to synchronize the collection with.
     @protected
   **/
   public resync(items: any[]): Promise
