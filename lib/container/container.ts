@@ -130,6 +130,8 @@ module Gnd
       this.parent = parent;
 
       this.resyncFn = (items) => this.resync(items);
+      
+      parent && parent.isAutosync() && this.keepSynced();
     }
     
     destroy()
