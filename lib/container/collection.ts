@@ -86,6 +86,11 @@ export class CollectionSchemaType extends SchemaType
   {
     super({type: Collection, ref:{model: model, bucket: bucket}});
   }
+  
+  toObject(obj)
+  {
+    // undefined since a collection is never serialized.
+  }
 
   get(model, args?, opts?)
   {
