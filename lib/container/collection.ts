@@ -95,7 +95,7 @@ export class CollectionSchemaType extends SchemaType
   get(model, args?, opts?)
   {
     var def = this.definition;
-    return model.all(def.ref.model, args, def.ref.bucket);
+    return model.all(def.ref.model, args || {}, def.ref.bucket);
   }
 }
 
