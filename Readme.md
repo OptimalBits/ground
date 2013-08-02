@@ -6,7 +6,7 @@ Ground is light (22Kb + 5Kb of dependencies), and well suited for both desktop a
 
 In ground, most of the application logic is moved from the server to the client, whereas the server acts mostly as an scalable, efficient distributed storage and synchronization controller.
 
-It includes also some rather useful features such as a hierarchical routing system, an undo/redo manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers. It is design to always maintaining a high performance and low memory consumption.
+It includes also some rather useful features such as a hierarchical routing system, an undo/redo manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers. It is design to always deliver high performance and low memory consumption.
 
 Ground is written in [Typescript](http://www.typescriptlang.org/), for modularity and stability and is suitable for both javascript and typescript projects.
 
