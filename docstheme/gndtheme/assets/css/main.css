@@ -861,3 +861,9 @@ a {
   background: url(../img/spinner.gif) no-repeat center 70px;
   min-height: 150px;
 }
+html,body {
+  height:100%;
+}
+body {
+  background: url('../img/content-bg.png');
+}
