@@ -356,7 +356,7 @@ describe('Model Datatype', function(){
         elephant.save();
       
         storageQueue.waitUntilSynced(function(){
-          expect(elephant._persisted).to.be.ok();
+          expect(elephant.isPersisted()).to.be.ok();
           expect(elephant).to.have.property('_id');
           
           Animal.findById(elephant.id(), true).then(function(otherElephant){
