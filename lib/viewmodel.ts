@@ -59,7 +59,7 @@ export class ViewModel extends Base
 {  
   private binders: {[index: string]: IBinder;};
   private boundBinders: Binder[] = [];
-  public  contexts: {}[] = [];
+  public  contexts: {get?;}[] = [];
   
   public formatters: {[index: string]: (input: string)=>string;} = {};
   
@@ -121,7 +121,7 @@ export class ViewModel extends Base
       context = this.findContext(root);
       
     if(context){
-      return this.resolveKeypath(context[root], _.rest(keyPath))
+      return this.resolveKeypath(getValue(context, root), _.rest(keyPath))
     }
   }
   
@@ -137,9 +137,14 @@ export class ViewModel extends Base
   findContext(prop: string): any
   {
     for(var i=this.contexts.length-1; i >= 0; i--){
-      if (this.contexts[i][prop]){
+      if(getValue(this.contexts[i], prop)){
         return this.contexts[i];
       }
+      /*
+      var context = this.contexts[i];
+      if (context[prop] || (context.get && context.get(prop))){
+        return context;
+      }*/
     }
   }
   
@@ -207,7 +212,8 @@ export class ViewModel extends Base
   private resolveKeypath(obj, keyPath): Base
   {
     for(var i=0; i<keyPath.length; i++){
-      obj = obj[keyPath[i]];
+      //obj = obj[keyPath[i]];
+      obj = getValue(obj, keyPath[i]);
       if(!obj) return null;      
     }
     return obj;
@@ -215,6 +221,11 @@ export class ViewModel extends Base
 }
 
 // --- Helpers
+
+function getValue(obj, prop)
+{
+  return obj.get ? obj.get(prop) : obj[prop];
+}
 
 export function makeKeypathArray(keypath: string): string[]
 {
