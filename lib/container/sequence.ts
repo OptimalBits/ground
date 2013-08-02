@@ -278,7 +278,7 @@ export class Sequence extends Container implements SequenceEvents
     this.set('count', this.items.length);
     
     if(!opts || !opts.nosync){
-      if(item.isPersisted() || !item._initial){
+      if(item.isPersisted() || item._persisting){
         this._keepSynced && item.keepSynced();
         promise = this.insertPersistedItemBefore(refId, item, opts).then(done);
       }else{

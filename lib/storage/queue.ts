@@ -159,7 +159,6 @@ export class Queue extends Base implements IStorage
     
     var fetchRemote = ()=>{
       return this.remoteStorage.fetch(keyPath).then((docRemote) => {
-        docRemote['_persisted'] = true;
         return this.localStorage.put(keyPath, docRemote, {}).then(() => {
           return docRemote;
         });
@@ -264,7 +263,6 @@ export class Queue extends Base implements IStorage
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
           var elemKeyPath = itemKeyPath.concat(doc._id);
-          doc._persisted = true;
           doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc, {});
         })
@@ -285,7 +283,6 @@ export class Queue extends Base implements IStorage
   {
     return this.localStorage.create(keyPath, args, opts).then((cid)=>{
       args['_cid'] = args['_cid'] || cid;
-      args['_persisted'] = true;
       this.addCmd({cmd:'create', keyPath: keyPath, args: args}, opts);
       return cid;
     });
@@ -444,7 +441,7 @@ export class Queue extends Base implements IStorage
               remoteStorage.create(keyPath, args, {}).then((sid) => {
                 var localKeyPath = keyPath.concat(cid);
                 
-                return localStorage.put(localKeyPath, {_persisted:true, _id: sid}, {}).then(() => {
+                return localStorage.put(localKeyPath, {_id: sid}, {}).then(() => {
                   var newKeyPath = _.initial(localKeyPath);
                   newKeyPath.push(sid);
                   

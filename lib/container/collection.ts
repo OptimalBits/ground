@@ -386,7 +386,7 @@ export class Collection extends Container implements CollectionEvents
     opts = Util.extendClone(this.opts, opts);
     
     if(!opts || (opts.nosync !== true)){
-      if(item.isPersisted() || !item._initial){
+      if(item.isPersisted() || item._persisting){
         return this.addPersistedItem(item);
       }else{
         return item.save().then<void>(() => this.addPersistedItem(item));
@@ -449,7 +449,7 @@ export class Collection extends Container implements CollectionEvents
         var id = item.id(), shouldRemove = true;
         for(var i=0; i<items.length; i++){
           if(id == items[i]._id){
-            item.set(items[i], {nosync: true});
+            item.resync(items[i]);
             shouldRemove = false;
             break;
           }

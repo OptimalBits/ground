@@ -53,11 +53,8 @@ class ModelDepot
     model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
 
     if(!model){
-      //var extArgs = keyPath ? _.extend({_cid: keyPath[1]}, args) : args;
-      //model = ModelClass.fromJSON(extArgs, {fetch: fetch, autosync: autosync});
-      model = new ModelClass(keyPath && {_cid: keyPath[1]}, 
+      model = new ModelClass(_.extend({}, keyPath && {_cid: keyPath[1]}, args),
                              {fetch: fetch, autosync: autosync});
-      model.resync(args);
       this.setModel(model);
       model.autorelease();
     }else{
@@ -80,17 +77,11 @@ class ModelDepot
     var localKeyPath = this.key([model.bucket(), model.cid()]);
 
     models[localKeyPath] = model;
-
-    var setRemote = () => {
+    
+    model.whenPersisted().then(()=>{
       remoteKeyPath = this.key(model.getKeyPath());
       models[remoteKeyPath] = model;
-    }
-
-    if(model.isPersisted()) {
-      setRemote();
-    }else{
-      model.once('id', setRemote);
-    }
+    });
 
     model.once('destroy: deleted:', () => {
       delete models[localKeyPath];
@@ -109,6 +100,7 @@ export interface IModel
   new (args: {}, opts?: {}): Model;
   new (args: {}, bucket?: string, opts?: {}): Model;
   __bucket: string;
+  __strict: bool;
   schema(): Schema;
   create(args: {}, keepSynced?: bool): Promise<Model>;
   fromJSON(args: {}, opts?: {}): Model;
@@ -128,6 +120,9 @@ export interface ModelOpts
 export interface ModelEvents
 {
   on(evt: string, ...args: any[]);
+  once(evt: string, ...args: any[]);
+  emit(evt: string, ...args: any[]);
+  
   /**
   * Fired when a model property changes.
   *
@@ -145,6 +140,15 @@ export interface ModelEvents
   * @param model {Model}
   */
   on(evt: 'deleted:', model: Model);
+  
+  /**
+  * Fired when a model has been persisted on a server storage
+  *
+  * @event persisted:
+  */
+  once(evt: 'persisted:');
+  on(evt: 'persisted:');
+  emit(evt: 'persisted:');
 }
 
 /**
@@ -166,7 +170,6 @@ export interface ModelEvents
        {
          _id: ObjectId,
          _cid: String,
-         persisted: bool,
        }
        
   @class Model
@@ -181,7 +184,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   static __useDepot: bool = true;
   static __bucket: string;
   static __schema: Schema =
-    new Schema({_cid: String, _id: Schema.ObjectId, _persisted: Boolean});
+    new Schema({_cid: String, _id: Schema.ObjectId});
     
   static schema(){
     return this.__schema;
@@ -189,10 +192,11 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
   private __bucket: string;
   private __schema: Schema;
+  private __strict: bool;
 
   private __rev: number = 0;
 
-  private _persisted: bool;
+  public _persisting: bool;
 
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
@@ -209,17 +213,16 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 
   private _storageQueue: Storage.Queue;
 
-  public _initial: bool = true;
-
   constructor(args: {}, opts?: ModelOpts);
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
     super();
     
     args = args || {};
+    if(!this.__strict){
+      _.extend(this, args);
+    }
     _.extend(this, this.__schema.toObject(args));
     
-    // TODO: opts.strict = false 
-
     this._cid = this._id || this._cid || Util.uuid();
 
     this.opts = (_.isString(bucket) ? opts : bucket) || {}
@@ -230,9 +233,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     this._storageQueue = 
       using.storageQueue || new Storage.Queue(using.memStorage);
 
-    if(this.isPersisted()){
-      this._initial = false;
-    }else{
+    if(!this.isPersisted()){
       this._storageQueue.once('created:'+this.id(), (id) => this.id(id));
     }
     
@@ -245,8 +246,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     }
 
     var keyPath = this.getKeyPath();
-    if(keyPath && this.opts.fetch){
-      this._initial = false;
+    if(this.opts.fetch){
+      this._persisting = true;
       this.retain();
       using.storageQueue.fetch(keyPath).then((result) => {
         this.resync(result[0]);// not sure if nosync should be true or not here...
@@ -260,7 +261,6 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
         ready.reject(err).ensure(() => this.release());
       });
     }else{
-      if(this._id) this._initial = true;
       ready.resolve(this);
     }
 
@@ -272,7 +272,6 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     // TODO: opts.strict = false 
     var strictArgs = this.__schema.toObject(args)
     this.set(strictArgs, {nosync: true});
-    if(args._id) this._initial = false;
   }
 
   /**
@@ -298,13 +297,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
      
      var tiger = Animal.create({name: 'tiger', legs: 4});
    */
-  static extend(bucket: string, schema: Schema)
+  static extend(bucket: string, schema?: Schema)
   {
     var _this = this;
     
     function __(args, _bucket, opts) {
       var constructor = this.constructor;
       this.__schema = __['__schema'];
+      this.__strict = __['__strict'];
       _this.call(this, args, bucket || _bucket, opts || _bucket);
       
       // Call constructor if different from Model constructor.
@@ -332,6 +332,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     _.extend(__, {
       __schema: Schema.extend(this.__schema, schema),
       __bucket: bucket,
+      __strict: !!schema
     });
 
     return __;
@@ -503,9 +504,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     if(id){
       this._id = id;
-      this._persisted = true;
-      this.emit('_persisted', true);
-      this.emit('id', id); // DEPRECATED!
+
+      this.isPersisted() && this.emit('persisted:');
+      
+      this.emit('id', id); // DEPRECATED! (used in chat example)
     }
     return this._id || this._cid;
   }
@@ -613,7 +615,29 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   */  
   isPersisted(): bool
   {
-    return this._persisted;
+    return this.id().toString().indexOf('cid') !== 0;
+  }
+  
+  /**
+    Waits until the model has been persisted on server storage.
+  
+    @method whenPersisted
+    @return {Promise} resolved when the model is persisted.
+    @example
+    
+    animal.whenPersisted().then(function(){
+      // do something 
+    });
+  */
+  whenPersisted(): Promise<void>
+  {
+    var promise = new Promise<void>();
+    if(this.isPersisted()){
+      promise.resolve();
+    }else{
+      this.once('persisted:', () => promise.resolve());
+    }
+    return promise;
   }
 
   /**
@@ -653,15 +677,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       id = this.id();
       
     if(!this._dirty) return Gnd.Promise.resolved();
-
-    if(this._initial){
-      args['_initial'] = this._initial = false;
-      this._storageQueue.once('created:'+id, (id) => {
-        this.id(id);
-      });
-      Util.merge(this, args);
-      return this._storageQueue.create([bucket], args, {});
-    }else{
+    
+    if(this.isPersisted() || this._persisting){
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
       // although we will never get the event anyways, and besides we should
@@ -671,6 +688,13 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
         // Obsolete?
         this.emit('updated:', this, args);
       });
+    }else{
+      args['_persisting'] = this._persisting = true;
+      this._storageQueue.once('created:'+id, (id) => {
+        this.id(id);
+      });
+      Util.merge(this, args);
+      return this._storageQueue.create([bucket], args, {});
     }
   }
   
@@ -704,18 +728,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 
     this._keepSynced = true;
 
-    var startSync = () => {
-      if(this.isPersisted()){
-        using.syncManager && using.syncManager.observe(this);
-        this.off('_persisted', startSync);
-      }
-    }
-
-    if (this.isPersisted()){
-      startSync();
-    }else{
-      this.on('_persisted', startSync);
-    }
+    this.whenPersisted().then(() => {
+      using.syncManager && using.syncManager.observe(this);
+    });
 
     this.on('changed:', (doc, options) => {
       if(!options || ((!options.nosync) && !_.isEqual(doc, options.doc))){
