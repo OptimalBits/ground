@@ -1,6 +1,6 @@
 define(['gnd'], function(Gnd){
 
-var route = Gnd.Route;
+var router = Gnd.router;
 
 //
 // TODO: Add a test similar to the route demo where we check that all
@@ -17,19 +17,19 @@ var goToUrl = function(url){
     $(window).trigger('onhashchange');
   }
   */
-  Gnd.Route.redirect(url);
+  router.redirect(url);
 }
 
 describe('Routes', function(){
 
 describe('simple routes', function(){
   it('root route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.after(function(){
-          route.stop();
+          router.stop();
           done();
         });
       });
@@ -37,9 +37,9 @@ describe('simple routes', function(){
   });
  
   it('foobar route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get('bar', '#bar', function(){
@@ -52,9 +52,9 @@ describe('simple routes', function(){
   });
 
   it('parametric route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get(':bar', '#bar', function(){
@@ -67,9 +67,9 @@ describe('simple routes', function(){
     goToUrl('/foo/123456');
   });
   it('route with middleware', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get('bar', '#bar', [function(req,next){
@@ -88,9 +88,9 @@ describe('simple routes', function(){
     goToUrl('/foo/bar');
   });
   it('foobar route with baz in main and subroute', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('foo', '#foo', function(){
           req.get('bar', '#bar', function(){
@@ -109,13 +109,13 @@ describe('simple routes', function(){
   });
 
   it('consume routes in correct order', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('foo','#test', function(){
           req.get('bar', '#foo', function(){
-            route.stop();
+            router.stop();
             done();  
           });
         });
@@ -129,14 +129,14 @@ describe('simple routes', function(){
   });
   
   it('hierarchical route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
             req.get('bar', '#foo', function(){
-              route.stop();
+              router.stop();
               done();  
             });
           });
@@ -152,9 +152,9 @@ describe('simple routes', function(){
   });
   
   it('change from one deep route to another deep route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -174,10 +174,10 @@ describe('simple routes', function(){
   });
   
   it('change from one deep route back one step with same selector' , function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     var counter = 0;
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#foo', function(){
@@ -198,9 +198,9 @@ describe('simple routes', function(){
   });
   
   it('change one route component in the middle of a route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#foo', function(){
@@ -221,9 +221,9 @@ describe('simple routes', function(){
   
   it('changing from one route to another does not execute after on common nodes', function(done){
     var onceTest = 0, onceFoo = 0;
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.after(function(){
@@ -252,9 +252,9 @@ describe('simple routes', function(){
   
   it('changing from one route to another only exits from old nodes once', function(done){
     var onceTest = 0, onceFoo = 0, onceBar = 0;
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.leave(function(){
@@ -284,9 +284,9 @@ describe('simple routes', function(){
   });
   
   it('load json data within route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.load('fixtures/route_data.json', function(){
           expect(req).to.have.property('data');
@@ -302,9 +302,9 @@ describe('simple routes', function(){
     var foo = new Gnd.Base();
     var bar = new Gnd.Base();
     
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -348,9 +348,9 @@ describe('simple routes', function(){
     var foo = new Gnd.Base();
     var bar = new Gnd.Base();
   
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(pool){
           req.after(function(){
@@ -384,9 +384,9 @@ describe('simple routes', function(){
   });
   
   it('redirect from a deep route to another deep route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -410,9 +410,9 @@ describe('simple routes', function(){
   });
   
   it('redirect from a deep route to another deep route and redirect to another route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -439,10 +439,10 @@ describe('simple routes', function(){
   });
   
   it('Change from a deep route to another deep route, redirect to some route, then redirect to original route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     var counter = 0;
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('test', '#main', function(){
           req.get('foo','#test', function(){
@@ -479,11 +479,11 @@ describe('simple routes', function(){
   });
   
   it('Simulate the route redirections in a automatic outlogging and consequently manually login', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     var counter = 0;
     
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -515,10 +515,10 @@ describe('simple routes', function(){
   it('redirect to a deeper route calls after functions correctly', function(done){
     var execAfter = false;
     
-    route.stop();
+    router.stop();
     goToUrl('');
     
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         if(req.isLast()){
           req.redirect('/foo');
@@ -539,10 +539,10 @@ describe('simple routes', function(){
   });
   
   it('notFound should be called when no routes defined', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     
-    route.listen(function(req){      
+    router.listen(function(req){      
       req.notFound(function(){
         done();
       });
@@ -552,10 +552,10 @@ describe('simple routes', function(){
   });
   
   it("notFound's after should be called when no matching a route", function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -583,10 +583,10 @@ describe('simple routes', function(){
   });
   
   it("notFound's after should be called when partially matching a route", function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -616,10 +616,10 @@ describe('simple routes', function(){
   //TODO: Give support for specifying unfinished subroutes
   /*
   it("notFound's after should be called when matching a sub-route", function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
     
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('b', '#main', function(){
           req.get('c', '#test', function(){
@@ -648,9 +648,9 @@ describe('simple routes', function(){
   */
   
   it('enter and exit route', function(done){
-    route.stop();
+    router.stop();
     goToUrl('/foo');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get(function(){
         req.get('bar', '#dummy', function(){
           req.enter(function(el){
@@ -671,9 +671,9 @@ describe('simple routes', function(){
   });
   
   it('render template', function(done){
-    route.stop();
+    router.stop();
     goToUrl('');
-    route.listen(function(req){
+    router.listen(function(req){
       req.get('', '#dummy', function(){
         req.render('fixtures/test1.tmpl', {animal: 'tiger'});
         req.enter(function(el){
@@ -686,7 +686,7 @@ describe('simple routes', function(){
 
   
   it('stop listening route', function(){
-    route.stop();
+    router.stop();
   });
 
 });
