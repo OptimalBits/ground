@@ -19,11 +19,10 @@ declare var curl;
 
 /**
   @module Gnd
-  @submodule Route
 */
-module Gnd.Route {
+module Gnd {
 
-interface Node
+export interface RouteNode
 {
   el: Element;
   selector: string;
@@ -52,56 +51,188 @@ interface Middleware
 /**
   Url Route management.
   
-  This class provides hierarchical url routing that maps the hierarchical structure
-  of the DOM.
+  This static class provides hierarchical url routing that maps the hierarchical
+  structure of the DOM.
   
   For a complete description of the route manager check the [guide](http://gnd.io/#Routing)
 
   @class Route
 */
-interface Route {
-  listen: (root?: String, cb?: ()=>void) => void;
-};
-
-var interval, 
-    req, 
-    routeHandler, 
-    basepath;
-
-/**
-  Listen to changes in the url and calls the route handler accordingly.
-    
-  @method listen
-  @param [root=""] {String} specify the root url.
-  @param [cb] {Function} route handler.
-*/    
-export function listen(root?: string, cb?) {
-  if(_.isFunction(root)){
-    cb = root;
-    root = '';
-  }
+export class Router
+{
+  private interval;
+  private req: Request;
+  private routeHandler;
   
-  routeHandler = cb;
-  basepath = location['origin'] + '/' + Util.trim(root);
+  private handlePopStateFn;
+  private handleClickUrlFn;
+  
+  private basepath: string;
+  
+  public route: Route = new Route();
+  
+  constructor(){    
+    this.handlePopStateFn = (evt) => {
+      this.routeHandler && this.executeRoute(location.pathname, this.routeHandler);
+    }
     
-  var url;
-  if(using.historyApi){
-    // Listen to all link clicks.
-    $("document").on('click', handleClickUrl);
+    this.handleClickUrlFn = (evt) => {
+      var link = findLink(evt.target || evt.srcElement);
+      if(link){
+        var url = link.href;
     
-    window.addEventListener("popstate", handlePopState);
-    url = getRelativeUrl(location.href);
-  }else{
-    url = location.hash.replace(/^#!?/, '');
-    var fn = () => executeRoute(location.hash.replace(/^#!?/, ''), cb);
-    if ('onhashchange' in window) {
-      window.onhashchange = fn;
-    } else {
-      interval = setInterval(fn, 50);
+        // check if url is within the basepath
+        if(url = getRelativeUrl(url, this.basepath)){
+          evt.preventDefault();
+          this.redirect(url);
+        }
+      }
     }
   }
+  
+  /**
+    Listen to changes in the url and calls the route handler accordingly.
+    
+    @method listen
+    @param [root=""] {String} specify the root url.
+    @param cb {Function} route handler.
+  */
+  public listen(root: string, cb: ()=>void)
+  public listen(cb: ()=>void)
+  public listen(root?, cb?)
+  {
+    if(_.isFunction(root)){
+      cb = root;
+      root = '';
+    }
+  
+    this.routeHandler = cb;
+    this.basepath = location['origin'] + '/' + Util.trim(root);
+    
+    var url;
+    if(using.historyApi){
+      // Listen to all link clicks.
+      $("document").on('click', this.handleClickUrlFn);
+    
+      window.addEventListener("popstate", this.handlePopStateFn);
+      url = getRelativeUrl(location.href, this.basepath);
+    }else{
+      url = location.hash.replace(/^#!?/, '');
+      var fn = () => this.executeRoute(location.hash.replace(/^#!?/, ''), cb);
+      if ('onhashchange' in window) {
+        window.onhashchange = fn;
+      } else {
+        this.interval = setInterval(fn, 50);
+      }
+    }
 
-  executeRoute(url, cb);
+    this.executeRoute(url, cb);
+  }
+  
+  /**
+    Stop listening for url changes.
+  
+    @method stop
+  */
+  public stop(){
+    this.req = this.routeHandler = null;
+    $("body").off('click', this.handleClickUrlFn);
+    window.removeEventListener("popstate", this.handlePopStateFn);
+    delete window.onhashchange;
+    clearInterval(this.interval);
+  }
+
+  /**
+    Redirect to given url.
+    
+    @method redirect
+    @param url {String} url to redirect to.
+  */
+  public redirect(url){
+    if (using.historyApi){
+      history.pushState(null, null, url)
+    } else{
+      location.hash = '#!'+ url;
+    }
+    this.routeHandler && this.executeRoute(url, this.routeHandler);
+  }
+  
+  private executeRoute(url, routeHandler){
+    if(!this.req || (this.req.url !== url)){
+      this.req && this.req.queue.cancel();
+      
+      var req = new Request(url, this.req && this.req.nodes || []);
+      
+      this.route.notifyRouteChange(this.req, req);
+      
+      this.req = req;
+    
+      //
+      // Starts the recursive route traversing
+      //
+      var index = req.index;
+    
+      this.routeHandler(req);
+    
+      if(req.index == index ){
+        req.isNotFound = true;
+        req.queue.end();
+      }
+    
+      req.queue.wait(() => {
+        if(req.isNotFound){
+          if(req.notFoundFn){
+            req.index = 1;
+            req.initNode('body');
+            req.notFoundFn.call(req, req);
+            var queue = new TaskQueue();
+            enqueueNode(queue, req.node())
+          }else{
+            log('Undefined route:', url);
+            return;
+            }
+          }
+      });
+    }
+  }
+}
+
+export class Route extends Base
+{
+  notifyRouteChange(prevReq: Request, req: Request)
+  {
+    // TODO: This should be performed not at once but during route traversal.
+    var index = 0;
+    var components = req.components;
+    
+    if(prevReq){
+      var prevComponents = prevReq.components;
+      var maxLen = Math.min(prevComponents.length, components.length);
+
+      // ignore common components
+      for(;index < maxLen; index++){
+        if(prevComponents[index] != components[index]){
+          break;
+        }
+      }
+      
+      if(index < prevComponents.length){
+        // clean old components
+        var start = prevComponents[0] != '' ? 0 : 1;
+        for(var i=prevComponents.length; i>=index+start; i--){
+          this.set(prevComponents.slice(start, i).join('.'), false);
+        }
+      }
+    }
+      
+    if(index < components.length){
+      // set new components
+      if(components[index] == '') index++;
+      for(var i=index ; i<components.length; i++){
+        this.set(components.slice(index, i+1).join('.'), true);
+      }
+    }
+  }
 }
 
 function findLink(el: HTMLElement): any{
@@ -113,81 +244,14 @@ function findLink(el: HTMLElement): any{
   }
 }
 
-function handleClickUrl(evt){
-  var link = findLink(evt.target || evt.srcElement);
-  if(link){
-    var url = link.href;
-    
-    // check if url is within the basepath
-    if(url = getRelativeUrl(url)){
-      evt.preventDefault();
-      redirect(url);
-    }
-  }
-}
-
-function getRelativeUrl(url: string){
+function getRelativeUrl(url: string, basepath: string){
   if(url.indexOf(basepath) === 0){
     url = url.substring(basepath.length).replace(/^#!?/, '');
     return url;
   }
 }
 
-function handlePopState(evt){
-  routeHandler && executeRoute(location.pathname, routeHandler);
-}
-
-function executeRoute(url, routeHandler){
-  if(!req || (req.url !== url)){
-    req && req.queue.cancel();
-  
-    req = new Request(url, req && req.nodes || []);
-    
-    //
-    // Starts the recursive route traversing
-    //
-    var index = req.index;
-    
-    routeHandler(req);
-    
-    if(req.index == index ){
-      req.isNotFound = true;
-      req.queue.end();
-    }
-    
-    req.queue.wait(function(isCancelled){
-      if(req.isNotFound){
-        if(req.notFoundFn){
-          req.index = 1;
-          req.initNode('body');
-          req.notFoundFn.call(req, req);
-          var queue = new TaskQueue();
-          enqueueNode(queue, req.node())
-        }else{
-          log('Undefined route:'+url);
-          return;
-          }
-        }
-    });
-  }
-}
-
-export function stop(){
-  req = routeHandler = null;
-  $("body").off('click', handleClickUrl);
-  window.removeEventListener("popstate", handlePopState);
-  delete window.onhashchange;
-  clearInterval(interval);
-}
-
-export function redirect(url){
-  if (using.historyApi){
-    history.pushState(null, null, url)
-  } else{
-    location.hash = '#!'+ url;
-  }
-  routeHandler && executeRoute(url, routeHandler);
-}
+export var router = new Router();
 
 /**
   Parses A query string and returns an object with key, value pairs.
@@ -226,7 +290,7 @@ export interface PoolEntry
   [index: number]: Base;
 }
 
-class AutoreleasePool
+export class AutoreleasePool
 { 
   private drained : bool = false;
   private pool : Base[] = [];
@@ -310,7 +374,7 @@ function exitNodes(queue, nodes, start){
   }
 }
 
-function enqueueNode(queue: TaskQueue, node: Node): void {
+function enqueueNode(queue: TaskQueue, node: RouteNode): void {
   queue.append(node.select, 
                node.hide, 
                node.before, 
@@ -327,13 +391,15 @@ function enqueueNode(queue: TaskQueue, node: Node): void {
   the route to be consumed and to act upon.
   
 */
-class Request {
+export class Request {
   
   private wantsRedirect: bool;
   private el: HTMLElement;
-  private notFoundFn;
-  private isNotFound: bool;
+
   private template: (tmpl: string, args:{}) => void;
+
+  public isNotFound: bool;
+  public notFoundFn;
   
   public data: any[];
   public url: string;
@@ -347,11 +413,11 @@ class Request {
   public prevNodes: any[];
 
   constructor(url:string, prevNodes:any[]){
-    var self = this, components, i, len, prevLen;
+    var components, i, len, prevLen;
   
-    _.extend(self, decomposeUrl(url));
+    _.extend(this, decomposeUrl(url));
     
-    components = self.components;
+    components = this.components;
     len = components.length;
     prevLen = prevNodes.length;
     
@@ -369,7 +435,7 @@ class Request {
       if(prev && 
          (prev.component === components[i]) && 
          (prevLen < len || (prevNext && prev.selector != prevNext.selector) || i < len-1)){
-        self.nodes.push({
+        this.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
         });
@@ -381,9 +447,9 @@ class Request {
     //
     // Create new nodes
     //
-    self.startIndex = i;
-    for (i=self.startIndex; i<len; i++){
-      self.nodes.push({component:components[i], autoreleasePool: new AutoreleasePool()});
+    this.startIndex = i;
+    for (i=this.startIndex; i<len; i++){
+      this.nodes.push({component:components[i], autoreleasePool: new AutoreleasePool()});
     }
   }
   
@@ -470,9 +536,9 @@ class Request {
   }
   
   // TODO: Generate error if selector returns empty set or more than one DOM node!
-  private initNode(selector: string, node : Node){
+  public initNode(selector: string, node?: RouteNode){
   
-    ((node: Node) => {
+    ((node: RouteNode) => {
       node.select = wrap((done) => {
         node.el = this.el = $(selector)[0];
         done();
@@ -561,7 +627,7 @@ class Request {
   public redirect(url, params){
     url = params ? url+'?'+serialize(params) : url;
     this.queue.wait(function(){
-      redirect(url);
+      router.redirect(url);
     })
     this.wantsRedirect = true;
   }
@@ -746,12 +812,11 @@ class Request {
   
   private _load(urls, cb){
     var base = this.currentSubPath(),
-        self = this,
         i,
         len;
       
     if(urls === null){
-      urls = self.data;
+      urls = this.data;
     }
       
     if(!_.isArray(urls)){
@@ -763,7 +828,7 @@ class Request {
       _urls.push('text!'+urls[i]);
     }
   
-    curl(_urls, function(){
+    curl(_urls, () => {
       var args = arguments;
       var objs = [];
       for(i=0, len=args.length;i<len;i++){
@@ -774,7 +839,7 @@ class Request {
         }
       }
       objs = objs.length===1?objs[0]:objs;
-      self.data = objs;
+      this.data = objs;
       cb && cb();
     });
   }
