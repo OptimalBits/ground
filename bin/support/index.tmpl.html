@@ -1,13 +1,15 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
-  <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
   <meta name="fragment" content="!">
 
   <title>Ground Application</title>
 
   <link rel="icon" type="image/png" href="images/favicon.png" />
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/css/bootstrap.min.css"  media="screen">
   
   <script>
     // Prevent IE from crashing
@@ -30,27 +32,57 @@
           path: 'lib/',
           main: 'gnd',
         },
-        'underscore':{
-          path:'lib/',
-          main:'underscore'
-        },
       }
     };
   </script>
   
   <script src="lib/underscore.js"></script>
-  <script src="lib/curl.min.js"></script>
+  <script src="lib/curl.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>  
+  <!-- Static navbar -->
+  <div id="navbar" class="navbar navbar-static-top">
+    <div class="container">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="#">Gnd App</a>
+      <div class="nav-collapse collapse">
+        <ul class="nav navbar-nav">
+          <li data-class="active: route.configure"><a href="#/configure">Configure</a></li>
+          <li data-class="active: route.models"><a href="#/models">Models</a></li>
+          <li data-class="active: route.routes"><a href="#/routes">Routes</a></li>
+          <li data-class="active: route.views"> <a href="#/views">Views</a></li>
+          <li data-class="active: route.build"><a href="#/build">Build</a></li>
+        </ul>
+        <ul class="nav navbar-nav pull-right">
+          <div class="input-group">
+            <input type="text" placeholder="Email">
+            <input type="password" placeholder="Password">
+            <button type="submit" class="btn btn-small">Log in</button>
+          </div>
+        </ul>
+      </div><!--/.nav-collapse -->
+    </div>
+  </div>
+  
+  <!-- Main Container -->
+  <div class="container">
+    <div id="main"  class="jumbotron">
+      
+    </div>
+  </div>
  
   <script>
   curl(['app'], function(){
     console.log("Application Loaded");
   });
   </script>
-</head>
-
-<body>
-
+  
 </body>
 
 </html>

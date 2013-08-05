@@ -54,7 +54,6 @@ function createApplication(dst, opts, cb)
     'app/assets/css',
     'app/assets/images',
     'app/assets/templates',
-    'models',
     'test',
   ];
   
@@ -77,7 +76,16 @@ function createApplication(dst, opts, cb)
     'support/app.tmpl.js': '/app/app.js',
     'support/main.tmpl.html': '/assets/templates/main.html',
     'support/models.tmpl.js': '/models/models.js',
+    'support/models/models.js': '/app/models/models.js',
+    'support/models/animal.js': '/app/models/animal.js',
+    'support/models/zoo.js': '/app/models/zoo.js',
     'support/README.tmpl.md': '/README.md',
+    'support/assets/templates/build.html': '/app/assets/templates/build.html',
+    'support/assets/templates/configure.html': '/app/assets/templates/configure.html',
+    'support/assets/templates/models.html': '/app/assets/templates/models.html',
+    'support/assets/templates/routes.html': '/app/assets/templates/routes.html',
+    'support/assets/templates/views.html': '/app/assets/templates/views.html',
+    'support/assets/templates/welcome.html': '/app/assets/templates/welcome.html',
     '../third/curl.js': 'app/lib/curl.min.js'
   }
   

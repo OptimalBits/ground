@@ -12,6 +12,8 @@
     , "mongoose": "*"
     , "underscore": "*"
     , "socket.io": "0.9.10"
+    , "requirejs": "~2.1.8"
+    , "open": "*"
   },
   "devDependencies": {
       "mocha": "*"
