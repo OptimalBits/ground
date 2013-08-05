@@ -1,0 +1,28 @@
+<h1>Define your models</h1>
+<p>
+  Models are defined using schemas using a very similar syntax to the one used
+  in <a href="http://mongoosejs.com">Mongoose</a>, a popular <a href="http://mongodb.org">MongoDB</a> ORM.
+</p>
+<p>The best practice for models is to put every model in its own .js/.ts file and in models.js aggregate all models in one object for easy export to clients and servers. Place them under: <pre>myapp/app/models</pre>
+</p>
+<p>
+Both clients and server will have access to the model classes, so you only need to define them in one place.</p>
+
+<p>
+  Check for example in app/models/animal.js:
+</p>
+<pre>
+<code>
+  define(['gnd'], function(Gnd){
+
+    var AnimalSchema = new Gnd.Schema({
+      name: {type: String},
+      desc: {type: String},
+      legs: {type: Number, max: 4, min: 2}
+    });
+
+    return Gnd.Model.extend('animals', AnimalSchema);
+  })
+</code>
+</pre>
+<a class="btn btn-large btn-primary" href="#/routes">Define Routes</a>
