@@ -13,17 +13,28 @@ var Gnd = require('gnd')
   , path = require('path')
   , requirejs = require('requirejs');
   
+switch(config.MODE){
+  case 'development': 
+    app.use(cabinet(path.join(__dirname, 'app'), {
+      ignore: ['.git', 'node_modules', '*~'],
+      files: {
+        '/gnd.js': Gnd.debug,
+        '/lib/curl.js': Gnd.third.curl,
+        '/lib/underscore.js': Gnd.third.underscore
+      }
+    }));
+    break;
+  case 'production':
+    app.use(cabinet(path.join(__dirname, 'build')));
+    break;
+  default:
+    console.log("No valid MODE configured:", config.MODE);
+    process.exit(-1);
+}
+  
 server.listen(config.APP_PORT);
 console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
 
-app.use(cabinet(path.join(__dirname, 'app'), {
-  ignore: ['.git', 'node_modules', '*~'],
-  files: {
-    '/lib/gnd.js': Gnd.debug,
-    '/lib/curl.js': Gnd.third.curl,
-    '/lib/underscore.js': Gnd.third.underscore
-  }
-}));
 
 mongoose.connect(config.MONGODB_URI);
 

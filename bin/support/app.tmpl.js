@@ -1,4 +1,4 @@
-define(['gnd'], function(Gnd){
+define(['gnd'], function(Gnd, models){
 'use strict';
 
 //
@@ -28,35 +28,11 @@ Gnd.use.storageQueue(localStorage, remoteStorage);
 var viewModel = new Gnd.ViewModel('#navbar', {route: Gnd.router.route});
 
 // 
-// Define routes hierarchically
+// Define routes
 //
 Gnd.router.listen(function(req) {
-  req.get('', '#main', function() {
-    
-    if(req.isLast()){
-      req.render('assets/templates/welcome.html');
-    }
-    
-    req.get('configure', '#main', function(){
-      req.render('assets/templates/configure.html');
-    });
-    
-    req.get('models', '#main', function(){
-      req.render('assets/templates/models.html');
-    });
-    
-    req.get('routes', '#main', function(){
-      req.render('assets/templates/routes.html');
-    });
-    
-    req.get('views', '#main', function(){
-      req.render('assets/templates/views.html');
-    });
-    
-    req.get('build', '#main', function(){
-      req.render('assets/templates/build.html');
-    });
-
-  });
-})
+  req.get('', '#main', 'routes/main');
 });
+
+
+}); // define

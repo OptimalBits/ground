@@ -24,7 +24,7 @@ var config = {
   MONGODB_URI: _('MONGODB_URI', 'mongodb://localhost/ground'),
   
   COOKIE: _('COOKIE', 'gnd-cookie'),
-  MODE: _('MODE', 'development')
+  MODE: _('MODE', env.NODE_ENV)
 }
 
 config.DEVELOPMENT = _('DEVELOPMENT', config.MODE === 'development');

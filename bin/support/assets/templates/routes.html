@@ -1,41 +1,50 @@
 <h1>Specify your routes</h1>
 <p>
-  In any Ground application you will need to define routes to access the diferent parts of your application. The routes are hierarchical, so you can define the content of every subroute without re-rendering the rest of the webpage that stays the same.
+  In any Ground you will need to define routes to access the diferent parts of
+  your application. The routes are hierarchical, so you can define the content 
+  of every subroute without re-rendering the rest of the webpage that stays
+  the same.
   
   Check in this example app, as the routes are defined for the navigation bar.
   <pre>
   <code>
-    Gnd.Route.listen(function(req) {
-      req.get('', '#main', function() {
-    
-        if(req.isLast()){
-          req.render('assets/templates/welcome.html');
-        }
-    
-        req.get('models', '#main', function(){
-          req.render('assets/templates/models.html');
-        });
-    
-        req.get('routes', '#main', function(){
-          req.render('assets/templates/routes.html');
-        });
-    
-        req.get('views', '#main', function(){
-          req.render('assets/templates/views.html');
-        });
+    // If this is the last component we render a default template
+    if(req.isLast()){
+      req.render('assets/templates/welcome.html');
+    }
 
-      });
+    // As an example, this route is handled via an external file
+    req.get('configure', '#main', 'routes/configure');
+
+    req.get('models', '#main', function(){
+      req.render('assets/templates/models.html');
+    });
+
+    req.get('routes', '#main', function(){
+      req.render('assets/templates/routes.html');
+    });
+
+    req.get('views', '#main', function(){
+      req.render('assets/templates/views.html');
+    });
+
+    req.get('build', '#main', function(){
+      req.render('assets/templates/build.html');
     });
   </code>
   </pre>
 </p>
 <p>
-  Routes can be implemented in one .js/.ts file or if the handlers are large you
-  can specify a route handler as a separate file.
+  Routes can be implemented all in the same file or if the handlers are large you
+  modularize them specifying them in separate routes in <em>app/routes/<em>.
+  It is important that the route files are places under the correct directory so
+  that the build system can work as expected.
 </p>
 <p>
   Generally a route will require a template to be rendered when the user access
-  the given route. You can by default use standard html or underscore <a href="http://underscorejs.org/#template">microtemplates</a>. You can of course use any other template engine you want.
+  the given route. You can by default use standard html or underscore 
+  <a href="http://underscorejs.org/#template">microtemplates</a>. You can of 
+  course use any other template engine you want.
 </p>
 
 <a class="btn btn-large btn-primary" href="#/views">Views</a>

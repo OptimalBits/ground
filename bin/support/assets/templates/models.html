@@ -1,13 +1,18 @@
 <h1>Define your models</h1>
 <p>
-  Models are defined using schemas using a very similar syntax to the one used
-  in <a href="http://mongoosejs.com">Mongoose</a>, a popular <a href="http://mongodb.org">MongoDB</a> ORM.
-</p>
-<p>The best practice for models is to put every model in its own .js/.ts file and in models.js aggregate all models in one object for easy export to clients and servers. Place them under: <pre>myapp/app/models</pre>
+  Models are defined using schemas with a very similar syntax to the one used
+  in <a href="http://mongoosejs.com">Mongoose</a>, a popular 
+  <a href="http://mongodb.org">MongoDB</a> ORM.
 </p>
 <p>
-Both clients and server will have access to the model classes, so you only need to define them in one place.</p>
-
+  The best practice when working with models is to put every model in its own
+  file and in models.js aggregate all models in one object for easy export to
+  clients and servers. Place them under: <pre>myapp/app/models</pre>
+</p>
+<p>
+  Both clients and server will have access to the model classes, so you only
+  need to define them in one place.
+</p>
 <p>
   Check for example in app/models/animal.js:
 </p>
