@@ -55,12 +55,15 @@ Will generate a ground application in the directory myapplication. Enter in the 
     
 This will install all the required dependencies, then just fire the server with the application:
 
-    node server.js
+    npm start
 
-The hello world application is available at 
+The hello world application will be started automatically in your default browser.
 
-    http://localhost:8080
+[Grunt](http://gruntjs.com) is used for building the application for deployment:
 
+    grunt
+
+The resulting app will be placed in the *build* directory.
 
 #Demos
 
