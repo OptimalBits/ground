@@ -33,7 +33,14 @@ It should be a complete Web framework that is fun to use, that uses efficiently 
 
 Ground depends on the following external libraries: Curl, Socket.io and Underscore or LoDash.
 
-Ground is provided both as a set of typescript classes, and as a javascript AMD module. It can be included using script tags or using an [AMD loader](https://github.com/amdjs/amdjs-api/wiki/AMD). While it should work with any AMD compatible loader, we recommend [Curl](https://github.com/cujojs/curl) since it is already a required dependency.
+Ground is provided both as a set of typescript classes, and as a javascript AMD 
+module. It can be included using script tags or using an
+ [AMD loader](https://github.com/amdjs/amdjs-api/wiki/AMD). While it should work
+  with any AMD compatible loader, we recommend [Curl](https://github.com/cujojs/curl)
+since it is already a required dependency.
+
+For the server component both [Redis](http://redis.io) and 
+[MongoDB](http://mongodb.org) are required at the moment.
 
 
 ##Install
