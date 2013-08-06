@@ -59,11 +59,30 @@ This will install all the required dependencies, then just fire the server with 
 
 The hello world application will be started automatically in your default browser.
 
-[Grunt](http://gruntjs.com) is used for building the application for deployment:
+[Grunt](http://gruntjs.com) is used for building the application for deployment.
+If you don't have grunt already installed:
+    
+    npm install -g grunt-cli
+
+Then just:
 
     grunt
 
 The resulting app will be placed in the *build* directory.
+
+For testing we us [Mocha](http://visionmedia.github.io/). If you don't have 
+mocha installed:
+
+    npm install -g mocha
+
+You can run tests in developing mode
+
+    npm test
+    
+Or run the tests on the production built code:
+
+    npm test --production
+    
 
 #Demos
 
