@@ -71,10 +71,10 @@ function createApplication(dst, opts, cb)
     'support/config.tmpl.js': '/config.js',
     'support/server.tmpl.js': '/server.js',
     'support/package.tmpl.json': '/package.json',
+    'support/Gruntfile.js': '/Gruntfile.js',
     'support/test_main.tmpl.js': '/test/main.js',
     'support/index.tmpl.html': '/app/index.html',
     'support/app.tmpl.js': '/app/app.js',
-    'support/main.tmpl.html': '/assets/templates/main.html',
     'support/models.tmpl.js': '/models/models.js',
     'support/models/models.js': '/app/models/models.js',
     'support/models/animal.js': '/app/models/animal.js',
@@ -86,7 +86,8 @@ function createApplication(dst, opts, cb)
     'support/assets/templates/routes.html': '/app/assets/templates/routes.html',
     'support/assets/templates/views.html': '/app/assets/templates/views.html',
     'support/assets/templates/welcome.html': '/app/assets/templates/welcome.html',
-    '../third/curl.js': 'app/lib/curl.min.js'
+    'support/routes/main.js': '/app/routes/main.js',
+    'support/routes/configure.js': '/app/routes/configure.js',
   }
   
   var taskQueue = new gnd.TaskQueue();
