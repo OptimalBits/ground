@@ -82,7 +82,7 @@ describe('Promises and Tasks', function(){
     promise.resolve();
   });
   
-  it('simple promise queue with 2 promises triggers after second', function(){
+  it.skip('simple promise queue with 2 promises triggers after second', function(){
     var promise1 = new gnd.Promise(), promise2 = new gnd.Promise();
     var queue = new gnd.PromiseQueue(promise1, promise2);
     
