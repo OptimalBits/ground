@@ -4,6 +4,7 @@ _ = require('underscore');
 module.exports = require('./dist/gnd-server');
 
 var path = require('path');
+module.exports.src = path.join(__dirname, 'lib/');
 module.exports.lib = path.join(__dirname, 'dist/gnd.min.js');
 module.exports.map = path.join(__dirname, 'dist/gnd.js.map');
 module.exports.debug = path.join(__dirname, 'dist/gnd.js');
