@@ -69,6 +69,7 @@ function createApplication(dst, opts, cb)
   
   var filesToCopy = {
     'support/config.tmpl.js': '/config.js',
+    'support/defaults.tmpl.js': '/defaults.js',
     'support/server.tmpl.js': '/server.js',
     'support/package.tmpl.json': '/package.json',
     'support/Gruntfile.js': '/Gruntfile.js',

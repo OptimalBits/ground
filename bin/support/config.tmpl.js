@@ -1,33 +1,35 @@
 /**
 
   Configuration file.
-  
-  Follows the twelve-factor app guidelines:
-  
-  http://www.12factor.net/config
 
-  Define config variables by setting environment variables, which by
-  default are prefixed with GND, such as GND_APP_PORT.
+  Can be editted to add more configuration variables, following the 
+  twelve-factor app guidelines:
   
-  Some default values are provided for convenience.
+    http://www.12factor.net/config
+    
+  For adding or changing defaults just edit defaults.js
 */
 
 var env = process.env
-  , prefix = 'GND'; 
+  , defaults = require('./defaults.js')
+  , prefix = defaults.prefix; 
+
 
 var config = {
-  APP_PORT: _('APP_PORT', 0),
+  APP_PORT: _('APP_PORT', defaults.APP_PORT),
   
-  REDIS_PORT: _('REDIS_PORT', 6379),
-  REDIS_ADDR: _('REDIS_ADDR', '127.0.0.1'),
+  REDIS_PORT: _('REDIS_PORT', defaults.REDIS_PORT),
+  REDIS_ADDR: _('REDIS_ADDR', defaults.REDIS_ADDR),
   
-  MONGODB_URI: _('MONGODB_URI', 'mongodb://localhost/ground'),
+  MONGODB_URI: _('MONGODB_URI', defaults.MONGODB_URI),
+  MONGODB_TEST_URI: _('MONGODB_URI', defaults.MONGODB_TEST_URI),
   
-  COOKIE: _('COOKIE', 'gnd-cookie'),
+  COOKIE: _('COOKIE', defaults.COOKIE),
   MODE: _('MODE', env.NODE_ENV)
 }
 
 config.DEVELOPMENT = _('DEVELOPMENT', config.MODE === 'development');
+config.MONGODB_URI = env.TEST ? config.MONGODB_TEST_URI : config.MONGODB_URI; 
 
 function _(variable, defaultValue){
   return env[prefix+'_'+variable] || defaultValue;
