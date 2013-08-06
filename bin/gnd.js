@@ -89,6 +89,7 @@ function createApplication(dst, opts, cb)
     'support/assets/templates/welcome.html': '/app/assets/templates/welcome.html',
     'support/routes/main.js': '/app/routes/main.js',
     'support/routes/configure.js': '/app/routes/configure.js',
+    'support/test/test_main.js': '/test/test_main.js',
   }
   
   var taskQueue = new gnd.TaskQueue();

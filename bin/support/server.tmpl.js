@@ -38,6 +38,11 @@ console.log("Started server at port: %d in %s mode", server.address().port, conf
 
 mongoose.connect(config.MONGODB_URI);
 
+requirejs.config({
+    baseUrl: __dirname,
+    nodeRequire: require
+});
+
 var models = requirejs('app/models/models');
 
 var mongooseStorage = new Gnd.Storage.MongooseStorage(models, mongoose)
@@ -49,7 +54,9 @@ var mongooseStorage = new Gnd.Storage.MongooseStorage(models, mongoose)
                                
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 
-if (config.MODE === 'development'){
+if (config.MODE === 'development' && !process.env.TEST){
   var open = require('open');
   open('http://localhost:' + server.address().port);
 }
+
+module.exports = server.address().port;
