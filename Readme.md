@@ -120,7 +120,7 @@ With this approach it is possible to reduce redundancy dramatically and also cre
 The routing module is started by specifying an optional root (defaults to '/') and a function callback where
 all the routes will be defined. Lets see the simplest possible example:
 
-	Gnd.Route.listen(function(req: Request){
+	Gnd.router.listen(function(req: Request){
 	  req.get(function(){
 	    req.render('/templates/main.jade');	
 	  });
@@ -139,7 +139,7 @@ The template engine to use is defined by the *use* method of Gnd global object, 
 
 Since the system is hierarchical, if we want to add some more sub routes we can do it like so:
 
-	Gnd.Route.listen(function(req){
+	Gnd.router.listen(function(req){
 	  req.get(function(){
 	    req.render('/templates/main.jade');
 
@@ -234,7 +234,7 @@ The framework also provides a mechanism to make transitions between routes possi
 
 Lets see a simple example conveing animations using jquery:
 
-	Gnd.Route.listen(function(req){
+	Gnd.router.listen(function(req){
 	  req.get(function(){
 	    req
 		    .render('/templates/main.jade')
@@ -249,7 +249,7 @@ Lets see a simple example conveing animations using jquery:
 
 The call to *exit* will perform a *fade out* operation on the content of the *body*, while the call to *exit* will *fade in* the rendered template. By using exit and enter its possible to combine many different animations for different parts of the web page or application. The order in which *enter* and *exit* are called is irrelevant, there can only be one call for every node in the route hierarchy and the system will call them when necessary. Also note that in the example we are using an asynchronous call, which means that the rendering of the route will wait until the animation has completed, in some cases we may not want to wait, and run all the animations in parallel for a different visual effect:
 
-    Gnd.Route.listen(function(req){
+    Gnd.router.listen(function(req){
       req.get(function(){
         req
           .render('/templates/main.jade')
@@ -268,7 +268,7 @@ We have also a pair of function to be used when custom code must be executed, th
 
 In order to avoid large files with many route handlers that would keep the code large and clunky, we can use external route handlers. Simply provide a path to a handler in the get method instead of the function callback. Lets see a more complete example:
 
-    Gnd.Route.listen(function(req){
+    Gnd.router.listen(function(req){
       req.use('template', template);
 
       req.get(function(){
