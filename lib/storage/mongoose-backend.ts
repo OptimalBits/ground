@@ -33,9 +33,9 @@ declare module 'mongoose' {
 
 declare module "underscore" {
   export function last (array : any[], n? : number) : any;
-  export function find (array : any[], iterator: (elem:any)=>bool) : any;
-  export function isEqual (object : any, other : any) : bool;
-  export function isFunction (object : any) : bool;
+  export function find (array : any[], iterator: (elem:any)=>boolean) : any;
+  export function isEqual (object : any, other : any) : boolean;
+  export function isFunction (object : any) : boolean;
   export function initial (array : any[], n? : number) : any[];
 }
 
@@ -100,9 +100,9 @@ export class MongooseStorage implements Storage.IStorage {
   private listContainer: any;
   private transaction: any;
   
-  // constructor(models: IMongooseModels, mongoose, legacy?: bool)
-  // constructor(models: IModels, mongoose, legacy?: bool)
-  constructor(models: any, mongoose, legacy?: bool)
+  // constructor(models: IMongooseModels, mongoose, legacy?: boolean)
+  // constructor(models: IModels, mongoose, legacy?: boolean)
+  constructor(models: any, mongoose, legacy?: boolean)
   {
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: { type: String },
