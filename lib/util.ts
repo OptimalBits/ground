@@ -258,7 +258,7 @@ function delayed<T>(task: Promise<T>,
   @param fields {Array} array of string with the fields to search for.
   @return {Boolean} true if the object includes the search string.
 */ 
-export function searchFilter(obj: {}, search: string, fields: string []): bool
+export function searchFilter(obj: {}, search: string, fields: string []): boolean
 {
   if(search){
     var result = false;
@@ -526,7 +526,7 @@ export function expandProperty(obj: {}, keyPath: string, value: any): {}
 //     c: 2
 //   }
 // }
-function deepExtend(doc, args, callFns?: bool): {}
+function deepExtend(doc, args, callFns?: boolean): {}
 {
   var keys = _.keys(args);
   _.each(keys, (key) => {
@@ -568,7 +568,7 @@ export function extendClone(a: {}, b: {}): {}
 /**
     @method isVirtualProperty
 */
-export function isVirtualProperty(prop: any): bool
+export function isVirtualProperty(prop: any): boolean
 {
   return !!(prop && _.isFunction(prop) && prop.isVirtual);
 }

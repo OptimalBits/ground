@@ -59,7 +59,7 @@ export class View extends Base
   
   private _parent: View;
   
-  private isInitialized: bool;
+  private isInitialized: boolean;
   
   private refreshMutex = Mutex();
 

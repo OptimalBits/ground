@@ -36,7 +36,7 @@ module Gnd
   
   export class Using extends Base
   {
-    public historyApi: bool;
+    public historyApi: boolean;
     public template: (str: string) => (args: any) => string;
     public localStorage: Storage.IStorage;
     public remoteStorage: Storage.IStorage;
@@ -85,7 +85,7 @@ module Gnd
                            remoteStorage: Storage.IStorage){
       using.storageQueue = new Storage.Queue(localStorage, remoteStorage);
     },
-    historyApi: function(use: bool){
+    historyApi: function(use: boolean){
       using.historyApi = use;
     },
     syncManager: function(socket){

@@ -26,7 +26,7 @@ module Gnd
   export interface ContainerOptions
   {
     key?: string;
-    nosync?: bool;
+    nosync?: boolean;
     query?: Storage.IStorageQuery;
   }
   
@@ -65,14 +65,14 @@ module Gnd
       @type Function
       @default undefined
     **/
-    public filterFn: (item: Model) => bool = null;
+    public filterFn: (item: Model) => boolean = null;
 
     // Prototypes for underscore imported methods.
-    public filter: (iterator: (item: any)=>bool) => Model[];
+    public filter: (iterator: (item: any)=>boolean) => Model[];
     
     // --
     
-    public _keepSynced: bool = false;
+    public _keepSynced: boolean = false;
     
     // Abstract
     public resync(items: any[]): Promise 
@@ -207,7 +207,7 @@ module Gnd
       @return {Boolean}
       @deprecated Use isAutosync instead.
     */
-    isKeptSynced(): bool
+    isKeptSynced(): boolean
     {
       return this._keepSynced;
     }
@@ -219,7 +219,7 @@ module Gnd
       @method isAutosync
       @return {Boolean}
     */
-    isAutosync(): bool
+    isAutosync(): boolean
     {
       return this._keepSynced;
     }
@@ -243,7 +243,7 @@ module Gnd
       @method isFiltered
       @return {Boolean}
     */
-    isFiltered(item: Model): bool
+    isFiltered(item: Model): boolean
     {
       return this.filterFn ? this.filterFn(item) : true;
     } 

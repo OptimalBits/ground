@@ -60,7 +60,7 @@ module Gnd
       @param [property] {String} property to evaluate.
       @param [value] {Any} value to be validated.
     */
-    validate(property: string, value: any): Promise<bool>;
+    validate(property: string, value: any): Promise<boolean>;
     
     /**
       Validate an object against this schema. Returns a promise that
@@ -69,14 +69,13 @@ module Gnd
       @method validate
       @param obj {Any} object to validate.
     */
-    
-    validate(obj: any, property?: string, value?: any): Promise<bool>
+    validate(obj: any, property?: string, value?: any): Promise<boolean>
     {
       if(property){
         return this.compiledSchema[property].validate(value);
       }else{
         // TODO: Implement validation
-        return new Promise<bool>(true);
+        return new Promise<boolean>(true);
         /*
         return Promise.map(_.keys(this.schema), (property) =>
           this.validate(obj, property, obj[property]));
@@ -153,6 +152,25 @@ module Gnd
 
       return empty ? undefined : result;
     }
+    
+    /**
+      Sets the default values for the properties in the schema definition that
+      are not already set in the given object.
+
+      Note: This method does not perform any validation on the input properties.    
+      
+      @method defaults
+      @param obj {Any} the object to set default values on.
+    */
+    defaults(obj: any)
+    {
+      _.each(this.compiledSchema, (type: SchemaType, property?) => {
+        var value = type.default();
+        if(_.isUndefined(obj[property]) && !_.isUndefined(value)){
+          obj[property] = value;
+        }
+      });
+    }
 
     private compile(schema)
     {
@@ -189,6 +207,12 @@ module Gnd
     public static extend(parent: Schema, child?: Schema): Schema
     {
       return new Schema(_.extend({}, parent.schema, child ? child.schema : {}));
+    }
+    
+    public isInstanceOf(parent: Schema)
+    {
+      // Check if this schema containes all properties defined in parent
+      // then we can assume that it is an instance of it.
     }
     
     /**

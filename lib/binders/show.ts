@@ -45,7 +45,7 @@ export class ShowBinder implements Binder
     if(model instanceof Base){
       model.retain();
       
-      function setVisibility(visible: bool){
+      function setVisibility(visible: boolean){
         if(negate ? !visible : visible){
           show(el);
         }else{

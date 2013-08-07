@@ -43,7 +43,7 @@ module Gnd
       @method validate
       @param val {Any} value to be validated.
     */
-    validate(val: any): Promise<bool>
+    validate(val: any): Promise<boolean>
     {
       return new Promise(true);
     }
@@ -112,9 +112,14 @@ module Gnd
     }
   }
   
-  // AbstractType is a special type that reads __schema from the
-  // obj. This is in order to allow abstract schemas whose implementations
-  // are not known until runtime.
+  /**
+    AbstractType is a special schema type that reads __schema from the
+    obj. This is in order to allow abstract schemas whose implementations
+    are not known until runtime.
+    
+    @class AbstractType
+    @extends SchemaType
+  */ 
   export class AbstractType extends SchemaType
   {
     public static type = 'Abstract';

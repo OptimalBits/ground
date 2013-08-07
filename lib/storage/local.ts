@@ -57,11 +57,11 @@ export class Local implements IStorage {
     return key.split('@');
   }
 
-  private isLink(doc): bool {
+  private isLink(doc): boolean {
     return _.isString(doc);
   }
 
-  private isCollectionLink(doc): bool {
+  private isCollectionLink(doc): boolean {
     return doc[0] === '/' && doc[doc.length-1] === '/';
 
   }

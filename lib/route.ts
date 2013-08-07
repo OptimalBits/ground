@@ -292,7 +292,7 @@ export interface PoolEntry
 
 export class AutoreleasePool
 { 
-  private drained : bool = false;
+  private drained : boolean = false;
   private pool : Base[] = [];
   
   public autorelease(...objs:Base[]) : void;
@@ -393,12 +393,12 @@ function enqueueNode(queue: TaskQueue, node: RouteNode): void {
 */
 export class Request {
   
-  private wantsRedirect: bool;
+  private wantsRedirect: boolean;
   private el: HTMLElement;
 
   private template: (tmpl: string, args:{}) => void;
 
-  public isNotFound: bool;
+  public isNotFound: boolean;
   public notFoundFn;
   
   public data: any[];
@@ -592,7 +592,7 @@ export class Request {
     return subPath;
   }
   
-  private consume(expr, level) : bool {
+  private consume(expr, level) : boolean {
     var index = this.index;
   
     if(expr){

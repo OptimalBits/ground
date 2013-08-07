@@ -87,8 +87,8 @@ export class Queue extends Base implements IStorage
   private currentTransfer = null;
   private localStorage: IStorage;
   private remoteStorage: IStorage = null;
-  private useRemote: bool;
-  private autosync: bool;
+  private useRemote: boolean;
+  private autosync: boolean;
   
   public static makeKey(keyPath: string[])
   {
@@ -100,7 +100,7 @@ export class Queue extends Base implements IStorage
       (item1 && item2 && (item1.doc._id === item2.doc._id || item1.doc._cid === item2.doc._cid));
   }
 
-  constructor(local: IStorage, remote?: IStorage, autosync?: bool)
+  constructor(local: IStorage, remote?: IStorage, autosync?: boolean)
   {
     super();
   
@@ -309,7 +309,7 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  // itemIds: {[index: string]: bool}
+  // itemIds: {[index: string]: boolean}
   remove(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise<void>
   {
     var localItemsIds = [];
@@ -329,7 +329,7 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  find(keyPath: string[], query: IStorageQuery, opts: {noremote?:bool}): Promise<any[]>
+  find(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean}): Promise<any[]>
   {
     var promise = new Promise();
     var remotePromise = new Promise();
@@ -574,7 +574,7 @@ export class Queue extends Base implements IStorage
     }
   }
 
-  private addCmd(cmd: Command, opts: {noremote?: bool;})
+  private addCmd(cmd: Command, opts: {noremote?: boolean;})
   {
     if(this.useRemote && !opts.noremote){
       this.enqueueCmd(cmd);

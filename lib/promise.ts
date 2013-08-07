@@ -36,7 +36,7 @@ export class Promise<T> extends Base
   rejectedFns: any[] = [];
   _value : any;
   reason: Error;
-  isFulfilled : bool;
+  isFulfilled : boolean;
   
   
   /**
@@ -154,7 +154,7 @@ export class Promise<T> extends Base
   {
     var promise = new Promise();
     
-    var wrapper = (fn, reject?: bool) => {
+    var wrapper = (fn, reject?: boolean) => {
       if(!(fn instanceof Function)){
         fn = (value) => {
           if(reject) throw(value); 

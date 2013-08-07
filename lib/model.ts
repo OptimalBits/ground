@@ -37,10 +37,10 @@ class ModelDepot
   private models = {};
 
   // Deprecate args since they should always go via a resync call...
-  getModel(ModelClass: IModel, args: {}, autosync: bool, keyPath?: string[]): Promise
+  getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise
   {
     var model;
-    var fetch: bool = true;
+    var fetch: boolean = true;
 
     if(!keyPath){
       fetch = false;
@@ -95,16 +95,17 @@ class ModelDepot
 //
 var modelDepot = new ModelDepot();
 
+// TODO: use typeof Model
 export interface IModel 
 {
   new (args: {}, opts?: {}): Model;
   new (args: {}, bucket?: string, opts?: {}): Model;
   __bucket: string;
-  __strict: bool;
+  __strict: boolean;
   schema(): Schema;
-  create(args: {}, keepSynced?: bool): Promise<Model>;
+  create(args: {}, keepSynced?: boolean): Promise<Model>;
   fromJSON(args: {}, opts?: {}): Model;
-  findById(keyPathOrId, keepSynced?: bool, args?: {}, cb?: (err: Error, instance?: Model) => void);
+  findById(keyPathOrId, keepSynced?: boolean, args?: {}, cb?: (err: Error, instance?: Model) => void);
   find(query: Storage.IStorageQuery): Promise;
   all(parent?: Model, args?: {}, bucket?: string) : Promise;
   seq(parent: Model, args: {}, bucket: string) : Promise;
@@ -112,8 +113,8 @@ export interface IModel
 
 export interface ModelOpts
 {
-  fetch?: bool;
-  autosync?: bool;
+  fetch?: boolean;
+  autosync?: boolean;
   ready?: Promise<void>;
 }
 
@@ -152,6 +153,42 @@ export interface ModelEvents
 }
 
 /**
+  Model Schema Type. This class can be used to define models as properties
+  in schemas.
+    
+      var ChatSchema = new Schema({
+          rooms: new ColectionSchemaType(Room, 'rooms');
+      });
+
+  @class CollectionSchemaType
+  @extends SchemaType
+  @constructor
+  @param mode {IModel} A model class defining the type of items to store in the
+  sequence.
+  @param bucket {String} Bucket where the items are stored in the server.
+*/
+export class ModelSchemaType extends SchemaType
+{
+  public static type = Collection;
+  
+  constructor(model: IModel)
+  {
+    super({type: Model});
+  }
+  
+  toObject(obj)
+  {
+    // undefined since a collection is never serialized.
+  }
+
+  get(model, args?, opts?)
+  {
+    var def = this.definition;
+    return model.all(def.ref.model, args || {}, def.ref.bucket);
+  }
+}
+
+/**
   The {{#crossLink "Model"}}{{/crossLink}} class is used to represent data
   based on a predefined {{#crossLink "Schema"}}{{/crossLink}}. The Model can be
   automatically synchronized with a server storage, as well as cached locally, 
@@ -181,7 +218,7 @@ export interface ModelEvents
  **/
 export class Model extends Promise<Model> implements Sync.ISynchronizable, ModelEvents
 {
-  static __useDepot: bool = true;
+  static __useDepot: boolean = true;
   static __bucket: string;
   static __schema: Schema =
     new Schema({_cid: String, _id: Schema.ObjectId});
@@ -192,19 +229,19 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
   private __bucket: string;
   private __schema: Schema;
-  private __strict: bool;
+  private __strict: boolean;
 
   private __rev: number = 0;
 
-  public _persisting: bool;
+  public _persisting: boolean;
 
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
   // when receiving a resync event we could check if there is a 
   // conflict or not.
-  private _dirty: bool = true;
+  private _dirty: boolean = true;
 
-  private _keepSynced: bool = false;
+  private _keepSynced: boolean = false;
 
   private _cid: string;
   private _id: string;
@@ -359,9 +396,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
      var tiger = Animal.create({_id: '1234', name: 'tiger', legs: 4});
    */
   static create(args?: {}): Promise<Model>;
-  static create(autosync: bool): Promise<Model>;
-  static create(args: {}, autosync: bool): Promise<Model>;
-  static create(args?: {}, autosync?: bool): Promise<Model>
+  static create(autosync: boolean): Promise<Model>;
+  static create(args: {}, autosync: boolean): Promise<Model>;
+  static create(args?: {}, autosync?: boolean): Promise<Model>
   {
     return overload({
       'Object Boolean': function(args, autosync){
@@ -396,7 +433,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
      
      var tiger = Animal.findById('1234');
    */
-  static findById(keyPathOrId, autosync?: bool, args?: {}): Model
+  static findById(keyPathOrId, autosync?: boolean, args?: {}): Model
   {
     return overload({
       'Array Boolean Object': function(keyPath, autosync, args){
@@ -590,7 +627,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @return {Boolean}
     @deprecated Use isAutosync instead.
   */
-  isKeptSynced(): bool
+  isKeptSynced(): boolean
   {
     return this._keepSynced;
   }
@@ -602,7 +639,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @method isAutosync
     @return {Boolean}
   */
-  isAutosync(): bool
+  isAutosync(): boolean
   {
     return this._keepSynced;
   }
@@ -613,7 +650,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @method isPersisted
     @return {Boolean}
   */  
-  isPersisted(): bool
+  isPersisted(): boolean
   {
     return this.id().toString().indexOf('cid') !== 0;
   }
@@ -713,7 +750,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     });
   }
 
-  // TODO: implement autosync(enable: bool)
+  // TODO: implement autosync(enable: boolean)
   
   /**
     Tells the model to enable autosync. After calling this method the instance

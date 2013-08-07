@@ -73,7 +73,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
 {
   private _refCounter: number = 1;
   private _bindings: any = {};
-  private _destroyed: bool;
+  private _destroyed: boolean;
   private _destroyedTrace: string;
   private _undoMgr: UndoManager = new UndoManager();
   
@@ -152,7 +152,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     Util.expandProperty(this, keypath, val);
   }
 
-  private _set(keypath: string, val, options, eventCage): bool
+  private _set(keypath: string, val, options, eventCage): boolean
   {    
     var oldProp = this.getProperty(keypath);
     var isVirtual = Util.isVirtualProperty(oldProp);
@@ -373,7 +373,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   * @method isDestroyed
   * @return {Boolean}
   */
-  isDestroyed(): bool
+  isDestroyed(): boolean
   {
     return this._refCounter === 0;
   }

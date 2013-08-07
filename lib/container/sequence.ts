@@ -602,7 +602,7 @@ export interface MergeFunctions {
   id: (item: {}) => string;
   keyPath: (item: {}) => string[];
   doc: (item: {}) => {};
-  inSync: (item: {}) => bool;
+  inSync: (item: {}) => boolean;
 }
 
 export interface MergeCommand {

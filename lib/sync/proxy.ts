@@ -43,7 +43,7 @@ module Gnd.Sync {
       @method isKeptSynced
       @return {Boolean} true if autosync enabled, false otherwise.
     */
-    isKeptSynced:() => bool;
+    isKeptSynced:() => boolean;
     
     /**
       Gets the key path for this document.
@@ -72,8 +72,8 @@ module Gnd.Sync {
     docs: {
       [key: string]: ISynchronizable[];
     };
-    observe(doc: Sync.ISynchronizable): bool;
-    unobserve(doc: Sync.ISynchronizable): bool;
+    observe(doc: Sync.ISynchronizable): boolean;
+    unobserve(doc: Sync.ISynchronizable): boolean;
     notify(keyPath: string[], ...args:any[]);
   }
   
@@ -100,7 +100,7 @@ module Gnd.Sync {
        @param doc {Sync.ISynchronizable} doc to start observation.
        @return {Boolean} true if it is the first time an object is being observed.
     */
-    observe(doc: Sync.ISynchronizable): bool
+    observe(doc: Sync.ISynchronizable): boolean
     {
       var key = docKey(doc);
     
@@ -120,7 +120,7 @@ module Gnd.Sync {
       @param doc {Sync.ISynchronizable} doc to stop observation.
       @return {Boolean} true if no more instances of the given doc are being observed.
     */
-    unobserve(doc: Sync.ISynchronizable): bool
+    unobserve(doc: Sync.ISynchronizable): boolean
     {
       if (!doc.isKeptSynced()) return; // why this?
 

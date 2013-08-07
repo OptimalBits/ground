@@ -74,7 +74,7 @@ export class Timer extends Base
     @method isRunning
     @return {Boolean}
   */
-  isRunning(): bool
+  isRunning(): boolean
   {
     return (this.timer !== null);
   }

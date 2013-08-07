@@ -29,9 +29,9 @@ export interface Task {
 export class TaskQueue {
   private tasks: any[] = [];
   private endPromise: Promise<void> = new Promise();
-  private isExecuting: bool;
-  private isEnded: bool;
-  private isCancelled: bool;
+  private isExecuting: boolean;
+  private isEnded: boolean;
+  private isCancelled: boolean;
   
   /**
      Appends one or several tasks to the queue. The tasks are executed in order. A task is just a
