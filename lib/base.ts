@@ -77,6 +77,38 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   private _destroyedTrace: string;
   private _undoMgr: UndoManager = new UndoManager();
   
+  /**
+    Retains the given objects (see reference count for details).
+
+    @method retain
+    @static
+    @param objs* {Array | Any} object or objects to retain. If any of the objs
+    is null or undefined, nothing is done for that obj.
+  */
+  static retain(objs){
+    var items = _.isArray(objs) ? objs :arguments;
+    _.each(items, function(obj){
+      obj && obj.retain();
+    });
+  }
+
+  /**
+    Release the given objects (see reference count for details).
+ 
+    @method release
+    @static
+    @param objs* {Array | Any} object or objects to release. If any of the objs
+      is null or undefined, nothing is done for that obj.
+  */
+  static release(...objs: Base[]);
+  static release(objs: any){
+    var items = _.isArray(objs) ? objs :arguments;
+    _.each(items, function(obj){
+      obj && obj.release();
+    });
+  }
+  
+  
   // OBSOLETE?
   constructor (){
     super();

@@ -60,7 +60,7 @@ export class Manager extends Base {
       _.each(proxy.docs, (docs: Sync.ISynchronizable[], id?: string) => {
         var doc = docs[0];
 
-        Gnd.Util.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
+        Gnd.Storage.Socket.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
           log('Observe', doc.getKeyPath().join('/'))
         });
         
@@ -170,14 +170,14 @@ export class Manager extends Base {
   
   private start(keyPath: string[])
   {
-    Gnd.Util.safeEmit(this.socket, 'observe', keyPath).then(() => {
+    Gnd.Storage.Socket.safeEmit(this.socket, 'observe', keyPath).then(() => {
       log('Started observing', keyPath);
     });
   }
   
   private stop(keyPath: string[])
   {
-    Gnd.Util.safeEmit(this.socket, 'unobserve', keyPath).then(() => {
+    Gnd.Storage.Socket.safeEmit(this.socket, 'unobserve', keyPath).then(() => {
       log('Stopped observing', keyPath);
     });
   }

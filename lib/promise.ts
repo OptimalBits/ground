@@ -8,7 +8,6 @@
 /// <reference path="util.ts" />
 /// <reference path="base.ts" />
 
-
 module Gnd {
 "use strict";
 
@@ -95,6 +94,66 @@ export class Promise<T> extends Base
     var timeout = setTimeout(()=>promise.resolve(), ms);
     promise.fail(()=>clearTimeout(timeout));
     return promise;
+  }
+  
+  /**
+    Wraps a function that returns a promise into a debounced function.
+
+    @method debounce
+    @static
+    @param task {Function} a function that returns a Promise
+  */
+  static debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
+  {
+    var delayed, executing;
+  
+    var execute = () => {
+      executing = delayed();
+      delayed = null;
+      executing.ensure(() => {
+        executing = null;
+        delayed && execute();
+      });
+    }
+    
+    return function(...args:any[]){
+      delayed = () => task.apply(this, args);
+      !executing && execute();
+    }
+  }
+
+  /**
+    Waits for a promise to be resolved, if it does not resolve in the given
+    time it will call *start* and when the promise is finally resolved it will
+    call *end*. 
+  
+    This function is useful to display waiting widgets for operations
+    that take more than a certain amount of time to complete.
+
+    @method delayed
+    @static
+    @param task {Promise}
+    @param start {Function}
+    @param end {Function}
+    @param delay {Number} 
+    @return {Promise} a promise resolved when the task is resolved.
+  */
+  static delayed<T>(task: Promise<T>,
+                    start: ()=>void,
+                    end: ()=>void,
+                    delay: number): Promise<void>
+  {
+    var waiting;
+
+    var timer = setTimeout(() => {
+      waiting = true;
+      start();
+    }, delay);
+  
+    return task.then((value: T) => {
+      clearTimeout(timer);
+      waiting && end();
+    });
   }
   
   /**
@@ -203,7 +262,7 @@ export class Promise<T> extends Base
   **/
   fail(onRejected?: (reason: Error) => any): Promise
   {
-    return this.then(null, onRejected || Util.noop);
+    return this.then(null, onRejected || ()=>{});
   }
   
   /**

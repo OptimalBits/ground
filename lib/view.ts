@@ -26,6 +26,8 @@ export interface ViewArgs
   cssUrl?: string;
 }
 
+declare var curl;
+
 /**
    View Class
  
@@ -68,6 +70,32 @@ export class View extends Base
   
   public nodes: HTMLElement[];
   public children: View[] = [];
+  
+  /**
+    @example
+  
+        fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
+          
+    @method fetchTemplate
+    @static
+  */
+  static fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
+  {
+    var items = [], promise = new Promise();
+  
+    templateUrl && items.push('text!'+templateUrl);
+    cssUrl && items.push('css!'+cssUrl);
+  
+    try{
+      curl(items, function(templ){
+        promise.resolve(templ);
+      });
+    } catch(err){
+      promise.reject(err);
+    }
+  
+    return promise;
+  }
   
   /**
    Define this property to perform animations or effects when hidding the view.
@@ -293,8 +321,8 @@ export class View extends Base
      if(!this.isInitialized){
        this.isInitialized = true;
        
-       return Util.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
-         this.template = this.templateEngine(this.templateStr || templ);
+       return View.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
+         this.template = this.templateEngine(this.templateStr || templ || "");
     
          return Promise.map(this.children, (subview) => subview.init());
        });

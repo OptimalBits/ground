@@ -55,7 +55,7 @@ module Gnd
     }
     
     destroy(){
-      Util.release(this.storageQueue, this.syncManager);
+      Base.release(this.storageQueue, this.syncManager);
       super.destroy();
     }
   };
@@ -89,7 +89,7 @@ module Gnd
       using.historyApi = use;
     },
     syncManager: function(socket){
-      Util.release(using.syncManager);
+      Base.release(using.syncManager);
       using.syncManager = new Sync.Manager(socket);
     }
   }

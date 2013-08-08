@@ -116,7 +116,7 @@ export function release(objs: any){
 //
 declare var process;
 
-export var nextTick;
+export var nextTick: (fn: () => void) => void = noop;
 if((typeof process !== 'undefined') && (process.nextTick)){
   nextTick = process.nextTick;
 }else{
@@ -189,64 +189,6 @@ export function asyncDebounce(fn) {
   };
 };
 
-/**
-  Wraps a function that returns a promise into a debounced function.
-
-  @method debounce
-  @param task {Function} a function that returns a Promise
-*/
-export function debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
-{
-  var delayed, executing;
-  
-  var execute = () => {
-    executing = delayed();
-    delayed = null;
-    executing.ensure(() => {
-      executing = null;
-      delayed && execute();
-    });
-  }
-    
-  return function(...args:any[]){
-    delayed = () => task.apply(this, args);
-    !executing && execute();
-  }
-}
-
-/**
-  Waits for a promise to be resolved, if it does not resolve in the given
-  time it will call *start* and when the promise is finally resolved it will
-  call *end*. 
-  
-  This function is useful to display waiting widgets for operations
-  that take more than a certain amount of time to complete.
-
-  @method delayed
-  @param task {Promise}
-  @param start {Function}
-  @param end {Function}
-  @param delay {Number} 
-  @return {Promise} a promise resolved when the task is resolved.
-*/
-export 
-function delayed<T>(task: Promise<T>,
-                    start: ()=>void,
-                    end: ()=>void,
-                    delay: number): Promise<void>
-{
-  var waiting;
-
-  var timer = setTimeout(() => {
-    waiting = true;
-    start();
-  }, delay);
-  
-  return task.then((value: T) => {
-    clearTimeout(timer);
-    waiting && end();
-  });
-}
 
 /**
   Search Filter. returns true if any of the fields of the 
@@ -374,92 +316,6 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
   
   return d;
 }
-
-/**
-  A safe emit wrapper for socket.io that handles connection errors as well
-  as wait for connections and/or reconnections.
-
-  @method safeEmit
-*/
-export function safeEmit<T>(socket, ...args:any[]): Promise<T>
-{
-  var promise = new Promise<T>();
-   
-  function errorFn(){
-    promise.reject(Error('Socket disconnected'));
-  };
-  
-  function proxyCb(err, res){
-    socket.removeListener('disconnect', errorFn);
-    if(err){
-      promise.reject(Error(err));
-    }else{
-      promise.resolve(res);
-    }
-  };
-  
-  args.push(proxyCb);
-  
-  function emit(){
-    socket.once('disconnect', errorFn);
-    socket.emit.apply(socket, args);
-  }
-  
-  function delayedEmit(connectedEvent, failedEvent){
-    function errorFn(){
-      socket.removeListener(succeedFn, errorFn);
-      promise.reject(Error('Socket connection failed'));
-    }
-    function succeedFn(){
-      socket.removeListener(failedEvent, errorFn);
-      emit();
-    }
-    
-    socket.once(failedEvent, errorFn);
-    socket.once(connectedEvent, succeedFn);
-  }
-  
-  if(socket.socket.connected){
-    emit()
-  }else if(socket.socket.connecting){
-    delayedEmit('connect', 'connect_failed');
-  }else if(socket.socket.reconnecting){
-    delayedEmit('reconnect', 'reconnect_failed');
-  }else{
-    errorFn();
-  }
-  
-  return promise;
-}
-
-declare var curl;
-
-/**
-  @example
-  
-      fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
-          
-    @method fetchTemplate
-*/
-export 
-function fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
-{
-  var items = [], promise = new Promise();
-  
-  templateUrl && items.push('text!'+templateUrl);
-  cssUrl && items.push('css!'+cssUrl);
-  
-  try{
-    curl(items, function(templ){
-      promise.resolve(templ);
-    });
-  } catch(err){
-    promise.reject(err);
-  }
-  
-  return promise;
-}
-
 
 /**
   Expand an object with stringified keys e.g
