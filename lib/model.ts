@@ -307,7 +307,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   resync(args): void
   {
     // TODO: opts.strict = false 
-    var strictArgs = this.__schema.toObject(args)
+    var strictArgs = this.__strict ? this.__schema.toObject(args) : args;
     this.set(strictArgs, {nosync: true});
   }
 
