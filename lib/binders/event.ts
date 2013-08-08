@@ -42,7 +42,7 @@ export class EventBinder implements Binder
   
   bind(el: Element, value: string, viewModel: ViewModel)
   {
-    var eventBindings = this.parse(value);
+    var eventBindings = this.parse(value), handler;
     
     this.el = el;  
     
@@ -52,9 +52,8 @@ export class EventBinder implements Binder
         obj = viewModel.resolveContext(_.initial(keypath));
       
       if(obj instanceof Base){
-        var 
-          key = _.last(keypath),
-          handler = obj[key];
+        var key = _.last(keypath);
+        handler = obj[key];
         
         obj.retain();
 
@@ -69,7 +68,7 @@ export class EventBinder implements Binder
         }
         return;
       }else{
-        var handler = viewModel.resolveContext(keypath);
+        handler = viewModel.resolveContext(keypath);
         if (_.isFunction(handler)){
           var ctx = 
             obj || 

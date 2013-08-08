@@ -162,7 +162,7 @@ export class Collection extends Container implements CollectionEvents
   **/
   public sortOrder: string = 'asc';
   
-  constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: Model[])
+  constructor(model: typeof Model, opts?: ContainerOptions, parent?: Model, items?: Model[])
   {
     super(model, opts, parent, items);
     

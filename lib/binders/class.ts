@@ -99,8 +99,8 @@ export class ClassBinder implements Binder
         //
         // Set classes and start listeners
         //
-        for(var keypath in classMappings){
-          processMapping(keypath);
+        for(var kp in classMappings){
+          processMapping(kp);
         }
          
         updateClassNames();

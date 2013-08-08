@@ -45,7 +45,7 @@ module Gnd
     private compiledSchema: {};
     private schema: {};
     
-    constructor(schema?: SchemaDefinition)
+    constructor(schema?)//: SchemaDefinition)
     {
       super(this);
       this.schema = schema;
@@ -60,7 +60,7 @@ module Gnd
       @param [property] {String} property to evaluate.
       @param [value] {Any} value to be validated.
     */
-    validate(property: string, value: any): Promise<boolean>;
+    //validate(property: string, value: any): Promise<boolean>;
     
     /**
       Validate an object against this schema. Returns a promise that

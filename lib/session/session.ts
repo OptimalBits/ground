@@ -60,7 +60,7 @@ export class Session extends Base
   */
   static login(loginId: string, passwd: string): Promise
   {
-    this.loginIg = loginId;
+    this.loginId = loginId;
     return Ajax.post(Session.url, {username: loginId, password: passwd});
   }
   
@@ -71,7 +71,7 @@ export class Session extends Base
   /*
   static swap(loginId: string, passwd: string)
   {
-    this.loginIg = loginId;
+    this.loginId = loginId;
     return Ajax.put(Session.url, {username: loginId, password:passwd});
   }
   */

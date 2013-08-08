@@ -794,13 +794,13 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @static
     @return {Collection} Collection with the models that fulfill the query.
   */
-  static find(query: Storage.IStorageQuery): Promise<Collection>
+  static find(query: Storage.IStorageQuery): Collection
   {
     var opts = {
       key: this.__bucket,
       query: query
     }
-    return Container.create(Collection, this, opts);
+    return Container.create<Collection>(Collection, this, opts);
   }
 
   /**
@@ -814,8 +814,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     
     @return {Collection} collection with all the models
   */
-  static all(parent: Model, bucket?: string): Promise;
-  static all(parent?: Model, argsOrKeypath?, bucket?: string): Promise
+  static all(parent: Model, bucket?: string): Collection;
+  static all(parent?: Model, argsOrKeypath?, bucket?: string): Collection
   {
     var allInstances = (parent, keyPath, args) =>
       Container.create(Collection, this, {key: _.last(keyPath)}, parent);
@@ -856,10 +856,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @param {String} [bucket]
     @return {Sequence} sequence with all the models.
   */
-  static seq(parent: Model): Promise;
-  static seq(parent: Model, args: {}, bucket: string): Promise;
-  static seq(parent: Model, bucket: string): Promise;
-  static seq(parent?: Model, args?: {}, bucket?: string): Promise
+  static seq(parent: Model): Sequence;
+  static seq(parent: Model, args: {}, bucket: string): Sequence;
+  static seq(parent: Model, bucket: string): Sequence;
+  static seq(parent?: Model, args?: {}, bucket?: string): Sequence
   {
     var allInstances = (parent, keyPath, args) =>
       Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
