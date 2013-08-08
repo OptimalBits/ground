@@ -56,7 +56,7 @@ export class SessionManager
   private cookieId: string;
   private cookieParser: (cookie: string) => {};
   private sessionStore: ISessionStore;
-  private useSessions: bool;
+  private useSessions: boolean;
   
   constructor();
   constructor(cookieId: string, cookieParser: (cookie: string) => {}, store?: ISessionStore);
