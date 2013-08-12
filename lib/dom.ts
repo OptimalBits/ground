@@ -109,6 +109,63 @@ export class Query // implements QueryNodes
   public length: number;
   
   /**
+    Appends the specified content to the set of matching elements.
+    
+    @method append
+    @param content {String}
+    @chainable
+  */
+  /**
+    Appends the specified content to the set of matching elements.
+    
+    @method append
+    @param content {Element}
+    @chainable
+  */
+  /**
+    Appends the specified content to the set of matching elements.
+    
+    @method append
+    @param content {Query}
+    @chainable
+  */
+  append(content)
+  {
+    _.each(this, (parent) => {
+      _.each($(content), (child) => {
+        parent.appendChild(child);
+      });
+    });
+    return this;
+  }
+  
+  /**
+    Appends the current set of matching elements to the specified target
+    
+    @method appendTo
+    @param content {String}
+    @chainable
+  */
+  /**
+    Appends the current set of matching elements to the specified target
+    
+    @method appendTo
+    @param content {Element}
+    @chainable
+  */
+  /**
+    Appends the current set of matching elements to the specified target
+    
+    @method appendTo
+    @param content {Query}
+    @chainable
+  */
+  appendTo(target)
+  {
+    return $(target).append(this);
+  }
+  
+  /**
    * Listen to DOM events.
    *
    * @method on
