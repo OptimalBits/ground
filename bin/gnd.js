@@ -49,7 +49,7 @@ function createApplication(dst, opts, cb)
     'app/views',
     'app/models',
     'app/ctrls',
-    'app/lib',
+    'app/vendor',
     'app/assets',
     'app/assets/css',
     'app/assets/images',
