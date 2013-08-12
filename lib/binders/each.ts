@@ -40,8 +40,9 @@ interface Callbacks
       
       Example: 
       
-        <lu data-each="todos: todo">
-          <li data-bind="todo.description | added: todo.addedTodo | removed: todo.removedTodo"></li>
+        <lu>
+          <li>Todos Header</li>
+          <li data-each="todos: todo" data-bind="todo.description | added: todo.addedTodo | removed: todo.removedTodo"></li>
         </lu>
          
   @class EachBinder
