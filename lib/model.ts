@@ -95,7 +95,6 @@ class ModelDepot
 //
 var modelDepot = new ModelDepot();
 
-// TODO: use typeof Model
 export interface IModel 
 {
   new (args: {}, opts?: {}): Model;
@@ -103,12 +102,12 @@ export interface IModel
   __bucket: string;
   __strict: boolean;
   schema(): Schema;
-  create(args: {}, keepSynced?: boolean): Promise<Model>;
+  create(args: {}, keepSynced?: boolean): Model;
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: boolean, args?: {}, cb?: (err: Error, instance?: Model) => void);
   find(query: Storage.IStorageQuery): Promise;
-  all(parent?: Model, args?: {}, bucket?: string) : Promise;
-  seq(parent: Model, args: {}, bucket: string) : Promise;
+  all(parent?: Model, args?: {}, bucket?: string) : Collection;
+  seq(parent: Model, args: {}, bucket: string) : Sequence;
 }
 
 export interface ModelOpts
@@ -157,7 +156,7 @@ export interface ModelEvents
   in schemas.
     
       var ChatSchema = new Schema({
-          rooms: new ColectionSchemaType(Room, 'rooms');
+        rooms: new ColectionSchemaType(Room, 'rooms');
       });
 
   @class CollectionSchemaType
@@ -309,7 +308,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     if(!this.__strict){
       _.extend(this, args);
     }
-    _.extend(this, this.__schema.toObject(args));
+    _.extend(this, this.__schema.fromObject(args));
     
     this._cid = this._id || this._cid || Util.uuid();
 
@@ -358,7 +357,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   resync(args): void
   {
     // TODO: opts.strict = false 
-    var strictArgs = this.__strict ? this.__schema.toObject(args) : args;
+    var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
     this.set(strictArgs, {nosync: true});
   }
 
@@ -446,10 +445,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
      
      var tiger = Animal.create({_id: '1234', name: 'tiger', legs: 4});
    */
-  static create(args?: {}): Promise<Model>;
-  static create(autosync: boolean): Promise<Model>;
-  static create(args: {}, autosync: boolean): Promise<Model>;
-  static create(args?: {}, autosync?: boolean): Promise<Model>
+  static create(args?: {}): Model;
+  static create(autosync: boolean): Model;
+  static create(args: {}, autosync: boolean): Model;
+  static create(args?: {}, autosync?: boolean): Model
   {
     return overload({
       'Object Boolean': function(args, autosync){
