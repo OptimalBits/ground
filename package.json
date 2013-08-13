@@ -47,7 +47,8 @@
     "socket.io": "0.9.10",
     "acl": "*",
     "commander": "*",
-    "mkdirp": "*"
+    "mkdirp": "*",
+    "time-grunt": "~0.1.1"
   },
   "devDependencies": {
     "mocha": "*",
