@@ -200,13 +200,8 @@ export class Sequence extends Container implements SequenceEvents
 
   private deleteItem(id: string, opts): Promise
   {
-    var idx = -1;
-    _.each(this.items, (item, i)=>{
-      if(item.id === id){
-        idx = i;
-      }
-    });
-
+    var idx = _.findIndex(this.items, {'id': id});
+    
     if(idx === -1) return new Promise(this); //already deleted
     return this.remove(idx, opts);
   }
@@ -253,15 +248,9 @@ export class Sequence extends Container implements SequenceEvents
       }
     }
     
-
     var index;
     if(refId){
-      index = -1;
-      _.each(this.items, (item, i)=>{
-        if(item.id === refId){
-          index = i;
-        }
-      });
+      index = _.findIndex(this.items, {'id': refId});
       if(index === -1){
         //refId not found perform a resync
         log('REFID not found. Resyncing');
