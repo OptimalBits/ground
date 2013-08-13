@@ -51,6 +51,7 @@ export class EventBinder implements Binder
         keypath = eventBindings[eventName],
         obj = viewModel.resolveContext(_.initial(keypath));
       
+      var elementListener;
       if(obj instanceof Base){
         var key = _.last(keypath);
         handler = obj[key];
@@ -58,7 +59,7 @@ export class EventBinder implements Binder
         obj.retain();
 
         if(_.isFunction(handler)){
-          var elementListener = (evt) => handler.call(obj, el, evt);
+          elementListener = (evt) => handler.call(obj, el, evt);
           
           $(el).on(eventName, elementListener);
           
@@ -74,9 +75,11 @@ export class EventBinder implements Binder
             obj || 
             _.reduce(viewModel.contexts, (memo, ctx) => _.extend(memo, ctx), {});
 
-          var fn = _.bind(handler, ctx);
+//          var fn = _.bind(handler, ctx);
           
-          var elementListener = (evt) => fn(el, evt);
+//          elementListener = (evt) => fn(el, evt);
+          elementListener = (evt) => handler.call(ctx, el, evt);
+          
           $(el).on(eventName, elementListener);
           this.bindings.push([obj, eventName, elementListener]);
           return;
