@@ -10,6 +10,6 @@
 
 module Gnd.Storage.Query
 {
-  export var match = (cond, doc: any) => _.all(cond, (value, key?) => 
+  export var match = (cond, doc: any) => _.all<any>(cond, (value: any, key: string) => 
     doc[key] === cond[key]); 
 }
