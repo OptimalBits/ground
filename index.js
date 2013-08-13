@@ -15,5 +15,5 @@ module.exports.readme = path.join(__dirname, 'Readme.md');
 
 module.exports.third = {
   curl: path.join(__dirname, 'third/curl.js'),
-  underscore: path.join(__dirname, 'third/underscore.js')
+  underscore: path.join(__dirname, 'third/lodash.js')
 }
