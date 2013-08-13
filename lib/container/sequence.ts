@@ -201,7 +201,7 @@ export class Sequence extends Container implements SequenceEvents
   private deleteItem(id: string, opts): Promise
   {
     var idx = -1;
-    _.each(this.items, (item, i?)=>{
+    _.each(this.items, (item, i)=>{
       if(item.id === id){
         idx = i;
       }
@@ -257,7 +257,7 @@ export class Sequence extends Container implements SequenceEvents
     var index;
     if(refId){
       index = -1;
-      _.each(this.items, (item, i?)=>{
+      _.each(this.items, (item, i)=>{
         if(item.id === refId){
           index = i;
         }
