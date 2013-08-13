@@ -128,6 +128,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    * @param {String} keypath 
    * @param {Object} val
    * @param {Object} [opts]
+   * @chainable
    */
   set(keypath: string, val: any, opts?: {});
   
@@ -136,6 +137,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    * @method set
    * @param {Object} doc object with properties to set.
    * @param {Object} [opts]
+   * @chainable
    */
   set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, options?: {})
