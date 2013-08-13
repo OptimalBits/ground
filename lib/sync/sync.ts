@@ -57,7 +57,7 @@ export class Manager extends Base {
       log(proxy.docs)
       
       // re-observe all models in this manager...
-      _.each(proxy.docs, (docs: Sync.ISynchronizable[], id?: string) => {
+      _.each<ISynchronizable[]>(proxy.docs, (docs: ISynchronizable[], id: string) => {
         var doc = docs[0];
 
         Gnd.Storage.Socket.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
@@ -75,7 +75,7 @@ export class Manager extends Base {
       log("Received update", keyPath, args);
       var key = keyPathToKey(keyPath);
       
-      _.each(proxy.docs[key], function(doc: Base){
+      _.each<ISynchronizable>(proxy.docs[key], function(doc: ISynchronizable){
         doc.set(args, {nosync: true});
       });
     };
@@ -84,7 +84,7 @@ export class Manager extends Base {
     var deleteFn = keyPath => {
       log("Received delete", keyPath);
       var key = keyPathToKey(keyPath);
-      _.each(proxy.docs[key], function(doc){
+      _.each<ISynchronizable>(proxy.docs[key], function(doc){
         doc.emit('deleted:', doc); // rename event to 'delete:' ?
       });
     };
@@ -117,18 +117,16 @@ export class Manager extends Base {
     socket.on('ready', connectFn);
     
     this.cleanUpFn = () => {
-      var off = _.bind(socket.removeListener, socket);
-      
       // Remove connection listeners
-      off('ready', connectFn);
+      socket.removeListener('ready', connectFn);
       
       // Remove event listeners.
-      off('update:', updateFn);
-      off('delete:', deleteFn);
-      off('add:', addFn);
-      off('remove:', removeFn);
-      off('insertBefore', insertBeforeFn);
-      off('deleteItem', deleteItemFn);
+      socket.removeListener('update:', updateFn);
+      socket.removeListener('delete:', deleteFn);
+      socket.removeListener('add:', addFn);
+      socket.removeListener('remove:', removeFn);
+      socket.removeListener('insertBefore', insertBeforeFn);
+      socket.removeListener('deleteItem', deleteItemFn);
     }
   }
   
@@ -147,7 +145,7 @@ export class Manager extends Base {
     @param doc {Sync.ISynchronizable} a document that implements the 
     ISynchronizable interface.
   */
-  observe(doc: Sync.ISynchronizable)
+  observe(doc: ISynchronizable)
   {
     if(getProxy().observe(doc)){
       this.start(doc.getKeyPath());
@@ -161,7 +159,7 @@ export class Manager extends Base {
     @param doc {Sync.ISynchronizable} a document that implements the 
     ISynchronizable interface.
   */
-  unobserve(doc: Sync.ISynchronizable)
+  unobserve(doc: ISynchronizable)
   { 
     if(getProxy().unobserve(doc)){
       this.stop(doc.getKeyPath());

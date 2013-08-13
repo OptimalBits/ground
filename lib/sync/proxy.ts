@@ -120,7 +120,7 @@ module Gnd.Sync {
       @param doc {Sync.ISynchronizable} doc to stop observation.
       @return {Boolean} true if no more instances of the given doc are being observed.
     */
-    unobserve(doc: Sync.ISynchronizable): boolean
+    unobserve(doc: ISynchronizable): boolean
     {
       if (!doc.isKeptSynced()) return; // why this?
 
@@ -129,7 +129,7 @@ module Gnd.Sync {
         docs = this.docs[key];
     
       if(docs){
-        docs = _.reject(docs, (item) => item === doc);
+        docs = _.reject<ISynchronizable>(docs, (item) => item === doc);
       
         if(docs.length===0){
           delete this.docs[key];
