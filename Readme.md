@@ -8,7 +8,7 @@ In ground, most of the application logic is moved from the server to the client,
 
 It includes also some rather useful features such as a hierarchical routing system, an undo/redo manager, property and declarative bindings, reference counting and automatic synchronization between clients and servers. It is design to always deliver high performance and low memory consumption.
 
-Ground is written in [Typescript](http://www.typescriptlang.org/), for modularity and stability and is suitable for both javascript and typescript projects.
+Ground is written in [TypeScript](http://www.typescriptlang.org/), for modularity and stability and is suitable for both javascript and TypeScript projects.
 
 
 ##Highlights
@@ -33,7 +33,7 @@ It should be a complete Web framework that is fun to use, that uses efficiently 
 
 Ground depends on the following external libraries: Curl, Socket.io and Underscore or LoDash.
 
-Ground is provided both as a set of typescript classes, and as a javascript AMD 
+Ground is provided both as a set of TypeScript classes, and as a javascript AMD 
 module. It can be included using script tags or using an
  [AMD loader](https://github.com/amdjs/amdjs-api/wiki/AMD). While it should work
   with any AMD compatible loader, we recommend [Curl](https://github.com/cujojs/curl)
