@@ -91,6 +91,11 @@ export class CollectionSchemaType extends SchemaType
   {
     // undefined since a collection is never serialized.
   }
+  
+  fromObject(arg)
+  {
+    // undefined since a collection is never deserialized
+  }
 
   get(model, args?, opts?)
   {

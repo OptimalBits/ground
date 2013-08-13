@@ -113,6 +113,28 @@ module Gnd
       });
       return result;
     }
+    
+    /**
+      Takes a plain object and produces a new object with the properties
+      populated according to the schema.
+      
+      @method fromObject
+      @param args {Any} arguments to build the type from.
+    */
+    fromObject(args: any): any
+    {
+      var obj = {};
+      _.each(this.compiledSchema, (type: SchemaType, property?) => {
+        var src = args[property];
+        var value = !_.isUndefined(src) ? type.fromObject(src) : type.default();
+        
+        if(!_.isUndefined(value)){
+          obj[property] = value;
+        }
+      });
+      return obj;
+    }
+    
     /**
       Gets an object property using the schema type custom getter.
       This is currently used by Collections and Sequences to provide lazy
@@ -231,13 +253,13 @@ module Gnd
       if(type instanceof Schema || type instanceof SchemaType){
         return type;
       }
-
+      
       if(type instanceof Array){
         return new ArrayType(definition);
       }
 
       for(var i=0; i<types.length; i++){
-        if(types[i].type == type){
+        if(type == types[i].type){
           return new types[i](definition);
         }
       }
@@ -289,7 +311,7 @@ module Gnd
       DateType,
       SchemaType,
       ObjectIdType,
-      AbstractType
+      AbstractType,
     ];
   }
   

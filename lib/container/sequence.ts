@@ -98,6 +98,11 @@ export class SequenceSchemaType extends SchemaType
     // undefined since a sequence is never serialized.
   }
   
+  fromObject(arg)
+  {
+    // undefined since a collection is never deserialized
+  }
+  
   get(model, args?, opts?)
   {
     var def = this.definition;

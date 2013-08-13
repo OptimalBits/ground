@@ -11,7 +11,7 @@
 /// <reference path="schema" />
 
 module Gnd
-{  
+{    
   export interface ISchemaType
   {
     type;
@@ -58,6 +58,18 @@ module Gnd
     toObject(obj)
     {
       return obj;
+    }
+    
+    /**
+      Converts the given args to a the type specified by the SchemaType
+      definition. This method should be overrided by SchemaType subclasses.
+     
+      @method fromObject
+      @param args {Any} some argument or arguments to convert to the type.
+    */
+    fromObject(args)
+    {
+      return args;
     }
 
     /**
