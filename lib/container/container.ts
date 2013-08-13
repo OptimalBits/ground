@@ -18,9 +18,9 @@
 
 module Gnd 
 {
-  export interface IContainer
+  export interface IContainer<T>
   {
-    new (model: typeof Model, opts?: ContainerOptions, parent?: Model, items?: any[]): any;
+    new (model: IModel, opts?: ContainerOptions, parent?: Model, items?: any[]): any;
   } // We use Any until issue https://typescript.codeplex.com/workitem/1458 is resolved
   
   export interface ContainerOptions
@@ -80,7 +80,7 @@ module Gnd
       return new Promise(true);
     }
   
-    public model: typeof Model;
+    public model: IModel;
     public parent: Model;
     public count: number = 0;
     
@@ -107,16 +107,16 @@ module Gnd
       @param [items] {Array}
     */
     static create<T>(
-      ContainerClass: IContainer,
-      model: typeof Model, 
+      ContainerClass: IContainer<T>,
+      model: IModel, 
       opts?: ContainerOptions,
-                     parent?: Model, 
-                     items?: any[]): T
+      parent?: Model, 
+      items?: any[]): T
     {
       return new ContainerClass(model, opts, parent, items);
     }
     
-    constructor(model: typeof Model, opts?: ContainerOptions, parent?: Model, items?: any[])
+    constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: any[])
     {
       super();
       

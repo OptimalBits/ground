@@ -169,24 +169,75 @@ export interface ModelEvents
 */
 export class ModelSchemaType extends SchemaType
 {
-  public static type = Collection;
+  public static type = Model;
+  private model: IModel;
   
   constructor(model: IModel)
   {
-    super({type: Model});
+    super({type: model});
   }
-  
-  toObject(obj)
+    
+  fromObject(args, opts?)
   {
-    // undefined since a collection is never serialized.
-  }
-
-  get(model, args?, opts?)
-  {
-    var def = this.definition;
-    return model.all(def.ref.model, args || {}, def.ref.bucket);
+    if(args.module){
+      return new ModelProxy(args, args.module);
+    }
+    // args could be just a model id.
+    // if (_.isString(args)) => return args; // this would be a lazy property...
+    return this.definition.type.create(args, opts && opts.autosync);
   }
 }
+
+// -- 
+declare var curl;
+
+/**
+  This class proxies all the events that the underlying model emits, and
+  resolves to the concrete instance of a Model.
+  
+  This class is used when declaring Abstract models in a Schema, i.e., when
+  only the parent model is known when declaring the schema, and the concrete
+  implementation is fetched from a remote storage at runtime.
+  
+  @class ModelProxy
+*/
+class ModelProxy extends Promise<Model>
+{
+  model: Model;
+  
+  constructor(args, classUrl: string)
+  {
+    super();
+    
+    _.extend(this, args);
+    curl([classUrl]).then(
+      (modelClass: IModel) => {
+        var fn = _.bind(_.omit, _, this);
+        var args = fn.apply(this, _.functions(this));
+        this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+        this.model.on('*', () => {
+          this.emit.apply(this, arguments);
+        });
+        this.resolve(this.model)
+      },
+      (err) => this.reject(err)
+    );
+  }
+  
+  get(keypath: string)
+  {
+    return this.model ? this.model.get(keypath) : super.get(keypath);
+  }
+  
+//  set(doc: {}, opts?: {});
+  set(keyOrObj, val?: any, opts?: {}): Base
+  {
+      this.model ? this.model.set(keyOrObj, val, opts) : 
+      super.set(keyOrObj, val, opts);
+      return this;
+  }
+}
+
 
 /**
   The {{#crossLink "Model"}}{{/crossLink}} class is used to represent data

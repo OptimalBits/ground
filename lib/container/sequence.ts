@@ -155,7 +155,7 @@ export class Sequence extends Container implements SequenceEvents
   // Mutex
   private resyncMutex = Mutex();
   
-  constructor(model: typeof Model, opts?: ContainerOptions, parent?: Model, items?: ISeqModel[])
+  constructor(model: IModel, opts?: ContainerOptions, parent?: Model, items?: ISeqModel[])
   {
     super(model, opts, parent, items);
     
