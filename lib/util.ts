@@ -11,7 +11,6 @@
 /// <reference path="../third/underscore.d.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="base.ts" />
-/// <reference path="promise.ts" />
 
 /**
   @module Gnd

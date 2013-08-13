@@ -8,6 +8,7 @@
 
 /// <reference path="../base.ts" />
 /// <reference path="../util.ts" />
+/// <reference path="../promise.ts" />
 
 /**
   @module Gnd

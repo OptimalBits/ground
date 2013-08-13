@@ -16,7 +16,6 @@
 //
 
 /// <reference path="../third/underscore.d.ts" />
-/// <reference path="util" />
 
 module Gnd {
   
