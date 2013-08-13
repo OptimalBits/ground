@@ -214,7 +214,7 @@ export interface ISetStorage {
     @param keyPath {KeyPath} key path pointing to the bucket holding the collection.
     @param query {IStorageQuery} object specifying the query to be performed.
   */
-  find(keyPath: string[], query: IStorageQuery, opts: {}): Promise<any[]>
+  find(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean}): Promise<any[]>
 }
 
 //
