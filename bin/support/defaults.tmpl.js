@@ -19,6 +19,11 @@ module.exports = {
   prefix: 'GND',
   
   //
+  // Mode of operation, normally development or production.
+  // This default is only used if NODE_ENV is not set to a correct value.
+  MODE: 'development',
+  
+  //
   // Port to be used by the server, 0 means auto.
   //
   APP_PORT: 0,

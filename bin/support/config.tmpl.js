@@ -25,7 +25,7 @@ var config = {
   MONGODB_TEST_URI: _('MONGODB_URI', defaults.MONGODB_TEST_URI),
   
   COOKIE: _('COOKIE', defaults.COOKIE),
-  MODE: _('MODE', env.NODE_ENV)
+  MODE: _('MODE', env.NODE_ENV || defaults.MODE)
 }
 
 config.DEVELOPMENT = _('DEVELOPMENT', config.MODE === 'development');
