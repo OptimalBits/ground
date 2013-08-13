@@ -277,6 +277,16 @@ declare module _ {
 		list: List<T>,
 		properties: U): T;
 
+  /**
+   * Looks through the list and returns the first index that matches all of the key-value pairs listed in properties.
+   * @param list Search through this list's elements for the first object with all `properties`.
+   * @param properties Properties to look for on the elements within `list`.
+   * @return The first element in `list` that has all `properties`.
+   **/
+  	export function findIndex<T, U extends {}>(
+  		list: T[],
+  		properties: U): number;  
+
 	/**
 	* Returns the values in list without the elements that the truth test (iterator) passes.
 	* The opposite of filter.
@@ -1434,6 +1444,12 @@ declare class _<T> {
 	* @see _.findWhere
 	**/
 	findWhere<U extends {}>(properties: U): T;
+  
+	/**
+	* Wrapped type `any[]`.
+	* @see _.findWhere
+	**/
+	findIndex<U extends {}>(properties: U): number;
 
 	/**
 	* Wrapped type `any[]`.
