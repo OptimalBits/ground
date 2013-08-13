@@ -481,10 +481,11 @@ export class Collection extends Container implements CollectionEvents
 // Underscore methods that we want to implement on the Collection.
 //
 var methods = 
-  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'detect', 'pluck',
-    'filter', 'select', 'reject', 'every', 'all', 'some', 'any', 'include',
-    'contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex', 'toArray', 'size',
-    'first', 'rest', 'last', 'without', 'indexOf', 'lastIndexOf', 'isEmpty', 'groupBy']
+  ['forEach', 'each', 'map', 'reduce', 'reduceRight', 'find', 'findWhere', 
+   'detect', 'pluck','filter', 'select', 'reject', 'every', 'all', 'some',
+   'any', 'include','contains', 'invoke', 'max', 'min', 'sortBy', 'sortedIndex',
+   'toArray', 'size', 'first', 'rest', 'last', 'without', 'indexOf', 
+   'lastIndexOf', 'isEmpty', 'groupBy']
 
 // Mix in each Underscore method as a proxy to `Collection#items`.
 _.each(methods, function(method) {
