@@ -254,7 +254,7 @@ export class ModelProxy extends Promise<Model>
     return this.model ? this.model.get(keypath) : super.get(keypath);
   }
   
-//  set(doc: {}, opts?: {});
+  //set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, opts?: {}): Base
   {
       this.model ? this.model.set(keyOrObj, val, opts) : 
@@ -284,7 +284,7 @@ export class ModelProxy extends Promise<Model>
          _id: ObjectId,
          _cid: String,
        }
-       
+  
   @class Model
   @extends Promise
   @constructor
@@ -296,9 +296,15 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
 {
   static __useDepot: boolean = true;
   static __bucket: string;
+  static __strict: boolean;
+
+
   static __schema: Schema =
-    new Schema({_cid: String, _id: Schema.ObjectId});
-    
+    new Schema({
+      _cid: String, 
+      _id: Schema.ObjectId
+    });
+
   static schema(){
     return this.__schema;
   }
@@ -412,16 +418,16 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
    */
   static extend(bucket: string, schema?: Schema)
   {
-    var _this = this;
+    var _super = this;
     
     function __(args, _bucket, opts) {
       var constructor = this.constructor;
-      this.__schema = __['__schema'];
-      this.__strict = __['__strict'];
-      _this.call(this, args, bucket || _bucket, opts || _bucket);
+      this.__schema = this.__schema || __['__schema'];
+      this.__strict = this.__strict || __['__strict'];
+      _super.call(this, args, bucket || _bucket, opts || _bucket);
       
       // Call constructor if different from Model constructor.
-      if(constructor && (_this != constructor)){
+      if(constructor && (_super != constructor)){
         constructor.call(this, args);
       }
     }; 
@@ -890,7 +896,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     
     @return {Collection} collection with all the models
   */
-  static all(parent: Model, bucket?: string): Collection;
+ // static all(parent: Model, bucket?: string): Collection;
   static all(parent?: Model, argsOrKeypath?, bucket?: string): Collection
   {
     var allInstances = (parent, keyPath, args) =>
