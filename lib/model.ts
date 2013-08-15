@@ -211,29 +211,42 @@ declare var curl;
   only the parent model is known when declaring the schema, and the concrete
   implementation is fetched from a remote storage at runtime.
   
+  Note: this class should be strictly private and not exported.
+  
   @class ModelProxy
+  
+  
 */
-class ModelProxy extends Promise<Model>
+export class ModelProxy extends Promise<Model>
 {
   model: Model;
   
-  constructor(args, classUrl: string)
+  constructor(model: Model);
+  constructor(modelOrArgs: {}, classUrl?: string);
+  constructor(modelOrArgs, classUrl?: string)
   {
     super();
     
-    _.extend(this, args);
-    curl([classUrl]).then(
-      (modelClass: IModel) => {
-        var fn = _.bind(_.omit, _, this);
-        var args = fn.apply(this, _.functions(this));
-        this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
-        this.model.on('*', () => {
-          this.emit.apply(this, arguments);
-        });
-        this.resolve(this.model)
-      },
-      (err) => this.reject(err)
-    );
+    // Should only check for instanceof Model...
+    if(modelOrArgs instanceof Base){
+      this.model = modelOrArgs;
+      this.resolve(modelOrArgs);
+    }else{
+      var args = modelOrArgs;
+      _.extend(this, args);
+      curl([classUrl]).then(
+        (modelClass: IModel) => {
+          var fn = _.bind(_.omit, _, this);
+          var args = fn.apply(this, _.functions(this));
+          this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+          this.model.on('*', () => {
+            this.emit.apply(this, arguments);
+          });
+          this.resolve(this.model)
+        },
+        (err) => this.reject(err)
+      );
+    }
   }
   
   get(keypath: string)
