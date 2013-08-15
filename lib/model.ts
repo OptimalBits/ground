@@ -106,7 +106,8 @@ export interface IModel
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: boolean, args?: {}, cb?: (err: Error, instance?: Model) => void);
   find(query: Storage.IStorageQuery): Promise;
-  all(parent?: Model, args?: {}, bucket?: string) : Collection;
+  all(parent: Model, bucket?: string): Collection;
+  all(parent?: Model, argsOrKeypath?, bucket?: string): Collection;
   seq(parent: Model, args: {}, bucket: string) : Sequence;
 }
 
@@ -176,14 +177,26 @@ export class ModelSchemaType extends SchemaType
     super({type: model});
   }
     
-  fromObject(args, opts?)
+  fromObject(args: {module?: string}, opts?)
   {
-    if(args.module){
+    if(args instanceof this.definition.type){
+      return args;
+    }else if(_.isString(args)){
+      return this.definition.type.findById(args, opts && opts.autosync);
+    }else if(args.module){
       return new ModelProxy(args, args.module);
     }
-    // args could be just a model id.
-    // if (_.isString(args)) => return args; // this would be a lazy property...
     return this.definition.type.create(args, opts && opts.autosync);
+  }
+  
+  toObject(obj)
+  {
+    if(obj instanceof ModelProxy){
+      return obj.model.toArgs();
+    }else{
+      //return super.toObject(obj);
+      return obj.toArgs();
+    }
   }
 }
 
