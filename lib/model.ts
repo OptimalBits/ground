@@ -379,7 +379,6 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
   resync(args): void
   {
-    // TODO: opts.strict = false 
     var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
     this.set(strictArgs, {nosync: true});
   }
@@ -874,20 +873,35 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   */
   toArgs(): any
   {
-    return this.__schema.toObject(this);
+    return _.extend(this.__strict ? {} : this._toArgs(this),
+                    this.__schema.toObject(this));
+  }
+  
+  private _toArgs(obj): any
+  {
+    var args = {};
+    _.forIn(obj, (value, key) => {
+      if(!_.isObject(value) && !_.isFunction(value) && key[0] != '_'){
+        args[key] = value;
+      };
+    });
+    return args
   }
 
   /**
     Gets a model collection that fullfills the query condition.
 
     @static
+    @method find
+    @param query {Storage.IStorageQuery} query to be satisfied by the returned
+    collection.
     @return {Collection} Collection with the models that fulfill the query.
   */
   static find(query: Storage.IStorageQuery): Collection
   {
     var opts = {
       key: this.__bucket,
-      query: query
+      query: query || {}
     }
     return Container.create<Collection>(Collection, this, opts);
   }
