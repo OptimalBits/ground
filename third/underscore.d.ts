@@ -111,6 +111,10 @@ declare module _ {
 		iterator: ObjectIterator<T, void >,
 		context?: any): void;
 
+  export function forIn<T extends {}>(
+    object: Dictionary<T>,
+    iterator: ObjectIterator<T, void>): void;
+
 	/**
 	* Produces a new array of values by mapping each value in list through a transformation function
 	* (iterator). If the native map method exists, it will be used instead. If list is a JavaScript
