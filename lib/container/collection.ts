@@ -440,6 +440,7 @@ export class Collection extends Container implements CollectionEvents
   /**
     Resync the given items to this collection
   
+    @method resync
     @param items {Array} array of items to synchronize the collection with.
     @protected
   **/
@@ -467,7 +468,9 @@ export class Collection extends Container implements CollectionEvents
       })
     
       return this.remove(itemsToRemove, {nosync: true})
-        .then(() => Promise.map<Model>(_.unique(itemsToAdd), (args) => (<any>this.model).create(args)))
+        .then(() => _.map(
+          _.unique(itemsToAdd), 
+          (args) => (<any>this.model).create(args, this.autosync()).autorelease()))
         .then((models: Model[]) => this.add(models, {nosync: true}))
         .then(() =>{
           // We must not return this here!.

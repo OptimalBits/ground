@@ -434,15 +434,17 @@ export class Sequence extends Container implements SequenceEvents
   private execCmds(commands: MergeCommand[]): Promise
   {
     var opts = {nosync: true};
+    var item;
     return Gnd.Promise.map(commands, (cmd) => {
       switch(cmd.cmd) {
         case 'insertBefore':
-          return this.model.create(cmd.doc, true).then((item) =>
-            this.insertItemBefore(cmd.refId, item.autorelease(), cmd.newId, opts));
+          item = this.model.create(cmd.doc, this.autosync());
+          item.autorelease();
+          return this.insertItemBefore(cmd.refId, item, cmd.newId, opts);
         case 'removeItem':
           return this.deleteItem(cmd.id, opts);
         case 'update':
-          var item = this['find']((item) => cmd.doc._id == item.id());
+          item = this['find']((item) => cmd.doc._id == item.id());
           item && item.resync(cmd.doc);
           return Promise.resolved();
         default:
