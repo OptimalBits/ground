@@ -115,7 +115,6 @@ export interface ModelOpts
 {
   fetch?: boolean;
   autosync?: boolean;
-  ready?: Promise<void>;
 }
 
 export interface ModelEvents
@@ -355,14 +354,6 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     if(!this.isPersisted()){
       this._storageQueue.once('created:'+this.id(), (id) => this.id(id));
     }
-    
-    var ready = new Promise();
-    if(this.opts.ready){
-      this.opts.ready.then(() => 
-        ready.then(() => this.resolve(this), (err)=> this.reject(err)));
-    }else{
-      ready.then(() => this.resolve(this), (err)=> this.reject(err));
-    }
 
     var keyPath = this.getKeyPath();
     if(this.opts.fetch){
@@ -373,14 +364,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
         result[1]
           .then((doc) => this.resync(doc))
           .ensure(() => {
-            ready.resolve(this);
+            this.resolve(this);
             this.release();
           });
       }, (err) => {
-        ready.reject(err).ensure(() => this.release());
+        this.reject(err).ensure(() => this.release());
       });
     }else{
-      ready.resolve(this);
+      this.resolve(this);
     }
 
     this.opts.autosync && this.keepSynced();
