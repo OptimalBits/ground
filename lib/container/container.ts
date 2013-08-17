@@ -134,7 +134,7 @@ module Gnd
 
       this.resyncFn = (items) => this.resync(items);
       
-      parent && parent.isAutosync() && this.keepSynced();
+      parent && parent.isAutosync() && this.autosync(true);
     }
     
     destroy()
@@ -193,20 +193,20 @@ module Gnd
     keepSynced(): Container
     {  
       this.startSync();
-  
+
       this['map']((item) => {
         item.keepSynced()
       });
       return this;
     }
-  
+
     /**
       Checks if this container is kept automatically synced with the 
       storages.
-    
+
       @method isKeptSynced
       @return {Boolean}
-      @deprecated Use isAutosync instead.
+      @deprecated Use autosync instead.
     */
     isKeptSynced(): boolean
     {
@@ -216,13 +216,28 @@ module Gnd
     /**
       Checks if this container is kept automatically synced with the 
       storages.
-    
-      @method isAutosync
-      @return {Boolean}
+  
+      @method autosync
+      @returns {Boolean}
     */
-    isAutosync(): boolean
+    autosync(): boolean;
+    
+    /**
+      Enables / Disables autosync.
+      
+      @method autosync
+      @param enable {Boolean}
+      
+      Note: Disable not yet implemented.
+    */
+    autosync(enable: boolean): void
+    autosync(enable?: boolean)
     {
-      return this._keepSynced;
+      if(!_.isUndefined(enable)){
+        enable && this.keepSynced();
+      }else{
+        return this._keepSynced;
+      }
     }
     
     /**

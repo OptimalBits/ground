@@ -833,6 +833,21 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   }
 
   // TODO: implement autosync(enable: boolean)
+  /**
+    Tells the model to enable autosync. After calling this method the instance
+    will be kept automatically in sync with its server side counterpart.
+  
+    @method keepSynced
+    @chainable
+  */
+  autosync(enable: boolean): boolean
+  {
+    if(enable) this.keepSynced();
+    else{
+      // TODO: Implement
+    }
+    return this.isAutosync();
+  }
   
   /**
     Tells the model to enable autosync. After calling this method the instance
@@ -840,6 +855,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   
     @method keepSynced
     @chainable
+    @deprecated use autosync method instead
   */
   keepSynced(): Model
   {
