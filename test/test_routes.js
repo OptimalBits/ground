@@ -670,7 +670,7 @@ describe('simple routes', function(){
     });
   });
   
-  it('render template', function(done){
+  it('render template from url', function(done){
     router.stop();
     goToUrl('');
     router.listen(function(req){
@@ -678,12 +678,46 @@ describe('simple routes', function(){
         req.render('fixtures/test1.tmpl', {animal: 'tiger'});
         req.enter(function(el){
           expect(Gnd.isElement(el)).to.be(true);
+          expect(Gnd.Util.trim(Gnd.$(el).text())).to.be.equal('tiger');
+          Gnd.$('#dummy').empty();
+          done();
+        });
+      });
+    });
+  });
+  
+  it('render template from selector', function(done){
+    router.stop();
+    goToUrl('');
+    router.listen(function(req){
+      req.get('', '#dummy', function(){
+        req.render('#test_templ1', {animal: 'panther'});
+        req.enter(function(el){
+          expect(Gnd.isElement(el)).to.be(true);
+          expect(Gnd.Util.trim(Gnd.$(el).text())).to.be.equal('panther');
+          Gnd.$('#dummy').empty();
           done();
         });
       });
     });
   });
 
+  it('render view', function(done){
+    var view = new Gnd.View({templateUrl: 'fixtures/test1.tmpl'});
+    router.stop();
+    goToUrl('');
+    router.listen(function(req){
+      req.get('', '#dummy', function(){
+        req.render(view, {animal: 'leopard'});
+        req.enter(function(el){
+          expect(Gnd.isElement(el)).to.be(true);
+          expect(Gnd.Util.trim(Gnd.$(el).text())).to.be.equal('leopard');
+          Gnd.$('#dummy').empty();
+          done();
+        });
+      });
+    });
+  });
   
   it('stop listening route', function(){
     router.stop();
