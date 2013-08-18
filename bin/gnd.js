@@ -68,6 +68,7 @@ function createApplication(dst, opts, cb)
   //
   
   var filesToCopy = {
+    'support/gitignore.tmpl': '/.gitignore',
     'support/config.tmpl.js': '/config.js',
     'support/defaults.tmpl.js': '/defaults.js',
     'support/server.tmpl.js': '/server.js',
