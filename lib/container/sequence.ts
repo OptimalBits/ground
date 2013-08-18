@@ -88,9 +88,9 @@ export class SequenceSchemaType extends SchemaType
 {
   public static type = Sequence;
   
-  constructor(model: IModel, bucket: string)
+  constructor(model: IModel, bucket?: string)
   {
-    super({type: Sequence, ref:{model: model, bucket: bucket}});
+    super({type: Sequence, ref:{model: model, bucket: bucket || model.__bucket}});
   }
   
   toObject(obj)

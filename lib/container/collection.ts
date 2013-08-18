@@ -82,9 +82,9 @@ export class CollectionSchemaType extends SchemaType
 {
   public static type = Collection;
   
-  constructor(model: IModel, bucket: string)
+  constructor(model: IModel, bucket?: string)
   {
-    super({type: Collection, ref:{model: model, bucket: bucket}});
+    super({type: Collection, ref:{model: model, bucket: bucket || model.__bucket}});
   }
   
   toObject(obj)
