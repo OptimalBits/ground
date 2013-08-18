@@ -185,17 +185,42 @@ export class View extends Base
   */
   public onShowing: (el: Element, args: any, done: ()=>void) => void;
 
+  /*
+  function waitForImages(el, cb) {
+    var
+      $images = $('img', el),
+      counter = $images.length;
+    
+    cb = _.once(cb);
+    var deferTimeout = _.debounce(cb, 1000);
+
+    if(counter>0){
+      deferTimeout(); // start timer
+      var loadEvent = function(evt){
+        deferTimeout();
+        $images.off('load', loadEvent);
+        counter--;
+        if(counter === 0){
+          cb();
+        }
+      }
+      $images.on('load', loadEvent);
+    }else{
+      cb();
+    }
+  }
+  */
+
   constructor(args?: ViewArgs)
   {
     super();
     
     args = args || {};
+    args.templateEngine = args.templateEngine || using.template || Util.noop;
 
     if((args.templateUrl || args.templateStr) && !args.templateEngine){
       throw Error('Template engine required');
     }
-    
-    args.templateEngine = args.templateEngine || Util.noop;
     
     _.extend(this, args);
     
@@ -294,7 +319,6 @@ export class View extends Base
             (value, attr?) => $(node).attr(attr, value)));
       }
       
-      
       target.appendChild(this.fragment);
       
       return Promise.map(this.children, (child) => child.render(context))
@@ -376,7 +400,6 @@ export class View extends Base
   }
     
    /**
-    
     Initializes the view.
    
     This method must be called at least once before the view can be rendered.
@@ -391,14 +414,16 @@ export class View extends Base
      if(!this.isInitialized){
        this.isInitialized = true;
        
-       return View.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
-         this.template = this.templateEngine(this.templateStr || templ || "");
-    
-         return Promise.map(this.children, (subview) => subview.init());
-       });
-     }else{
-       return Promise.resolved();
+       if(_.isUndefined(this.html)){
+         return View.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
+           templ = Util.trim(this.templateStr || templ || "")
+           this.template = this.templateEngine(templ);
+
+           return Promise.map(this.children, (subview) => subview.init());
+         });
+       }
      }
+     return Promise.resolved();
    }
 }
 
