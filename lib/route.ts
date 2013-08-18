@@ -10,6 +10,7 @@
 
 /// <reference path="log.ts" />
 /// <reference path="base.ts" />
+/// <reference path="view.ts" />
 /// <reference path="task.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="dom.ts" />
@@ -679,14 +680,26 @@ export class Request {
     @param [cb] {Function} Callback called when the rendering has been completed.
   */
   public render(templateUrl: string): Request;
+  public render(view: View, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, locals: {}, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, css: string, cb?: (err?: Error)=>void): Request;
-  public render(templateUrl: string, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
+  public render(templateUrl, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
     return overload({
-      "String String Object Function": function(templateUrl, css, locals, cb){
+      "String String Object Function": function(url, css, locals, cb){
         var fn = _.bind(this._render, this);
-        this.node().render = wrap(fn, [templateUrl, css, locals], cb);
+        this.node().render = wrap(fn, [{templateUrl: url, cssUrl: css}, locals], cb);
+        return this;
+      },
+      "Object": function(view){
+        return this.render(view, this.data, Util.noop);
+      },
+      "Object Object": function(view, locals){
+        return this.render(view, locals, Util.noop);
+      },
+      "Object Object Function": function(view, locals, cb){
+        var fn = _.bind(this._render, this);
+        this.node().render = wrap(fn, [view, locals], cb);
         return this;
       },
       "String String Function": function(templateUrl, css, cb){
@@ -724,90 +737,21 @@ export class Request {
     return this;
   }
   
-  // ( templateUrl, [locals, cb])
-  private _render(templateUrl, css, locals, cb){  
-    if(_.isObject(css)){
-      cb = locals;
-      locals = css;
-      css = undefined;
-    }else if(_.isFunction(css)){
-      cb = css;
-      css = undefined;
-      locals = undefined;
-    }else if(_.isFunction(locals)){
-      cb = locals;
-      locals = undefined;
-    }
-  
-    cb = cb || Util.noop;
-    
-    var items = [], templ;
-    if(templateUrl[0] == '#'){
-      templ = Gnd.$(templateUrl).html();
-    }else{
-      items = ['text!'+templateUrl];
+  private _render(args, context, cb){
+    if(args.templateUrl && args.templateUrl[0] == '#'){
+      args.templateStr = Gnd.$(args.templateUrl).text();
+      args.templateUrl = null;
     }
     
-    css && items.push('css!'+css);
+    var view: View = args instanceof View ? args.retain() : new View(args);
     
-    var applyTemplate = (templ) => {
-      var args;
-      if(_.isString(locals)){
-        args[locals] = this.data;
-      }else if(_.isObject(locals) && !_.isEmpty(locals)){
-        args = locals;
-      }else if(_.isObject(this.data)){
-        args = this.data;
-      }else{
-        args = {};
-      }
-      var html = using.template(templ)(args);
-      
-      if(this.el){
-        this.el.innerHTML = html;
-        cb();
-        //waitForImages(this.el, cb);
-      }else{
-        cb();
-      }
-    }
+    // we need to get the pool for this node
+    //this.autoreleasePool.autorelease(view);
     
-    if(items.length){
-      curl(items, function(fetched){
-        if(templ){
-          applyTemplate(templ);
-        }else{
-          applyTemplate(fetched);
-        }
-      });
-    }else{
-      applyTemplate(templ);
-    }
-    /*
-    function waitForImages(el, cb) {
-      var
-        $images = $('img', el),
-        counter = $images.length;
-      
-      cb = _.once(cb);
-      var deferTimeout = _.debounce(cb, 1000);
-
-      if(counter>0){
-        deferTimeout(); // start timer
-        var loadEvent = function(evt){
-          deferTimeout();
-          $images.off('load', loadEvent);
-          counter--;
-          if(counter === 0){
-            cb();
-          }
-        }
-        $images.on('load', loadEvent);
-      }else{
-        cb();
-      }
-    }
-    */
+    //return view.parent(this.el).render(context);
+    return view.parent(this.el).render(context).then(function(){
+      cb && cb(null);
+    });
   }
   
   private _load(urls, cb){
