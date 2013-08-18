@@ -13,7 +13,13 @@ module.exports.debugBase = path.join(__dirname, 'dist/gnd');
 module.exports.docs = path.join(__dirname, 'docs/');
 module.exports.readme = path.join(__dirname, 'Readme.md');
 
+// deprecated third by more standard vendor
 module.exports.third = {
   curl: path.join(__dirname, 'third/curl.js'),
   underscore: path.join(__dirname, 'third/lodash.js')
+}
+
+module.exports.vendor = {
+  curl: path.join(__dirname, 'third/curl.js'),
+  lodash: path.join(__dirname, 'third/lodash.js')
 }
