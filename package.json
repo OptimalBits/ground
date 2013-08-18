@@ -48,7 +48,8 @@
     "acl": "*",
     "commander": "*",
     "mkdirp": "*",
-    "time-grunt": "~0.1.1"
+    "time-grunt": "~0.1.1",
+    "mustache": "~0.7.2"
   },
   "devDependencies": {
     "mocha": "*",
