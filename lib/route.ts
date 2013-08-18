@@ -692,7 +692,7 @@ export class Request {
         return this;
       },
       "Object": function(view){
-        return this.render(view, this.data, Util.noop);
+        return this.render(view, this.data || {}, Util.noop);
       },
       "Object Object": function(view, locals){
         return this.render(view, locals, Util.noop);
