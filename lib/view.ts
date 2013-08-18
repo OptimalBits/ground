@@ -80,6 +80,9 @@ export interface ViewArgs
     templateString with the difference that the template is fetched dynamically
     from a remote server.
     
+    If this property is a DOM id selector, then it will get the template
+    accessing its content.
+    
     @property templateUrl
     @type {String}
   */
@@ -297,7 +300,7 @@ export class View extends Base
 
       //
       // TODO: We do not use this for now...
-      // waitForImages(el, done);
+      // waitForImages(this.fragment, done);
       //
       var parent = this._parent;
       var parentRoot = parent ? parent.root : null;
@@ -409,21 +412,24 @@ export class View extends Base
     @method init
     @return {Promise} resolved after initialization has been completed.
    */
-   private init(): Promise<void>
+   private init(): Promise
    {
      if(!this.isInitialized){
        this.isInitialized = true;
        
        if(_.isUndefined(this.html)){
-         return View.fetchTemplate(this.templateUrl, this.cssUrl).then<void>((templ) =>{
-           templ = Util.trim(this.templateStr || templ || "")
-           this.template = this.templateEngine(templ);
-
-           return Promise.map(this.children, (subview) => subview.init());
-         });
+         return View.fetchTemplate(this.templateUrl, this.cssUrl).then((templ)=>{
+           templ = this.templateStr || templ;
+           if(templ) this.template = this.templateEngine(Util.trim(templ));
+         }).then(() => this.initChildren());
        }
      }
-     return Promise.resolved();
+     return this.initChildren();
+   }
+   
+   private initChildren(): Promise
+   {
+     return Promise.map(this.children, (subview) => subview.init());
    }
 }
 
