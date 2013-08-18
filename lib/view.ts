@@ -15,14 +15,84 @@
 
 module Gnd {
 
+  /**
+    ViewArgs interface.
+    
+    This interface is used to describe the valid arguments when instantiating
+    the View base class.
+    
+    Note that html, templateString and templateUrl are mutually exclusive
+    and can not be used at the same time.
+    
+    @class ViewArgs
+  */
 export interface ViewArgs
 {
+  /**
+    HTML string to be used when rendering this view.
+    
+    @property html
+    @type String
+  */
   html?: string;
+  
+  /**
+    CSS Styles.
+    
+    Object pairing style properties and their values as strings.
+    
+    @property styles
+    @type {[index: string]: string;}
+  */
   styles?: {[index: string]: string;};
+  
+  /**
+    HTMLElements Attributes.
+    
+    Attributes to be used on all the elements inside the view.
+    
+    @property attr
+    @type {[index: string]: string}
+  */
   attr?: {[index: string]: string;};
+  
+  /**
+    Template engine to be used when renderint the view template (if any).
+    Defaults to jquery/underscore/lodash microtemplate.
+    
+    @property templateEngine
+    @type {(str: string) => (args: any) => string}
+  */
   templateEngine?: (str: string) => (args: any) => string;
+  
+  /**
+    Template string. This template will be rendered with the template engine
+    when rendering the view. The scope/context used for rendering the template
+    is given in the view's render method as a parameter
+    
+    @property templateStr
+    @type {String}
+  */
   templateStr?: string;
+  
+  /**
+    Template url. Url pointing to a template. Works identically to
+    templateString with the difference that the template is fetched dynamically
+    from a remote server.
+    
+    @property templateUrl
+    @type {String}
+  */
   templateUrl?: string;
+  
+  /**
+    CSS url. Url pointing to a CSS file. Works similar to the styles property,
+    with the main difference that the styles are fetched dynamically from
+    a remote server.
+  
+    @property cssUrl
+    @type {String}
+  */
   cssUrl?: string;
 }
 
