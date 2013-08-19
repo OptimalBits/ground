@@ -692,7 +692,10 @@ export class Request {
         return this;
       },
       "Object": function(view){
-        return this.render(view, this.data || {}, Util.noop);
+        return this.render(view, Util.noop);
+      },
+      "Object Function": function(view, cb){
+        return this.render(view, {}, cb);
       },
       "Object Object": function(view, locals){
         return this.render(view, locals, Util.noop);
@@ -737,11 +740,13 @@ export class Request {
     return this;
   }
   
-  private _render(args, context, cb){
+  private _render(args, locals, cb){
     if(args.templateUrl && args.templateUrl[0] == '#'){
       args.templateStr = Gnd.$(args.templateUrl).text();
       args.templateUrl = null;
     }
+    
+    var ctx = _.extend({}, locals, this.data);
     
     var view: View = args instanceof View ? args.retain() : new View(args);
     
@@ -749,7 +754,8 @@ export class Request {
     //this.autoreleasePool.autorelease(view);
     
     //return view.parent(this.el).render(context);
-    return view.parent(this.el).render(context).then(function(){
+    $(this.el).empty();
+    return view.parent(this.el).render(ctx).then(function(){
       cb && cb(null);
     });
   }
