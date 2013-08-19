@@ -719,6 +719,23 @@ describe('simple routes', function(){
     });
   });
   
+  it('use loaded json data when rendering a view', function(done){
+    router.stop();
+    goToUrl('');
+    router.listen(function(req){
+      req.get('', '#dummy', function(){
+        req.load('fixtures/route_data.json');
+        req.render('fixtures/test1.tmpl');
+        req.enter(function(el){
+          expect(Gnd.isElement(el)).to.be(true);
+          expect(Gnd.Util.trim(Gnd.$(el).text())).to.be.equal('zebra');
+          Gnd.$('#dummy').empty();
+          done();
+        });
+      });
+    });
+  });
+  
   it('stop listening route', function(){
     router.stop();
   });
