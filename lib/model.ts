@@ -301,7 +301,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   static __schema: Schema =
     new Schema({
       _cid: String, 
-      _id: Schema.ObjectId
+      _id: Schema.ObjectId,
+      _persisting: Boolean
     });
 
   static schema(){
