@@ -1,26 +1,35 @@
 define(['gnd'], function(Gnd, models){
 'use strict';
 
+<% if(!static) { %>
 //
 // Establish a socket.io connection.
 //
-var socket = io.connect();
+var socket = io.connect(); 
 
 //
 // Configure the sync manager.
 //
 Gnd.use.syncManager(socket);
+<% } %>
 
 //
-// Create Local and Remote storages
+// Create Storages
 //
 var localStorage = new Gnd.Storage.Local();
+
+<% if(!static) { %>
 var remoteStorage = new Gnd.Storage.Socket(socket);
+<% } %>
 
 //
 // Configure the synchronization queue.
 //
+<% if(!static) { %>
 Gnd.use.storageQueue(localStorage, remoteStorage);
+<% } else { %>
+Gnd.use.storageQueue(localStorage);
+<% } %>
 
 //
 // Bind navigation bar to current route.

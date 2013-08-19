@@ -1,17 +1,19 @@
 "use strict";
 
-var Gnd = require('gnd')
+var Gnd = require('gnd') 
   , config = require('./config')
   , cabinet = require('cabinet') 
   , http = require('http')
   , app = require('connect').createServer()
   , server = http.createServer(app)
-  , sio = require('socket.io').listen(server)
-  , redis = require('redis')
-  , mongoose = require('mongoose')
   , staticDir = __dirname
-  , path = require('path')
-  , requirejs = require('requirejs');
+  , path = require('path');
+  
+<% if(!static) { %>
+var sio = require('socket.io').listen(server)
+  , redis = require('redis')
+  , mongoose = require('mongoose');
+<% } %>
   
 switch(config.MODE){
   case 'development': 
@@ -31,10 +33,9 @@ switch(config.MODE){
     console.log("No valid MODE configured:", config.MODE);
     process.exit(-1);
 }
-  
-server.listen(config.APP_PORT);
-console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
 
+<% if(!static) { %>
+var requirejs = require('requirejs');
 
 mongoose.connect(config.MONGODB_URI);
 
@@ -53,6 +54,10 @@ var mongooseStorage = new Gnd.Storage.MongooseStorage(models, mongoose)
   , gndServer = new Gnd.Server(mongooseStorage, sessionManager, syncHub);
                                
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
+<% } %>
+ 
+server.listen(config.APP_PORT);
+console.log("Started server at port: %d in %s mode", server.address().port, config.MODE);
 
 if (config.MODE === 'development' && !process.env.TEST){
   var open = require('open');
@@ -60,3 +65,5 @@ if (config.MODE === 'development' && !process.env.TEST){
 }
 
 module.exports = server.address().port;
+
+

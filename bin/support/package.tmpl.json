@@ -8,12 +8,14 @@
     , "acl": "*"
     , "cabinet": "*"
     , "connect": "*"
-    , "redis": "*"
-    , "mongoose": "*"
     , "underscore": "*"
-    , "socket.io": "0.9.10"
     , "requirejs": "~2.1.8"
     , "open": "*"
+<% if(!static) { %>  
+    , "redis": "*"
+    , "mongoose": "*"
+    , "socket.io": "0.9.10"
+<% } %>
   },
   "devDependencies": {
       "mocha": "*"
