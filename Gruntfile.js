@@ -14,7 +14,7 @@ module.exports = function(grunt) {
           //base_path: 'path/to/typescript/files',
           sourcemap: true,
           fullSourceMapPath: true,
-          //declaration: true,
+          declaration: true,
         }
       },
       server: {
@@ -26,7 +26,7 @@ module.exports = function(grunt) {
           //base_path: 'path/to/typescript/files',
           sourcemap: true,
           fullSourceMapPath: true,
-          //declaration: true,
+          declaration: true,
         }
       }
     },
