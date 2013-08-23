@@ -102,19 +102,17 @@ export class MongooseStorage implements Storage.IStorage {
   
   // constructor(models: IMongooseModels, mongoose, legacy?: boolean)
   // constructor(models: IModels, mongoose, legacy?: boolean)
-  constructor(models: any, mongoose, legacy?: boolean)
+  constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
       type: { type: String },
       next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
       modelId: { type: String }
     }));
-
-    if(!legacy){
-      this.compileModels(models, mongoose);
-    }else{
-      this.models = models;
-    }
+    
+    this.compileModels(models, mongoose);
+    
+    legacy && _.extend(this.models, legacy);
   }
 
   /**
@@ -127,14 +125,14 @@ export class MongooseStorage implements Storage.IStorage {
       var schema = model.schema();
       var bucket = model.__bucket;
       if(bucket){
-        var mongooseSchema = this.translateSchema(mongoose, schema);
+        var mongooseSchema = this.translateSchema(mongoose, name, schema);
         this.models[bucket] = 
-          mongoose.model(bucket, new mongoose.Schema(mongooseSchema));
+          mongoose.model(name, new mongoose.Schema(mongooseSchema), bucket);
       }
     }
   }
   
-  private translateSchema(mongoose, schema: Schema): any
+  private translateSchema(mongoose, name, schema: Schema): any
   {
     // Translate ObjectId, Sequences and Collections since they have special
     // syntax.
@@ -155,10 +153,7 @@ export class MongooseStorage implements Storage.IStorage {
             break;
           case Gnd.Sequence:
           case Gnd.Collection:
-            // we use as reference the pluralized collection name for the model
-            // this is not fully documentet in Mongoose but seems to work...
-            res = [{ type: mongoose.Schema.ObjectId, 
-                     ref: res.ref.model.__bucket }];
+            res = [{ type: mongoose.Schema.ObjectId, ref: name }];
             break;
         }
         return res;

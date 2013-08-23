@@ -64,7 +64,7 @@ app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
 
 app.use(express.bodyParser());
 
-var mongooseStorage = new Gnd.Storage.MongooseStorage(models, mongoose);
+var mongooseStorage = new Gnd.Storage.MongooseStorage(mongoose, models);
 var TEST_COOKIE = 'testCookie';
 
 var pubClient = redis.createClient(6379, "127.0.0.1"),
