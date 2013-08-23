@@ -204,7 +204,7 @@ export class Collection extends Container implements CollectionEvents
     if(keyPath && !this.opts.nosync){
       var useRemote = !parent || parent.isPersisted();
       this.retain();
-      using.storageQueue.find(keyPath, opts.query, {noremote: !useRemote}).then((result) => {
+      using.storageQueue.find(keyPath, this.opts.query, {noremote: !useRemote}).then((result) => {
         this.resync(result[0]);
         result[1]
           .then((items) => this.resync(items))
@@ -244,9 +244,9 @@ export class Collection extends Container implements CollectionEvents
     
     // TODO: define add options.
   */
-  add(item: Model, opts?): Promise
-  add(items: Model[], opts?): Promise
-  add(items: any, opts?): Promise
+  add(item: Model, opts?): Promise<any>
+  add(items: Model[], opts?): Promise<any>
+  add(items: any, opts?): Promise<any>
   {
     return Promise.map(items, (item) =>
       this.addItem(item, opts).then(() => 
@@ -260,9 +260,9 @@ export class Collection extends Container implements CollectionEvents
     @param itemIds {String[]} item ids to remove.
     @param [opts] {Object}
   */
-  remove(itemId: string, opts?): Promise;
-  remove(itemIds: string[], opts?): Promise
-  remove(itemIds: any, opts?): Promise
+  remove(itemId: string, opts?): Promise<any>;
+  remove(itemIds: string[], opts?): Promise<any>;
+  remove(itemIds: any, opts?): Promise<any>
   {
     var 
       items = this.items,
@@ -444,7 +444,7 @@ export class Collection extends Container implements CollectionEvents
     @param items {Array} array of items to synchronize the collection with.
     @protected
   **/
-  public resync(items: any[]): Promise
+  public resync(items: any[]): Promise<any>
   {
     return this.resyncMutex(()=>{
       var 

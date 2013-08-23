@@ -105,7 +105,7 @@ export interface IModel
   create(args: {}, keepSynced?: boolean): Model;
   fromJSON(args: {}, opts?: {}): Model;
   findById(keyPathOrId, keepSynced?: boolean, args?: {}, cb?: (err: Error, instance?: Model) => void);
-  find(query: Storage.IStorageQuery): Promise;
+  find(query: Storage.IStorageQuery): Collection;
   all(parent: Model, bucket?: string): Collection;
   all(parent?: Model, argsOrKeypath?, bucket?: string): Collection;
   seq(parent: Model, args: {}, bucket: string) : Sequence;
@@ -168,7 +168,7 @@ export interface ModelEvents
 */
 export class ModelSchemaType extends SchemaType
 {
-  public static type = Model;
+  public static type: IModel = Model;
   private model: IModel;
   
   constructor(model: IModel)
@@ -586,7 +586,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @method init
     @deprecated
   */
-  init(): Promise
+  init(): Promise<Model>
   {
     return new Promise(this);
   }
@@ -918,7 +918,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     
     @return {Collection} collection with all the models
   */
- // static all(parent: Model, bucket?: string): Collection;
+  // static all(parent: Model, bucket?: string): Collection;
   static all(parent?: Model, argsOrKeypath?, bucket?: string): Collection
   {
     var allInstances = (parent, keyPath, args) =>
@@ -945,7 +945,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     }).apply(this, arguments);
   }
 
-  public all(model: IModel, args, bucket): Promise
+  public all(model: IModel, args, bucket): Collection
   {
     return model.all(this, args, bucket);
   }
@@ -960,10 +960,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     @param {String} [bucket]
     @return {Sequence} sequence with all the models.
   */
-  static seq(parent: Model): Sequence;
-  static seq(parent: Model, args: {}, bucket: string): Sequence;
-  static seq(parent: Model, bucket: string): Sequence;
-  static seq(parent?: Model, args?: {}, bucket?: string): Sequence
+  static seq(parent: Model): Sequence; //
+  static seq(parent: Model, args: {}, bucket: string): Sequence; //
+  static seq(parent: Model, bucket: string): Sequence; //
+  static seq(parent?: Model, args?: {}, bucket?: string): Sequence //
   {
     var allInstances = (parent, keyPath, args) =>
       Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
@@ -986,7 +986,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     }).apply(this, arguments);
   }
 
-  public seq(model: IModel, args, bucket): Promise
+  public seq(model: IModel, args, bucket): Sequence
   {
     return model.seq(this, args, bucket);
   }

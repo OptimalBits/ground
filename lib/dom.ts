@@ -587,7 +587,7 @@ module Gnd.Ajax
     @params obj {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function get(url: string, obj?: {}): Promise
+  export function get(url: string, obj?: {}): Promise<any>
   {
     return base('GET', url, obj);
   }
@@ -600,7 +600,7 @@ module Gnd.Ajax
     @params obj {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function put(url: string, obj: {}): Promise
+  export function put(url: string, obj: {}): Promise<any>
   {
     return base('PUT', url, obj);
   }
@@ -613,7 +613,7 @@ module Gnd.Ajax
     @params obj {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function post(url: string, obj: {}): Promise
+  export function post(url: string, obj: {}): Promise<any>
   {
     return base('POST', url, obj);
   }
@@ -626,7 +626,7 @@ module Gnd.Ajax
     @params [obj] {Object} Plain object with data to send to the server.
     @returns {Promise} Promise with the result of the operation.
   */
-  export function del(url: string, obj?: {}): Promise
+  export function del(url: string, obj?: {}): Promise<any>
   {
     return base('DELETE', url, obj);
   }
@@ -656,7 +656,7 @@ module Gnd.Ajax
     }
   }
   
-  function base(method: string, url: string, obj?: {}): Promise
+  function base(method: string, url: string, obj?: {}): Promise<any>
   {
     var promise = new Promise();
     

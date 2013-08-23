@@ -75,7 +75,7 @@ module Gnd
     public _keepSynced: boolean = false;
     
     // Abstract
-    public resync(items: any[]): Promise 
+    public resync(items: any[]): Promise<any>
     {
       return new Promise(true);
     }
@@ -152,7 +152,7 @@ module Gnd
       super.destroy();
     }
     
-    init(docs: {}[]): Promise
+    init(docs: {}[]): Promise<any>
     {
       return this.resync(docs).then(() => this);
     }
@@ -163,7 +163,7 @@ module Gnd
       @method save
       @return {Promise}
     */
-    save(): Promise
+    save(): Promise<any>
     {
       return this.storageQueue.exec();
     }

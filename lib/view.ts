@@ -132,7 +132,7 @@ export class View extends Base
   private templateEngine: (str: string) => (args: any) => string;
   private cssUrl: string;
   
-  private _parent: View;
+  private parentView: View;
   
   private isInitialized: boolean;
   
@@ -253,9 +253,8 @@ export class View extends Base
     this.selector = selector;
     
     if(parent){
-      var oldParent = this._parent;
-      oldParent && oldParent.removeChild(this);
-      this._parent = parent;
+      this.parentView && this.parentView.removeChild(this);
+      this.parentView = parent;
       parent.children.push(this);
     }
     return this;
@@ -286,10 +285,10 @@ export class View extends Base
     context = context || {};
     
     return this.init().then<HTMLElement>(()=>{
-      var html;
+      var html, root;
 
       if(this.template){
-        html = this.template(context);
+        html = Util.trim(this.template(context)) || '<div>';
       }else{
         html = this.html || '<div>';
       }
@@ -297,17 +296,7 @@ export class View extends Base
       this.fragment = $(html)[0];
 
       if(!this.fragment) throw(Error('Invalid html:\n'+html));
-
-      //
-      // TODO: We do not use this for now...
-      // waitForImages(this.fragment, done);
-      //
-      var parent = this._parent;
-      var parentRoot = parent ? parent.root : null;
-
-      var target = this.root = 
-        (this.selector && $(this.selector, parentRoot)[0]) || document.body;
-
+      
       //
       // we can use cloneNode here on the fragment if we want to keep a copy.
       //
@@ -322,11 +311,24 @@ export class View extends Base
             (value, attr?) => $(node).attr(attr, value)));
       }
       
+      root = this.nodes[0];
+
+      //
+      // TODO: We do not use this for now...
+      // waitForImages(this.fragment, done);
+      //
+      
+      var parent = this.parentView;
+      var parentRoot = parent ? parent.root : null;
+
+      var target = this.root = 
+        (this.selector && $(this.selector, parentRoot)[0]) || document.body;
+        
       target.appendChild(this.fragment);
       
       return Promise.map(this.children, (child) => child.render(context))
         .then(() => this.applyStyles({visibility: ''}))
-        .then(() => this.nodes[0]);
+        .then(() => root);
     });
   }
   
@@ -359,7 +361,7 @@ export class View extends Base
     @method refresh
     @returns {Promise}
   */
-  refresh(): Promise
+  refresh(): Promise<any>
   {
     return this.refreshMutex(()=>{
       this.clean();

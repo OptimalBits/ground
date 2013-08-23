@@ -298,7 +298,7 @@ export class Sequence extends Container implements SequenceEvents
     @param [opts] {Any}
     @returns {Promise}
   **/
-  push(item: Model, opts?): Promise
+  push(item: Model, opts?): Promise<any>
   {
     return this.insertBefore(null, item, opts);
   }
@@ -312,7 +312,7 @@ export class Sequence extends Container implements SequenceEvents
     @param [opts] {Any}
     @returns {Promise}
   **/
-  unshift(item: Model, opts?): Promise
+  unshift(item: Model, opts?): Promise<any>
   {
     var firstId = this.items.length > 0 ? _.first(this.items).id : null;
     return this.insertBefore(firstId, item, opts);
@@ -328,7 +328,7 @@ export class Sequence extends Container implements SequenceEvents
     @param [opts] {Any}
     @returns {Promise}
   **/
-  insert(idx: number, item: Model, opts?): Promise
+  insert(idx: number, item: Model, opts?): Promise<any>
   {
     var seqItem = this.items[idx];
     var id = seqItem ? seqItem.id : null;
@@ -344,7 +344,7 @@ export class Sequence extends Container implements SequenceEvents
     @param [opts] {Any}
     @returns {Promise}
   **/
-  remove(idx: number, opts?): Promise
+  remove(idx: number, opts?): Promise<any>
   {
     var promise;
 
@@ -384,7 +384,7 @@ export class Sequence extends Container implements SequenceEvents
     @param [opts] {Any}
     @returns {Promise}
   **/
-  move(startIdx: number, endIdx: number, opts?): Promise
+  move(startIdx: number, endIdx: number, opts?): Promise<any>
   {
     var srcItem = this.items[startIdx];
 
@@ -431,7 +431,7 @@ export class Sequence extends Container implements SequenceEvents
     });
   }
 
-  private execCmds(commands: MergeCommand[]): Promise
+  private execCmds(commands: MergeCommand[]): Promise<any>
   {
     var opts = {nosync: true};
     var item;
@@ -453,7 +453,7 @@ export class Sequence extends Container implements SequenceEvents
     });
   }
   
-  private triggerResync(): Promise
+  private triggerResync(): Promise<any>
   {
     var keyPath = this.getKeyPath();
     return this.storageQueue.all(keyPath, {}, {}).then((result) =>
@@ -461,7 +461,7 @@ export class Sequence extends Container implements SequenceEvents
     );
   }
 
-  public resync(remoteItems: any[]): Promise
+  public resync(remoteItems: any[]): Promise<any>
   {
     return this.resyncMutex(() => {
       var commands = Sequence.merge(remoteItems, this.items, Sequence.mergeFns);

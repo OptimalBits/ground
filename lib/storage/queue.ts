@@ -134,7 +134,7 @@ export class Queue extends Base implements IStorage
     @method exec
     @return {Promise} promise resolved after executing all the commands.
   */
-  exec(): Promise
+  exec(): Promise<void>
   {
     var promise = new Promise();
     if(!this.currentTransfer && this.queue.length === 0){

@@ -58,7 +58,7 @@ export class Session extends Base
   
     @method login
   */
-  static login(loginId: string, passwd: string): Promise
+  static login(loginId: string, passwd: string): Promise<any>
   {
     this.loginId = loginId;
     return Ajax.post(Session.url, {username: loginId, password: passwd});
@@ -81,7 +81,7 @@ export class Session extends Base
     
     @return {Promise} promise resolved when the logout has been completed.
   */
-  static logout(): Promise
+  static logout(): Promise<any>
   {
     return Ajax.del(Session.url);
   }
@@ -91,7 +91,7 @@ export class Session extends Base
     
     @return {Promise} a promise resolved if authenticated, rejected otherwise.
   */
-  static authenticated(): Promise
+  static authenticated(): Promise<any>
   {
     return Ajax.get(Session.url);
   }
