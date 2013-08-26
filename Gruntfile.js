@@ -7,7 +7,7 @@ module.exports = function(grunt) {
     typescript: {
       client: {
         src: ['gnd.ts'],
-        dest: 'dist/gnd.js',
+        dest: 'build/gnd.js',
         options: {
           module: 'amd', //or commonjs
           target: 'es3', //or es5
@@ -19,10 +19,10 @@ module.exports = function(grunt) {
       },
       server: {
         src: ['gnd-server.ts'],
-        dest: 'dist/gnd-server.js',
+        dest: 'build/gnd-server.js',
         options: {
           module: 'amd', //or commonjs
-          target: 'es3', //or es5
+          target: 'es5',
           //base_path: 'path/to/typescript/files',
           sourcemap: true,
           fullSourceMapPath: true,
@@ -32,7 +32,7 @@ module.exports = function(grunt) {
     },
     uglify: {
       client: {
-        files: {'dist/gnd.min.js': ['dist/gnd.js']},
+        files: {'build/gnd.min.js': ['build/gnd.js']},
         options: {
           banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
           compress: {
@@ -53,8 +53,8 @@ module.exports = function(grunt) {
         },
         expand: true,
         //cwd: 'assets/',
-        src: ['dist/gnd.min.js'],
-        dest: 'dist/'
+        src: ['build/gnd.min.js'],
+        dest: 'build/'
       }
     },
     
