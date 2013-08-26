@@ -100,8 +100,6 @@ export class MongooseStorage implements Storage.IStorage {
   private listContainer: any;
   private transaction: any;
   
-  // constructor(models: IMongooseModels, mongoose, legacy?: boolean)
-  // constructor(models: IModels, mongoose, legacy?: boolean)
   constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
     this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
@@ -119,20 +117,27 @@ export class MongooseStorage implements Storage.IStorage {
     Compiles Gnd models into Mongoose Models.
   */
   private compileModels(models: IModels, mongoose)
-  {
+  { 
+    var nameMapping = {};
+    for(var name in models){
+      var model = models[name];
+      nameMapping[model.__bucket] = name;
+    }
+    
     for(var name in models){
       var model = models[name];
       var schema = model.schema();
       var bucket = model.__bucket;
       if(bucket){
-        var mongooseSchema = this.translateSchema(mongoose, name, schema);
+        var mongooseSchema = this.translateSchema(mongoose, nameMapping, schema);
+                
         this.models[bucket] = 
           mongoose.model(name, new mongoose.Schema(mongooseSchema), bucket);
       }
     }
   }
   
-  private translateSchema(mongoose, name, schema: Schema): any
+  private translateSchema(mongoose, mapping, schema: Schema): any
   {
     // Translate ObjectId, Sequences and Collections since they have special
     // syntax.
@@ -144,7 +149,6 @@ export class MongooseStorage implements Storage.IStorage {
         }else{
           res = {type: value.definition};
         }
-        
         switch(res.type){
           case Gnd.Schema.ObjectId:
             res.type = mongoose.Schema.ObjectId;
@@ -153,7 +157,7 @@ export class MongooseStorage implements Storage.IStorage {
             break;
           case Gnd.Sequence:
           case Gnd.Collection:
-            res = [{ type: mongoose.Schema.ObjectId, ref: name }];
+            res = [{ type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket] }];
             break;
         }
         return res;
@@ -319,7 +323,6 @@ export class MongooseStorage implements Storage.IStorage {
     query = query || {};
     
     var promise = new Promise();
-    
     Model
       .find(query.cond, query.fields, query.opts)
       .exec((err, doc?) => {
@@ -342,7 +345,6 @@ export class MongooseStorage implements Storage.IStorage {
     query = query || {};
     
     var promise = new Promise();
-    
     Model
       .findById(id)
       .select(setName)
