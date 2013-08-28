@@ -131,7 +131,7 @@ export class MongooseStorage implements Storage.IStorage {
       if(bucket){
         var translated = this.translateSchema(mongoose, nameMapping, schema);
         var mongooseSchema =
-            new mongoose.Schema(translated,  {strict: false});
+            new mongoose.Schema(translated, {strict: false});
       // new mongoose.Schema(translated); // strict false is just temporary...
 
         if(model['__mongoose']){
@@ -143,7 +143,7 @@ export class MongooseStorage implements Storage.IStorage {
           }
           
           if(extra.statics){
-            mongooseSchema.statics = mongooseSchema.satics || {};
+            mongooseSchema.statics = mongooseSchema.statics || {};
             _.extend(mongooseSchema.statics, extra.statics);
           }
                     
@@ -153,7 +153,7 @@ export class MongooseStorage implements Storage.IStorage {
             })
           }
           if(extra.post){
-            _.each(extra.pre, function(fn, method){
+            _.each(extra.post, function(fn, method){
               mongooseSchema.post(method, fn);
             })
           }
