@@ -130,7 +130,6 @@ export class MongooseStorage implements Storage.IStorage {
       var bucket = model.__bucket;
       if(bucket){
         var translated = this.translateSchema(mongoose, nameMapping, schema);
-        console.log(name, translated);
         var mongooseSchema =
             new mongoose.Schema(translated,  {strict: false});
       // new mongoose.Schema(translated); // strict false is just temporary...
