@@ -144,11 +144,19 @@ export class MongooseStorage implements Storage.IStorage {
     return schema.map((key, value) => {
       if(key != '_id'){
         var res;
+        if(value instanceof Schema){
+          return this.translateSchema(mongoose, mapping, value);
+        }
         if(value.definition.type){
           res = _.clone(value.definition);
         }else{
           res = {type: value.definition};
         }
+        
+        if(res.type.__schema){
+          return this.translateSchema(mongoose, mapping, res.type.__schema);
+        }
+        
         switch(res.type){
           case Gnd.Schema.ObjectId:
             res.type = mongoose.Schema.ObjectId;
