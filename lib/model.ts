@@ -57,6 +57,7 @@ class ModelDepot
                              {fetch: fetch, autosync: autosync});
       this.setModel(model);
       model.autorelease();
+      !model._persisting && !model.isPersisted() && !fetch && autosync && model.save();
     }else{
       autosync && model.keepSynced();
     }
