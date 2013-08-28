@@ -341,6 +341,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     if(!this.__strict){
       _.extend(this, args);
     }
+    this.__schema = this.__schema || this.constructor.__schema;
     _.extend(this, this.__schema.fromObject(args));
     
     this._cid = this._id || this._cid || Util.uuid();
