@@ -242,7 +242,7 @@ export class Local implements IStorage {
           if(keyValue){
             var 
               item = keyValue.value,
-              id = item._cid;
+              id = item._cid || item._id;
             if(!(result[id]) || op === 'insync'){
               if(!opts.snapshot) item.__op = op;
               result[id] = item;
