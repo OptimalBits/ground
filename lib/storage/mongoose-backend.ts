@@ -123,20 +123,49 @@ export class MongooseStorage implements Storage.IStorage {
       var model = models[name];
       nameMapping[model.__bucket] = name;
     }
-    
+
     for(var name in models){
       var model = models[name];
       var schema = model.schema();
       var bucket = model.__bucket;
       if(bucket){
-        var mongooseSchema = this.translateSchema(mongoose, nameMapping, schema);
-                
-        this.models[bucket] = 
-          mongoose.model(name, new mongoose.Schema(mongooseSchema), bucket);
+        var translated = this.translateSchema(mongoose, nameMapping, schema);
+        console.log(name, translated);
+        var mongooseSchema =
+            new mongoose.Schema(translated,  {strict: false});
+      // new mongoose.Schema(translated); // strict false is just temporary...
+
+        if(model['__mongoose']){
+          var extra = model['__mongoose'];
+
+          if(extra.methods){
+            mongooseSchema.methods = mongooseSchema.methods || {};
+            _.extend(mongooseSchema.methods, extra.methods);
+          }
+          
+          if(extra.statics){
+            mongooseSchema.statics = mongooseSchema.satics || {};
+            _.extend(mongooseSchema.statics, extra.statics);
+          }
+                    
+          if(extra.pre){
+            _.each(extra.pre, function(fn, method){
+              mongooseSchema.pre(method, fn);
+            })
+          }
+          if(extra.post){
+            _.each(extra.pre, function(fn, method){
+              mongooseSchema.post(method, fn);
+            })
+          }
+        }
+        
+        this.models[bucket] =
+          mongoose.model(name, mongooseSchema, bucket);
       }
     }
   }
-  
+
   private translateSchema(mongoose, mapping, schema: Schema): any
   {
     // Translate ObjectId, Sequences and Collections since they have special
@@ -364,7 +393,24 @@ export class MongooseStorage implements Storage.IStorage {
           promise.resolve(doc && doc[setName])
         }
       });
+      
+    return promise;
+  }
+  
+  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr)
+  {
+    var promise = new Promise();
     
+    Model
+      .find(query.cond, query.fields, query.opts)
+      .where('_id').in(arr)
+      .exec((err, doc) => {
+        if(err) {
+          promise.reject(err);
+        }else{
+          promise.resolve(doc);
+        }
+      });
     return promise;
   }
   
