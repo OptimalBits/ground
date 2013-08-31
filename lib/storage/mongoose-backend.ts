@@ -258,6 +258,7 @@ export class MongooseStorage implements Storage.IStorage {
         if(doc){
           promise.resolve(doc);
         }else{
+          console.log("Document:", keyPath, "not Found!");
           promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
         }
       });
@@ -269,6 +270,19 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>((found) => {
       var promise = new Promise<void>();
+      found.Model.findById(_.last(keyPath), (err?, doc?) => {
+        if(!err && doc){
+          doc.remove((err?)=>{
+            !err && promise.resolve();
+            err && promise.reject(err);
+          });
+        }else{
+          promise.reject(err);
+        }
+      });
+      
+      //found.Model.findByIdAndRemove({_id:_.last(keyPath)}, (err, doc)=>{
+      /*
       found.Model.remove({_id:_.last(keyPath)}, (err?)=>{
         if(!err){
           promise.resolve();
@@ -277,7 +291,8 @@ export class MongooseStorage implements Storage.IStorage {
         }
       });
       return promise;
-    });    
+      */
+    });
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise<void>
@@ -640,6 +655,7 @@ listContainer may also have a type attribute:
         id: this.models[keyPath[last]]
       });
     }else{
+      console.log("Model not found:", keyPath);
       promise.reject(new Error(''+ServerError.MODEL_NOT_FOUND));
     }
     return promise;
