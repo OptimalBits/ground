@@ -49,7 +49,7 @@ class ModelDepot
         keyPath = [ModelClass.__bucket, args['_cid'] || args['_id']];
       }
     }
-    
+
     model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
 
     if(!model){
@@ -440,6 +440,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
        'fromArgs'];
 
     _.each(statics, (method) => __[method] = this[method]);
+    // _.each(this, (property) => __[property] = this[property]);
       
     _.extend(__, {
       __schema: Schema.extend(this.__schema, schema),
@@ -570,7 +571,29 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     return this.fromJSON(args, opts);
   }
-
+  
+  /**
+    Checks if the given id is a client id.
+    
+    @method isClientId
+    @returns {Boolean} true if client id, false otherwise.
+  */
+  static isClientId(id: string): boolean
+  {
+    return id.toString().indexOf('cid') === 0;
+  }
+  
+  /**
+    Checks if the model has the given id. This funcion checks both cid and id
+    on the given model.
+  
+    @method checkId
+  */
+  checkId(id: string): boolean
+  {
+    return this._cid === id || this._id === id;
+  }
+  
   /**
     Destroys the model. This memory is called automatically by the memory 
     management system and should never be called directly.
@@ -727,7 +750,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   */  
   isPersisted(): boolean
   {
-    return this.id().toString().indexOf('cid') !== 0;
+    return !Model.isClientId(this.id());
   }
   
   /**
