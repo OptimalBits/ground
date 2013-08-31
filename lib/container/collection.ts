@@ -232,7 +232,7 @@ export class Collection extends Container implements CollectionEvents
   */
   findById(id: string): Model
   {
-    return this['find']((item) => item.id() == id);
+    return this['find']((item) => item.checkId(id));
   }
   
   /**
