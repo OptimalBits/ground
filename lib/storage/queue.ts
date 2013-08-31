@@ -166,9 +166,10 @@ export class Queue extends Base implements IStorage
     }
     
     this.localStorage.fetch(keyPath).then((doc)=>{
-      var remotePromise = this.useRemote ? fetchRemote() : new Promise(doc);
-      
-      doc['_id'] = _.last(keyPath);
+      var id = doc['_id'] = _.last(keyPath);
+      var remotePromise = this.useRemote && !Model.isClientId(id) ?
+        fetchRemote() : new Promise(doc);
+
       promise.resolve([doc, remotePromise]);
     }, (err) => {
       if(!this.useRemote) return promise.reject(err);
@@ -298,7 +299,9 @@ export class Queue extends Base implements IStorage
   del(keyPath: string[], opts: {}): Promise<void>
   {
     return this.localStorage.del(keyPath, opts).then(()=>{
-      this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
+      if(!Model.isClientId(_.last(keyPath))){
+        this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
+      }
     });
   }
   
