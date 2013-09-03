@@ -684,12 +684,17 @@ export class Request {
   public render(templateUrl: string, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, locals: {}, cb?: (err?: Error)=>void): Request;
   public render(templateUrl: string, css: string, cb?: (err?: Error)=>void): Request;
-  public render(templateUrl, css?: string, locals?: {}, cb?: (err?: Error)=>void): Request {
+  public render(templateUrl: string, css: string[], cb?: (err?: Error)=>void): Request;
+  public render(templateUrl, css?: any, locals?: {}, cb?: (err?: Error)=>void): Request {
     return overload({
-      "String String Object Function": function(url, css, locals, cb){
+      "String Array Object Function": function(url, css, locals, cb){
         var fn = _.bind(this._render, this);
         this.node().render = wrap(fn, [{templateUrl: url, cssUrl: css}, locals], cb);
         return this;
+      },
+      "String String Object Function": function(url, css, locals, cb){
+        css = css ? [css] : [];
+        return this.render(templateUrl, css, locals, cb);
       },
       "Object": function(view){
         return this.render(view, Util.noop);
@@ -708,7 +713,13 @@ export class Request {
       "String String Function": function(templateUrl, css, cb){
         return this.render(templateUrl, css, {}, cb);
       },
+      "String Array Function": function(templateUrl, css, cb){
+        return this.render(templateUrl, css, {}, cb);
+      },
       "String String": function(templateUrl, css){
+        return this.render(templateUrl, css, {}, Util.noop);
+      },
+      "String Array": function(templateUrl, css){
         return this.render(templateUrl, css, {}, Util.noop);
       },
       "String String Object": function(templateUrl, css, locals){

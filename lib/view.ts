@@ -89,14 +89,14 @@ export interface ViewArgs
   templateUrl?: string;
   
   /**
-    CSS url. Url pointing to a CSS file. Works similar to the styles property,
+    CSS url. Url (or array of urls) pointing to a CSS file. Works similar to the styles property,
     with the main difference that the styles are fetched dynamically from
     a remote server.
   
     @property cssUrl
-    @type {String}
+    @type {String|Array}
   */
-  cssUrl?: string;
+  cssUrl?: any;
 }
 
 declare var curl;
@@ -130,7 +130,7 @@ export class View extends Base
   private templateStr: string;
   private templateUrl: string;
   private templateEngine: (str: string) => (args: any) => string;
-  private cssUrl: string;
+  private cssUrl: any;
   
   private parentView: View;
   
@@ -152,12 +152,19 @@ export class View extends Base
     @method fetchTemplate
     @static
   */
+  static fetchTemplate(templateUrl?: string, cssUrl?: string[]): Promise<string>
   static fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
+  static fetchTemplate(templateUrl?: string, cssUrl?: any): Promise<string>
   {
     var items = [], promise = new Promise();
   
     templateUrl && items.push('text!'+templateUrl);
-    cssUrl && items.push('css!'+cssUrl);
+    if(cssUrl){
+      cssUrl = _.map(!_.isArray(cssUrl) ? [cssUrl] : cssUrl, function(url){
+        return 'css!'+url;
+      });
+      items = items.concat(cssUrl);
+    }
   
     try{
       curl(items, function(templ){
