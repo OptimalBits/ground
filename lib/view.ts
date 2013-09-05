@@ -161,7 +161,8 @@ export class View extends Base
     templateUrl && items.push('text!'+templateUrl);
     if(cssUrl){
       cssUrl = _.map(!_.isArray(cssUrl) ? [cssUrl] : cssUrl, function(url){
-        return 'css!'+url;
+        //return 'css!'+url;
+        return 'style!'+url;
       });
       items = items.concat(cssUrl);
     }
