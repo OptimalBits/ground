@@ -1,6 +1,6 @@
 {
   "name": "gnd",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "engines": {
     "node": ">=0.6.10"
   },
@@ -20,7 +20,7 @@
     "index.js",
     "gnd.ts",
     "gnd-server.ts",
-    "dist",
+    "build",
     "bin",
     "lib",
     "third",
