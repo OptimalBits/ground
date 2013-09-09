@@ -45,18 +45,6 @@ module.exports = function(grunt) {
         }
       }
     },
-    compress: {
-      main: {
-        options: {
-          mode: 'gzip',
-          level: 9
-        },
-        expand: true,
-        //cwd: 'assets/',
-        src: ['build/gnd.min.js'],
-        dest: 'build/'
-      }
-    },
     
     // Constants for the Gruntfile so we can easily change the path for
     // our environments.
@@ -83,11 +71,10 @@ module.exports = function(grunt) {
   // Load the plugin that provides the "uglify" task.
   grunt.loadNpmTasks('grunt-typescript');
   grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-contrib-compress');
   grunt.loadNpmTasks('grunt-contrib-yuidoc');
 
   // Default task(s).
-  grunt.registerTask('default', ['typescript', 'uglify', 'compress', 'yuidoc']);
+  grunt.registerTask('default', ['typescript', 'uglify', 'yuidoc']);
   grunt.registerTask('docs', ['yuidoc']);
-  grunt.registerTask('build', ['typescript', 'uglify', 'compress']);
+  grunt.registerTask('build', ['typescript', 'uglify']);
 };
