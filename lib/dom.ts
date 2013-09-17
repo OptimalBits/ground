@@ -448,7 +448,8 @@ export class Query // implements QueryNodes
   /**
    *
    * Calculates the bounding client rectangle of the first matched DOM element.
-   * 
+   * @method rect
+   *
    * @return {Object} Returns a object with left, top, width and height
    */
   rect()
