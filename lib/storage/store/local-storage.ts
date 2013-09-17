@@ -22,10 +22,22 @@ module Gnd.Storage.Store {
   
     @class Storage.Store.LocalStore
     @extends Storage.Store.IStore
+    @constructor
+    
+    @param [useSession=false] Specifies if session storage should be used instead of defaul local storage.
+    @param [maxSize=1024*1024] Max size to be used in the storage in bytes.
+    When the storage gets filled it works as a LRU cache removing old entries. 
   */
   export class LocalStore implements IStore {
     // TODO: Expose the hardcoded cache size to the user somehow...
-    private localCache = new Cache(1024*1024); // 1Mb
+    private localCache;
+    
+  
+    constructor(useSession?: boolean, maxSize?: number){
+      useSession = _.isUndefined(useSession) ? false : useSession;
+      this.localCache = new Cache(useSession, maxSize || 1024*1024); // 1Mb
+    }
+    
     get(key: string): any {
       var doc = this.localCache.getItem(key);
       if(doc){

@@ -127,9 +127,11 @@ export class Cache extends Base {
   private map : {};
   private index : Index;
   private length : number = 0;
+  private storage;
   
-  constructor(maxSize?: number){ 
+  constructor(useSession?: boolean, maxSize?: number){
     super();
+    this.storage = useSession ? sessionStorage : localStorage;
     this.maxSize = maxSize || 5*1024*1024;
     this.populate();
   }
@@ -172,7 +174,7 @@ export class Cache extends Base {
   getItem(key){
     var old = this.map[key], tVal, value;
     if(old){
-      tVal = this.deserialize(localStorage[key]);
+      tVal = this.deserialize(this.storage[key]);
       value = tVal.value;
       value && this.setItem(key, value); // Touch to update timestamp.
     }
@@ -192,7 +194,7 @@ export class Cache extends Base {
     if(this.makeRoom(requested)){
       this.size += requested;
     
-      localStorage[key] = this.serialize(time, value);
+      this.storage[key] = this.serialize(time, value);
 
       if(old){
         idx = old.idx;
@@ -233,11 +235,11 @@ export class Cache extends Base {
   }
   
   private remove(key){
-    delete localStorage[key];
+    delete this.storage[key];
   }
   
   private populate(){
-    var ls = localStorage;
+    var ls = this.storage;
     var that = this;
     var i, len, key, tVal, size, list = [];
     this.size = 0;
