@@ -47,8 +47,7 @@
     "socket.io": "0.9.10",
     "acl": "*",
     "commander": "*",
-    "mkdirp": "*",
-    "time-grunt": "~0.1.1"
+    "mkdirp": "*"
   },
   "devDependencies": {
     "mocha": "*",
@@ -65,6 +64,7 @@
     "cookie": "*",
     "cookies": "*",
     "promises-aplus-tests": "*",
+    "time-grunt": "~0.1.1",
     "grunt": "~0.4.1",
     "grunt-typescript": "~0.2.0",
     "grunt-contrib-uglify": "~0.2.0",
