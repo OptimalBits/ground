@@ -42,6 +42,7 @@ module Gnd
      @param selector {String}
    */
   export function $(element: Element[]): Query;
+  export function $(element: Query): Query;
   export function $(element: Window): Query;
   export function $(element: Element): Query;
   export function $(selector: string, context?: HTMLElement): Query;
@@ -49,6 +50,10 @@ module Gnd
   export function $(selectorOrElement: any, context?: HTMLElement): Query
   {
     var ctx = context ? $(context)[0] : document;
+    
+    if(selectorOrElement instanceof Query){
+      return selectorOrElement;
+    }
     
     var
       query = new Query(),
@@ -420,7 +425,7 @@ export class Query // implements QueryNodes
   addClass(classNames: string): Query
   {
     _.each(this, (el) => {
-      var oldClassNames = _.compact(el.className.split(' '));
+      var oldClassNames = el.className ? _.compact(el.className.split(' ')) : [];
       el.className = _.union(oldClassNames, classNames.split(' ')).join(' ');
     });
     return this;
@@ -438,7 +443,7 @@ export class Query // implements QueryNodes
   removeClass(classNames): Query
   {
     _.each(this, (el) => {
-      var oldClassNames = _.compact(el.className.split(' '));
+      var oldClassNames = el.className ? _.compact(el.className.split(' ')) : [];
       el.className = 
         _.difference(oldClassNames, classNames.split(' ')).join(' ');
     });
