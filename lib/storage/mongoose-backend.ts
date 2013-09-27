@@ -193,7 +193,11 @@ export class MongooseStorage implements Storage.IStorage {
             break;
           case Gnd.Sequence:
           case Gnd.Collection:
-            res = [{ type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket] }];
+            if(!mapping[res.ref.bucket]){
+              throw new Error("Model bucket " + res.ref.bucket + " does not have a valid mapping name");
+            }else{
+              res = [{ type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket] }];
+            }
             break;
         }
         return res;
