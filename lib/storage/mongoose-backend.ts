@@ -108,20 +108,21 @@ export class MongooseStorage implements Storage.IStorage {
       modelId: { type: String }
     }));
     
-    this.compileModels(models, mongoose);
-    
-    legacy && _.extend(this.models, legacy);
+    this.compileModels(models, mongoose, legacy);
   }
 
   /**
     Compiles Gnd models into Mongoose Models.
   */
-  private compileModels(models: IModels, mongoose)
+  private compileModels(models: IModels, mongoose, legacy?)
   { 
     var nameMapping = {};
     for(var name in models){
       var model = models[name];
       nameMapping[model.__bucket] = name;
+    }
+    for(var bucket in legacy){
+      nameMapping[bucket] = legacy[bucket].modelName;
     }
 
     for(var name in models){
@@ -132,7 +133,7 @@ export class MongooseStorage implements Storage.IStorage {
         var translated = this.translateSchema(mongoose, nameMapping, schema);
         var mongooseSchema =
             new mongoose.Schema(translated, {strict: false});
-      // new mongoose.Schema(translated); // strict false is just temporary...
+        // new mongoose.Schema(translated); // strict false is just temporary...
 
         if(model['__mongoose']){
           var extra = model['__mongoose'];
@@ -163,6 +164,8 @@ export class MongooseStorage implements Storage.IStorage {
           mongoose.model(name, mongooseSchema, bucket);
       }
     }
+    
+    legacy && _.extend(this.models, legacy);
   }
 
   private translateSchema(mongoose, mapping, schema: Schema): any
@@ -375,8 +378,7 @@ export class MongooseStorage implements Storage.IStorage {
 
   private findAll(Model: IMongooseModel, query: Storage.IStorageQuery): Promise<any[]>
   {
-    query = query || {};
-    
+    query = query || {};  
     var promise = new Promise();
     Model
       .find(query.cond, query.fields, query.opts)
@@ -398,7 +400,7 @@ export class MongooseStorage implements Storage.IStorage {
                    opts: {}): Promise<any[]>
   {
     query = query || {};
-    
+        
     var promise = new Promise();
     Model
       .findById(id)
