@@ -187,7 +187,7 @@ export class Sequence extends Container implements SequenceEvents
       this.retain();
       using.storageQueue.all(keyPath, {}, {}).then((result) => {
         this.resync(result[0]);
-        result[1].then((items) => this.resync(items))
+        result[1].then((items?) => this.resync(items))
           .ensure(() => {
             this.resolve(this);
             this.release();
@@ -461,13 +461,23 @@ export class Sequence extends Container implements SequenceEvents
     );
   }
 
-  public resync(remoteItems: any[]): Promise<any>
+  public resync(remoteItems?: any[]): Promise<any>
   {
     return this.resyncMutex(() => {
-      var commands = Sequence.merge(remoteItems, this.items, Sequence.mergeFns);
-      return this.execCmds(commands).then(() => {
-        this.emit('resynced:');
-      });
+      if(remoteItems){
+        return this._resync(remoteItems);
+      }else{
+        using.storageQueue.allRemote(this.getKeyPath(), {}, {})
+          .then((items) => this._resync(items));
+      }
+    });
+  }
+  
+  private _resync(items: any[]): Promise<any>
+  {
+    var commands = Sequence.merge(items, this.items, Sequence.mergeFns);
+    return this.execCmds(commands).then(() => {
+      this.emit('resynced:');
     });
   }
 

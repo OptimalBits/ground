@@ -382,28 +382,33 @@ export class Queue extends Base implements IStorage
     var remotePromise = new Promise();
     
     var localOpts = _.extend({snapshot:true}, opts);
-    
-    var allRemote = () => this.remoteStorage.all(keyPath, query, opts)
-      .then((remote) => this.updateLocalSequence(keyPath, opts, remote))
-      .then(()=> this.localStorage.all(keyPath, {}, localOpts));
-  
+     
     this.localStorage.all(keyPath, query, localOpts).then((result: any) => {
       promise.resolve([result, remotePromise]);
       
       if(this.useRemote){
-        allRemote()
+        this.allRemote(keyPath, query, opts)
           .then((itemsRemote) => remotePromise.resolve(itemsRemote))
           .fail((err) => remotePromise.reject(err));
       }
     }, (err) => {
       if(!this.useRemote) return promise.reject(err);
 
-      allRemote().then((itemsRemote)=>{
+      this.allRemote(keyPath, query, opts).then((itemsRemote)=>{
         remotePromise.resolve(itemsRemote);
         promise.resolve([itemsRemote, remotePromise]);
       }).fail((err) => promise.reject(err));
     });
     return promise;
+  }
+  
+  allRemote(keyPath: string[], query: {}, opts: {})
+  {
+    var localOpts = _.extend({snapshot:true}, opts);
+    
+    return this.remoteStorage.all(keyPath, query, opts)
+      .then((remote) => this.updateLocalSequence(keyPath, opts, remote))
+      .then(()=> this.localStorage.all(keyPath, {}, localOpts));
   }
 
   deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
