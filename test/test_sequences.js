@@ -877,6 +877,57 @@ describe('Sequence Datatype', function(){
       });
     });
   });
+  
+  describe('Offline', function(){
+    it('Insert offline resyncs when going online', function(done){
+      getSequence(parade.id(), sm1, q1, true, function(sequence){
+        
+        var tiger = Animal.create({name:"tiger"}, true);
+        
+        q1.waitUntilSynced(function(){
+          socket.once('disconnect', function(){
+            Gnd.Ajax.put('/parade/'+parade.id()+'/animals/'+tiger.id(), null).then(function() {
+              sequence.once('inserted:', function(){
+                expect(sequence.count).to.be(1);
+                expect(sequence.first()).to.have.property('name', 'tiger');
+                tiger.release();
+                done();
+              });
+              
+              socket.socket.connect();
+            });
+          });
+          socket.disconnect();
+        });
+      });
+    })
+    
+    it('Remove offline resyncs when going online', function(done){
+      getSequence(parade.id(), sm1, q1, true, function(sequence){
+        
+        var tiger = Animal.create({name:"tiger"}, true);
+        
+        sequence.insert(0, tiger);
+        
+        q1.waitUntilSynced(function(){
+          expect(sequence.count).to.be(1);
+          expect(sequence.first()).to.have.property('name', 'tiger');
+          
+          socket.once('disconnect', function(){
+            Gnd.Ajax.del('/parade/'+parade.id()+'/animals/'+sequence.items[0].id, null).then(function() {
+              sequence.once('removed:', function(){
+                expect(sequence.count).to.be(0);
+                done();
+              });
+              
+              socket.socket.connect();
+            });
+          });
+          socket.disconnect();
+        });
+      });
+    })
+  });
 
   describe('Eventual consistency', function(){
     var socket3;

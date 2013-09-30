@@ -107,8 +107,7 @@ app.del('/zoo/:zooId/animals/:id', function(req, res){
   });
 });
 
-
-app.put('/parade/:seqId/seq/animals/:id', function(req, res){
+app.put('/parade/:seqId/animals/:id', function(req, res){
   console.log('pushing '+req.params.id+' to '+req.params.seqId);
   gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], 
                                  null, 
@@ -119,9 +118,9 @@ app.put('/parade/:seqId/seq/animals/:id', function(req, res){
   });
 });
 
-app.del('/parade/:seqId/seq/animals/:id', function(req, res){
+app.del('/parade/:seqId/animals/:id', function(req, res){
   console.log('deleting '+req.params.id+' from '+req.params.seqId);
-  gndServer.storage.deleteItem(['parade', req.params.seqId, 'animals'],
+  mongooseStorage.deleteItem(['parade', req.params.seqId, 'animals'],
                                req.params.id, {}).then(function(){
     res.send(204);
   }).fail(function(err){

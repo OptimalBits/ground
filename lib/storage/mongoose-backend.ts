@@ -449,13 +449,11 @@ listContainer may also have a type attribute:
         cb(err, begin);
       });
     }else{
-      this.listContainer.find()
-        .where('_id').equals(id)
-        .exec((err, docs)=>{
-          if(err) return cb(err);
-          if(docs.length !== 1) return cb(Error('container '+id+' not found')); 
-          cb(null, docs[0]);
-        });
+      this.listContainer.find({_id: id}, (err, docs) => {
+        if(err) return cb(err);
+        if(docs.length !== 1) return cb(Error('container '+id+' not found')); 
+        cb(null, docs[0]);
+      });
     }
   }
 
