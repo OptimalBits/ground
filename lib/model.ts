@@ -380,10 +380,15 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     this.opts.autosync && this.keepSynced();
   }
   
-  resync(args): void
+  resync(args?): void
   {
-    var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
-    this.set(strictArgs, {nosync: true});
+    if(args){
+      var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
+      this.set(strictArgs, {nosync: true});
+    }else{
+      // Fetch the model from the server.
+      using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>this.resync(args));
+    }
   }
 
   /**

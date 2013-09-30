@@ -64,7 +64,7 @@ export class Manager extends Base {
           log('Observe', doc.getKeyPath().join('/'))
         });
         
-        // TODO: We need to also resync in case the server has new data
+        doc.resync();
       });
     }
     

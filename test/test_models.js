@@ -382,63 +382,53 @@ describe('Model Datatype', function(){
     //  as soon as we are back online.
     //
     it('delete', function(done){
-      var tempAnimal = new Animal();
-      tempAnimal.set({legs : 8, name:'spider-pig'});
+      var tempAnimal = Animal.create({legs : 8, name:'spider-pig'}, true);
       
-      tempAnimal.save().then(function(){
-        tempAnimal.keepSynced();
-      });
-      
-      storageQueue.once('synced:', function(){
+      storageQueue.waitUntilSynced(function(){
         expect(tempAnimal).to.have.property('_id');
         
         socket.disconnect();
-        tempAnimal.remove().then(function(){
-          socket.socket.connect();              
+        
+        socket.once('connect', function(){
+          storageQueue.waitUntilSynced(function(){
+            Animal.findById(tempAnimal._id).fail(function(err){
+              expect(err).to.be.an(Error);
+              done();
+            });
+          });
         });
         
-        storageQueue.once('synced:', function(){
-          Animal.findById(tempAnimal._id).fail(function(err){
-            expect(err).to.be.an(Error);
-            done();
-          });
+        tempAnimal.remove().then(function(){
+          socket.socket.connect();
         });
       });
       
     });
     
     it('delete a model deletes it also from local cache', function(done){
-      var spiderPig = new Animal();
-      spiderPig.set({legs : 8, name:'spider-pig'});
-      
-      spiderPig.save().then(function(){
-        spiderPig.keepSynced();
-      });
-          
-      storageQueue.once('synced:', function(){
+      var spiderPig = Animal.create({legs : 8, name:'spider-pig'}, true);
+                
+      storageQueue.waitUntilSynced(function(){
         expect(spiderPig).to.have.property('_id');
         
         spiderPig.remove().then(function(){
           
-          socket.disconnect();
-            
-          Animal.findById(spiderPig.id()).fail(function(err){
-            expect(err).to.be.an(Error);
+          storageQueue.waitUntilSynced(function(){
+            socket.once('disconnect', function(){
+              Animal.findById(spiderPig.id()).then(function(doc){
+                console.log(doc)
+              }, function(err){
+                expect(err).to.be.an(Error);
 
-            socket.socket.connect();
-            socket.once('connect', done);
+                socket.socket.connect();
+                socket.once('connect', done);
+              });
+            })
+          
+            socket.disconnect();
           });
         });
       });
-    });
-    
-    //
-    //  A model is deleted while being offline, as soon as we get back
-    //  online the client must delete the object.
-    //
-    it.skip('serverside delete while offline', function(done){
-      // TO IMPLEMENT;
-      done();
     });
     
     //
@@ -446,34 +436,25 @@ describe('Model Datatype', function(){
     // updated as soon as we get online.
     // (Note: we do not handle conflicts yet).
     // 
-    it.skip('serverside update while offline', function(done){
-      var tempAnimal = new Animal();
-      tempAnimal.set({legs : 8, name:'spider'});
-      tempAnimal.keepSynced();
-      tempAnimal.save();
+    it('server side update while offline', function(done){
+      var spider = Animal.create({legs : 8, name:'spider'}, true);
       
       storageQueue.waitUntilSynced(function(){
-        var obj = {legs:7};
-        Gnd.Ajax.put('/animals/'+tempAnimal.id(), obj).then(function(){
-          socket.socket.disconnect();
-          socket.socket.connect();
-          
-          storageQueue.waitUntilSynced(function(){
-            Animal.findById(tempAnimal.id()).then(function(doc){
-              doc.on('changed:', function(){
-                expect(doc.legs).to.be(7);
-                done();
-              });
-              // This case will be worked-out later...
-              // expect(tempAnimal.legs).to.be(7);
-            });
+        
+        socket.once('disconnect', function(){
+          var obj = {legs:7};
+          Gnd.Ajax.put('/animals/'+spider.id(), obj).then(function(){
+            
+            spider.once('legs', function(legs){
+              expect(legs).to.be(7);
+              done();
+            })
+            
+            socket.socket.connect(); 
           });
-        });
+        })
+        socket.disconnect();
       });
-    });
-    it.skip('serverside update while offline with multiple instances', function(done){
-      // TO IMPLEMENT;
-      done();
     });
   });
 

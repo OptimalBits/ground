@@ -83,29 +83,30 @@ var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
 //
 app.put('/animals/:id', function(req, res){
   console.log("Updating animals:");
-  mongooseStorage.models.animals.update({_id:req.params.id}, req.body, function(err){
-    if (err) throw new Error('Error updating animal:'+req.params.id+' '+err);
+  mongooseStorage.put(['animals', req.params.id], req.body).then(function(){
     res.send(204);
+  }, function(err){
+    console.log(Error('Error updating animal:'+req.params.id+' '+err));
+    res.send(500);
   });
 });
 
-app.put('/zoos/:zooId/animals/:id', function(req, res){
-  res.send(204);
-});
-
-app.del('/zoos/:zooId/animals/:id', function(req, res){
-  mongooseStorage.models.zoo.findById(req.params.zooId, function(err, zoo){
-    if (err) {
-      throw new Error('Error remove animal:'+req.params.id+' from Zoo:'+req.params.zooId+' '+err);
-    } else {
-      var index = zoo.animals.indexOf(req.params.id);
-      zoo.animals.splice(index, 1);
-      zoo.save(function(err){
-        res.send(204);
-      });
-    }
+app.put('/zoo/:zooId/animals/:id', function(req, res){
+  mongooseStorage.add(['zoo', req.params.zooId, 'animals'], ['animals'], [req.params.id], {}).then(function(){
+    res.send(204);
+  }, function(){
+    res.send(500);
   });
 });
+
+app.del('/zoo/:zooId/animals/:id', function(req, res){
+  mongooseStorage.remove(['zoo', req.params.zooId, 'animals'], ['animals'], [req.params.id], {}).then(function(){
+    res.send(204);
+  }, function(){
+    res.send(500);
+  });
+});
+
 
 app.put('/parade/:seqId/seq/animals/:id', function(req, res){
   console.log('pushing '+req.params.id+' to '+req.params.seqId);

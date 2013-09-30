@@ -23,6 +23,7 @@
 */
 
 /// <reference path="../base.ts" />
+/// <reference path="../promise.ts" />
 
 /**
   @module Gnd
@@ -59,6 +60,16 @@ module Gnd.Sync {
       @method emit
     */
     emit:(event: string, ...params: any[]) => void;
+    
+    /**
+      Resyncs the object with server data. The mechanism used to resync an
+      object is implemented specifically for every type of object.
+      
+      @method resync
+      @param data data to resync the object, if left undefined, the method
+      should fetch the data by itself.
+    */
+    resync(data?: any): Promise<any>;
   };
   
   /**

@@ -157,30 +157,31 @@ export class Queue extends Base implements IStorage
   {
     var promise = new Promise();
     
-    var fetchRemote = ()=>{
-      return this.remoteStorage.fetch(keyPath).then((docRemote) => {
-        return this.localStorage.put(keyPath, docRemote, {}).then(() => {
-          return docRemote;
-        });
-      });
-    }
-    
     this.localStorage.fetch(keyPath).then((doc)=>{
       var id = doc['_id'] = _.last(keyPath);
       var remotePromise = this.useRemote && !Model.isClientId(id) ?
-        fetchRemote() : new Promise(doc);
+        this.fetchRemote(keyPath) : new Promise(doc);
 
       promise.resolve([doc, remotePromise]);
     }, (err) => {
       if(!this.useRemote) return promise.reject(err);
 
-      fetchRemote().then((docRemote)=>{
+      this.fetchRemote(keyPath).then((docRemote)=>{
         promise.resolve([docRemote, new Promise(docRemote)]);
       }).fail((err)=>{
         promise.reject(err);
       });
     });
     return promise;
+  }
+  
+  fetchRemote(keyPath: string[]): Promise<any>
+  {
+    return this.remoteStorage.fetch(keyPath).then((docRemote) => {
+      return this.localStorage.put(keyPath, docRemote, {}).then(() => {
+        return docRemote;
+      });
+    });
   }
 
   private execCmds(keyPath: string[], commands: MergeCommand[]): Promise<void[]>
