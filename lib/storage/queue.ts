@@ -215,8 +215,13 @@ export class Queue extends Base implements IStorage
     });
   }
   
+  //
   // CHALLENGE: This method must be ATOMIC, and this only holds if using
   // a synchronouse local store.
+  // This can be solved using a transacional schema, where all storages
+  // are implemented with the delegate pattern, and the super class Store
+  // has a built in transactional schema.
+  //
   private updateLocalCollection(keyPath: string[], 
                                 query: IStorageQuery, 
                                 options: {},
@@ -333,6 +338,13 @@ export class Queue extends Base implements IStorage
     });
   }
   
+  findRemote(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean})
+  {
+    return this.remoteStorage.find(keyPath, query, opts).then(
+      (items) => this.updateLocalCollection(keyPath, query, opts, items)
+    );
+  }
+  
   find(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean}): Promise<any[]>
   {
     var promise = new Promise();
@@ -341,14 +353,11 @@ export class Queue extends Base implements IStorage
     
     var localOpts = _.extend({snapshot:true}, opts);
     
-    var findRemote = () => this.remoteStorage.find(keyPath, query, opts)
-      .then((remote) => this.updateLocalCollection(keyPath, query, opts, remote));
-    
     this.localStorage.find(keyPath, query, localOpts).then((items)=>{
       promise.resolve([items, remotePromise]);
       
       if(useRemote){
-        findRemote()
+        this.findRemote(keyPath, query, opts)
           .then((itemsRemote) => remotePromise.resolve(itemsRemote))
           .fail((err) => remotePromise.reject(err));
       }else{
@@ -357,7 +366,7 @@ export class Queue extends Base implements IStorage
     }, (err) => {
       if(!useRemote) return promise.reject(err);
 
-      findRemote().then((itemsRemote)=>{
+      this.findRemote(keyPath, query, opts).then((itemsRemote)=>{
         remotePromise.resolve(itemsRemote);
         promise.resolve([itemsRemote, remotePromise]);
       }).fail((err)=>{

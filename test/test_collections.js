@@ -622,17 +622,44 @@ describe('Collection Datatype', function(){
         });
     });
     
-    it.skip('serverside add item to collection offline generates added event when going online', function(done){
-    
-    
-    });
-  
     //
     //  An item is added from a collection on the server, when we come back online
     //  the local cache should be updated with the added item.
     //
-    it.skip('serverside add item while offline', function(done){
-      done();
+    it('serverside add item while offline', function(done){
+      var zoo = Zoo.create({}, true)
+      var tiger = Animal.create({name:"tiger"}, true);
+      
+      storageQueue.waitUntilSynced(function(){
+        var animals = zoo.all(Animal);
+        socket.disconnect();
+      
+        Gnd.Ajax.put('/zoo/'+zoo.id()+'/animals/'+tiger.id(), null).then(function() {
+          animals.once('resynced:', function(){
+            expect(animals.count).to.be(1);
+            done();
+          });
+          socket.socket.connect();
+        });
+      });
+    });
+    
+    it('serverside add item to collection offline generates added event when going online', function(done){
+      var zoo = Zoo.create({}, true)
+      var tiger = Animal.create({name:"tiger"}, true);
+      
+      storageQueue.waitUntilSynced(function(){
+        var animals = zoo.all(Animal);
+        socket.disconnect();
+      
+        Gnd.Ajax.put('/zoo/'+zoo.id()+'/animals/'+tiger.id(), null).then(function() {
+          animals.once('added:', function(){
+            expect(animals.count).to.be(1);
+            done();
+          });
+          socket.socket.connect();
+        });
+      });
     });
     
     it('removed item from collection online is not available offline', function(done){
@@ -704,7 +731,7 @@ describe('Collection Datatype', function(){
             onlineAnimals.once('resynced:', function(){
               expect(onlineAnimals.count).to.be(1);
                 
-              Gnd.Ajax.del('/zoos/'+zoo.id()+'/animals/'+onlineTiger.id(), null).then(function() {
+              Gnd.Ajax.del('/zoo/'+zoo.id()+'/animals/'+onlineTiger.id(), null).then(function() {
                 // The server has deleted the model, but we do not know it yet.
                 // When we try to get it, we should first get the local version, and quite soon get the deleted notification.
                   
@@ -740,7 +767,25 @@ describe('Collection Datatype', function(){
       });
     });
     
-    it.skip('serverside remove item from collection offline generates removed event when going online', function(done){
+    it('serverside remove item from collection offline generates removed event when going online', function(done){
+      var zoo = Zoo.create({}, true)
+      var tiger = Animal.create({name:"tiger"}, true);
+      
+      var animals = zoo.all(Animal);
+      animals.add(tiger);
+      
+      storageQueue.waitUntilSynced(function(){
+        
+        socket.disconnect();
+      
+        Gnd.Ajax.del('/zoo/'+zoo.id()+'/animals/'+tiger.id(), null).then(function() {
+          animals.once('removed:', function(){
+            expect(animals.count).to.be(0);
+            done();
+          });
+          socket.socket.connect();
+        });
+      });
     });
 
     
@@ -1029,6 +1074,10 @@ describe('Collection Datatype', function(){
     it.skip('Add models to orphan collection');
     it.skip('Delete models from orphan collection');
     
+  });
+  
+  describe('Serverless', function(){
+  
   });
   
   describe('Edge cases', function(){

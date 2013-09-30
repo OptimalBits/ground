@@ -55,7 +55,7 @@ module Gnd
     
     public deleteFn: (model: Model) => void;
     
-    public resyncFn: (items: any[]) => void;
+    public resyncFn: (items?: any[]) => void;
     
     /**
       Filtering function to be used for this Container.
@@ -75,7 +75,7 @@ module Gnd
     public _keepSynced: boolean = false;
     
     // Abstract
-    public resync(items: any[]): Promise<any>
+    public resync(items?: any[]): Promise<any>
     {
       return new Promise(true);
     }
@@ -132,7 +132,7 @@ module Gnd
       this.model = model;
       this.parent = parent;
 
-      this.resyncFn = (items) => this.resync(items);
+      this.resyncFn = (items?) => this.resync(items);
       
       parent && parent.isAutosync() && this.autosync(true);
     }
@@ -274,7 +274,7 @@ module Gnd
         if(this.parent.isPersisted()){
           using.syncManager.observe(this);
         }else{
-          this.parent.on('id', () => {
+          this.parent.whenPersisted().then(() => {
             using.syncManager.observe(this);
           });
         }

@@ -444,38 +444,49 @@ export class Collection extends Container implements CollectionEvents
     @param items {Array} array of items to synchronize the collection with.
     @protected
   **/
-  public resync(items: any[]): Promise<any>
+  public resync(items?: any[]): Promise<any>
   {
-    return this.resyncMutex(()=>{
-      var 
-        itemsToRemove = [],
-        itemsToAdd = [];
-      
-      this['each'](function(item){
-        var id = item.id(), shouldRemove = true;
-        for(var i=0; i<items.length; i++){
-          if(id == items[i]._id){
-            item.resync(items[i]);
-            shouldRemove = false;
-            break;
-          }
+    return this.resyncMutex(()=>{     
+      if(items){
+        return this._resync(items);
+      }else{
+        // Resync called without items assumes this collection is persisted
+        return using.storageQueue.findRemote(this.getKeyPath(), this.opts.query, {})
+          .then((items) => this._resync(items));
+      }
+    });
+  }
+  
+  private _resync(items: any[]): Promise<any>
+  {
+    var 
+      itemsToRemove = [],
+      itemsToAdd = [];
+ 
+    this['each'](function(item){
+      var id = item.id(), shouldRemove = true;
+      for(var i=0; i<items.length; i++){
+        if(id == items[i]._id){
+          item.resync(items[i]);
+          shouldRemove = false;
+          break;
         }
-        shouldRemove && itemsToRemove.push(id);
-      });
-    
-      _.each(items, (item) => {
-        if(!this.findById(item._id)) itemsToAdd.push(item);
-      })
-    
-      return this.remove(itemsToRemove, {nosync: true})
-        .then(() => _.map(
-          _.unique(itemsToAdd), 
-          (args) => (<any>this.model).create(args, this.autosync()).autorelease()))
-        .then((models: Model[]) => this.add(models, {nosync: true}))
-        .then(() =>{
-          // We must not return this here!.
-          this.emit('resynced:');
-        });
+      }
+      shouldRemove && itemsToRemove.push(id);
+    });
+
+    _.each(items, (item) => {
+      if(!this.findById(item._id)) itemsToAdd.push(item);
+    })
+
+    return this.remove(itemsToRemove, {nosync: true})
+      .then(() => _.map(
+        _.unique(itemsToAdd), 
+        (args) => (<any>this.model).create(args, this.autosync()).autorelease()))
+      .then((models: Model[]) => this.add(models, {nosync: true}))
+      .then(() =>{
+        // We must not return this here!.
+        this.emit('resynced:');
     });
   }
 }
