@@ -18,8 +18,9 @@ module Gnd {
     @param args* {Any}
   */ 
   export function log(...args: any[]){
-    prependTimestamp(args);
-    Gnd['debug'] && console.log.apply(console, args);
+    if(Gnd['debugMode']){
+      prependTimestamp(args);
+      console.log.apply(console, args);
+    }
   }
-
 }
