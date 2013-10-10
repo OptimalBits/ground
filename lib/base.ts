@@ -336,8 +336,6 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     this._destroyed = true;
     this._destroyedTrace = "";// Error().stack;
     this.off();
-    
-    // TODO: nullify this object.
   }
   
   /**
