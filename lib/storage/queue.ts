@@ -3,7 +3,7 @@
   MIT Licensed.
 */
 /**
-  Storage Queue
+  Storage Queue.
 */
 
 /// <reference path="storage.ts" />
@@ -38,6 +38,15 @@ module Gnd.Storage {
     oldItemIds?: string[];
     fn?: (cb:()=>void)=>void; //for sync tasks
   }
+  
+  /**
+    The storage queue is in reality a Transaction Log.
+    
+    With this in mind we need to implement it as such. Every cmd needs a
+    unique ID. The transaction log needs a server counterpart so that processed
+    IDs can be used to detect duplicated commands.
+  
+  */
   
 /**
   Storage Queue
@@ -270,7 +279,7 @@ export class Queue extends Base implements IStorage
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
           var elemKeyPath = itemKeyPath.concat(doc._id);
-          doc._cid = doc._id; // ??
+    //      doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc, {});
         })
         .then(() => storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}))
@@ -297,9 +306,14 @@ export class Queue extends Base implements IStorage
   
   put(keyPath: string[], args:{}, opts: {}): Promise<void>
   {
-    return this.localStorage.put(keyPath, args, opts).then<void>(()=>{
+    return this.putLocal(keyPath, args, opts).then<void>(()=>{
       this.addCmd({cmd:'update', keyPath: keyPath, args: args}, opts);
     });
+  }
+  
+  putLocal(keyPath: string[], args:{}, opts: {}): Promise<void>
+  {
+    return this.localStorage.put(keyPath, args, opts);
   }
   
   del(keyPath: string[], opts: {}): Promise<void>
@@ -531,7 +545,7 @@ export class Queue extends Base implements IStorage
         }
       }
     } else{
-      console.log('busy with ', this.currentTransfer);
+      Gnd.log('busy with ', this.currentTransfer);
     }
   }
   
@@ -606,17 +620,10 @@ export class Queue extends Base implements IStorage
     var syncFn = () => Util.nextTick(() => this.synchronize());
     
     if(!err){ // || (err.status >= 400 && err.status < 500)){ 
-      //
-      // Note: since we cannot have an atomic operation for updating the server and the
-      // execution queue, the same command could be executed 2 or more times in 
-      // some hazardous scenarios (if the browser crashes after updating the server
-      // and before the local storage). revisions should fix this problem.
-      // PROPOSAL. have a queue model in the server with a rev number.
-      //
       var cmd = this.dequeueCmd();
       if(!cmd) return;
       
-      console.log("Completed queue command", cmd);
+      Gnd.log("Completed queue command", cmd);
       
       var opts = {insync: true};
       
@@ -638,7 +645,7 @@ export class Queue extends Base implements IStorage
       })().ensure(() => syncFn());
       
     }else{
-      console.log("Queue error:"+ err, this.queue[0]);
+      Gnd.log("Queue error:"+ err, this.queue[0]);
       
       // HACK
       if(err.message == 'Invalid ObjectId'){
