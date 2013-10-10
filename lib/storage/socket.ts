@@ -60,17 +60,20 @@ export class Socket implements IStorage {
     }
   
     function delayedEmit(connectedEvent, failedEvent){
-      function errorFn(){
-        socket.removeListener(succeedFn, errorFn);
+      var errorFn = function(){
+        socket.removeListener(connectedEvent, succeedFn);
+        socket.removeListener('error', errorFn);
         promise.reject(Error('Socket connection failed'));
       }
-      function succeedFn(){
+      var succeedFn = function(){
         socket.removeListener(failedEvent, errorFn);
+        socket.removeListener('error', errorFn);
         emit();
       }
     
-      socket.once(failedEvent, errorFn);
-      socket.once(connectedEvent, succeedFn);
+      socket.on(failedEvent, errorFn);
+      socket.on('error', errorFn);
+      socket.on(connectedEvent, succeedFn);
     }
   
     if(socket.socket.connected){
