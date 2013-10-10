@@ -99,6 +99,10 @@ module Gnd
   export class DateType extends SchemaType
   {
     public static type = Date;
+    
+    fromObject(dateString){
+      return new Date(dateString);
+    }
   }
   
   export class ObjectIdType extends SchemaType
