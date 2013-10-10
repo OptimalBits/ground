@@ -344,7 +344,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     this.__schema = this.__schema || this.constructor.__schema;
     _.extend(this, this.__schema.fromObject(args));
     
-    this._cid = this._id || this._cid || Util.uuid();
+   // this._cid = this._id || this._cid || Util.uuid();
+    this._cid = this._cid || Util.uuid();
 
     this.opts = (_.isString(bucket) ? opts : bucket) || {}
     this.__bucket = _.isString(bucket) ? bucket : null;
@@ -384,10 +385,14 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     if(args){
       var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
-      this.set(strictArgs, {nosync: true});
+      this.set(strictArgs, {nosync: true, nocache: true});
     }else{
       // Fetch the model from the server.
-      using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>this.resync(args));
+      using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
+        // HACK to avoid change: events due to different cids
+        delete args['_cid'];
+        this.resync(args)
+      });
     }
   }
 
@@ -889,8 +894,11 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     });
 
     this.on('changed:', (doc, options) => {
-      if(!options || ((!options.nosync) && !_.isEqual(doc, options.doc))){
+      options = options || {};
+      if(!options.nosync && !_.isEqual(doc, options.doc)){
         this.update(doc);
+      }else if(!options.nocache){
+        this._storageQueue.putLocal(this.getKeyPath(), doc, {});
       }
     });
     return this;
