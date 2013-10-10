@@ -138,9 +138,7 @@ module Gnd
     }
     
     destroy()
-    {
-      Util.nextTick(() => this.items = null);
-      
+    {      
       var keyPath = this.getKeyPath();
       if(keyPath){
         var key = Storage.Queue.makeKey(keyPath);
