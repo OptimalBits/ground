@@ -297,7 +297,7 @@ describe('Storage Queue', function(){
           expect(id).to.be.ok();
           storage.once('created:'+id, function(sid){
             socket.disconnect();
-            Gnd.Ajax.put('/parade/'+keyPath[1]+'/seq/animals/'+sid, null).then(function(res) {
+            Gnd.Ajax.put('/parade/'+keyPath[1]+'/animals/'+sid, null).then(function(res) {
               socket.once('connect', function(){
                 storage.all(keyPath, {}, {}).then(function(result){
                   var docs = result[0];
@@ -369,7 +369,7 @@ describe('Storage Queue', function(){
           expect(items).to.have.property('length',2);
           expect(items[0].doc).to.have.property('name', 'tiger');
           socket.disconnect();
-          Gnd.Ajax.del('/parade/'+keyPath[1]+'/seq/animals/'+items[0].id, null).then(function() {
+          Gnd.Ajax.del('/parade/'+keyPath[1]+'/animals/'+items[0].id, null).then(function() {
             socket.once('connect', function(){
               storage.all(keyPath, {}, {}).then(function(result){
                 var docs = result[0];
