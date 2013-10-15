@@ -67,7 +67,7 @@ describe('Collection Datatype', function(){
     Zoo.create({}, true).then(function(newZoo){
       zoo = newZoo;
       zoo.save();
-      zoo.once('id', function(){
+      zoo.once('persisted:', function(){
         done();
       });
     });   
@@ -97,7 +97,7 @@ describe('Collection Datatype', function(){
       zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         
-        var tiger = new Animal({name:"tiger"});
+        var tiger = Animal.create({name:"tiger"});
         animals.add(tiger).then(function(){
           tiger.release();
           storageQueue.waitUntilSynced(function(){
@@ -378,7 +378,6 @@ describe('Collection Datatype', function(){
 
                 animals.once('removed:', function(item){
                   expect(item).to.be.an(Object);
-                  expect(item).to.have.property('_id');
                   expect(item.id()).to.be.eql(otherAnimal.id());
                   Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
                   done();
@@ -436,7 +435,7 @@ describe('Collection Datatype', function(){
                   
                 animals.once('removed:', function(item){
                   expect(item).to.be.an(Object);
-                  expect(item).to.have.property('_id');
+                  expect(item.isPersisted()).to.be.ok();
                   expect(item.id()).to.be.eql(otherAnimal.id());
                   Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
                   done();

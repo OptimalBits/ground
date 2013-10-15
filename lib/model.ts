@@ -281,8 +281,8 @@ export class ModelProxy extends Promise<Model>
   
        Base model schema:
        {
-         _id: ObjectId,
          _cid: String,
+         _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
        }
   
   @class Model
@@ -298,12 +298,15 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   static __bucket: string;
   static __strict: boolean;
 
-
   static __schema: Schema =
     new Schema({
       _cid: String, 
-      _id: Schema.ObjectId,
-      _persisting: Boolean
+      _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
+            
+      // TO DEPRECATE:
+      _id: Schema.ObjectId, 
+      _persisting: Boolean,
+      _persisted: Boolean,
     });
 
   static schema(){
@@ -317,6 +320,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   private __rev: number = 0;
 
   public _persisting: boolean;
+  private _persisted: boolean;
 
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
@@ -344,7 +348,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     this.__schema = this.__schema || this.constructor.__schema;
     _.extend(this, this.__schema.fromObject(args));
     
-   // this._cid = this._id || this._cid || Util.uuid();
+    // this._cid = this._id || this._cid || Util.uuid();
     this._cid = this._cid || Util.uuid();
 
     this.opts = (_.isString(bucket) ? opts : bucket) || {}
@@ -356,7 +360,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       using.storageQueue || new Storage.Queue(using.memStorage);
 
     if(!this.isPersisted()){
-      this._storageQueue.once('created:'+this.id(), (id) => this.id(id));
+      this._storageQueue.once('created:'+this.id(), () => {
+        this._persisted = true;
+        this.emit('persisted:');
+      });
     }
 
     var keyPath = this.getKeyPath();
@@ -651,10 +658,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       this._id = id;
 
       this.isPersisted() && this.emit('persisted:');
-      
-      this.emit('id', id); // DEPRECATED! (used in chat example)
     }
-    return this._id || this._cid;
+    return this._cid;
   }
 
   /**
@@ -760,7 +765,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   */  
   isPersisted(): boolean
   {
-    return !Model.isClientId(this.id());
+    //return !Model.isClientId(this.id());
+    return this._persisted;
   }
   
   /**
@@ -835,8 +841,9 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       });
     }else{
       args['_persisting'] = this._persisting = true;
-      this._storageQueue.once('created:'+id, (id) => {
-        this.id(id);
+      this._storageQueue.once('created:'+id, () => {
+        this._persisted = true;
+        this.emit('persisted:');
       });
       Util.merge(this, args);
       return this._storageQueue.create([bucket], args, {});

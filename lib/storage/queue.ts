@@ -167,8 +167,9 @@ export class Queue extends Base implements IStorage
     var promise = new Promise();
     
     this.localStorage.fetch(keyPath).then((doc)=>{
-      var id = doc['_id'] = _.last(keyPath);
-      var remotePromise = this.useRemote && !Model.isClientId(id) ?
+      //var id = doc['_id'] = _.last(keyPath);
+      var id = _.last(keyPath);
+      var remotePromise = this.useRemote && doc._persisted ? //!Model.isClientId(id) ?
         this.fetchRemote(keyPath) : new Promise(doc);
 
       promise.resolve([doc, remotePromise]);
@@ -319,9 +320,10 @@ export class Queue extends Base implements IStorage
   del(keyPath: string[], opts: {}): Promise<void>
   {
     return this.localStorage.del(keyPath, opts).then(()=>{
-      if(!Model.isClientId(_.last(keyPath))){
+      //if(!Model.isClientId(_.last(keyPath))){
+        // We need to check if we need to delete server side as well.
         this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
-      }
+      //}
     });
   }
   
@@ -446,7 +448,7 @@ export class Queue extends Base implements IStorage
   }
   
   /**
-    
+  TODO: Rename to commit, since what this does is commit operations
   */
   synchronize()
   {
@@ -470,25 +472,11 @@ export class Queue extends Base implements IStorage
         switch (obj.cmd){
           case 'create':
             ((cid) => {
-              remoteStorage.create(keyPath, args, {}).then((sid) => {
-                var localKeyPath = keyPath.concat(cid);
-                
-                return localStorage.put(localKeyPath, {_id: sid}, {}).then(() => {
-                  var newKeyPath = _.initial(localKeyPath);
-                  newKeyPath.push(sid);
-                  
-                  return localStorage.link(newKeyPath, localKeyPath).then(() => {
-                    var subQ = <any>(this.remoteStorage);
-                    if(this.autosync || !subQ.once){
-                      this.emit('created:'+cid, sid);
-                    }else{
-                      subQ.once('created:'+sid, (sid)=>{
-                        this.emit('created:'+cid, sid);
-                      });
-                    }
-                    this.updateQueueIds(cid, sid);
-                  });
-                });
+              remoteStorage.create(keyPath, args, {}).then(() => {
+                localStorage.put(keyPath, {_persisted: true}, {});
+                // Instead of a global event it should be better to use the
+                // model depot.
+                this.emit('created:'+cid, cid);
               }).then(done, done)
             })(args['_cid']);
             

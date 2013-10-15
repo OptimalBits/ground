@@ -65,7 +65,8 @@ export interface IMongooseModel extends GndModel {
   findOneAndUpdate(conditions?:{}, update?:{}, options?:{}, cb?: (err: Error, doc:{}) => void);
   findByIdAndUpdate(id: string, update?:{}, cb?: (err: Error, doc:{}) => void);
   findById(id:string, cb:(err: Error, doc?: any)=>void):any;
-  find(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any)=>void): any;
+  findOne(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any)=>void): any;
+  find(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any[])=>void): any;
   findById(id: string): any;
   remove(query:{}, cb:(err: Error)=>void);
 }
@@ -199,7 +200,7 @@ export class MongooseStorage implements Storage.IStorage {
             if(!mapping[res.ref.bucket]){
               throw new Error("Model bucket " + res.ref.bucket + " does not have a valid mapping name");
             }else{
-              res = [{ type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket] }];
+              res = [{ type: String, ref: mapping[res.ref.bucket] }];
             }
             break;
         }
@@ -229,7 +230,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>(function(found){
       var promise = new Promise<void>();
-      found.Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
+      found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc, (err, oldDoc) => {
         if(!err){
           // Note: isEqual should only check the properties present in doc!
           if(!_.isEqual(doc, oldDoc)){
@@ -261,7 +262,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then((found) => {
       var promise = new Promise()
-      found.Model.findById(_.last(keyPath), (err, doc?) => {
+      found.Model.findOne({_cid: _.last(keyPath)}, (err, doc?) => {
         if(doc){
           promise.resolve(doc);
         }else{
@@ -277,7 +278,8 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>((found) => {
       var promise = new Promise<void>();
-      found.Model.findById(_.last(keyPath), (err?, doc?) => {
+      found.Model.findOne({_cid:_.last(keyPath)}, (err?, doc?) => {
+        
         if(!err && doc){
           doc.remove((err?)=>{
             !err && promise.resolve();
@@ -321,7 +323,7 @@ export class MongooseStorage implements Storage.IStorage {
       }else{
         var update = {$addToSet: {}};
         update.$addToSet[setName] = {$each:itemIds};
-        found.Model.update({_id:id}, update, (err) => {
+        found.Model.update({_cid:id}, update, (err) => {
           if(!err){
             // Use FindAndModify to get added items
             // sync.add(id, setName, ids);
@@ -351,7 +353,7 @@ export class MongooseStorage implements Storage.IStorage {
       var setName = _.last(keyPath);
       var update = {$pullAll: {}};
       update.$pullAll[setName] = itemIds;
-      found.Model.update({_id:id}, update, function(err){
+      found.Model.update({_cid:id}, update, function(err){
         // TODO: Use FindAndModify to get removed items
         if(!err){
           promise.resolve();
@@ -403,14 +405,24 @@ export class MongooseStorage implements Storage.IStorage {
         
     var promise = new Promise();
     Model
-      .findById(id)
+      .findOne({_cid:id})
       .select(setName)
-      .populate(setName, query.fields, query.cond, query.opts)
       .exec((err, doc) => {
         if(err){
           promise.reject(err);
         }else{
-          promise.resolve(doc && doc[setName])
+          // Currently collection bucket and set name must be identical
+          // this is a known limitation that we want to remove ASAP.
+          var model = this.models[setName];
+          if(model){
+            this.populate(model, query, doc[setName]).then(function(docs){
+              promise.resolve(docs);
+            }, function(err){
+              promise.reject(err);
+            })
+          }else{
+            promise.reject(new Error("Collection model "+setName+" not found"));
+          }
         }
       });
       
@@ -423,7 +435,7 @@ export class MongooseStorage implements Storage.IStorage {
     
     Model
       .find(query.cond, query.fields, query.opts)
-      .where('_id').in(arr)
+      .where('_cid').in(arr)
       .exec((err, doc) => {
         if(err) {
           promise.reject(err);
