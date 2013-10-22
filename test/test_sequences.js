@@ -62,11 +62,10 @@ describe('Sequence Datatype', function(){
     console.log('before');
     Gnd.using.storageQueue = q1;
     Gnd.using.syncManager = sm1;
-    parade = new Parade();
-    // parade.save(function(){
-      parade.once('id', function(){
-        done();
-      });
+    parade = Parade.create();
+    parade.once('persisted:', function(){
+      done();
+    });
     // });
     parade.save();
   });
@@ -1282,7 +1281,7 @@ describe('Sequence Datatype', function(){
           });
         });
       });
-      //Doesn't pass
+      //Doesn't pass yet
       it.skip('Repeated moves lead to a consistent state', function(done){
         var count = 0;
         function inserted(){

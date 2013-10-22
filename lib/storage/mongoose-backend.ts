@@ -98,15 +98,16 @@ export interface IMongooseModels
 */
 export class MongooseStorage implements Storage.IStorage {
   public models: any = {};
-  private listContainer: any;
+  private ListContainer: any;
   private transaction: any;
   
   constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
-    this.listContainer = mongoose.model('ListContainer', new mongoose.Schema({
-      type: { type: String },
-      next: { type: mongoose.Schema.ObjectId, ref: 'ListContainer' },
-      modelId: { type: String }
+    this.ListContainer = mongoose.model('ListContainer', new mongoose.Schema({
+      gid: String,
+      type: { type: String, enum: ['_begin', '_end', '_rip'] },
+      modelId: String,
+      next: String //{ type: mongoose.Schema.ObjectId, ref: 'ListContainer' }
     }));
     
     this.compileModels(models, mongoose, legacy);
@@ -211,13 +212,16 @@ export class MongooseStorage implements Storage.IStorage {
   
   create(keyPath: string[], doc: any): Promise<string>
   {
+    if(!doc._cid){
+      doc._cid = Util.uuid();
+    }
     return this.getModel(keyPath).then<string>((found) => {
       var promise = new Promise<string>();
       var instance = new found.Model(doc);
       instance.save(function(err, doc){
         if(!err){
           doc.__rev = 0;
-          promise.resolve(doc._id);
+          promise.resolve(doc._cid);
         }else{
           promise.reject(err);
         }
@@ -402,7 +406,7 @@ export class MongooseStorage implements Storage.IStorage {
                    opts: {}): Promise<any[]>
   {
     query = query || {};
-        
+    console.log(id, setName, query, opts);
     var promise = new Promise();
     Model
       .findOne({_cid:id})
@@ -414,7 +418,7 @@ export class MongooseStorage implements Storage.IStorage {
           // Currently collection bucket and set name must be identical
           // this is a known limitation that we want to remove ASAP.
           var model = this.models[setName];
-          if(model){
+          if(model && doc){
             this.populate(model, query, doc[setName]).then(function(docs){
               promise.resolve(docs);
             }, function(err){
@@ -429,7 +433,7 @@ export class MongooseStorage implements Storage.IStorage {
     return promise;
   }
   
-  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr)
+  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr): Promise
   {
     var promise = new Promise();
     
@@ -447,53 +451,65 @@ export class MongooseStorage implements Storage.IStorage {
   }
   
 /*
-Sequences
-A sequence is represented as a linked list of listContainers. Every listContainer has
-a reference to the next listContainer and to the model instance it refers to. A
-listContainer may also have a type attribute:
-  _begin: dummy container before the first real item in the sequence
-  _end: dummy container after the last real item in the sequence
-  _rip: 'tombstone' element that has been deleted from the sequence
+  Sequences
+  A sequence is represented as a linked list of listContainers. Every ListContainer has
+  a reference to the next ListContainer and to the model instance it refers to. A
+  ListContainer may also have a type attribute:
+    _begin: dummy container before the first real item in the sequence
+    _end: dummy container after the last real item in the sequence
+    _rip: 'tombstone' element that has been deleted from the sequence
+    
 */
-  private findContainer(ParentModel: IMongooseModel, parentId, name, id, cb:(err: Error, container?)=>void){
+  private findContainer(ParentModel: IMongooseModel, parentId, name, id): Promise
+  {
     if(!id){
-      this.findEndPoints(ParentModel, parentId, name, (err, begin?, end?)=>{
-        cb(err, begin);
+      return this.findEndPoints(ParentModel, parentId, name).then((res: any) => {
+        return res ? res.begin : res;
       });
     }else{
-      this.listContainer.find({_id: id}, (err, docs) => {
-        if(err) return cb(err);
-        if(docs.length !== 1) return cb(Error('container '+id+' not found')); 
-        cb(null, docs[0]);
+      var promise = new Promise();
+      this.ListContainer.find({gid: id}, (err, docs) => {
+        if(err) return promise.reject(err);
+        if(docs.length !== 1) return promise.reject(Error('container '+id+' not found'));
+        return promise.resolve(docs[0]);
       });
+      return promise;
     }
   }
-
-  private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
-    ParentModel.findById(parentId).exec((err, doc) => {
-      if(!doc) return cb(err);
-      this.listContainer.find()
-        .where('_id').in(doc[name])
-        .or([{type:'_begin'}, {type:'_end'}])
-        .exec((err, docs)=>{
-          if(docs.length < 2) return cb(Error('could not find end points'));
-          cb(err,
-            _.find(docs, (doc) => {
-              return doc.type === '_begin';
-            }),
-            _.find(docs, (doc) => {
-              return doc.type === '_end';
-            })
-          );
-        });
-    });
-  }
-
-  private removeFromSeq(containerId): Promise
+  
+  private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise
   {
     var promise = new Promise();
-    this.listContainer.update(
-      {_id: containerId},
+    ParentModel.findOne({_cid: parentId}).exec((err, doc) => {
+      if(err) return promise.reject(err);
+      else if(!doc) return promise.reject(Error('could not find end points'));
+      else if(!doc[name] || doc[name].length === 0) promise.resolve();
+      else{
+        this.ListContainer.find()
+          .where('gid').in(doc[name])
+          .or([{type:'_begin'}, {type:'_end'}])
+          .exec((err, docs)=>{
+            if(err) return promise.reject(err);
+            if(docs.length < 2) return promise.reject(Error('could not find end points'));
+            promise.resolve({
+              begin: _.find(docs, (doc) => {
+                return doc.type === '_begin';
+              }),
+              end: _.find(docs, (doc) => {
+                return doc.type === '_end';
+              })
+            });
+          });
+      }
+    });
+    return promise;
+  }
+
+  private removeFromSeq(containerId: string): Promise
+  {
+    var promise = new Promise();
+    this.ListContainer.update(
+      {gid: containerId},
       {
         $set: {type: '_rip'}
       },
@@ -501,74 +517,100 @@ listContainer may also have a type attribute:
     );
     return promise;
   }
-
-  private initSequence(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
-    ParentModel.findById(parentId).exec((err, doc) => {
-      if(err) return cb(err);
-      if(doc[name].length < 2){
-        var first = new this.listContainer({
+  
+  private initSequence(ParentModel: IMongooseModel, parentId, name): Promise
+  {
+    var promise = new Promise(); 
+    ParentModel.findOne({_cid: parentId}, (err, doc) => {
+      if(err){
+        promise.reject(err);
+      }else if(doc && doc[name].length < 2){
+        var first = new this.ListContainer({
+          gid: Util.uuid(),
           type: '_begin'
         });
+        
+        //
+        // This series of DB updates can imply difficult hazzards, we need
+        // some kind of transaction support for this.
+        //
         first.save((err, first)=>{
-          var last = new this.listContainer({
-            type: '_end',
-          });
-          last.save((err, last)=>{
-            first.next = last._id;
-            first.save((err, first)=>{
-              var delta = {};
-              delta[name] = [first._id, last._id];
-              ParentModel.update(
-                {_id: parentId},
-                delta,
-                (err)=>{
-                  cb(null, first, last);
-                }
-              );
+          if(err){
+            promise.reject(err);
+          }else{
+            var last = new this.ListContainer({
+              gid: Util.uuid(),
+              type: '_end',
             });
-          });
+            
+            last.save((err, last)=>{
+              if(err){
+                promise.reject(err);
+              }else{
+                first.next = last.gid;
+                first.save((err, first)=>{
+                  if(err){
+                    promise.reject(err);
+                  }else{
+                    var delta = {};
+                    delta[name] = [first.gid, last.gid];
+                  
+                    ParentModel.update({_cid: parentId}, delta, (err)=> {
+                      if(err){
+                        promise.reject(err);
+                      }else{
+                        promise.resolve(last.gid);
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
         });
       }else{
-        this.findEndPoints(ParentModel, parentId, name, cb);
+        this.findEndPoints(ParentModel, parentId, name).then((res: any) =>{
+          promise.resolve(res.end.gid);
+        }, (err) =>{
+          promise.reject(err);
+        });
       }
     });
+    
+    return promise;
   }
-  // cb: (err:Error, id?: string)=>void)
-  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise
+  
+  // Returns the id of the new container
+  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<string>
   {
     var promise = new Promise();
-    var newContainer = new this.listContainer({
+    var newContainer = new this.ListContainer({
+      gid: opts.cid || Util.uuid(),
       next: nextId,
       modelId: itemKey
     });
     
     newContainer.save((err, newContainer)=>{
       if(err) return promise.reject(err);
-
-      this.listContainer.update({next: nextId}, {next: newContainer._id}, (err)=>{
+      
+      this.ListContainer.update({next: nextId}, {next: newContainer.gid}, (err)=>{
         if(err){
           // rollback
           newContainer.remove();
           return promise.reject(err);
         }
         var delta = {};
-        delta[name] = newContainer._id;
-        ParentModel.update(
-          {_id: parentId},
-          { $push: delta },
-          (err)=>{
-            if(err) promise.reject(err);
-            else promise.resolve(newContainer._id);
-          }
-        );
+        delta[name] = newContainer.gid;
+        ParentModel.update({_cid: parentId}, {$push: delta}, (err)=>{
+          if(err) promise.reject(err);
+          else promise.resolve(newContainer.gid);
+        });
       });
     });
     
     return promise;
   }
 
-  // cb: (err: Error, result?: any[]
-  // Note: This code is copy paste of Local.ts (no, its not anymore...)
   all(keyPath: string[], query: {}, opts: {}): Promise<any[]>
   {  
     var all = [];
@@ -584,58 +626,54 @@ listContainer may also have a type attribute:
 
   private next(keyPath: string[], id: string, opts: {}): Promise<{id: string; refId: string;}>
   {
-    var promise = new Promise();
-    
-    this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then<any>((found) => {
       var ParentModel = found.Model;
       var parentId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
 
-      this.findContainer(ParentModel, parentId, seqName, id, (err, container?)=>{
-        if(!id && !container) return promise.resolve(); //empty sequence
-        
-        this.findContainer(ParentModel, parentId, seqName, container.next, (err, container?)=>{
-          if(err) return promise.reject(err);
-
-          if(container.type === '_rip'){ //tombstone
-            this.next(keyPath, container._id, opts).then((val) => promise.resolve(val));
-          }else if(container.type === '_end'){
-            promise.resolve()
-          }else{
-            var kp = parseKey(container.modelId);
-            this.fetch(kp).then((doc)=>{
-              promise.resolve({
-                id: container._id,
-                keyPath: kp,
-                doc: doc
+      return this.findContainer(ParentModel, parentId, seqName, id).then((container: any)=>{
+        if(container){
+          return this.findContainer(ParentModel, parentId, seqName, container.next).then((container: any)=>{
+            if(container.type === '_rip'){ //tombstone
+              return this.next(keyPath, container.gid, opts);
+            }else if(container.type !== '_end'){
+              var kp = parseKey(container.modelId);
+              return this.fetch(kp).then((doc)=>{
+                return {
+                  id: container.gid,
+                  keyPath: kp,
+                  doc: doc
+                }
               })
-            }).fail((err)=>promise.reject(err));
-          }
-        });
+            }
+          });
+        }
       });
-    }).fail((err)=>promise.reject(err));
-    
-    return promise;
+    });
   }
 
-  // id?: string, refId?: string
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise
+  insertBefore(keyPath: string[], refId: string, itemKeyPath: string[], opts): Promise<{id: string; refId: string;}>
   {
-    return this.getModel(keyPath).then((found) => {
+    return this.getModel(keyPath).then<any>((found) => {
       var ParentModel = found.Model;
-      var modelId = keyPath[keyPath.length-2];
+      var parentId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
-      var promise = new Promise();
-      this.initSequence(ParentModel, modelId, seqName, (err, begin?, end?) => {
-        if(!id) id = end._id;
-        this.insertContainerBefore(ParentModel, modelId, seqName, id, makeKey(itemKeyPath), opts).then((newId)=>{
-          promise.resolve({
+        
+      return this.initSequence(ParentModel, parentId, seqName).then((endPointId: string) => {
+        refId = refId ? refId : endPointId;
+        
+        return this.insertContainerBefore(ParentModel,
+                                          parentId,
+                                          seqName,
+                                          refId,
+                                          makeKey(itemKeyPath), 
+                                          opts).then((newId) => {
+          return {
             id: newId,
-            refId: id === end._id ? null : id
-          });
-        }).fail((err)=>promise.reject(err));
+            refId: refId === endPointId ? null : refId
+          };
+        });
       });
-      return promise;
     });
   }
 
@@ -645,13 +683,12 @@ listContainer may also have a type attribute:
       var ParentModel = found.Model;
       var modelId = keyPath[keyPath.length-2];
       var seqName = _.last(keyPath);
-      var promise = new Promise();
 
-      this.findContainer(ParentModel, modelId, seqName, id, (err, container?)=>{
-        if(!container || container.type === '_rip') return promise.resolve(); //promise.reject(Error(''+ServerError.INVALID_ID));
-        this.removeFromSeq(container._id).then(() => promise.resolve(), (err) => promise.reject(err));
+      return this.findContainer(ParentModel, modelId, seqName, id).then((container: any)=>{
+        if(container && container.type !== '_rip'){
+          return this.removeFromSeq(container.gid);
+        }
       });
-      return promise;
     });
   }
   
@@ -676,26 +713,6 @@ listContainer may also have a type attribute:
     }
     return promise;
   }
-  
-  private getSequence(keyPath: string[], cb: (err: Error, seqDoc?: any, seq?: any[]) => void): void
-  {
-     this.getModel(_.initial(keyPath, 2)).then((found)=>{
-      var ParentModel = found.Model;
-      var seqName = _.last(keyPath);
-      var parentId = keyPath[keyPath.length-2];
-      ParentModel
-        .findById(parentId)
-        .select(seqName)
-        .exec((err, seqDoc)=>{
-          if(!err){
-            cb(err, seqDoc, seqDoc[seqName]);
-          }else{
-            cb(err);
-          }
-        });
-    }, cb);
-  }
-  
 }
 
 }

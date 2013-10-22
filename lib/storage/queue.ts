@@ -497,20 +497,9 @@ export class Queue extends Base implements IStorage
             var id = obj.id;
             var itemKeyPath = obj.itemKeyPath;
             var cid = obj.cid;
-            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}).then((res)=>{
-              var sid = res.id, refId = res.refId;
-              return localStorage.ack(keyPath, cid, sid, {op: 'ib'}).then(()=>{
-                var subQ = <any>(this.remoteStorage);
-                if(this.autosync || !subQ.once){
-                  this.emit('inserted:'+cid, sid, refId);
-                }else{
-                  subQ.once('inserted:'+sid, (newSid, refId) => {
-                    localStorage.ack(keyPath, sid, newSid, {op: 'ib'}).then(() => {
-                      this.emit('inserted:'+cid, newSid, refId);
-                    });
-                  });
-                }
-                this.updateQueueIds(cid, sid);
+            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {cid: cid}).then((res)=>{
+              return localStorage.ack(keyPath, cid, cid, {op: 'ib'}).then(()=>{
+                this.emit('inserted:'+cid, cid, res.refId);
               });
             }).then(done, done);
             break;
@@ -664,36 +653,5 @@ export class Queue extends Base implements IStorage
     
     this.currentTransfer = null;
   }
-
-  private updateQueueIds(oldId, newId)
-  { 
-    _.each(this.queue, (cmd: Command) => {
-      cmd.keyPath && updateIds(cmd.keyPath, oldId, newId);
-      cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
-      cmd.itemKeyPath && updateIds(cmd.itemKeyPath, oldId, newId);
-      if(cmd.id && cmd.id === oldId) cmd.id = newId;
-      if(cmd.itemIds){
-        cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
-      }
-    });
-    
-    //
-    // Serialize after updating Ids
-    //
-    this.saveQueue()
-  }
 }
-
-function updateIds(keyPath: string[], oldId: string, newId: string): string[]
-{
-  var updatedKeys = [];
-  for(var i=0; i<keyPath.length; i++){
-    if(keyPath[i] == oldId){
-      keyPath[i] = newId;
-      updatedKeys.push(oldId);
-    }
-  }
-  return updatedKeys;
-}
-
 }

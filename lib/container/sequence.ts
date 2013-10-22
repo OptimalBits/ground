@@ -213,7 +213,6 @@ export class Sequence extends Container implements SequenceEvents
   
   private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
   {
-    var promise;
     var seqItem = {
       model: item,
       id: id,
@@ -226,7 +225,6 @@ export class Sequence extends Container implements SequenceEvents
     var done = (id)=>{
       seqItem.id = id.id || seqItem.id;
       this.storageQueue.once('inserted:'+seqItem.id, (sid)=>{
-        seqItem.id = sid;
         seqItem.insync = true;
       });
     }
@@ -259,30 +257,29 @@ export class Sequence extends Container implements SequenceEvents
       refId = this.items[index].id;
     }
 
+    this.initItems(item);
     this.items.splice(index, 0, seqItem);
-    this.initItems(seqItem.model);
     this.set('count', this.items.length);
+    this._keepSynced && item.keepSynced();
     
+    var promise;
     if(!opts || !opts.nosync){
       if(item.isPersisted() || item._persisting){
-        this._keepSynced && item.keepSynced();
-        promise = this.insertPersistedItemBefore(refId, item, opts).then(done);
+        promise = this.insertPersistedItemBefore(refId, item, opts).then<any>(done);
       }else{
-        promise = item.save().then(()=>{
-          this._keepSynced && item.keepSynced();
+        promise = item.save().then(()=>{          
           return this.insertPersistedItemBefore(refId, item, opts).then(done);
         });
       }
     }else{
-      this._keepSynced && item.keepSynced();
       promise = Promise.resolved();
     }
-
+    
     this.emit('inserted:', item, index);
     return promise;
   }
 
-  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise // <string>
+  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise//<string>
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
@@ -444,7 +441,7 @@ export class Sequence extends Container implements SequenceEvents
         case 'removeItem':
           return this.deleteItem(cmd.id, opts);
         case 'update':
-          item = this['find']((item) => cmd.doc._id == item.id());
+          item = this['find']((item) => cmd.doc._cid == item.id());
           item && item.resync(cmd.doc);
           return Promise.resolved();
         default:
