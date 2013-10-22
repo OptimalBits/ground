@@ -304,7 +304,6 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
             
       // TO DEPRECATE:
-      _id: Schema.ObjectId, 
       _persisting: Boolean,
       _persisted: Boolean,
     });
