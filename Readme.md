@@ -77,7 +77,7 @@ Then just:
 
 The resulting app will be placed in the *build* directory.
 
-For testing we us [Mocha](http://visionmedia.github.io/). If you don't have 
+For testing we use [Mocha](http://visionmedia.github.io/). If you don't have 
 mocha installed:
 
     npm install -g mocha
