@@ -169,7 +169,7 @@ export class Queue extends Base implements IStorage
     this.localStorage.fetch(keyPath).then((doc)=>{
       //var id = doc['_id'] = _.last(keyPath);
       var id = _.last(keyPath);
-      var remotePromise = this.useRemote && doc._persisted ? //!Model.isClientId(id) ?
+      var remotePromise = this.useRemote && doc._persisted ? 
         this.fetchRemote(keyPath) : new Promise(doc);
 
       promise.resolve([doc, remotePromise]);

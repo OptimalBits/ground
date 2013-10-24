@@ -287,7 +287,6 @@ export class Collection extends Container implements CollectionEvents
         if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
           var ids = {}
-          ids[item.cid()] = false; // order is important here!
           ids[item.id()] = true;
           return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
         }
@@ -476,7 +475,7 @@ export class Collection extends Container implements CollectionEvents
     });
 
     _.each(items, (item) => {
-      if(!this.findById(item._id)) itemsToAdd.push(item);
+      if(!this.findById(item._cid)) itemsToAdd.push(item);
     })
 
     return this.remove(itemsToRemove, {nosync: true})
