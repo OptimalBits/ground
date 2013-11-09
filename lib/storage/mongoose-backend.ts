@@ -162,6 +162,10 @@ export class MongooseStorage implements Storage.IStorage {
         
         this.models[bucket] =
           mongoose.model(name, mongooseSchema, bucket);
+          
+        if(model['filter']){
+          this.models[bucket]['filter'] = model['filter'];
+        }
       }
     }
     
@@ -212,15 +216,27 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<string>((found) => {
       var promise = new Promise<string>();
-      var instance = new found.Model(doc);
-      instance.save(function(err, doc){
-        if(!err){
-          doc.__rev = 0;
-          promise.resolve(doc._id);
-        }else{
-          promise.reject(err);
-        }
-      });
+      if(found.Model['filter']){
+        found.Model['filter'](doc, (err, doc) =>{
+          if(!err){
+            create(doc);
+          }
+        });
+      }else{
+        create(doc);
+      }
+      
+      function create(doc){
+        var instance = new found.Model(doc);
+        instance.save(function(err, doc){
+          if(!err){
+            doc.__rev = 0;
+            promise.resolve(doc._id);
+          }else{
+            promise.reject(err);
+          }
+        });
+      }
       return promise;
     });
   }
@@ -229,19 +245,30 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>(function(found){
       var promise = new Promise<void>();
-      found.Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
-        if(!err){
-          // Note: isEqual should only check the properties present in doc!
-          if(!_.isEqual(doc, oldDoc)){
-            // only if doc modified synchronize
-            // Why is this out commented?
-            //this.sync && this.sync.update(keyPath, doc);
-            promise.resolve();
-          } 
-        }else{
-          promise.reject(err);
-        }
-      });
+      if(found.Model['filter']){
+        found.Model['filter'](doc, (err, doc) =>{
+          if(!err){
+            update(doc);
+          }
+        });
+      }else{
+        update(doc);
+      }
+      function update(doc){
+        found.Model.findByIdAndUpdate(_.last(keyPath), doc, (err, oldDoc) => {
+          if(!err){
+            // Note: isEqual should only check the properties present in doc!
+            if(!_.isEqual(doc, oldDoc)){
+              // only if doc modified synchronize
+              // Why is this out commented?
+              //this.sync && this.sync.update(keyPath, doc);
+              promise.resolve();
+            }
+          }else{
+            promise.reject(err);
+          }
+        });
+      }
       return promise;
     });
   }
