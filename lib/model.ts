@@ -157,15 +157,13 @@ export interface ModelEvents
   in schemas.
     
       var ChatSchema = new Schema({
-        rooms: new ColectionSchemaType(Room, 'rooms');
+        name: new ModelSchemaType(Name);
       });
 
-  @class CollectionSchemaType
+  @class ModelSchemaType
   @extends SchemaType
   @constructor
-  @param mode {IModel} A model class defining the type of items to store in the
-  sequence.
-  @param bucket {String} Bucket where the items are stored in the server.
+  @param model {IModel} A model class defining the type of the model.
 */
 export class ModelSchemaType extends SchemaType
 {
