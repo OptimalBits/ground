@@ -99,6 +99,8 @@ export class MongooseStorage implements Storage.IStorage {
   public models: any = {};
   private listContainer: any;
   private transaction: any;
+  private mongoose;
+  private nameMapping;
   
   constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
@@ -108,7 +110,59 @@ export class MongooseStorage implements Storage.IStorage {
       modelId: { type: String }
     }));
     
+    this.mongoose = mongoose;
     this.compileModels(models, mongoose, legacy);
+  }
+  
+  addModel(name: string, model: IModel){
+    var nameMapping = this.nameMapping = this.nameMapping || {};
+    nameMapping[model.__bucket] = name;
+    
+    this.compileModel(name, model, this.mongoose, nameMapping);
+  }
+  
+  private compileModel(name: string, model: IModel, mongoose, nameMapping){
+    var schema = model.schema();
+    var bucket = model.__bucket;
+    
+    if(bucket){
+      var translated = this.translateSchema(mongoose, nameMapping, schema);
+      var mongooseSchema =
+          new mongoose.Schema(translated, {strict: false});
+      // new mongoose.Schema(translated); // strict false is just temporary...
+
+      if(model['__mongoose']){
+        var extra = model['__mongoose'];
+
+        if(extra.methods){
+          mongooseSchema.methods = mongooseSchema.methods || {};
+          _.extend(mongooseSchema.methods, extra.methods);
+        }
+        
+        if(extra.statics){
+          mongooseSchema.statics = mongooseSchema.statics || {};
+          _.extend(mongooseSchema.statics, extra.statics);
+        }
+                  
+        if(extra.pre){
+          _.each(extra.pre, function(fn, method){
+            mongooseSchema.pre(method, fn);
+          })
+        }
+        if(extra.post){
+          _.each(extra.post, function(fn, method){
+            mongooseSchema.post(method, fn);
+          })
+        }
+      }
+      
+      this.models[bucket] =
+        mongoose.model(name, mongooseSchema, bucket);
+        
+      if(model['filter']){
+        this.models[bucket]['filter'] = model['filter'];
+      }
+    }
   }
 
   /**
@@ -116,7 +170,7 @@ export class MongooseStorage implements Storage.IStorage {
   */
   private compileModels(models: IModels, mongoose, legacy?)
   { 
-    var nameMapping = {};
+    var nameMapping = this.nameMapping = this.nameMapping || {};
     for(var name in models){
       var model = models[name];
       nameMapping[model.__bucket] = name;
@@ -126,47 +180,7 @@ export class MongooseStorage implements Storage.IStorage {
     }
 
     for(var name in models){
-      var model = models[name];
-      var schema = model.schema();
-      var bucket = model.__bucket;
-      if(bucket){
-        var translated = this.translateSchema(mongoose, nameMapping, schema);
-        var mongooseSchema =
-            new mongoose.Schema(translated, {strict: false});
-        // new mongoose.Schema(translated); // strict false is just temporary...
-
-        if(model['__mongoose']){
-          var extra = model['__mongoose'];
-
-          if(extra.methods){
-            mongooseSchema.methods = mongooseSchema.methods || {};
-            _.extend(mongooseSchema.methods, extra.methods);
-          }
-          
-          if(extra.statics){
-            mongooseSchema.statics = mongooseSchema.statics || {};
-            _.extend(mongooseSchema.statics, extra.statics);
-          }
-                    
-          if(extra.pre){
-            _.each(extra.pre, function(fn, method){
-              mongooseSchema.pre(method, fn);
-            })
-          }
-          if(extra.post){
-            _.each(extra.post, function(fn, method){
-              mongooseSchema.post(method, fn);
-            })
-          }
-        }
-        
-        this.models[bucket] =
-          mongoose.model(name, mongooseSchema, bucket);
-          
-        if(model['filter']){
-          this.models[bucket]['filter'] = model['filter'];
-        }
-      }
+      this.compileModel(name, models[name], mongoose, nameMapping);
     }
     
     legacy && _.extend(this.models, legacy);
