@@ -168,7 +168,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     }
     return this;
   }
-  
+    
   private getProperty(keypath: string): any 
   {
     var path = keypath.split('.');
@@ -193,16 +193,24 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var oldVal = isVirtual ? oldProp.call(this) : oldProp;
     
     if(!_.isEqual(oldVal, val) || options.force){
-      var val = this.willChange ? this.willChange(keypath, val) : val;
+      if(typeof val == 'object'){
+        var changed = false;
+        _.each(val, (val, key?: string) => {
+          changed = this._set(keypath+'.'+key, val, options, eventCage) ? true : changed;
+        });
+        return changed;
+      }else{
+        var val = this.willChange ? this.willChange(keypath, val) : val;
       
-      // Virtual properties shall not trigger sync on serverside
-      // TODO. this is model specific and should be handled in schemas...
-      if(isVirtual) options.nosync = true;
+        // Virtual properties shall not trigger sync on serverside
+        // TODO. this is model specific and should be handled in schemas...
+        if(isVirtual) options.nosync = true;
       
-      this.setProperty(keypath, val);
+        this.setProperty(keypath, val);
       
-      eventCage.push(() => this.emit(keypath, val, oldVal, options));
-      return true;
+        eventCage.push(() => this.emit(keypath, val, oldVal, options));
+        return true;
+      }
     }else{
       return false;
     }
