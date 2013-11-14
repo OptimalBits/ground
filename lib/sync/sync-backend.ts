@@ -3,6 +3,7 @@
   MIT Licensed.
 */
 /// <reference path="../log.ts" />
+/// <reference path="../event.ts" />
 /// <reference path="../../third/underscore.d.ts" />
 
 /**
@@ -32,10 +33,12 @@ module Gnd.Sync {
 */
 export class Hub {
   private pubClient;
+  private eventEmitter;
   
   constructor(pubClient, subClient?, sockets?, sio?)
   {    
     this.pubClient = pubClient;
+    this.eventEmitter = new EventEmitter();
     
     if(sockets){
       if(!sio){
@@ -45,17 +48,17 @@ export class Hub {
       sio.on('connection', (socket) => {
         log("Socket %s connected in the Sync Module", socket.id);
         
-        socket.on('observe', function(keyPath: string[], cb:(err?: Error) => void){
+        socket.on('observe', (keyPath: string[], cb:(err?: Error) => void) => {
           
           log("Request to start observing:", keyPath);
           
           if(!Array.isArray(keyPath)){
             cb && cb(new TypeError("keyPath must be a string[]"));
           }else{
-            var id = keyPath.join(':');
+            var id = this.makeId(keyPath);
             
-            if(this.check){
-              if (this.check(socket.id, keyPath)){
+            if(this['check']){
+              if (this['check'](socket.id, keyPath)){
                 socket.join(id);
               }
             }else{
@@ -66,8 +69,8 @@ export class Hub {
           }
         });
     
-        socket.on('unobserve', function(keyPath: string[], cb:(err?: Error) => void){
-          var id = keyPath.join(':');
+        socket.on('unobserve', (keyPath: string[], cb:(err?: Error) => void) => {
+          var id = this.makeId(keyPath);
           socket.leave(id);
           log("Socket %s stopped synchronization for id:%s", socket.id, id);
           cb();
@@ -90,7 +93,7 @@ export class Hub {
           log("Error: keyPath must be an array:", args.keyPath);
           return;
         }
-        var id = args.keyPath.join(':');
+        var id = this.makeId(args.keyPath);
         var clientId = args.clientId;
                 
         //var room = sio.in(id).except(args.clientId);
@@ -99,27 +102,81 @@ export class Hub {
         {
           case 'update:':
             sio.in(id).except(clientId).emit('update:', args.keyPath, args.doc);
+            this.emit('update', _.initial(args.keyPath), args.keyPath, args.doc);
             break;
           case 'delete:': 
             sio.in(id).except(clientId).emit('delete:', args.keyPath);
+            this.emit('delete', _.initial(args.keyPath), args.keyPath);
             break;
           case 'add:':
             sio.in(id).except(clientId).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            this.emit('add', args.keyPath, args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'remove:':
             sio.in(id).except(clientId).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            this.emit('remove', args.keyPath, args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'insertBefore:':
             sio.in(id).except(clientId).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
+            this.emit('insertBefore', args.keyPath, args.keyPath, args.id, args.itemsKeyPath, args.refId);
             break;
           case 'deleteItem:':
             sio.in(id).except(clientId).emit('deleteItem:', args.keyPath, args.id);
+            this.eventEmitter.emit(this.makeEvent('delete', args.keyPath), args.keyPath, args.id);
             break;
         }
       });
     }
   }
-
+  
+  private makeId(keyPath: string[]){
+    return keyPath.join(':');
+  }
+  
+  private makeEvent(evt: string, keyPath: string[]){
+    var arr = [evt];
+    arr.concat(keyPath)
+    return this.makeId(arr);
+  }
+  
+  /**
+    Listen to notifications handled by this Synchronization Hub.
+    
+    @method on
+    @param evt {String} can be any of 'update', 'delete', 'add',
+    'remove', 'insertBefore', 'deleteItem'.
+    @param keyPath {Array} A keypath to listen to.
+  */
+  // on(evt: 'update', keyPath: string[], fn: ()=>void): void;
+  on(evt: string, keyPath: string[], fn){
+    this.eventEmitter.on(this.makeEvent(evt, keyPath), fn);
+  }
+  
+  /**
+    Remove listener to notifications handled by this Synchronization Hub.
+    
+    @method off
+    @param evt {String} can be any of 'update', 'delete', 'add',
+    'remove', 'insertBefore', 'deleteItem'.
+    @param keyPath {Array} A keypath to stop listening to.
+  */
+  off(evt: string, keyPath: string[], fn){
+    this.eventEmitter.off(this.makeEvent(evt, keyPath), fn);
+  }
+  
+  /**
+    Emits an event for the given event name and keyPath.
+    
+    @method emit
+    @param evt {String} can be any of 'update', 'delete', 'add',
+    'remove', 'insertBefore', 'deleteItem'.
+    @param keyPath {Array} A keypath.
+  */
+  emit(evt: string, keyPath: string[], ...args: any[]){
+    args.unshift(this.makeEvent(evt, keyPath));
+    this.eventEmitter.emit.apply(this.eventEmitter, args);
+  }
+  
   /**
     Sends an update notification to all relevant observers.
     
