@@ -458,23 +458,6 @@ export class MongooseStorage implements Storage.IStorage {
     return promise;
   }
   
-  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr)
-  {
-    var promise = new Promise();
-    
-    Model
-      .find(query.cond, query.fields, query.opts)
-      .where('_id').in(arr)
-      .exec((err, doc) => {
-        if(err) {
-          promise.reject(err);
-        }else{
-          promise.resolve(doc);
-        }
-      });
-    return promise;
-  }
-  
 /*
 Sequences
 A sequence is represented as a linked list of listContainers. Every listContainer has
@@ -704,25 +687,6 @@ listContainer may also have a type attribute:
       promise.reject(new Error(''+ServerError.MODEL_NOT_FOUND));
     }
     return promise;
-  }
-  
-  private getSequence(keyPath: string[], cb: (err: Error, seqDoc?: any, seq?: any[]) => void): void
-  {
-     this.getModel(_.initial(keyPath, 2)).then((found)=>{
-      var ParentModel = found.Model;
-      var seqName = _.last(keyPath);
-      var parentId = keyPath[keyPath.length-2];
-      ParentModel
-        .findById(parentId)
-        .select(seqName)
-        .exec((err, seqDoc)=>{
-          if(!err){
-            cb(err, seqDoc, seqDoc[seqName]);
-          }else{
-            cb(err);
-          }
-        });
-    }, cb);
   }
   
 }
