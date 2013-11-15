@@ -1137,6 +1137,8 @@ declare module _ {
 	* @return True of `object` is an Object, otherwise false.
 	**/
 	export function isObject(object: any): boolean;
+  
+  export function isPlainObject(object: any): boolean;
 
 	/**
 	* Returns true if object is an Arguments object.
@@ -1970,7 +1972,13 @@ declare class _<T> {
 	* @see _.isObject
 	**/
 	isObject(): boolean;
-
+  
+	/**
+	* Wrapped type `object`.
+	* @see _.isPlainObject
+	**/
+	isPlainObject(): boolean;
+  
 	/**
 	* Wrapped type `object`.
 	* @see _.isArguments
@@ -2735,6 +2743,12 @@ interface _Chain<T> {
 	**/
 	isObject(): _Chain;
 
+	/**
+	* Wrapped type `object`.
+	* @see _.isPlainObject
+	**/
+	isPlainObject(): _Chain;
+  
 	/**
 	* Wrapped type `object`.
 	* @see _.isArguments
