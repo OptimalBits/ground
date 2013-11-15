@@ -65,6 +65,8 @@ module Gnd
         query.length = elements.length;
       }
       
+    if(!selectorOrElement) return;
+      
     if(_.isString(selectorOrElement)){
       var selector = selectorOrElement;
     
