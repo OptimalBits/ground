@@ -193,7 +193,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var oldVal = isVirtual ? oldProp.call(this) : oldProp;
     
     if(!_.isEqual(oldVal, val) || options.force){
-      if(typeof val == 'object'){
+      if(_.isArray(val) || _.isPlainObject(val)){
         var changed = false;
         _.each(val, (val, key?: string) => {
           changed = this._set(keypath+'.'+key, val, options, eventCage) ? true : changed;
