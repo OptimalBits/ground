@@ -65,6 +65,7 @@ export interface IMongooseModel extends GndModel {
   findOneAndUpdate(conditions?:{}, update?:{}, options?:{}, cb?: (err: Error, doc:{}) => void);
   findByIdAndUpdate(id: string, update?:{}, cb?: (err: Error, doc:{}) => void);
   findById(id:string, cb:(err: Error, doc?: any)=>void):any;
+  findById(id:string, fields?:string):any;
   find(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any)=>void): any;
   findById(id: string): any;
   remove(query:{}, cb:(err: Error)=>void);
@@ -217,7 +218,8 @@ export class MongooseStorage implements Storage.IStorage {
             if(!mapping[res.ref.bucket]){
               throw new Error("Model bucket " + res.ref.bucket + " does not have a valid mapping name");
             }else{
-              res = [{ type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket] }];
+              res = {type: [{type: mongoose.Schema.ObjectId, ref: mapping[res.ref.bucket]}], 
+                    select: false};
             }
             break;
         }
@@ -441,7 +443,6 @@ export class MongooseStorage implements Storage.IStorage {
                    opts: {}): Promise<any[]>
   {
     query = query || {};
-        
     var promise = new Promise();
     Model
       .findById(id)
@@ -482,7 +483,7 @@ listContainer may also have a type attribute:
   }
 
   private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
-    ParentModel.findById(parentId).exec((err, doc) => {
+    ParentModel.findById(parentId).select(name).exec((err, doc) => {
       if(!doc) return cb(err);
       this.listContainer.find()
         .where('_id').in(doc[name])
