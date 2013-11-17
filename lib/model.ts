@@ -36,7 +36,7 @@ class ModelDepot
 {
   private models = {};
 
-  // Deprecate args since they should always go via a resync call...
+  // Study if we can deprecate args since they should always go via a resync call...
   getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise
   {
     var model;
@@ -59,7 +59,7 @@ class ModelDepot
       model.autorelease();
       !model._persisting && !model.isPersisted() && !fetch && autosync && model.save();
     }else{
-      autosync && model.keepSynced();
+      autosync && model.autosync(true);
     }
 
     return model.retain();
@@ -212,8 +212,6 @@ declare var curl;
   Note: this class should be strictly private and not exported.
   
   @class ModelProxy
-  
-  
 */
 export class ModelProxy extends Promise<Model>
 {
@@ -237,6 +235,7 @@ export class ModelProxy extends Promise<Model>
           var fn = _.bind(_.omit, _, this);
           var args = fn.apply(this, _.functions(this));
           this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+          this.model.resync(args);
           this.model.on('*', () => {
             this.emit.apply(this, arguments);
           });
