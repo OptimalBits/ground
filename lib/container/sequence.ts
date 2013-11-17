@@ -353,14 +353,9 @@ export class Sequence extends Container implements SequenceEvents
     if(!item){
       return Promise.rejected(Error('index out of bounds'));
     } 
-    this.items.splice(idx, 1);
-    
-    // Why can't we use deinitItems here?
-    item.model.off('changed:', this.updateFn);
-    item.model.off('deleted:', this.deleteFn);
-    
+    this.items.splice(idx, 1);  
+    this.deinitItems(item.model);
     this.set('count', this.items.length);
-    item.model.release();
     
     opts = Util.extendClone(this.opts, opts);
     
