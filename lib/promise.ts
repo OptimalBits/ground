@@ -266,16 +266,6 @@ export class Promise<T> extends Base
   }
   
   /**
-    @method resolveOrReject
-    @deprecated
-  */
-  resolveOrReject(err?: Error, value?: any)
-  {
-    if(err) this.reject(err);
-    else this.resolve(value);
-  }
-  
-  /**
     Ensures that the callback is called when the promise resolves or rejects.
     
     @method ensure
@@ -311,7 +301,7 @@ export class Promise<T> extends Base
   resolve(value?: T): Promise<T>
   {
     if(this.isFulfilled) return;
-    this.abort();
+    this.isFulfilled = true;
     
     this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
@@ -328,7 +318,7 @@ export class Promise<T> extends Base
   reject(reason: Error): Promise<T>
   {
     if(this.isFulfilled) return;
-    this.abort();
+    this.isFulfilled = true;
     
     this.reason = reason || null;
     this.fireCallbacks(this.rejectedFns, reason);
@@ -343,14 +333,6 @@ export class Promise<T> extends Base
   cancel()
   {
     return this.reject(CancelError);
-  }
-  
-  /**
-    @method abort
-    @deprecated
-  */
-  abort(){
-    this.isFulfilled = true;
   }
   
   private fireNext(cb, value){
