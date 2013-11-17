@@ -516,7 +516,7 @@ listContainer may also have a type attribute:
   }
 
   private initSequence(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
-    ParentModel.findById(parentId).exec((err, doc) => {
+    ParentModel.findById(parentId).select(name).exec((err, doc) => {
       if(err) return cb(err);
       if(doc[name].length < 2){
         var first = new this.listContainer({
