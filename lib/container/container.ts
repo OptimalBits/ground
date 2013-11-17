@@ -311,14 +311,15 @@ module Gnd
     public deinitItems(item: Model);
     public deinitItems(items: Model[]);
     public deinitItems(items)
-    {      
+    {
+      items = _.isArray(items)? items:[items];
       for (var i=0,len=items.length; i<len;i++){
         var item = items[i];
         item.off('changed:', this.updateFn);
         item.off('deleted:', this.deleteFn);
         item.release();
       }
-    }    
+    }
   }
 }
 
