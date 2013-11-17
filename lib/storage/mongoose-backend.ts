@@ -510,7 +510,13 @@ listContainer may also have a type attribute:
       {
         $set: {type: '_rip'}
       },
-      (err) => promise.resolveOrReject(err)
+      (err) => {
+        if(err){
+          promise.reject(err);
+        }else{
+          promise.resolve();
+        }
+      }
     );
     return promise;
   }
