@@ -59,6 +59,9 @@ class ModelDepot
       model.autorelease();
       !model._persisting && !model.isPersisted() && !fetch && autosync && model.save();
     }else{
+      if(args['_id']){
+        model._id = args['_id'];
+      }
       autosync && model.autosync(true);
     }
 
