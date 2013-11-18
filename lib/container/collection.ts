@@ -297,6 +297,20 @@ export class Collection extends Container implements CollectionEvents
   }
   
   /**
+    Remove all the items from this collection (based on what the collection
+    has locally). This method should mostly only be used with local collections.
+  
+    @method removeAll
+    @param [opts] {Object}
+  */
+  removeAll(opts?){
+    var ids = this['map']((item) => {
+      return item.id();
+    });
+    this.remove(ids, opts);
+  }
+  
+  /**
     Toggles the sort order from ascending to descending or viceversa.
     
     @method toggleSortOrder
