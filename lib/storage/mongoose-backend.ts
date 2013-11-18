@@ -163,6 +163,10 @@ export class MongooseStorage implements Storage.IStorage {
       if(model['filter']){
         this.models[bucket]['filter'] = model['filter'];
       }
+      
+      if(model['hooks']){
+       this.models[bucket]['gnd-hooks'] = model['hooks'];
+      }
     }
   }
 
@@ -306,7 +310,16 @@ export class MongooseStorage implements Storage.IStorage {
       var promise = new Promise()
       found.Model.findById(_.last(keyPath), (err, doc?) => {
         if(doc){
-          promise.resolve(doc);
+          if(found.Model['gnd-hooks'] && found.Model['gnd-hooks'].fetch){
+            // Workaround since promises do not work correctly when resolving with a promise
+            found.Model['gnd-hooks'].fetch(this, doc).then(function(doc){
+              promise.resolve(doc);
+            }, function(err){
+              promise.reject(err);
+            })
+          }else{
+            promise.resolve(doc);
+          }
         }else{
           console.log("Document:", keyPath, "not Found!");
           promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
@@ -421,7 +434,7 @@ export class MongooseStorage implements Storage.IStorage {
 
   private findAll(Model: IMongooseModel, query: Storage.IStorageQuery): Promise<any[]>
   {
-    query = query || {};  
+    query = query || {};
     var promise = new Promise();
     Model
       .find(query.cond, query.fields, query.opts)
