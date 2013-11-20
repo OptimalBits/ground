@@ -214,10 +214,13 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
           var key = path[path.length-1];
           var schema = obj['__schema'].compiledSchema[key];
           if(schema){
-            obj.set(key, schema.fromObject(val));
-            eventCage.push(() => this.emit(keypath, val, oldVal, options));
-            eventCage.push(() => obj.emit(key, val, oldVal, options));
-            return true;
+            var schematizedVal = schema.fromObject(val);
+            if(!_.isPlainObject(schematizedVal)){
+              obj.set(key, schematizedVal);
+              eventCage.push(() => this.emit(keypath, val, oldVal, options));
+              eventCage.push(() => obj.emit(key, val, oldVal, options));
+              return true;
+            };
           }
         }
         // Hack ends here
