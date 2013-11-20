@@ -385,23 +385,28 @@ function deepExtend(doc, args, callFns?: boolean): {}
 {
   var keys = _.keys(args);
   _.each(keys, (key) => {
-    if(isVirtualProperty(doc[key])){
-      doc[key](args[key]);
+    var dst = doc[key];
+    var val = args[key];
+    
+    if(isVirtualProperty(dst)){
+      dst(val);
     }else{
-      // TODO: use isPlainObject to avoid special cases.
-      if(doc[key] && 
-         args[key] && 
-         args[key].constructor === Object.prototype['constructor']){
-        deepExtend(doc[key], args[key]);
+      if(_.isPlainObject(val)){
+        if(_.isUndefined(dst)){
+          doc[key] = args[key];
+        }else if(_.isFunction(dst.set)){
+          dst.set(args[key]);
+        }else{
+          deepExtend(dst, val);
+        }
       }else{
-        doc[key] = args[key];
+        doc[key] = val;
       }
     }
   });
   return doc;
 }
 
- 
 /**
   Merge a doc with an object containing unexpanded properties
 
