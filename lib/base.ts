@@ -180,6 +180,18 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     
     return level;
   }
+  
+  private getLastObject(keypath: string): any
+  {
+    var path = keypath.split('.');
+    var level: any = this;
+    _.each(path, (key)=>{
+      if(_.isUndefined(level[key])) return;
+      level = level[key];
+    });
+    
+    return level;
+  }
 
   private setProperty(keypath: string, val: any): void 
   {
@@ -191,9 +203,25 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var oldProp = this.getProperty(keypath);
     var isVirtual = Util.isVirtualProperty(oldProp);
     var oldVal = isVirtual ? oldProp.call(this) : oldProp;
-    
+
     if(!_.isEqual(oldVal, val) || options.force){
       if(_.isArray(val) || _.isPlainObject(val)){
+
+        // Hack for handling setting of models from plain objects starts here
+        var obj = this.getLastObject(keypath);
+        if(_.isUndefined(oldProp) && obj['__schema']){
+          var path = keypath.split('.');
+          var key = path[path.length-1];
+          var schema = obj['__schema'].compiledSchema[key];
+          if(schema){
+            obj.set(key, schema.fromObject(val));
+            eventCage.push(() => this.emit(keypath, val, oldVal, options));
+            eventCage.push(() => obj.emit(key, val, oldVal, options));
+            return true;
+          }
+        }
+        // Hack ends here
+        
         var changed = false;
         _.each(val, (val, key?: string) => {
           changed = this._set(keypath+'.'+key, val, options, eventCage) ? true : changed;
