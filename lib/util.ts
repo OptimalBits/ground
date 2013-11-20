@@ -389,13 +389,13 @@ function deepExtend(doc, args, callFns?: boolean): {}
     var val = args[key];
     
     if(isVirtualProperty(dst)){
-      dst(val);
+      doc[key](val);
     }else{
       if(_.isPlainObject(val)){
         if(_.isUndefined(dst)){
-          doc[key] = args[key];
+          doc[key] = val;
         }else if(_.isFunction(dst.set)){
-          dst.set(args[key]);
+          dst.set(val);
         }else{
           deepExtend(dst, val);
         }
