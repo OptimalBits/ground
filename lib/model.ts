@@ -218,6 +218,8 @@ declare var curl;
 */
 export class ModelProxy extends Promise<Model>
 {
+  private __schema: Schema;
+  
   model: Model;
   
   constructor(model: Model);
@@ -230,6 +232,7 @@ export class ModelProxy extends Promise<Model>
     if(modelOrArgs instanceof Base){
       this.model = modelOrArgs;
       this.resolve(modelOrArgs);
+      this.__schema = this.model['__schema'];
     }else{
       var args = modelOrArgs;
       _.extend(this, args);
@@ -238,6 +241,7 @@ export class ModelProxy extends Promise<Model>
           var fn = _.bind(_.omit, _, this);
           var args = fn.apply(this, _.functions(this));
           this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+          this.__schema = modelClass.schema();
           this.model.resync(args);
           this.model.on('*', () => {
             this.emit.apply(this, arguments);
