@@ -80,8 +80,8 @@ describe('Base', function(){
       expect(obj.get('baz.bar')).to.be(49);
     });
     
-    it('changed: returns a proper object for a keypath', function(){
-    
+    it.skip('changed: returns a proper object for a keypath', function(){
+      
     });
   
     it('listen to change in a property described by a keypath', function(done){
@@ -95,6 +95,78 @@ describe('Base', function(){
       });
     
       obj.set('baz.foo', 42);
+      obj.off('baz.foo');
+    });
+    
+    it('listen to segment changes in a property described by a keypath', function(done){
+      var counter = 2;
+      obj.baz = {foo:32, bar:56};
+    
+      obj.on('baz.foo', function(value){
+        expect(value).to.be(42);
+        expect(obj.get('baz.foo')).to.be(42);
+        expect(obj.baz.foo).to.be(42);
+        counter--;
+        if(counter == 0) done();
+      });
+      
+      obj.on('baz', function(args){
+        expect(args).to.be.an(Object);
+        expect(args.foo).to.be(42);
+        expect(args.bar).to.be(undefined);
+        counter--;
+        if(counter == 0) done();
+      });
+          
+      obj.set('baz.foo', 42);
+      obj.off('baz.foo');
+      obj.off('baz');
+    });
+    
+    it('listen to segment changes in chaging property by object', function(done){
+      var counter = 4;
+      obj.baz = {foo:32, bar:56};
+    
+      obj.on('baz.bar.house.in', function(args){
+        expect(args).to.be.an(Object);
+        expect(obj.get('baz.foo')).to.be(32);
+        expect(obj.get('baz.bar.house.in.the')).to.be('woods');
+        counter--;
+        if(counter == 0) done();
+      });
+      
+      obj.on('baz.bar.house.in.the', function(val){
+        expect(val).to.be('woods');
+        expect(obj.get('baz.foo')).to.be(32);
+        expect(obj.get('baz.bar.house.in.the')).to.be('woods');
+        counter--;
+        if(counter == 0) done();
+      });
+      
+      obj.on('baz', function(args){
+        expect(args).to.be.an(Object);
+        expect(args.bar.house).to.be.an(Object);
+        expect(args.bar.house.in).to.be.an(Object);
+        expect(args.bar.house.in.the).to.be('woods');
+        expect(args.foo).to.be(undefined);
+        expect(args.bar).to.be.an(Object);
+        counter--;
+        if(counter == 0) done();
+      });
+      
+      obj.on('baz.bar', function(args){
+        expect(args).to.be.an(Object);
+        expect(args.house).to.be.an(Object);
+        expect(args.house.in).to.be.an(Object);
+        expect(args.house.in.the).to.be('woods');
+        expect(args.foo).to.be(undefined);
+        counter--;
+        if(counter == 0) done();
+      });
+          
+      obj.set('baz.bar', {house: {in: {the: 'woods'}}});
+      obj.off('baz.bar');
+      obj.off('baz');    
     });
   });
   
