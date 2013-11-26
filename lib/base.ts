@@ -228,8 +228,8 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var bindings = this._bindings
     if( (bindings!=null) && (bindings[key]) ){
       var binding = bindings[key]
-      this.removeListener(key, binding[0])
-      binding[1].removeListener(binding[2], binding[3])
+      this.off(key, binding[0])
+      binding[1].off(binding[2], binding[3])
       delete bindings[key]
     }
   }
