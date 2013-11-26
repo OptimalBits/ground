@@ -108,15 +108,6 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     });
   }
   
-  
-  // OBSOLETE?
-  constructor (){
-    super();
-    if(!(this instanceof Base)){
-      return new Base();
-    }
-  }
-  
   /**
    *  Sets a property and notifies any listeners attached to it if changed.
    *
