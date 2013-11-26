@@ -71,7 +71,7 @@ describe('Promises and Tasks', function(){
     });
   });
   
-  it('aborted promise does not trigger then after resolution', function(){  
+  it.skip('aborted promise does not trigger then after resolution', function(){  
     var promise = new gnd.Promise();
     
     promise.then(function(){
