@@ -284,6 +284,7 @@ export class Query // implements QueryNodes
   
   attr(attr: string, value?: any)
   {
+    if(!this.length) return;
     if(!_.isUndefined(value)){
       _.each(this, (el) => {
         setAttr(el, attr, value);
