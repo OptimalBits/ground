@@ -136,6 +136,17 @@ module Gnd
     }
     
     /**
+      Returns the schema type for the given property if any.
+      
+      @method getSchemaType
+      @param key {String} key to get the schema type.
+      @return {SchemaType} schema type if any.
+    */
+    getSchemaType(key: string){
+      return this.compiledSchema[key];
+    }
+    
+    /**
       Gets an object property using the schema type custom getter.
       This is currently used by Collections and Sequences to provide lazy
       instantiation.
