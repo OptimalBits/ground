@@ -228,6 +228,10 @@ export class EachBinder implements Binder
     item.off('id', node['gnd-listener']);
     item.release();
     
+    delete node['gnd-obj'];
+    delete node['gnd-listener'];
+    delete node['gnd-bindings'];
+    
     // TODO: in order to support animations, the remove callback
     // should have a done callback as last parameter...
     this.callbacks.removed && this.callbacks.removed(node);
