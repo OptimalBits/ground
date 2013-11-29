@@ -183,8 +183,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     
     return result;
   }
-  
-  
+    
   /**
    * Creates a binding between two properties. 
    * Binded properties will be updated automatically as long as set method 
@@ -403,13 +402,14 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
     var oldval = obj[key];
     
     // Virtual properties are a bit hacky right now
-    var isVirtual = Util.isVirtualProperty(oldval);
+    var isVirtual = obj['isVirtual'] && obj['isVirtual'](key);//Util.isVirtualProperty(oldval);
     if(isVirtual){
-      oldval = oldval.call(obj);
+      oldval = _.isFunction(oldval) ? oldval.call(obj) : oldval;
       // This is not correct since having one virtual propery in the
       // changed set will disable sinchronizaton for all the other properties
       // in the set.
       opts.nosync = true;
+      opts.nocache = true;
     }
     
     changed = oldval !== val;
@@ -418,7 +418,7 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
         val = obj.willChange(key, val);
       }
       if(isVirtual){
-        obj[key](val);
+        _.isFunction(obj[key]) && obj[key](val);
       }else{
         obj[key] = val;
       }

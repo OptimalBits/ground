@@ -388,7 +388,7 @@ function deepExtend(doc, args, callFns?: boolean): {}
     var dst = doc[key];
     var val = args[key];
     
-    if(isVirtualProperty(dst)){
+    if(isVirtualProperty(doc, dst)){
       doc[key](val);
     }else{
       if(_.isPlainObject(val)){
@@ -428,9 +428,10 @@ export function extendClone(a: {}, b: {}): {}
 /**
     @method isVirtualProperty
 */
-export function isVirtualProperty(prop: any): boolean
+export function isVirtualProperty(obj, key: string): boolean
 {
-  return !!(prop && _.isFunction(prop) && prop.isVirtual);
+//  return !!(prop && _.isFunction(prop) && obj.isVirtual && obj.isVirtual(key));
+  return !!(obj.isVirtual && obj.isVirtual(key));
 }
 
 
