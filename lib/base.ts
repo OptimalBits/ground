@@ -143,6 +143,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       obj = {};
       obj[keypath] = val;
     }
+    
+    opts = opts || {};
+    
     if(set(this, keypath, val, cage, opts)){
       _.each(cage, function(val, key){
         val.emitter.emit(key, val.val, val.oldval, opts);
@@ -403,6 +406,9 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
     var isVirtual = Util.isVirtualProperty(oldval);
     if(isVirtual){
       oldval = oldval.call(obj);
+      // This is not correct since having one virtual propery in the
+      // changed set will disable sinchronizaton for all the other properties
+      // in the set.
       opts.nosync = true;
     }
     
