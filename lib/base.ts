@@ -386,6 +386,7 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
     if(!_.isUndefined(obj) && (!lastKey || _.isUndefined(obj[lastKey])) && obj.willChange){
       val = obj.willChange(lastKey, val);
       if(!_.isPlainObject(val)){
+        obj[lastKey] = val;
         storeEvent(obj, cage, lastKey, val);
         // Investigate if in the future we could emit events for every property
         // of the model
