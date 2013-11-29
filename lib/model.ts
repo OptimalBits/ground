@@ -1088,7 +1088,7 @@ export class ModelProxy extends Promise<Model>
     
     // Should only check for instanceof Model...
     if(modelOrArgs instanceof Base){
-      this.model = modelOrArgs;
+      this.model = modelOrArgs.retain();
       this.resolve(modelOrArgs);
       this['__schema'] = this.model['__schema'];
     }else{
@@ -1108,6 +1108,11 @@ export class ModelProxy extends Promise<Model>
         (err) => this.reject(err)
       );
     }
+  }
+  
+  destroy(){
+    Base.release(this.model);
+    super.destroy();
   }
   
   get(keypath?: string, args?:{}, opts?: {})
