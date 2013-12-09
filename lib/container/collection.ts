@@ -465,8 +465,9 @@ export class Collection extends Container implements CollectionEvents
         return this._resync(items);
       }else{
         // Resync called without items assumes this collection is persisted
+        this.retain();
         return using.storageQueue.findRemote(this.getKeyPath(), this.opts.query, {})
-          .then((items) => this._resync(items));
+          .then((items) => this._resync(items)).ensure(()=>this.release());
       }
     });
   }

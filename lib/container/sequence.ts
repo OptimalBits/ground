@@ -462,8 +462,9 @@ export class Sequence extends Container implements SequenceEvents
       if(remoteItems){
         return this._resync(remoteItems);
       }else{
+        this.retain();
         using.storageQueue.allRemote(this.getKeyPath(), {}, {})
-          .then((items) => this._resync(items));
+          .then((items) => this._resync(items)).ensure(()=>this.release());
       }
     });
   }
