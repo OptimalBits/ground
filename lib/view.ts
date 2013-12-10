@@ -369,11 +369,11 @@ export class View extends Base
     @method refresh
     @returns {Promise}
   */
-  refresh(): Promise<any>
+  refresh(context): Promise<any>
   {
     return this.refreshMutex(()=>{
       this.clean();
-      return this.render();
+      return this.render(context);
     });
   }
   
