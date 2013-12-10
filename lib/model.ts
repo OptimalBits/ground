@@ -329,10 +329,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       return Promise.resolved();
     }else{
       // Fetch the model from the server.
+      this.retain();
       return using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
         // HACK to avoid change: events due to different cids
         delete args['_cid'];
-        return this.resync(args)
+        return this.resync(args).ensure(()=>this.release());
       });
     }
   }
