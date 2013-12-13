@@ -43,7 +43,8 @@ export interface IGettable
 
 export interface BaseEvents
 {
-  on(evt: string, ...args: any[]);
+  on(evt: string, listener: (...args: any[]) => void);
+  
   /**
   * Fired when any property changes.
   *
@@ -51,7 +52,7 @@ export interface BaseEvents
   * @param obj {any} 
   * @param options {any}
   */
-  on(evt: 'changed:', obj: any, options: any); // TODO: Define options interface
+  on(evt: 'changed:', listener: (obj?: any, options?: any) => void); // TODO: Define options interface
   
   /**
   * Fired when the object is destroyed.
@@ -59,6 +60,17 @@ export interface BaseEvents
   * @event destroy:
   */
   on(evt: 'destroy:');
+}
+
+interface EventCageItem
+{
+  emitter: Base;
+  val: any;
+  oldval: any;
+}
+
+interface EventCage { 
+  [name: string]: EventCageItem;
 }
 
 /**
@@ -85,9 +97,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     @param objs* {Array | Any} object or objects to retain. If any of the objs
     is null or undefined, nothing is done for that obj.
   */
-  static retain(objs){
-    var items = _.isArray(objs) ? objs :arguments;
-    _.each(items, function(obj){
+  static retain(...objs: Base[])
+  {
+    _.each(objs, function(obj){
       obj && obj.retain();
     });
   }
@@ -100,10 +112,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     @param objs* {Array | Any} object or objects to release. If any of the objs
       is null or undefined, nothing is done for that obj.
   */
-  static release(...objs: Base[]);
-  static release(objs: any){
-    var items = _.isArray(objs) ? objs :arguments;
-    _.each(items, function(obj){
+  static release(...objs: Base[])
+  {
+    _.each(objs, function(obj){
       obj && obj.release();
     });
   }
@@ -132,7 +143,11 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    */
   set(doc: {}, opts?: {});
   set(keypathOrObj, val?, opts?){
-    var cage = {}, keypath, obj;
+    var 
+      cage: EventCage = {},
+      keypath, 
+      obj;
+
     if(_.isObject(keypathOrObj)){
       opts = val;
       obj = val = keypathOrObj;
