@@ -26,15 +26,15 @@ export interface Acl
 }
 
 export interface CreateRule {
-  (userId: string, keypath: string[], doc: any): Promise;
+  (userId: string, keypath: string[], doc: any): Promise<void>;
 }
 
 export interface DeleteRule {
-  (userId: string, keypath: string[]): Promise;
+  (userId: string, keypath: string[]): Promise<void>;
 }
 
 export interface PutRule {
-  (userId: string, keypath: string[], doc: any): Promise;
+  (userId: string, keypath: string[], doc: any): Promise<void>;
 }
 
 export interface AddRule {
@@ -84,7 +84,7 @@ class RulesManager
     this.acl = acl;
   }
   
-  applyCreate(userId: string, keyPath: string[], doc: any): Promise
+  applyCreate(userId: string, keyPath: string[], doc: any): Promise<any>
   {
     var rule = <CreateRule>this.matchRule(this.rules.create, keyPath);
     if(rule){
@@ -93,7 +93,7 @@ class RulesManager
     return Promise.resolved();
   }
 
-  applyPut(userId: string, keyPath: string[], doc: any): Promise
+  applyPut(userId: string, keyPath: string[], doc: any): Promise<any>
   {
     var rule = <PutRule>this.matchRule(this.rules.put, keyPath);
     if(rule){
@@ -102,7 +102,7 @@ class RulesManager
     return Promise.resolved();
   }
   
-  applyDel(userId: string, keyPath: string[]): Promise
+  applyDel(userId: string, keyPath: string[]): Promise<any>
   {
     var rule = <DeleteRule>this.matchRule(this.rules.del, keyPath);
     if(rule){
@@ -177,9 +177,9 @@ export class RightsManager
     }
   }
   
-  checkRights(userId: string, keyPath: string[], rights: Rights): Promise; // Promise<bool>
-  checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise;
-  checkRights(userId: string, keyPath: string[], rights: any): Promise
+  checkRights(userId: string, keyPath: string[], rights: Rights): Promise<boolean>; // Promise<bool>
+  checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise<boolean>;
+  checkRights(userId: string, keyPath: string[], rights: any): Promise<boolean>
   {
     var promise = new Promise();
     if(this.acl){
@@ -205,7 +205,7 @@ export class RightsManager
     }
   }
   
-  put(userId: string, keyPath: string[], doc: any): Promise
+  put(userId: string, keyPath: string[], doc: any): Promise<void>
   {
     if(this.rulesManager){
       this.rulesManager.applyPut(userId, keyPath, doc);
@@ -214,7 +214,7 @@ export class RightsManager
     }
   }
   
-  del(userId: string, keyPath: string[]): Promise
+  del(userId: string, keyPath: string[]): Promise<void>
   {
     if(this.rulesManager){
       this.rulesManager.applyDel(userId, keyPath);

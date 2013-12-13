@@ -515,7 +515,7 @@ listContainer may also have a type attribute:
     });
   }
 
-  private removeFromSeq(containerId): Promise
+  private removeFromSeq(containerId): Promise<void>
   {
     var promise = new Promise();
     this.listContainer.update(
@@ -566,7 +566,7 @@ listContainer may also have a type attribute:
     });
   }
   // cb: (err:Error, id?: string)=>void)
-  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise
+  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<void>
   {
     var promise = new Promise();
     var newContainer = new this.listContainer({
@@ -651,7 +651,7 @@ listContainer may also have a type attribute:
   }
 
   // id?: string, refId?: string
-  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise
+  insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise<any>
   {
     return this.getModel(keyPath).then((found) => {
       var ParentModel = found.Model;

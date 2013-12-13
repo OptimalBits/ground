@@ -37,7 +37,7 @@ class ModelDepot
   private models = {};
 
   // Study if we can deprecate args since they should always go via a resync call...
-  getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise
+  getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise<Model>
   {
     var model;
     var fetch: boolean = true;
@@ -278,7 +278,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     if(!this.__strict){
       _.extend(this, args);
     }
-    this.__schema = this.__schema || this.constructor.__schema;
+    this.__schema = this.__schema || this['constructor'].__schema;
     _.extend(this, this.__schema.fromObject(args));
     
    // this._cid = this._id || this._cid || Util.uuid();
@@ -709,10 +709,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return !Model.isClientId(this.id());
   }
-  
+
   /**
     Waits until the model has been persisted on server storage.
-  
+
     @method whenPersisted
     @return {Promise} resolved when the model is persisted.
     @example
@@ -1006,7 +1006,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     @method fail
     @param onRejected {Function}
   **/
-  fail(onRejected?: (reason: Error) => any): Promise
+  fail<U>(onRejected?: (reason: Error) => any): Promise<U>
   {
     return this._promise.fail.apply(this._promise, arguments);
   }

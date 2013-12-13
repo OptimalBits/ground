@@ -422,7 +422,7 @@ export class View extends Base
     @method init
     @return {Promise} resolved after initialization has been completed.
    */
-   private init(): Promise
+   private init(): Promise<any>
    {
      if(!this.isInitialized){
        this.isInitialized = true;
@@ -437,7 +437,7 @@ export class View extends Base
      return this.initChildren();
    }
    
-   private initChildren(): Promise
+   private initChildren(): Promise<any[]>
    {
      return Promise.map(this.children, (subview) => subview.init());
    }

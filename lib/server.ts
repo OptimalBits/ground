@@ -55,7 +55,7 @@ export class Server {
     this.rm = rightsManager || new RightsManager();
   }
   
-  create(userId: string, keyPath: string[], doc: any, opts: {}): Promise
+  create(userId: string, keyPath: string[], doc: any, opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.CREATE).then((allowed) => {
       if(allowed){
@@ -71,7 +71,7 @@ export class Server {
     });
   }
   
-  put(clientId: string, userId: string, keyPath: string[], doc: any, opts: {}): Promise
+  put(clientId: string, userId: string, keyPath: string[], doc: any, opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
@@ -87,7 +87,7 @@ export class Server {
     });
   }
   
-  fetch(userId: string, keyPath: string[]): Promise
+  fetch(userId: string, keyPath: string[]): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed) => {
       if(allowed){
@@ -96,7 +96,7 @@ export class Server {
     });
   }
 
-  del(clientId: string, userId: string, keyPath: string[], opts: {}): Promise
+  del(clientId: string, userId: string, keyPath: string[], opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
@@ -117,7 +117,7 @@ export class Server {
       keyPath: string[], 
       itemsKeyPath: string[], 
       itemIds:string[], 
-      opts: {}): Promise
+      opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){
@@ -135,7 +135,7 @@ export class Server {
          keyPath: string[],
          itemsKeyPath: string[],
          itemIds:string[],
-         opts: {}): Promise
+         opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed) => {
       if(allowed){
@@ -169,7 +169,7 @@ export class Server {
     });
   }
   
-  deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}): Promise
+  deleteItem(clientId: string, userId: string, keyPath: string[], id: string, opts: {}): Promise<any>
   {
     return this.rm.checkRights(userId, keyPath, Rights.DEL).then((allowed?) => {
       if(allowed){
@@ -185,7 +185,7 @@ export class Server {
                keyPath: string[],
                id: string,
                itemKeyPath: string[], 
-               opts): Promise //<{id:string; refId?: string>}
+               opts): Promise<any> //<{id:string; refId?: string>}
   {
     return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
       if(allowed){

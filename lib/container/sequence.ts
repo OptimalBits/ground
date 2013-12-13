@@ -198,7 +198,7 @@ export class Sequence extends Container implements SequenceEvents
     }
   }
 
-  private deleteItem(id: string, opts): Promise
+  private deleteItem(id: string, opts): Promise<any>
   {
     var idx = _.findIndex(this.items, {'id': id});
     
@@ -206,12 +206,12 @@ export class Sequence extends Container implements SequenceEvents
     return this.remove(idx, opts);
   }
 
-  private insertBefore(refId: string, item: Model, opts?): Promise
+  private insertBefore(refId: string, item: Model, opts?): Promise<any>
   {
     return this.insertItemBefore(refId, item, null, opts);
   }
   
-  private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
+  private insertItemBefore(refId: string, item: Model, id: string, opts): Promise<any>
   {
     var promise;
     var seqItem = {
@@ -282,7 +282,7 @@ export class Sequence extends Container implements SequenceEvents
     return promise;
   }
 
-  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise // <string>
+  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise<any>
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();

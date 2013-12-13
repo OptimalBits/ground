@@ -5,7 +5,6 @@
 /**
   Promise Module. Minimal promise implementation.
 */
-/// <reference path="util.ts" />
 /// <reference path="base.ts" />
 
 module Gnd {
@@ -103,7 +102,7 @@ export class Promise<T> extends Base
     @static
     @param task {Function} a function that returns a Promise
   */
-  static debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
+  static debounce<U>(task: (...args:any[])=>Promise<U>): (...args:any[])=>void
   {
     var delayed, executing;
   
@@ -260,7 +259,7 @@ export class Promise<T> extends Base
     @method fail
     @param onRejected {Function}
   **/
-  fail(onRejected?: (reason: Error) => any): Promise
+  fail<U>(onRejected?: (reason: Error) => any): Promise<U>
   {
     return this.then(null, onRejected || ()=>{});
   }
