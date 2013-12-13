@@ -4,7 +4,7 @@
 */
 /// <reference path="../log.ts" />
 /// <reference path="../event.ts" />
-/// <reference path="../../third/underscore.d.ts" />
+/// <reference path="../../third/lodash.d.ts" />
 
 /**
   @module Gnd

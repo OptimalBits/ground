@@ -8,7 +8,7 @@
   the framework.
 */
 
-/// <reference path="../third/underscore.d.ts" />
+/// <reference path="../third/lodash.d.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="base.ts" />
 
@@ -72,36 +72,6 @@ export function adler32(s: string): number
 export function refresh(){
   window.location.replace('');
 };
-
-/**
-  Retains the given objects (see reference count for details).
-
-  @method retain
-  @param objs* {Array | Any} object or objects to retain. If any of the objs
-  is null or undefined, nothing is done for that obj.
-*/
-export function retain(objs){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.retain();
-  });
-};
-
-/**
-  Release the given objects (see reference count for details).
- 
-  @method release
-  @param objs* {Array | Any} object or objects to release. If any of the objs
-    is null or undefined, nothing is done for that obj.
-*/
-export function release(...objs: Base[]);
-export function release(objs: any){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.release();
-  });
-};
-
 
 /**
 

@@ -8,7 +8,7 @@
   
 */
 
-/// <reference path="../third/underscore.d.ts" />
+/// <reference path="../third/lodash.d.ts" />
 
 /*
 References:

@@ -15,7 +15,7 @@
 // https://github.com/Wolfy87/EventEmitter
 //
 
-/// <reference path="../third/underscore.d.ts" />
+/// <reference path="../third/lodash.d.ts" />
 
 module Gnd {
   
@@ -47,7 +47,7 @@ export class EventEmitter {
     * @param {Function} listener Function to be executed when the specified event is emitted
     * @chainable
     */
-  on(eventNames: string, listener): EventEmitter
+  on(eventNames: string, listener: (...args: any[]) => void): EventEmitter
   {
     var events = eventNames.split(' '), listeners = this.getListeners();
 
@@ -152,7 +152,7 @@ export class EventEmitter {
   once(eventName, listener): EventEmitter
   {
     var self = this
-  
+
     function wrapper() {
       self.off(eventName, wrapper);
       listener.apply(this, arguments);
@@ -188,7 +188,7 @@ export class EventEmitter {
    *
    *
    * @method namespace 
-   *
+   * @deprecated
    *
   */
   namespace(namespace) // TODO: Define EventEmitterNamespace
@@ -248,7 +248,7 @@ export class EventEmitter {
       if(namespaces[namespace]){
         var _listeners;
         if(event === ''){
-          var events = <Object>namespaces[namespace];
+          var events = namespaces[namespace];
           
           _.each(events, function(listeners: any, event?: string){
             for(var i=0, len=listeners.length;i<len;i++){
