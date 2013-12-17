@@ -538,11 +538,11 @@ export class MongooseStorage implements Storage.IStorage {
   private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
     var promise = new Promise();
-    ParentModel.findOne({_cid: parentId}).exec((err, doc) => {
+    ParentModel.findOne({_cid: parentId}).select(name).exec((err, doc) => {
       if(err) return promise.reject(err);
       else if(!doc) return promise.reject(Error('could not find end points'));
       else if(!doc[name] || doc[name].length === 0) promise.resolve();
-      else{
+      else {
         this.ListContainer.find()
           .where('gid').in(doc[name])
           .or([{type:'_begin'}, {type:'_end'}])
@@ -559,26 +559,6 @@ export class MongooseStorage implements Storage.IStorage {
             });
           });
       }
-
-/*
-  private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
-    ParentModel.findById(parentId).select(name).exec((err, doc) => {
-      if(!doc) return cb(err);
-      this.listContainer.find()
-        .where('_id').in(doc[name])
-        .or([{type:'_begin'}, {type:'_end'}])
-        .exec((err, docs)=>{
-          if(docs.length < 2) return cb(Error('could not find end points'));
-          cb(err,
-            _.find(docs, (doc) => {
-              return doc.type === '_begin';
-            }),
-            _.find(docs, (doc) => {
-              return doc.type === '_end';
-            })
-          );
-        });
-        */
     });
     return promise;
   }
