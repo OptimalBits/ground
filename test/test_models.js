@@ -747,6 +747,170 @@ describe('Model Datatype', function(){
        expect(obj.rect).to.have.property('w');
        expect(obj.rect.h).to.be(30);       
      });
+     
+     it('Setting an object on a property defined as Model instances the model', function(done){
+       var CarSchema = new Gnd.Schema({
+         color: String,
+         brand: String
+       });
+       
+       var CarModel = Gnd.Model.extend('cars', CarSchema);
+
+       var DriverSchema = new Gnd.Schema({
+         name: String,
+         car: new Gnd.ModelSchemaType(CarModel)
+       });
+       
+       var DriverModel = Gnd.Model.extend('drivers', DriverSchema);
+       
+       var driver = new DriverModel({name: 'Vettel'});
+
+       driver.on('car', function(doc){
+         expect(doc).to.be.an(CarModel);
+         expect(doc).to.have.property('brand');
+         expect(doc).to.have.property('color');
+         done();
+       });
+     
+       driver.set({car: {brand: 'Red Bull', color: 'Blue'}});
+
+     })
+     
+     it('Setting an object on a deep property defined as Model instances the model', function(done){
+       var CarSchema = new Gnd.Schema({
+         color: String,
+         brand: String
+       });
+       
+       var CarModel = Gnd.Model.extend('cars', CarSchema);
+
+       var DriverSchema = new Gnd.Schema({
+         name: String,
+         car: new Gnd.ModelSchemaType(CarModel)
+       });
+       
+       var DriverModel = Gnd.Model.extend('drivers', DriverSchema);
+       
+       var RaceSchema = new Gnd.Schema({
+         location: String,
+         bestDriver: new Gnd.ModelSchemaType(DriverModel)
+       });
+       
+       var RaceModel = Gnd.Model.extend('races', RaceSchema)
+       
+       var race = new RaceModel();
+       
+       race.on('bestDriver', function(doc){
+         console.log(doc);
+         done();
+       })
+       
+       race.set('bestDriver', {name: 'Alonso', car: {color: 'red', brand: 'Ferrari'}});
+     })
+     
+     it('Setting an object on a nested model property instances the model', function(done){
+       var WheelSchema = new Gnd.Schema({
+         type: String,
+         brand: String
+       });
+       
+       var WheelModel = Gnd.Model.extend('wheels', WheelSchema);
+       
+       var CarSchema = new Gnd.Schema({
+         color: String,
+         brand: String,
+         wheel: new Gnd.ModelSchemaType(WheelModel)
+       });
+       
+       var CarModel = Gnd.Model.extend('cars', CarSchema);
+
+       var DriverSchema = new Gnd.Schema({
+         name: String,
+         car: new Gnd.ModelSchemaType(CarModel)
+       });
+       
+       var DriverModel = Gnd.Model.extend('drivers', DriverSchema);
+       
+       var driver = new DriverModel({name: 'Vettel'});
+
+       driver.on('car', function(doc){
+         expect(doc).to.be.an(CarModel);
+         expect(doc).to.have.property('brand');
+         expect(doc).to.have.property('color');
+         expect(doc).to.have.property('wheel');
+         expect(doc.wheel).to.be.an(WheelModel);
+         expect(doc.wheel.type).to.be.eql('hard');
+         expect(doc.wheel.brand).to.be.eql('Bridgestone');
+         done();
+       });
+       
+       // We would like the following events to also be emitted
+       /*
+       driver.on('car.brand', function(doc){
+         done();
+       })       
+       driver.on('car.wheel', function(doc){
+         done();
+       })
+       driver.on('car.wheel.brand', function(doc){
+         done();
+       })
+       */
+     
+       driver.set({car: {brand: 'Red Bull', color: 'Blue', wheel: {type: 'hard', brand: 'Bridgestone'}}});
+     })
+     
+     it.skip('Setting an object on a nested model property instances the model 2', function(done){
+       var WheelSchema = new Gnd.Schema({
+         type: String,
+         brand: String
+       });
+       
+       var WheelModel = Gnd.Model.extend('wheels', WheelSchema);
+       
+       var CarSchema = new Gnd.Schema({
+         color: String,
+         brand: String,
+         wheel: new Gnd.ModelSchemaType(WheelModel)
+       });
+       
+       var CarModel = Gnd.Model.extend('cars', CarSchema);
+
+       var DriverSchema = new Gnd.Schema({
+         name: String,
+         car: new Gnd.ModelSchemaType(CarModel)
+       });
+       
+       var DriverModel = Gnd.Model.extend('drivers', DriverSchema);
+       
+       var driver = new DriverModel({name: 'Vettel'});
+
+       driver.on('car', function(doc){
+         expect(doc).to.be.an(CarModel);
+         expect(doc).to.have.property('brand');
+         expect(doc).to.have.property('color');
+         expect(doc).to.have.property('wheel');
+         expect(doc.wheel).to.be.an(WheelModel);
+         expect(doc.wheel.type).to.be.eql('hard');
+         expect(doc.wheel.brand).to.be.eql('Bridgestone');
+         done();
+       });
+       
+       // We would like the following events to also be emitted
+       /*
+       driver.on('car.brand', function(doc){
+         done();
+       })       
+       driver.on('car.wheel', function(doc){
+         done();
+       })
+       driver.on('car.wheel.brand', function(doc){
+         done();
+       })
+       */
+     
+       driver.set('car.wheel', {type: 'hard', brand: 'Bridgestone'});
+     });
   
      it.skip('Schema validates values');
 

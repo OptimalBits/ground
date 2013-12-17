@@ -215,7 +215,7 @@ export class Queue extends Base implements IStorage
     });
   }
   
-  private updateLocalSequence(keyPath: string[], opts: {}, remoteSeq: IDoc[]): Promise
+  private updateLocalSequence(keyPath: string[], opts: {}, remoteSeq: IDoc[]): Promise<any>
   {
     opts = _.extend({snapshot: false}, opts);
 
@@ -235,7 +235,7 @@ export class Queue extends Base implements IStorage
   private updateLocalCollection(keyPath: string[], 
                                 query: IStorageQuery, 
                                 options: {},
-                                newItems: any[]): Promise // Promise<{}[]>
+                                newItems: any[]): Promise<any> // Promise<{}[]>
   {
     var 
       storage = this.localStorage,

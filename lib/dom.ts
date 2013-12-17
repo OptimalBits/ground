@@ -65,6 +65,8 @@ module Gnd
         query.length = elements.length;
       }
       
+    if(!selectorOrElement) return query;
+      
     if(_.isString(selectorOrElement)){
       var selector = selectorOrElement;
     
@@ -90,7 +92,7 @@ module Gnd
         default:
           push((selector != 'document' ? <any>ctx.getElementsByTagName(selector) : [document]));
       }
-    }else if(_.isArray(selectorOrElement)){
+    }else if(selectorOrElement['length']){
       push(selectorOrElement);
     }else{
       push([selectorOrElement]);
@@ -282,6 +284,7 @@ export class Query // implements QueryNodes
   
   attr(attr: string, value?: any)
   {
+    if(!this.length) return;
     if(!_.isUndefined(value)){
       _.each(this, (el) => {
         setAttr(el, attr, value);

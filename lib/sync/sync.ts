@@ -91,25 +91,25 @@ export class Manager extends Base {
     
     socket.on('delete:', deleteFn);
     var addFn = (keyPath, itemsKeyPath, itemIds) => {
-      log("Received add", arguments);
+      log("Received add", keyPath, itemsKeyPath, itemIds);
       proxy.notify(keyPath, 'add:', itemsKeyPath, itemIds);
     }
     socket.on('add:', addFn);
     
     var removeFn = (keyPath, itemsKeyPath, itemIds) => {
-      log("Received remove", arguments);
+      log("Received remove", keyPath, itemsKeyPath, itemIds);
       proxy.notify(keyPath, 'remove:', itemsKeyPath, itemIds);
     }
     socket.on('remove:', removeFn);
 
     var insertBeforeFn = (keyPath, id, itemKeyPath, refId) => {
-      log("Received insert", arguments);
+      log("Received insert", keyPath, id, itemKeyPath, refId);
       proxy.notify(keyPath, 'insertBefore:', id, itemKeyPath, refId);
     }
     socket.on('insertBefore:', insertBeforeFn);
 
     var deleteItemFn = (keyPath, id) => {
-      log("Received deleteItem", arguments);
+      log("Received deleteItem", keyPath, id);
       proxy.notify(keyPath, 'deleteItem:', id);
     }
     socket.on('deleteItem:', deleteItemFn);

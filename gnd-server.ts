@@ -15,8 +15,7 @@
    - Canvas View.
   
    Dependencies:
-   - jQuery
-   - Underscore / LoDash
+   - LoDash
 
    (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
@@ -29,6 +28,7 @@
 /// <reference path="lib/server.ts" />
 /// <reference path="lib/session/sessionmanager.ts" />
 /// <reference path="lib/storage/socket-backend.ts" />
+/// <reference path="lib/storage/ajax-backend.ts" />
 /// <reference path="lib/storage/mongoose-backend.ts" />
 
 

@@ -6,10 +6,11 @@
   Query Module. Query support for models and containers.
 */
 
-/// <reference path="../../third/underscore.d.ts" />
+/// <reference path="../../third/lodash.d.ts" />
 
 module Gnd.Storage.Query
 {
-  export var match = (cond, doc: any) => _.all<any>(cond, (value: any, key: string) => 
-    doc[key] === cond[key]); 
+  export var match = (cond: {}, doc: any) => 
+    _.all<any>(cond, (value: any, key, list) => 
+      doc[key] === cond[key]); 
 }

@@ -224,9 +224,13 @@ export class EachBinder implements Binder
       node = this.mappings[id],
       item = node['gnd-obj'];
     
-    this.viewModel.unbind(node['gnd-bindings']);
+    this.viewModel.cleanup(node['gnd-bindings']);
     item.off('id', node['gnd-listener']);
     item.release();
+    
+    delete node['gnd-obj'];
+    delete node['gnd-listener'];
+    delete node['gnd-bindings'];
     
     // TODO: in order to support animations, the remove callback
     // should have a done callback as last parameter...

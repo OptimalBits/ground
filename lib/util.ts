@@ -8,7 +8,7 @@
   the framework.
 */
 
-/// <reference path="../third/underscore.d.ts" />
+/// <reference path="../third/lodash.d.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="base.ts" />
 
@@ -72,36 +72,6 @@ export function adler32(s: string): number
 export function refresh(){
   window.location.replace('');
 };
-
-/**
-  Retains the given objects (see reference count for details).
-
-  @method retain
-  @param objs* {Array | Any} object or objects to retain. If any of the objs
-  is null or undefined, nothing is done for that obj.
-*/
-export function retain(objs){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.retain();
-  });
-};
-
-/**
-  Release the given objects (see reference count for details).
- 
-  @method release
-  @param objs* {Array | Any} object or objects to release. If any of the objs
-    is null or undefined, nothing is done for that obj.
-*/
-export function release(...objs: Base[]);
-export function release(objs: any){
-  var items = _.isArray(objs) ? objs :arguments;
-  _.each(items, function(obj){
-    obj && obj.release();
-  });
-};
-
 
 /**
 
@@ -385,23 +355,28 @@ function deepExtend(doc, args, callFns?: boolean): {}
 {
   var keys = _.keys(args);
   _.each(keys, (key) => {
-    if(isVirtualProperty(doc[key])){
-      doc[key](args[key]);
+    var dst = doc[key];
+    var val = args[key];
+    
+    if(isVirtualProperty(doc, dst)){
+      doc[key](val);
     }else{
-      // TODO: use isPlainObject to avoid special cases.
-      if(doc[key] && 
-         args[key] && 
-         args[key].constructor === Object.prototype['constructor']){
-        deepExtend(doc[key], args[key]);
+      if(_.isPlainObject(val)){
+        if(_.isUndefined(dst)){
+          doc[key] = val;
+        }else if(_.isFunction(dst.set)){
+          dst.set(val);
+        }else{
+          deepExtend(dst, val);
+        }
       }else{
-        doc[key] = args[key];
+        doc[key] = val;
       }
     }
   });
   return doc;
 }
 
- 
 /**
   Merge a doc with an object containing unexpanded properties
 
@@ -423,9 +398,10 @@ export function extendClone(a: {}, b: {}): {}
 /**
     @method isVirtualProperty
 */
-export function isVirtualProperty(prop: any): boolean
+export function isVirtualProperty(obj, key: string): boolean
 {
-  return !!(prop && _.isFunction(prop) && prop.isVirtual);
+//  return !!(prop && _.isFunction(prop) && obj.isVirtual && obj.isVirtual(key));
+  return !!(obj.isVirtual && obj.isVirtual(key));
 }
 
 

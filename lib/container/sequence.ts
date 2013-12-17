@@ -198,7 +198,7 @@ export class Sequence extends Container implements SequenceEvents
     }
   }
 
-  private deleteItem(id: string, opts): Promise
+  private deleteItem(id: string, opts): Promise<any>
   {
     var idx = _.findIndex(this.items, {'id': id});
     
@@ -206,12 +206,12 @@ export class Sequence extends Container implements SequenceEvents
     return this.remove(idx, opts);
   }
 
-  private insertBefore(refId: string, item: Model, opts?): Promise
+  private insertBefore(refId: string, item: Model, opts?): Promise<any>
   {
     return this.insertItemBefore(refId, item, null, opts);
   }
   
-  private insertItemBefore(refId: string, item: Model, id: string, opts): Promise
+  private insertItemBefore(refId: string, item: Model, id: string, opts): Promise<any>
   {
     var seqItem = {
       model: item,
@@ -279,7 +279,7 @@ export class Sequence extends Container implements SequenceEvents
     return promise;
   }
 
-  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise//<string>
+  private insertPersistedItemBefore(id: string, item: Model, opts: {}): Promise<any>
   {
     var keyPath = this.getKeyPath();
     var itemKeyPath = item.getKeyPath();
@@ -350,14 +350,9 @@ export class Sequence extends Container implements SequenceEvents
     if(!item){
       return Promise.rejected(Error('index out of bounds'));
     } 
-    this.items.splice(idx, 1);
-    
-    // Why can't we use deinitItems here?
-    item.model.off('changed:', this.updateFn);
-    item.model.off('deleted:', this.deleteFn);
-    
+    this.items.splice(idx, 1);  
+    this.deinitItems(item.model);
     this.set('count', this.items.length);
-    item.model.release();
     
     opts = Util.extendClone(this.opts, opts);
     
@@ -464,8 +459,9 @@ export class Sequence extends Container implements SequenceEvents
       if(remoteItems){
         return this._resync(remoteItems);
       }else{
+        this.retain();
         using.storageQueue.allRemote(this.getKeyPath(), {}, {})
-          .then((items) => this._resync(items));
+          .then((items) => this._resync(items)).ensure(()=>this.release());
       }
     });
   }

@@ -5,7 +5,6 @@
 /**
   Promise Module. Minimal promise implementation.
 */
-/// <reference path="util.ts" />
 /// <reference path="base.ts" />
 
 module Gnd {
@@ -103,7 +102,7 @@ export class Promise<T> extends Base
     @static
     @param task {Function} a function that returns a Promise
   */
-  static debounce(task: (...args:any[])=>Promise): (...args:any[])=>void
+  static debounce<U>(task: (...args:any[])=>Promise<U>): (...args:any[])=>void
   {
     var delayed, executing;
   
@@ -260,19 +259,9 @@ export class Promise<T> extends Base
     @method fail
     @param onRejected {Function}
   **/
-  fail(onRejected?: (reason: Error) => any): Promise
+  fail<U>(onRejected?: (reason: Error) => any): Promise<U>
   {
     return this.then(null, onRejected || ()=>{});
-  }
-  
-  /**
-    @method resolveOrReject
-    @deprecated
-  */
-  resolveOrReject(err?: Error, value?: any)
-  {
-    if(err) this.reject(err);
-    else this.resolve(value);
   }
   
   /**
@@ -311,7 +300,7 @@ export class Promise<T> extends Base
   resolve(value?: T): Promise<T>
   {
     if(this.isFulfilled) return;
-    this.abort();
+    this.isFulfilled = true;
     
     this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
@@ -328,7 +317,7 @@ export class Promise<T> extends Base
   reject(reason: Error): Promise<T>
   {
     if(this.isFulfilled) return;
-    this.abort();
+    this.isFulfilled = true;
     
     this.reason = reason || null;
     this.fireCallbacks(this.rejectedFns, reason);
@@ -343,14 +332,6 @@ export class Promise<T> extends Base
   cancel()
   {
     return this.reject(CancelError);
-  }
-  
-  /**
-    @method abort
-    @deprecated
-  */
-  abort(){
-    this.isFulfilled = true;
   }
   
   private fireNext(cb, value){

@@ -36,8 +36,8 @@ class ModelDepot
 {
   private models = {};
 
-  // Deprecate args since they should always go via a resync call...
-  getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise
+  // Study if we can deprecate args since they should always go via a resync call...
+  getModel(ModelClass: IModel, args: {}, autosync: boolean, keyPath?: string[]): Promise<Model>
   {
     var model;
     var fetch: boolean = true;
@@ -56,13 +56,15 @@ class ModelDepot
       model = new ModelClass(_.extend({}, keyPath && {_cid: keyPath[1]}, args),
                              {fetch: fetch, autosync: autosync});
       this.setModel(model);
-      model.autorelease();
       !model._persisting && !model.isPersisted() && !fetch && autosync && model.save();
     }else{
-      autosync && model.keepSynced();
+      if(args['_id']){
+        model._id = args['_id'];
+      }
+      autosync && model.autosync(true);
+      model.retain();
     }
-
-    return model.retain();
+    return model;
   }
 
   key(keyPath: string[])
@@ -157,15 +159,13 @@ export interface ModelEvents
   in schemas.
     
       var ChatSchema = new Schema({
-        rooms: new ColectionSchemaType(Room, 'rooms');
+        name: new ModelSchemaType(Name);
       });
 
-  @class CollectionSchemaType
+  @class ModelSchemaType
   @extends SchemaType
   @constructor
-  @param mode {IModel} A model class defining the type of items to store in the
-  sequence.
-  @param bucket {String} Bucket where the items are stored in the server.
+  @param model {IModel} A model class defining the type of the model.
 */
 export class ModelSchemaType extends SchemaType
 {
@@ -200,70 +200,6 @@ export class ModelSchemaType extends SchemaType
   }
 }
 
-// -- 
-declare var curl;
-
-/**
-  This class proxies all the events that the underlying model emits, and
-  resolves to the concrete instance of a Model.
-  
-  This class is used when declaring Abstract models in a Schema, i.e., when
-  only the parent model is known when declaring the schema, and the concrete
-  implementation is fetched from a remote storage at runtime.
-  
-  Note: this class should be strictly private and not exported.
-  
-  @class ModelProxy
-  
-  
-*/
-export class ModelProxy extends Promise<Model>
-{
-  model: Model;
-  
-  constructor(model: Model);
-  constructor(modelOrArgs: {}, classUrl?: string);
-  constructor(modelOrArgs, classUrl?: string)
-  {
-    super();
-    
-    // Should only check for instanceof Model...
-    if(modelOrArgs instanceof Base){
-      this.model = modelOrArgs;
-      this.resolve(modelOrArgs);
-    }else{
-      var args = modelOrArgs;
-      _.extend(this, args);
-      curl([classUrl]).then(
-        (modelClass: IModel) => {
-          var fn = _.bind(_.omit, _, this);
-          var args = fn.apply(this, _.functions(this));
-          this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
-          this.model.on('*', () => {
-            this.emit.apply(this, arguments);
-          });
-          this.resolve(this.model)
-        },
-        (err) => this.reject(err)
-      );
-    }
-  }
-  
-  get(keypath: string)
-  {
-    return this.model ? this.model.get(keypath) : super.get(keypath);
-  }
-  
-  //set(doc: {}, opts?: {});
-  set(keyOrObj, val?: any, opts?: {}): Base
-  {
-      this.model ? this.model.set(keyOrObj, val, opts) : 
-      super.set(keyOrObj, val, opts);
-      return this;
-  }
-}
-
-
 /**
   The {{#crossLink "Model"}}{{/crossLink}} class is used to represent data
   based on a predefined {{#crossLink "Schema"}}{{/crossLink}}. The Model can be
@@ -292,7 +228,7 @@ export class ModelProxy extends Promise<Model>
   @param [bucket] {String}
   @param [opts] {ModelOpts}
  **/
-export class Model extends Promise<Model> implements Sync.ISynchronizable, ModelEvents
+export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 {
   static __useDepot: boolean = true;
   static __bucket: string;
@@ -311,6 +247,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   static schema(){
     return this.__schema;
   }
+  
+  private _promise = new Promise<Model>();
   
   private __bucket: string;
   private __schema: Schema;
@@ -343,7 +281,7 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     if(!this.__strict){
       _.extend(this, args);
     }
-    this.__schema = this.__schema || this.constructor.__schema;
+    this.__schema = this.__schema || this['constructor'].__schema;
     _.extend(this, this.__schema.fromObject(args));
     
     this._cid = this._cid || Util.uuid();
@@ -385,17 +323,22 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     this.opts.autosync && this.keepSynced();
   }
   
-  resync(args?): void
+  resync(args?): Promise<any>
   {
     if(args){
+      /*
       var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
       this.set(strictArgs, {nosync: true, nocache: true});
+      */
+      this.set(args, {nosync: true, nocache: true});
+      return Promise.resolved();
     }else{
       // Fetch the model from the server.
-      using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
+      this.retain();
+      return using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
         // HACK to avoid change: events due to different cids
         delete args['_cid'];
-        this.resync(args)
+        return this.resync(args).ensure(()=>this.release());
       });
     }
   }
@@ -433,8 +376,8 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
       this.__strict = this.__strict || __['__strict'];
       _super.call(this, args, bucket || _bucket, opts || _bucket);
       
-      // Call constructor if different from Model constructor.
-      if(constructor && (_super != constructor)){
+      // Call constructor if different from Model constructor and Base
+      if(constructor && (_super != constructor) && (constructor != Base)){
         constructor.call(this, args);
       }
     }; 
@@ -586,9 +529,13 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     return this.fromJSON(args, opts);
   }
   
+  willChange(key, val){
+    var schema = this.__schema.getSchemaType(key);
+    return schema ? schema.fromObject(val) : val;
+  }
+  
   /**
     Checks if the model has the given id. 
-    
     @method checkId
   */
   checkId(id: string): boolean
@@ -712,10 +659,10 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
     //return !Model.isClientId(this.id());
     return this._persisted;
   }
-  
+
   /**
     Waits until the model has been persisted on server storage.
-  
+
     @method whenPersisted
     @return {Promise} resolved when the model is persisted.
     @example
@@ -979,10 +926,160 @@ export class Model extends Promise<Model> implements Sync.ISynchronizable, Model
   {
     return model.seq(this, args, bucket);
   }
+  
+  //
+  // Promise Mixin
+  //
+  /**
+  
+    Then method waits for a promise to resolve or reject, and returns a new
+    promise that resolves directly if the onFulfilled callback returns a value,
+    or if the onFulfilled callback returns a promise then when 
+    the returned promise resolves.
+  
+    @method then
+    @param [onFulfilled] {Function}
+    @param [onRejected] {Function}
+    @return {Promise} A promise according to the rules specified 
+  **/
+  then<U>(onFulfilled: (value: Model) => U, onRejected?: (reason: Error) => void): Promise<U>;
+  then<U>(onFulfilled: (value: Model) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>;
+  then(onFulfilled: (value: Model) => void, onRejected?: (reason: Error) => void): Promise<void>;
+  then(onFulfilled: (value: Model) => any, onRejected?: (reason: Error) => void): Promise<any>
+  {
+    return this._promise.then.apply(this._promise, arguments);
+  }
+  
+  /**
+    This method is syntactic sugar for then when only caring about a promise
+    rejection.
+    
+    @method fail
+    @param onRejected {Function}
+  **/
+  fail<U>(onRejected?: (reason: Error) => any): Promise<U>
+  {
+    return this._promise.fail.apply(this._promise, arguments);
+  }
+  
+  /**
+    Ensures that the callback is called when the promise resolves or rejects.
+    
+    @method ensure
+    @param always {Function} callback to be executed always independetly if the 
+    project was resolved or rejected.
+  **/
+  ensure(always: () => any)
+  {
+    return this._promise.ensure.apply(this._promise, arguments);
+  }
+  
+  /**
+    Resolves the promise with the given value.
+  
+    @method resolve
+    @param value {Any} value to resolve this promise with.
+    @chainable
+  */
+  resolve(value?: Model): Promise<Model>
+  {
+    return this._promise.resolve.apply(this._promise, arguments);
+  }
+  
+  /**
+    Resolves the promise with the given value.
+
+    @method reject
+    @param reason {Error} value to resolve this promise with.
+    @chainable
+  */
+  reject(reason: Error): Promise<Model>
+  {
+    return this._promise.reject.apply(this._promise, arguments);
+  }
+  
+  /**
+    Cancels the promise (rejects with reason CancelError)
+    
+    @chainable
+  **/
+  cancel()
+  {
+    return this._promise.cancel.apply(this._promise, arguments);
+  }
 }
 
 // Virtual properties.
 // TODO: Add support for generating virtual properties.
 Model.prototype.id['isVirtual'] = true;
+
+// -- 
+declare var curl;
+
+/**
+  This class proxies all the events that the underlying model emits, and
+  resolves to the concrete instance of a Model.
+  
+  This class is used when declaring Abstract models in a Schema, i.e., when
+  only the parent model is known when declaring the schema, and the concrete
+  implementation is fetched from a remote storage at runtime.
+  
+  Note: this class should be strictly private and not exported.
+  
+  @class ModelProxy
+*/
+export class ModelProxy extends Promise<Model>
+{  
+  model: Model;
+  
+  constructor(model: Model);
+  constructor(modelOrArgs: {}, classUrl?: string);
+  constructor(modelOrArgs, classUrl?: string)
+  {
+    super();
+    
+    // Should only check for instanceof Model...
+    if(modelOrArgs instanceof Base){
+      this.model = modelOrArgs.retain();
+      this.resolve(modelOrArgs);
+      this['__schema'] = this.model['__schema'];
+    }else{
+      _.extend(this, modelOrArgs);
+      curl([classUrl]).then(
+        (modelClass: IModel) => {
+          var fn = _.bind(_.omit, _, this);
+          var args = fn.apply(this, _.functions(this));
+          this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+          this['__schema'] = modelClass.schema();
+          this.model.resync(args);
+          this.model.on('*', () => {
+            this.emit.apply(this, arguments);
+          });
+          this.resolve(this.model)
+        },
+        (err) => this.reject(err)
+      );
+    }
+  }
+  
+  destroy(){
+    Base.release(this.model);
+    super.destroy();
+  }
+  
+  get(keypath?: string, args?:{}, opts?: {})
+  {
+    return this.model ? this.model.get(keypath, args, opts) : super.get(keypath);
+  }
+  
+  //set(doc: {}, opts?: {});
+  set(keyOrObj, val?: any, opts?: {}): Base
+  {
+      this.model ? this.model.set(keyOrObj, val, opts) : 
+      super.set(keyOrObj, val, opts);
+      return this;
+  }
+}
+
 
 }

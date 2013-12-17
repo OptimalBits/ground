@@ -43,7 +43,8 @@ export interface IGettable
 
 export interface BaseEvents
 {
-  on(evt: string, ...args: any[]);
+  on(evt: string, listener: (...args: any[]) => void);
+  
   /**
   * Fired when any property changes.
   *
@@ -51,7 +52,7 @@ export interface BaseEvents
   * @param obj {any} 
   * @param options {any}
   */
-  on(evt: 'changed:', obj: any, options: any); // TODO: Define options interface
+  on(evt: 'changed:', listener: (obj?: any, options?: any) => void); // TODO: Define options interface
   
   /**
   * Fired when the object is destroyed.
@@ -59,6 +60,17 @@ export interface BaseEvents
   * @event destroy:
   */
   on(evt: 'destroy:');
+}
+
+interface EventCageItem
+{
+  emitter: Base;
+  val: any;
+  oldval: any;
+}
+
+interface EventCage { 
+  [name: string]: EventCageItem;
 }
 
 /**
@@ -85,9 +97,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     @param objs* {Array | Any} object or objects to retain. If any of the objs
     is null or undefined, nothing is done for that obj.
   */
-  static retain(objs){
-    var items = _.isArray(objs) ? objs :arguments;
-    _.each(items, function(obj){
+  static retain(...objs: Base[])
+  {
+    _.each(objs, function(obj){
       obj && obj.retain();
     });
   }
@@ -100,21 +112,11 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     @param objs* {Array | Any} object or objects to release. If any of the objs
       is null or undefined, nothing is done for that obj.
   */
-  static release(...objs: Base[]);
-  static release(objs: any){
-    var items = _.isArray(objs) ? objs :arguments;
-    _.each(items, function(obj){
+  static release(...objs: Base[])
+  {
+    _.each(objs, function(obj){
       obj && obj.release();
     });
-  }
-  
-  
-  // OBSOLETE?
-  constructor (){
-    super();
-    if(!(this instanceof Base)){
-      return new Base();
-    }
   }
   
   /**
@@ -140,72 +142,32 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    * @chainable
    */
   set(doc: {}, opts?: {});
-  set(keyOrObj, val?: any, options?: {})
-  {
-    var changed = false, obj, eventCage = [];
-      
-    if(typeof keyOrObj == 'object'){
-      options = val || {};
-      obj = <Object>keyOrObj;
-      _.each(obj, (val, key?: string) => {
-        changed = this._set(key, val, options, eventCage) ? true : changed;
+  set(keypathOrObj, val?, opts?){
+    var 
+      cage: EventCage = {},
+      keypath, 
+      obj;
+
+    if(_.isObject(keypathOrObj)){
+      opts = val;
+      obj = val = keypathOrObj;
+      keypath = '';
+    }else{
+      keypath = keypathOrObj;
+      // This is not entirely correct...
+      obj = {};
+      obj[keypath] = val;
+    }
+    
+    opts = opts || {};
+    
+    if(set(this, keypath, val, cage, opts)){
+      _.each(cage, function(val, key){
+        val.emitter.emit(key, val.val, val.oldval, opts);
       });
-    }else{
-      options = options || {};
-      changed = this._set(keyOrObj, val, options, eventCage);
-    }
-    
-    if(changed){
-      if(!obj){
-        obj = {};
-        obj[keyOrObj] = val;
-      }
-      
-      // Release all the events at once
-      _.each(eventCage, (emitter) => emitter());
-      
-      this.emit('changed:', obj, options);
-    }
+      this.emit('changed:', obj, opts);  
+    };
     return this;
-  }
-  
-  private getProperty(keypath: string): any 
-  {
-    var path = keypath.split('.');
-    var level: any = this;
-    _.each(path, (key)=>{
-      if(_.isUndefined(level)) return;
-      level = level[key];
-    });
-    
-    return level;
-  }
-
-  private setProperty(keypath: string, val: any): void 
-  {
-    Util.expandProperty(this, keypath, val);
-  }
-
-  private _set(keypath: string, val, options, eventCage): boolean
-  {    
-    var oldProp = this.getProperty(keypath);
-    var isVirtual = Util.isVirtualProperty(oldProp);
-    var oldVal = isVirtual ? oldProp.call(this) : oldProp;
-    
-    if(!_.isEqual(oldVal, val) || options.force){
-      var val = this.willChange ? this.willChange(keypath, val) : val;
-      
-      // Virtual properties shall not trigger sync on serverside
-      // TODO. this is model specific and should be handled in schemas...
-      if(isVirtual) options.nosync = true;
-      
-      this.setProperty(keypath, val);
-      
-      eventCage.push(() => this.emit(keypath, val, oldVal, options));
-      return true;
-    }else{
-      return false;
-    }
   }
   
   willChange(keypath, val) {
@@ -236,8 +198,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     
     return result;
   }
-  
-  
+    
   /**
    * Creates a binding between two properties. 
    * Binded properties will be updated automatically as long as set method 
@@ -284,8 +245,8 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var bindings = this._bindings
     if( (bindings!=null) && (bindings[key]) ){
       var binding = bindings[key]
-      this.removeListener(key, binding[0])
-      binding[1].removeListener(binding[2], binding[3])
+      this.off(key, binding[0])
+      binding[1].off(binding[2], binding[3])
       delete bindings[key]
     }
   }
@@ -409,6 +370,109 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   {
     return this._refCounter === 0;
   }
+}
+
+function set(root: Base, keypath: string, val:any, cage: {}, opts?)
+{
+  opts = opts || {};
+  
+  var changed = false;
+  
+  //
+  // Traverse object using the keypath
+  //
+  var obj = root;
+  var keys = keypath.split('.');
+  
+  var key = keys[0], dst, len = keys.length-1;
+  for(var i=0; i<len; i++){
+    dst = obj[key];
+    if(!_.isObject(dst)){
+      dst = obj[key] = {};
+    } 
+    
+    obj = dst;
+    key = keys[i+1];
+  }
+  
+  if(_.isArray(val) || _.isPlainObject(val)){
+    var lastKey = key;
+
+    if(!_.isUndefined(obj) && (!lastKey || _.isUndefined(obj[lastKey])) && obj.willChange){
+      val = obj.willChange(lastKey, val);
+      if(!_.isPlainObject(val)){
+        obj[lastKey] = val;
+        storeEvent(obj, cage, lastKey, val);
+        // Investigate if in the future we could emit events for every property
+        // of the model
+        // generateEvents(obj, val, keys, cage);
+        return true;
+      }
+    }
+    
+    _.each(val, function(subval, subkey: string){
+      var subkeypath: string = keypath ? keypath+'.'+subkey : subkey;
+      changed = set(root, subkeypath, subval, cage, opts) ? true : changed;
+    });
+  }else{ 
+    var oldval = obj[key];
+    
+    // Virtual properties are a bit hacky right now
+    var isVirtual = obj['isVirtual'] && obj['isVirtual'](key);//Util.isVirtualProperty(oldval);
+    if(isVirtual){
+      oldval = _.isFunction(oldval) ? oldval.call(obj) : oldval;
+      // This is not correct since having one virtual propery in the
+      // changed set will disable sinchronizaton for all the other properties
+      // in the set.
+      opts.nosync = true;
+      opts.nocache = true;
+    }
+    
+    changed = oldval !== val;
+    if(changed || opts.force){
+      if(obj.willChange){
+        val = obj.willChange(key, val);
+      }
+      if(isVirtual){
+        _.isFunction(obj[key]) && obj[key](val);
+      }else{
+        obj[key] = val;
+      }
+
+      if(obj.emit){
+        storeEvent(obj, cage, key, val);
+      }else if(obj !== root || key !== keypath){
+        storeEvent(root, cage, keypath, val);
+      }
+      
+      generateEvents(root, val, keys, keypath, cage);
+    }
+  }
+  return changed;
+}
+
+function generateEvents(root: Base, val, keys: string[], keypath: string, cage){
+  //
+  // Generate events for all segments of the keypaths
+  // creating an object with the change at every step
+  //
+  var res, key, len = keys.length-1;
+  for(var i=len; i>0; i--){
+    key = keys[i];
+    res = {};
+    res[key] = val;
+    keypath = keypath.substr(0, (keypath.length-key.length)-1);
+    
+    // TODO: Also save the old value
+    storeEvent(root, cage, keypath, res);
+    val = res;
+  }
+}
+
+function storeEvent(emitter, cage, keypath, val){
+  var storedEvent = cage[keypath] = cage[keypath] || {};
+  storedEvent.emitter = emitter;
+  storedEvent.val = _.extend(val, storedEvent.val);
 }
 
 }

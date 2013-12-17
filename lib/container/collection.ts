@@ -296,6 +296,20 @@ export class Collection extends Container implements CollectionEvents
   }
   
   /**
+    Remove all the items from this collection (based on what the collection
+    has locally). This method should mostly only be used with local collections.
+  
+    @method removeAll
+    @param [opts] {Object}
+  */
+  removeAll(opts?){
+    var ids = this['map']((item) => {
+      return item.id();
+    });
+    this.remove(ids, opts);
+  }
+  
+  /**
     Toggles the sort order from ascending to descending or viceversa.
     
     @method toggleSortOrder
@@ -450,8 +464,9 @@ export class Collection extends Container implements CollectionEvents
         return this._resync(items);
       }else{
         // Resync called without items assumes this collection is persisted
+        this.retain();
         return using.storageQueue.findRemote(this.getKeyPath(), this.opts.query, {})
-          .then((items) => this._resync(items));
+          .then((items) => this._resync(items)).ensure(()=>this.release());
       }
     });
   }

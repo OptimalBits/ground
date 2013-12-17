@@ -67,6 +67,7 @@ export interface IMongooseModel extends GndModel {
   findById(id:string, cb:(err: Error, doc?: any)=>void):any;
   findOne(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any)=>void): any;
   find(conditions:{}, fields?: {}, options?: {}, cb?: (err: Error, docs?: any[])=>void): any;
+  findById(id:string, fields?:string):any;
   findById(id: string): any;
   remove(query:{}, cb:(err: Error)=>void);
 }
@@ -100,6 +101,8 @@ export class MongooseStorage implements Storage.IStorage {
   public models: any = {};
   private ListContainer: any;
   private transaction: any;
+  private mongoose;
+  private nameMapping;
   
   constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
@@ -110,7 +113,63 @@ export class MongooseStorage implements Storage.IStorage {
       next: String //{ type: mongoose.Schema.ObjectId, ref: 'ListContainer' }
     }));
     
+    this.mongoose = mongoose;
     this.compileModels(models, mongoose, legacy);
+  }
+  
+  addModel(name: string, model: IModel){
+    var nameMapping = this.nameMapping = this.nameMapping || {};
+    nameMapping[model.__bucket] = name;
+    
+    this.compileModel(name, model, this.mongoose, nameMapping);
+  }
+  
+  private compileModel(name: string, model: IModel, mongoose, nameMapping){
+    var schema = model.schema();
+    var bucket = model.__bucket;
+    
+    if(bucket){
+      var translated = this.translateSchema(mongoose, nameMapping, schema);
+      var mongooseSchema =
+          new mongoose.Schema(translated, {strict: false});
+      // new mongoose.Schema(translated); // strict false is just temporary...
+
+      if(model['__mongoose']){
+        var extra = model['__mongoose'];
+
+        if(extra.methods){
+          mongooseSchema.methods = mongooseSchema.methods || {};
+          _.extend(mongooseSchema.methods, extra.methods);
+        }
+        
+        if(extra.statics){
+          mongooseSchema.statics = mongooseSchema.statics || {};
+          _.extend(mongooseSchema.statics, extra.statics);
+        }
+                  
+        if(extra.pre){
+          _.each(extra.pre, function(fn, method){
+            mongooseSchema.pre(method, fn);
+          })
+        }
+        if(extra.post){
+          _.each(extra.post, function(fn, method){
+            mongooseSchema.post(method, fn);
+          })
+        }
+      }
+      
+      this.models[bucket] =
+        mongoose.model(name, mongooseSchema, bucket);
+        
+      if(model['filter']){
+        this.models[bucket]['filter'] = model['filter'];
+      }
+      
+      if(model['hooks']){
+       this.models[bucket]['gnd-hooks'] = model['hooks'];
+      }
+    }
   }
 
   /**
@@ -118,7 +177,7 @@ export class MongooseStorage implements Storage.IStorage {
   */
   private compileModels(models: IModels, mongoose, legacy?)
   { 
-    var nameMapping = {};
+    var nameMapping = this.nameMapping = this.nameMapping || {};
     for(var name in models){
       var model = models[name];
       nameMapping[model.__bucket] = name;
@@ -128,43 +187,7 @@ export class MongooseStorage implements Storage.IStorage {
     }
 
     for(var name in models){
-      var model = models[name];
-      var schema = model.schema();
-      var bucket = model.__bucket;
-      if(bucket){
-        var translated = this.translateSchema(mongoose, nameMapping, schema);
-        var mongooseSchema =
-            new mongoose.Schema(translated, {strict: false});
-        // new mongoose.Schema(translated); // strict false is just temporary...
-
-        if(model['__mongoose']){
-          var extra = model['__mongoose'];
-
-          if(extra.methods){
-            mongooseSchema.methods = mongooseSchema.methods || {};
-            _.extend(mongooseSchema.methods, extra.methods);
-          }
-          
-          if(extra.statics){
-            mongooseSchema.statics = mongooseSchema.statics || {};
-            _.extend(mongooseSchema.statics, extra.statics);
-          }
-                    
-          if(extra.pre){
-            _.each(extra.pre, function(fn, method){
-              mongooseSchema.pre(method, fn);
-            })
-          }
-          if(extra.post){
-            _.each(extra.post, function(fn, method){
-              mongooseSchema.post(method, fn);
-            })
-          }
-        }
-        
-        this.models[bucket] =
-          mongoose.model(name, mongooseSchema, bucket);
-      }
+      this.compileModel(name, models[name], mongoose, nameMapping);
     }
     
     legacy && _.extend(this.models, legacy);
@@ -201,7 +224,8 @@ export class MongooseStorage implements Storage.IStorage {
             if(!mapping[res.ref.bucket]){
               throw new Error("Model bucket " + res.ref.bucket + " does not have a valid mapping name");
             }else{
-              res = [{ type: String, ref: mapping[res.ref.bucket] }];
+              res = {type: [{type: String, ref: mapping[res.ref.bucket]}], 
+                    select: false};
             }
             break;
         }
@@ -217,15 +241,29 @@ export class MongooseStorage implements Storage.IStorage {
     }
     return this.getModel(keyPath).then<string>((found) => {
       var promise = new Promise<string>();
-      var instance = new found.Model(doc);
-      instance.save(function(err, doc){
-        if(!err){
-          doc.__rev = 0;
-          promise.resolve(doc._cid);
-        }else{
-          promise.reject(err);
-        }
-      });
+
+      if(found.Model['filter']){
+        found.Model['filter'](doc, (err, doc) =>{
+          if(!err){
+            create(doc);
+          }
+        });
+      }else{
+        create(doc);
+      }
+      
+      function create(doc){
+        var instance = new found.Model(doc);
+        instance.save(function(err, doc){
+          if(!err){
+            doc.__rev = 0;
+            promise.resolve(doc._cid);
+          }else{
+            promise.reject(err);
+          }
+        });
+      }
+
       return promise;
     });
   }
@@ -234,19 +272,30 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>(function(found){
       var promise = new Promise<void>();
-      found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc, (err, oldDoc) => {
-        if(!err){
-          // Note: isEqual should only check the properties present in doc!
-          if(!_.isEqual(doc, oldDoc)){
-            // only if doc modified synchronize
-            // Why is this out commented?
-            //this.sync && this.sync.update(keyPath, doc);
-            promise.resolve();
-          } 
-        }else{
-          promise.reject(err);
-        }
-      });
+      if(found.Model['filter']){
+        found.Model['filter'](doc, (err, doc) =>{
+          if(!err){
+            update(doc);
+          }
+        });
+      }else{
+        update(doc);
+      }
+      function update(doc){
+        found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc, (err, oldDoc) => {
+          if(!err){
+            // Note: isEqual should only check the properties present in doc!
+            if(!_.isEqual(doc, oldDoc)){
+              // only if doc modified synchronize
+              // Why is this out commented?
+              //this.sync && this.sync.update(keyPath, doc);
+              promise.resolve();
+            }
+          }else{
+            promise.reject(err);
+          }
+        });
+      }
       return promise;
     });
   }
@@ -268,7 +317,16 @@ export class MongooseStorage implements Storage.IStorage {
       var promise = new Promise()
       found.Model.findOne({_cid: _.last(keyPath)}, (err, doc?) => {
         if(doc){
-          promise.resolve(doc);
+          if(found.Model['gnd-hooks'] && found.Model['gnd-hooks'].fetch){
+            // Workaround since promises do not work correctly when resolving with a promise
+            found.Model['gnd-hooks'].fetch(this, doc).then(function(doc){
+              promise.resolve(doc);
+            }, function(err){
+              promise.reject(err);
+            })
+          }else{
+            promise.resolve(doc);
+          }
         }else{
           console.log("Document:", keyPath, "not Found!");
           promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
@@ -384,7 +442,7 @@ export class MongooseStorage implements Storage.IStorage {
 
   private findAll(Model: IMongooseModel, query: Storage.IStorageQuery): Promise<any[]>
   {
-    query = query || {};  
+    query = query || {};
     var promise = new Promise();
     Model
       .find(query.cond, query.fields, query.opts)
@@ -406,7 +464,7 @@ export class MongooseStorage implements Storage.IStorage {
                    opts: {}): Promise<any[]>
   {
     query = query || {};
-    console.log(id, setName, query, opts);
+
     var promise = new Promise();
     Model
       .findOne({_cid:id})
@@ -433,7 +491,7 @@ export class MongooseStorage implements Storage.IStorage {
     return promise;
   }
   
-  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr): Promise
+  private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr): Promise<any>
   {
     var promise = new Promise();
     
@@ -460,7 +518,7 @@ export class MongooseStorage implements Storage.IStorage {
     _rip: 'tombstone' element that has been deleted from the sequence
     
 */
-  private findContainer(ParentModel: IMongooseModel, parentId, name, id): Promise
+  private findContainer(ParentModel: IMongooseModel, parentId, name, id): Promise<any>
   {
     if(!id){
       return this.findEndPoints(ParentModel, parentId, name).then((res: any) => {
@@ -477,7 +535,7 @@ export class MongooseStorage implements Storage.IStorage {
     }
   }
   
-  private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise
+  private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
     var promise = new Promise();
     ParentModel.findOne({_cid: parentId}).exec((err, doc) => {
@@ -501,11 +559,31 @@ export class MongooseStorage implements Storage.IStorage {
             });
           });
       }
+
+/*
+  private findEndPoints(ParentModel: IMongooseModel, parentId, name, cb:(err: Error, begin?, end?)=>void){
+    ParentModel.findById(parentId).select(name).exec((err, doc) => {
+      if(!doc) return cb(err);
+      this.listContainer.find()
+        .where('_id').in(doc[name])
+        .or([{type:'_begin'}, {type:'_end'}])
+        .exec((err, docs)=>{
+          if(docs.length < 2) return cb(Error('could not find end points'));
+          cb(err,
+            _.find(docs, (doc) => {
+              return doc.type === '_begin';
+            }),
+            _.find(docs, (doc) => {
+              return doc.type === '_end';
+            })
+          );
+        });
+        */
     });
     return promise;
   }
 
-  private removeFromSeq(containerId: string): Promise
+  private removeFromSeq(containerId: string): Promise<void>
   {
     var promise = new Promise();
     this.ListContainer.update(
@@ -513,15 +591,21 @@ export class MongooseStorage implements Storage.IStorage {
       {
         $set: {type: '_rip'}
       },
-      (err) => promise.resolveOrReject(err)
+      (err) => {
+        if(err){
+          promise.reject(err);
+        }else{
+          promise.resolve();
+        }
+      }
     );
     return promise;
   }
   
-  private initSequence(ParentModel: IMongooseModel, parentId, name): Promise
+  private initSequence(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
     var promise = new Promise(); 
-    ParentModel.findOne({_cid: parentId}, (err, doc) => {
+    ParentModel.findOne({_cid: parentId}).select(name).exec((err, doc) => {
       if(err){
         promise.reject(err);
       }else if(doc && doc[name].length < 2){
@@ -581,7 +665,7 @@ export class MongooseStorage implements Storage.IStorage {
   }
   
   // Returns the id of the new container
-  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<string>
+  private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<void>
   {
     var promise = new Promise();
     var newContainer = new this.ListContainer({
@@ -713,6 +797,7 @@ export class MongooseStorage implements Storage.IStorage {
     }
     return promise;
   }
+
 }
 
 }

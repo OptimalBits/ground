@@ -148,21 +148,22 @@ export class Router
     
     @method redirect
     @param url {String} url to redirect to.
+    @param [opts] {Object} Object with some options (force and forceLast)
   */
-  public redirect(url){
+  public redirect(url, opts?){
     if (using.historyApi){
       history.pushState(null, null, url)
     } else{
       location.hash = '#!'+ url;
     }
-    this.routeHandler && this.executeRoute(url, this.routeHandler);
+    this.routeHandler && this.executeRoute(url, this.routeHandler, opts);
   }
   
-  private executeRoute(url, routeHandler){
+  private executeRoute(url, routeHandler, opts?){
     if(!this.req || (this.req.url !== url)){
       this.req && this.req.queue.cancel();
       
-      var req = new Request(url, this.req && this.req.nodes || []);
+      var req = new Request(url, this.req && this.req.nodes || [], opts);
       
       this.route.notifyRouteChange(this.req, req);
       
@@ -413,8 +414,10 @@ export class Request {
   public startIndex: number;
   public prevNodes: any[];
 
-  constructor(url:string, prevNodes:any[]){
+  constructor(url:string, prevNodes:any[], opts?){
     var components, i, len, prevLen;
+    
+    opts = opts || {};
   
     _.extend(this, decomposeUrl(url));
     
@@ -427,15 +430,19 @@ export class Request {
     
     //
     // Reuse previous autorelease pools and find the starting index for the new route.
-    // (we should generalize this solution...)
+    ///
     for (i=0; i<len; i++){
       var 
         prev = prevNodes[i],
         prevNext = prevNodes[i+1];
-      
-      if(prev && 
-         (prev.component === components[i]) && 
-         (prevLen < len || (prevNext && prev.selector != prevNext.selector) || i < len-1)){
+        
+      if(opts.forceLast && i === len-1) break;
+                
+      if(prev && (prev.component === components[i])){
+        if((i+1 < prevLen) && _.findWhere(prevNodes.slice(i+1), {'selector': prev.selector})){
+          break;
+        }
+        
         this.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
@@ -444,11 +451,11 @@ export class Request {
         break;
       }
     }
+    this.startIndex = i;
   
     //
     // Create new nodes
     //
-    this.startIndex = i;
     for (i=this.startIndex; i<len; i++){
       this.nodes.push({component:components[i], autoreleasePool: new AutoreleasePool()});
     }
@@ -625,10 +632,10 @@ export class Request {
     return this.components[this.index];
   }
   
-  public redirect(url, params){
+  public redirect(url, params?, opts?){
     url = params ? url+'?'+serialize(params) : url;
     this.queue.wait(function(){
-      router.redirect(url);
+      router.redirect(url, opts);
     })
     this.wantsRedirect = true;
   }
