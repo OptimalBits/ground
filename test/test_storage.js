@@ -329,8 +329,11 @@ return function(storage, storageType){
           });
         });
         it('delete non-existing item', function(done){
-          storage.deleteItem(['parade', paradeId, 'animals'], 'asdf', {}).fail(function(){
+          storage.deleteItem(['parade', paradeId, 'animals'], 'asdf', {}).then(function(){
             //Already gone - no error
+            done();
+          }, function(err){
+            //Already gone - error in socket backend currently...
             done();
           });
         });
