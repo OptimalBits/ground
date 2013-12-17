@@ -335,20 +335,20 @@ export class Local implements IStorage {
     var item = _.find(itemKeys, (item) => {
       return item._id === id || item._cid === id;
     });
-    if(!item){
-      // Already deleted
-      return promise.resolve();
+    
+    // We do not reject the promise if trying to delete an unexistent item.
+    if(item){
+      if(opts.insync || opts.noremote){ //noremote implies insync
+        itemKeys[itemKeys[item.prev].next] = 'deleted';
+        itemKeys[item.prev].next = item.next;
+        itemKeys[item.next].prev = item.prev;
+      }else{
+        item.sync = 'rm'; //tombstone
+      }
+
+      this.store.put(key, itemKeys);
     }
 
-    if(opts.insync || opts.noremote){ //noremote implies insync
-      itemKeys[itemKeys[item.prev].next] = 'deleted';
-      itemKeys[item.prev].next = item.next;
-      itemKeys[item.next].prev = item.prev;
-    }else{
-      item.sync = 'rm'; //tombstone
-    }
-
-    this.store.put(key, itemKeys);
     return promise.resolve()
   }
   
