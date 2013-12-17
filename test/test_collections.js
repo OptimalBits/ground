@@ -379,7 +379,7 @@ describe('Collection Datatype', function(){
                 animals.once('removed:', function(item){
                   expect(item).to.be.an(Object);
                   expect(item.id()).to.be.eql(otherAnimal.id());
-                  Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
+                  Gnd.Base.release(animals, zoo, koala, otherAnimals, anotherZoo);
                   done();
                 });
 
@@ -437,7 +437,7 @@ describe('Collection Datatype', function(){
                   expect(item).to.be.an(Object);
                   expect(item.isPersisted()).to.be.ok();
                   expect(item.id()).to.be.eql(otherAnimal.id());
-                  Gnd.Util.release(animals, zoo, koala, otherAnimals, anotherZoo);
+                  Gnd.Base.release(animals, zoo, koala, otherAnimals, anotherZoo);
                   done();
                 });
                   
@@ -501,7 +501,7 @@ describe('Collection Datatype', function(){
                 expect(collection.items).to.be.an(Array);
                 expect(animals.count).to.be(1);
                 expect(collection.count).to.be(1);
-                Gnd.Util.release(sameZoo, collection, animals);
+                Gnd.Base.release(sameZoo, collection, animals);
                 done();
               });
             });
@@ -688,7 +688,7 @@ describe('Collection Datatype', function(){
                       var offlineTiger = offlineAnimals.findById(onlineTiger.id());
                       expect(offlineTiger).to.not.be.ok();
                   
-                      Gnd.Util.release(onlineAnimals);
+                      Gnd.Base.release(onlineAnimals);
                   
                       socket.socket.connect();
                       socket.once('connect', done);
@@ -754,7 +754,7 @@ describe('Collection Datatype', function(){
                     expect(emptyZoo).to.be.an(Object);
                     expect(emptyZoo.count).to.be(0);
                     
-                    Gnd.Util.release(onlineAnimals, emptyZoo);
+                    Gnd.Base.release(onlineAnimals, emptyZoo);
                     socket.socket.connect();
                     socket.once('connect', done);
                   });
