@@ -437,7 +437,7 @@ export class Collection extends Container implements CollectionEvents
       Promise.map(itemIds, (itemId: string)=>{
         if(!this.findById(itemId)){
           return this.model.findById(itemsKeyPath.concat(itemId), true, {}).then((item)=>{
-            item.release();
+            item.autorelease();
             return this.addItem(item, {nosync: true});
           });
         }
