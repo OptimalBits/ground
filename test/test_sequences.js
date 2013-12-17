@@ -1738,7 +1738,7 @@ describe('Sequence Datatype', function(){
           var a = sequence.items[i];
           var b = items[i];
           expect(a.id).to.equal(b.id);
-          expect(a.model.id()).to.equal(b.doc._id);
+          expect(a.model._id).to.equal(b.doc._id);
           expect(a.insync).to.equal(b.insync || typeof b.insync === 'undefined');
         }
       }
