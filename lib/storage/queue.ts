@@ -271,7 +271,7 @@ export class Queue extends Base implements IStorage
       // Gather item ids to be added to localStorage      
       _.each(newItems, (newItem) => {
         if(!findItem(oldItems, newItem)){
-          itemsToAdd.push(newItem._id);
+          itemsToAdd.push(newItem._cid);
           result.push(newItem);
         }
       });
@@ -279,7 +279,7 @@ export class Queue extends Base implements IStorage
       return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() =>
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
-          var elemKeyPath = itemKeyPath.concat(doc._id);
+          var elemKeyPath = itemKeyPath.concat(doc._cid);
     //      doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc, {});
         })
@@ -290,7 +290,7 @@ export class Queue extends Base implements IStorage
     
     // We cannot get the local items, so lets write all we got from remote
     }).fail(() => 
-      storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true})
+      storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_cid'), {insync: true})
       .then(() => newItems));
   }
 
