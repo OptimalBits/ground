@@ -296,8 +296,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
     if(!this.isPersisted()){
       this._storageQueue.once('created:'+this.id(), () => {
-        this._persisted = true;
-        this.emit('persisted:');
+        this.set('_persisted', true, {nosync: true});
       });
     }
 
@@ -321,6 +320,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     }
 
     this.opts.autosync && this.keepSynced();
+    
+    this.once('_persisted', (val) => val && this.emit('persisted:'));
   }
   
   resync(args?): Promise<any>
