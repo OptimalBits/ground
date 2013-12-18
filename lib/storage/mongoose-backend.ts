@@ -107,7 +107,7 @@ export class MongooseStorage implements Storage.IStorage {
   constructor(mongoose, models: IModels, legacy?: IMongooseModels)
   {
     this.ListContainer = mongoose.model('ListContainer', new mongoose.Schema({
-      gid: String,
+      _cid: String,
       type: { type: String, enum: ['_begin', '_end', '_rip'] },
       modelId: String,
       next: String //{ type: mongoose.Schema.ObjectId, ref: 'ListContainer' }
@@ -526,7 +526,7 @@ export class MongooseStorage implements Storage.IStorage {
       });
     }else{
       var promise = new Promise();
-      this.ListContainer.find({gid: id}, (err, docs) => {
+      this.ListContainer.find({_cid: id}, (err, docs) => {
         if(err) return promise.reject(err);
         if(docs.length !== 1) return promise.reject(Error('container '+id+' not found'));
         return promise.resolve(docs[0]);
@@ -544,7 +544,7 @@ export class MongooseStorage implements Storage.IStorage {
       else if(!doc[name] || doc[name].length === 0) promise.resolve();
       else {
         this.ListContainer.find()
-          .where('gid').in(doc[name])
+          .where('_cid').in(doc[name])
           .or([{type:'_begin'}, {type:'_end'}])
           .exec((err, docs)=>{
             if(err) return promise.reject(err);
@@ -567,7 +567,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     var promise = new Promise();
     this.ListContainer.update(
-      {gid: containerId},
+      {_cid: containerId},
       {
         $set: {type: '_rip'}
       },
@@ -590,7 +590,7 @@ export class MongooseStorage implements Storage.IStorage {
         promise.reject(err);
       }else if(doc && doc[name].length < 2){
         var first = new this.ListContainer({
-          gid: Util.uuid(),
+          _cid: Util.uuid(),
           type: '_begin'
         });
         
@@ -603,7 +603,7 @@ export class MongooseStorage implements Storage.IStorage {
             promise.reject(err);
           }else{
             var last = new this.ListContainer({
-              gid: Util.uuid(),
+              _cid: Util.uuid(),
               type: '_end',
             });
             
@@ -611,19 +611,19 @@ export class MongooseStorage implements Storage.IStorage {
               if(err){
                 promise.reject(err);
               }else{
-                first.next = last.gid;
+                first.next = last._cid;
                 first.save((err, first)=>{
                   if(err){
                     promise.reject(err);
                   }else{
                     var delta = {};
-                    delta[name] = [first.gid, last.gid];
+                    delta[name] = [first._cid, last._cid];
                   
                     ParentModel.update({_cid: parentId}, delta, (err)=> {
                       if(err){
                         promise.reject(err);
                       }else{
-                        promise.resolve(last.gid);
+                        promise.resolve(last._cid);
                       }
                     });
                   }
@@ -634,7 +634,7 @@ export class MongooseStorage implements Storage.IStorage {
         });
       }else{
         this.findEndPoints(ParentModel, parentId, name).then((res: any) =>{
-          promise.resolve(res.end.gid);
+          promise.resolve(res.end._cid);
         }, (err) =>{
           promise.reject(err);
         });
@@ -649,7 +649,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     var promise = new Promise();
     var newContainer = new this.ListContainer({
-      gid: opts.cid || Util.uuid(),
+      _cid: opts.cid || Util.uuid(),
       next: nextId,
       modelId: itemKey
     });
@@ -657,17 +657,17 @@ export class MongooseStorage implements Storage.IStorage {
     newContainer.save((err, newContainer)=>{
       if(err) return promise.reject(err);
       
-      this.ListContainer.update({next: nextId}, {next: newContainer.gid}, (err)=>{
+      this.ListContainer.update({next: nextId}, {next: newContainer._cid}, (err)=>{
         if(err){
           // rollback
           newContainer.remove();
           return promise.reject(err);
         }
         var delta = {};
-        delta[name] = newContainer.gid;
+        delta[name] = newContainer._cid;
         ParentModel.update({_cid: parentId}, {$push: delta}, (err)=>{
           if(err) promise.reject(err);
-          else promise.resolve(newContainer.gid);
+          else promise.resolve(newContainer._cid);
         });
       });
     });
@@ -699,12 +699,12 @@ export class MongooseStorage implements Storage.IStorage {
         if(container){
           return this.findContainer(ParentModel, parentId, seqName, container.next).then((container: any)=>{
             if(container.type === '_rip'){ //tombstone
-              return this.next(keyPath, container.gid, opts);
+              return this.next(keyPath, container._cid, opts);
             }else if(container.type !== '_end'){
               var kp = parseKey(container.modelId);
               return this.fetch(kp).then((doc)=>{
                 return {
-                  id: container.gid,
+                  id: container._cid,
                   keyPath: kp,
                   doc: doc
                 }
@@ -750,7 +750,7 @@ export class MongooseStorage implements Storage.IStorage {
 
       return this.findContainer(ParentModel, modelId, seqName, id).then((container: any)=>{
         if(container && container.type !== '_rip'){
-          return this.removeFromSeq(container.gid);
+          return this.removeFromSeq(container._cid);
         }
       });
     });
