@@ -215,7 +215,7 @@ export class MongooseStorage implements Storage.IStorage {
         
         switch(res.type){
           case Gnd.Schema.ObjectId:
-            res.type = mongoose.Schema.ObjectId;
+            res.type = String;
             break;
           case Gnd.Schema.Abstract:
             break;
