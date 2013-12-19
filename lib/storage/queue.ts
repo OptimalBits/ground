@@ -472,6 +472,8 @@ export class Queue extends Base implements IStorage
         switch (obj.cmd){
           case 'create':
             ((cid) => {
+              // should this be done serverside instead, by the backend?
+              args = _.extend(args, {_persisted: true});
               remoteStorage.create(keyPath, args, {}).then(() => {
                 localStorage.put(keyPath, {_persisted: true}, {});
                 // Instead of a global event it should be better to use the
