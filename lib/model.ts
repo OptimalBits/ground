@@ -76,19 +76,12 @@ class ModelDepot
   {
     var models = this.models;
 
-    var remoteKeyPath;
-    var localKeyPath = this.key([model.bucket(), model.id()]);
+    var keyPath = this.key([model.bucket(), model.id()]);
 
-    models[localKeyPath] = model;
+    models[keyPath] = model;
     
-    model.whenPersisted().then(()=>{
-      remoteKeyPath = this.key(model.getKeyPath());
-      models[remoteKeyPath] = model;
-    });
-
     model.once('destroy: deleted:', () => {
-      delete models[localKeyPath];
-      remoteKeyPath && delete models[remoteKeyPath];
+      delete models[keyPath];
     });
   }
 }
