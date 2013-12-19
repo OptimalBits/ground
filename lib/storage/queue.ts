@@ -167,8 +167,9 @@ export class Queue extends Base implements IStorage
     var promise = new Promise();
     
     this.localStorage.fetch(keyPath).then((doc)=>{
-      var id = doc['_id'] = _.last(keyPath);
-      var remotePromise = this.useRemote && !Model.isClientId(id) ?
+      //var id = doc['_id'] = _.last(keyPath);
+      var id = _.last(keyPath);
+      var remotePromise = this.useRemote && doc._persisted ? 
         this.fetchRemote(keyPath) : new Promise(doc);
 
       promise.resolve([doc, remotePromise]);
@@ -270,7 +271,7 @@ export class Queue extends Base implements IStorage
       // Gather item ids to be added to localStorage      
       _.each(newItems, (newItem) => {
         if(!findItem(oldItems, newItem)){
-          itemsToAdd.push(newItem._id);
+          itemsToAdd.push(newItem._cid);
           result.push(newItem);
         }
       });
@@ -278,7 +279,7 @@ export class Queue extends Base implements IStorage
       return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() =>
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
-          var elemKeyPath = itemKeyPath.concat(doc._id);
+          var elemKeyPath = itemKeyPath.concat(doc._cid);
     //      doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc, {});
         })
@@ -289,7 +290,7 @@ export class Queue extends Base implements IStorage
     
     // We cannot get the local items, so lets write all we got from remote
     }).fail(() => 
-      storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_id'), {insync: true})
+      storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_cid'), {insync: true})
       .then(() => newItems));
   }
 
@@ -319,9 +320,10 @@ export class Queue extends Base implements IStorage
   del(keyPath: string[], opts: {}): Promise<void>
   {
     return this.localStorage.del(keyPath, opts).then(()=>{
-      if(!Model.isClientId(_.last(keyPath))){
+      //if(!Model.isClientId(_.last(keyPath))){
+        // We need to check if we need to delete server side as well.
         this.addCmd({cmd:'delete', keyPath: keyPath}, opts);
-      }
+      //}
     });
   }
   
@@ -446,7 +448,7 @@ export class Queue extends Base implements IStorage
   }
   
   /**
-    
+  TODO: Rename to commit, since what this does is commit operations
   */
   synchronize()
   {
@@ -470,25 +472,13 @@ export class Queue extends Base implements IStorage
         switch (obj.cmd){
           case 'create':
             ((cid) => {
-              remoteStorage.create(keyPath, args, {}).then((sid) => {
-                var localKeyPath = keyPath.concat(cid);
-                
-                return localStorage.put(localKeyPath, {_id: sid}, {}).then(() => {
-                  var newKeyPath = _.initial(localKeyPath);
-                  newKeyPath.push(sid);
-                  
-                  return localStorage.link(newKeyPath, localKeyPath).then(() => {
-                    var subQ = <any>(this.remoteStorage);
-                    if(this.autosync || !subQ.once){
-                      this.emit('created:'+cid, sid);
-                    }else{
-                      subQ.once('created:'+sid, (sid)=>{
-                        this.emit('created:'+cid, sid);
-                      });
-                    }
-                    this.updateQueueIds(cid, sid);
-                  });
-                });
+              // should this be done serverside instead, by the backend?
+              args = _.extend(args, {_persisted: true});
+              remoteStorage.create(keyPath, args, {}).then(() => {
+                localStorage.put(keyPath, {_persisted: true}, {});
+                // Instead of a global event it should be better to use the
+                // model depot.
+                this.emit('created:'+cid, cid);
               }).then(done, done)
             })(args['_cid']);
             
@@ -509,20 +499,9 @@ export class Queue extends Base implements IStorage
             var id = obj.id;
             var itemKeyPath = obj.itemKeyPath;
             var cid = obj.cid;
-            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {}).then((res)=>{
-              var sid = res.id, refId = res.refId;
-              return localStorage.ack(keyPath, cid, sid, {op: 'ib'}).then(()=>{
-                var subQ = <any>(this.remoteStorage);
-                if(this.autosync || !subQ.once){
-                  this.emit('inserted:'+cid, sid, refId);
-                }else{
-                  subQ.once('inserted:'+sid, (newSid, refId) => {
-                    localStorage.ack(keyPath, sid, newSid, {op: 'ib'}).then(() => {
-                      this.emit('inserted:'+cid, newSid, refId);
-                    });
-                  });
-                }
-                this.updateQueueIds(cid, sid);
+            remoteStorage.insertBefore(keyPath, id, itemKeyPath, {cid: cid}).then((res)=>{
+              return localStorage.ack(keyPath, cid, cid, {op: 'ib'}).then(()=>{
+                this.emit('inserted:'+cid, cid, res.refId);
               });
             }).then(done, done);
             break;
@@ -676,36 +655,5 @@ export class Queue extends Base implements IStorage
     
     this.currentTransfer = null;
   }
-
-  private updateQueueIds(oldId, newId)
-  { 
-    _.each(this.queue, (cmd: Command) => {
-      cmd.keyPath && updateIds(cmd.keyPath, oldId, newId);
-      cmd.itemsKeyPath && updateIds(cmd.itemsKeyPath, oldId, newId);
-      cmd.itemKeyPath && updateIds(cmd.itemKeyPath, oldId, newId);
-      if(cmd.id && cmd.id === oldId) cmd.id = newId;
-      if(cmd.itemIds){
-        cmd.oldItemIds = updateIds(cmd.itemIds, oldId, newId);
-      }
-    });
-    
-    //
-    // Serialize after updating Ids
-    //
-    this.saveQueue()
-  }
 }
-
-function updateIds(keyPath: string[], oldId: string, newId: string): string[]
-{
-  var updatedKeys = [];
-  for(var i=0; i<keyPath.length; i++){
-    if(keyPath[i] == oldId){
-      keyPath[i] = newId;
-      updatedKeys.push(oldId);
-    }
-  }
-  return updatedKeys;
-}
-
 }

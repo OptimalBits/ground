@@ -287,7 +287,6 @@ export class Collection extends Container implements CollectionEvents
         if((!opts || !opts.nosync) && keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
           var ids = {}
-          ids[item.cid()] = false; // order is important here!
           ids[item.id()] = true;
           return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
         }
@@ -438,7 +437,7 @@ export class Collection extends Container implements CollectionEvents
       Promise.map(itemIds, (itemId: string)=>{
         if(!this.findById(itemId)){
           return this.model.findById(itemsKeyPath.concat(itemId), true, {}).then((item)=>{
-            item.release();
+            item.autorelease();
             return this.addItem(item, {nosync: true});
           });
         }
@@ -481,7 +480,7 @@ export class Collection extends Container implements CollectionEvents
     this['each'](function(item){
       var id = item.id(), shouldRemove = true;
       for(var i=0; i<items.length; i++){
-        if(id == items[i]._id){
+        if(id == items[i]._cid){
           item.resync(items[i]);
           shouldRemove = false;
           break;
@@ -491,7 +490,7 @@ export class Collection extends Container implements CollectionEvents
     });
 
     _.each(items, (item) => {
-      if(!this.findById(item._id)) itemsToAdd.push(item);
+      if(!this.findById(item._cid)) itemsToAdd.push(item);
     })
 
     return this.remove(itemsToRemove, {nosync: true})

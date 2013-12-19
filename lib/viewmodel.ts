@@ -83,7 +83,11 @@ export class ViewModel extends Base
     _.extend(this.binders, binders);
     
     this.pushContext(context);
-    this.boundBinders = this.bindNode(_.isString(el) ? $(el)[0] : el);
+
+    var node = _.isString(el) ? $(el)[0] : el;
+    if(!node) throw Error("Cannot attach a ViewModel to an inexisting node "+el);
+    
+    this.boundBinders = this.bindNode(node);
   }
 
   destroy()

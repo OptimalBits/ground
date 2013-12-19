@@ -1,5 +1,7 @@
 define(['gnd', 'fixtures/models'], function(Gnd, models){
 "use strict";
+
+Gnd.debugMode = true;
   
 localStorage.clear();
 
@@ -53,7 +55,7 @@ describe('Model Datatype', function(){
       var instance = new Animal();
       expect(instance).to.be.a(Animal);
     });
-    it.skip('as a factory method', function(){
+    it('as a factory method', function(){
       var instance = Animal.create();
       expect(instance).to.be.a(Animal);
     });
@@ -70,6 +72,24 @@ describe('Model Datatype', function(){
     });
   });
   
+  describe('Create Model', function(){
+    it('after saved it should be persisted', function(done){
+      var fox = Animal.create({name:'fox', legs:4});
+      fox.save();
+      
+      fox.on('persisted:', function(){
+        done();
+      });
+    })
+    it('autosync should persist automatically', function(done){
+      var fox = Animal.create({name:'fox', legs:4}, true);
+      
+      fox.on('persisted:', function(){
+        done();
+      });
+    })
+  })
+  
   describe('Update', function(){
     it('updates the server model', function(done){
       var animal = Animal.create();
@@ -85,7 +105,6 @@ describe('Model Datatype', function(){
       
       storageQueue.waitUntilSynced(function(){
         Animal.findById(animal.id()).then(function(doc){
-          expect(doc).to.have.property('_id');
           expect(doc.id()).to.eql(animal.id());
           expect(doc).to.have.property('name');
           expect(doc.name).to.be.eql('foobar');
@@ -106,7 +125,7 @@ describe('Model Datatype', function(){
         expect(pinguin).to.have.property('name');
         expect(pinguin.legs).to.be(2);
          
-        pinguin.once('id', function(){
+        pinguin.once('persisted:', function(){
           Gnd.using.storageQueue = q2;
           Gnd.using.syncManager = sm2;
           
@@ -115,6 +134,9 @@ describe('Model Datatype', function(){
             expect(pinguin2).to.have.property('name');
             expect(pinguin2.legs).to.be(2);
             
+            sm2.observe(pinguin2);
+            
+            // Force start since we only have one global sync proxy(needed for test)
             sm2.start(pinguin2.getKeyPath());
             
             pinguin2.once('legs', function(legs){
@@ -153,7 +175,7 @@ describe('Model Datatype', function(){
         
         pinguin.save();
          
-        pinguin.once('id', function(){
+        pinguin.once('persisted:', function(){
           Gnd.using.storageQueue = q2;
           Gnd.using.syncManager = sm2;
           
@@ -162,6 +184,8 @@ describe('Model Datatype', function(){
             expect(pinguin2).to.have.property('name');
             expect(pinguin2.legs).to.be(2);
             
+            sm2.observe(pinguin2);
+            // Force start since we only have one global sync proxy(needed for test)
             sm2.start(pinguin2.getKeyPath());
           
             pinguin2.once('legs', function(legs){
@@ -197,18 +221,13 @@ describe('Model Datatype', function(){
     
     it('releasing an instance keeps other synchronized', function(done){
       
-      Animal.create({name:'fox', legs:4}, true).then(function(oneFox){   
-        oneFox.save();
-           
-        storageQueue.waitUntilSynced(function(){
-          expect(oneFox).to.have.property('_id');
-        
+      Animal.create({name:'fox', legs:4}, true).then(function(oneFox){
+        oneFox.on('persisted:', function(){
+  
           Animal.findById(oneFox.id(), true).then(function(secondFox){
-            expect(secondFox).to.have.property('_id');
-            expect(secondFox).to.eql(secondFox);
+            expect(secondFox).to.eql(oneFox);
           
             Animal.findById(oneFox.id()).then(function(thirdFox){
-              expect(thirdFox).to.have.property('_id', secondFox._id);
               expect(thirdFox).to.have.property('legs', secondFox.legs);
               expect(thirdFox).to.have.property('name', secondFox.name);
             
@@ -284,28 +303,19 @@ describe('Model Datatype', function(){
     it('create', function(done){
       socket.disconnect();
 
-      var tempAnimal = new Animal(), tempAnimal2;
-            
-      storageQueue.once('synced:', function(){
-        Animal.findById(tempAnimal.id()).then(function(doc){
-          expect(tempAnimal._id).to.be(doc._id);
-          expect(tempAnimal2._id).to.be(doc._id);
-          expect(doc.legs).to.be(8);
-          expect(storageQueue.isEmpty()).to.be(true);
-          done();
-        });
-      });
-
-      tempAnimal.set({legs : 8, name:'gorilla'});
-      tempAnimal.save().then(function(){
-        tempAnimal.keepSynced();
+      var tempAnimal = Animal.create({legs : 8, name:'gorilla'}, true);
         
+      socket.socket.connect();
+      
+      tempAnimal.on('persisted:', function(){
         Animal.findById(tempAnimal.id()).then(function(doc){
-          tempAnimal2 = doc;
-          tempAnimal2.keepSynced();
-          socket.socket.connect();
+          expect(doc.legs).to.be(8);
+          storageQueue.waitUntilSynced(function(){
+            expect(storageQueue.isEmpty()).to.be(true);
+            done();
+          });
         });
-      });
+      })
     });
     
     //
@@ -332,7 +342,6 @@ describe('Model Datatype', function(){
     
     it('keepSynced before save', function(done){
       Animal.create({name: 'elephant', legs:4}, true).then(function(elephant){
-        elephant.save();
         
         Animal.findById(elephant.id(), true).then(function(otherElephant){
           expect(otherElephant).to.be.ok();
@@ -352,27 +361,23 @@ describe('Model Datatype', function(){
     });
     
     it('keepSynced before save (waiting for sync)', function(done){
-      Animal.create({name: 'elephant', legs:4}, true).then(function(elephant){
-        elephant.save();
+      var elephant = Animal.create({name: 'elephant', legs:4}, true);
       
-        storageQueue.waitUntilSynced(function(){
-          expect(elephant.isPersisted()).to.be.ok();
-          expect(elephant).to.have.property('_id');
+      storageQueue.waitUntilSynced(function(){
+        expect(elephant.isPersisted()).to.be.ok();
           
-          Animal.findById(elephant.id(), true).then(function(otherElephant){
-            expect(otherElephant).to.be.ok();
-            expect(otherElephant).to.be(elephant);
+        Animal.findById(elephant.id(), true).then(function(otherElephant){
+          expect(otherElephant).to.be.ok();
+          expect(otherElephant).to.be(elephant);
           
-            elephant.once('changed:', function(doc){
-              expect(elephant.legs).to.be(5);
-              elephant.release();
-              otherElephant.release();
-              done();
-            });
-          
-            otherElephant.set('legs', 5);
-          //});
+          elephant.once('changed:', function(doc){
+            expect(elephant.legs).to.be(5);
+            elephant.release();
+            otherElephant.release();
+            done();
           });
+          
+          otherElephant.set('legs', 5);
         });
       });
     });
@@ -385,13 +390,13 @@ describe('Model Datatype', function(){
       var tempAnimal = Animal.create({legs : 8, name:'spider-pig'}, true);
       
       storageQueue.waitUntilSynced(function(){
-        expect(tempAnimal).to.have.property('_id');
+        expect(tempAnimal.isPersisted()).to.be.ok();
         
         socket.disconnect();
         
         socket.once('connect', function(){
           storageQueue.waitUntilSynced(function(){
-            Animal.findById(tempAnimal._id).fail(function(err){
+            Animal.findById(tempAnimal.id()).fail(function(err){
               expect(err).to.be.an(Error);
               done();
             });
@@ -409,7 +414,7 @@ describe('Model Datatype', function(){
       var spiderPig = Animal.create({legs : 8, name:'spider-pig'}, true);
                 
       storageQueue.waitUntilSynced(function(){
-        expect(spiderPig).to.have.property('_id');
+        expect(spiderPig.isPersisted()).to.be.ok();
         
         spiderPig.remove().then(function(){
           
