@@ -788,10 +788,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
     this._keepSynced = true;
 
-    this.whenPersisted().then(() => {
-      using.syncManager && using.syncManager.observe(this);
-    });
-
+    using.syncManager && using.syncManager.observe(this);
+    
     this.on('changed:', (doc, options) => {
       options = options || {};
       if(!options.nosync && !_.isEqual(doc, options.doc)){

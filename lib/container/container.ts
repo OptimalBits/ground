@@ -269,13 +269,7 @@ module Gnd
     
       // TODO: Add support for auto-sync for collections without parents.
       if(this.parent && using.syncManager){
-        if(this.parent.isPersisted()){
-          using.syncManager.observe(this);
-        }else{
-          this.parent.whenPersisted().then(() => {
-            using.syncManager.observe(this);
-          });
-        }
+        using.syncManager.observe(this);
       }
     
       this.storageQueue.exec().then(()=>{
