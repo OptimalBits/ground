@@ -92,7 +92,8 @@ module Gnd
         default:
           push((selector != 'document' ? <any>ctx.getElementsByTagName(selector) : [document]));
       }
-    }else if(selectorOrElement['length'] && !(selectorOrElement instanceof HTMLSelectElement)){
+    }else if(!_.isUndefined(selectorOrElement['length']) && 
+             !(selectorOrElement instanceof HTMLSelectElement)){
       push(selectorOrElement);
     }else{
       push([selectorOrElement]);
