@@ -593,6 +593,21 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    }
    return value;
   }
+  
+  /**
+    Resolves the promise when the given key is available with the keys
+    value.
+  */
+  when(key: string): Promise<any>
+  {
+    var val = this.get(key);
+    if(_.isUndefined(val)){
+      var promise = new Promise();
+      this.on(key, (val) => promise.resolve(val));
+      return promise;
+    }
+    return val;
+  }
 
   /**
     Gets the name of this Model.
