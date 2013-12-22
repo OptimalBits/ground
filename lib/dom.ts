@@ -226,7 +226,9 @@ export class Query // implements QueryNodes
   {
     _.each(eventNames.split(' '), (eventName) => {
       _.each(this, (el) => {
-        if(el.removeEventListener){
+        if(!el) return;
+        
+        if(el.emoveEventListener){
           // W3C DOM
           el.removeEventListener(eventName, handler);
         }else if (el['detachEvent']) { 
