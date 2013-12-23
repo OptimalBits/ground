@@ -202,7 +202,7 @@ export class Collection extends Container implements CollectionEvents
     
     var keyPath = this.getKeyPath();
     if(keyPath && !this.opts.nosync){
-      var useRemote = !parent || parent.isPersisted();
+      var useRemote = !parent;
       this.retain();
       using.storageQueue.find(keyPath, this.opts.query, {noremote: !useRemote}).then((result) => {
         this.resync(result[0]);
@@ -407,6 +407,7 @@ export class Collection extends Container implements CollectionEvents
       if(item.isPersisted() || item._persisting){
         return this.addPersistedItem(item);
       }else{
+        // We do not need to then here...
         return item.save().then<void>(() => this.addPersistedItem(item));
       }
     }
