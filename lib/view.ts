@@ -134,7 +134,8 @@ export class View extends Base
   
   private parentView: View;
   
-  private isInitialized: boolean;
+  private isInitialized: Promise<any>;
+  private isRendered: Promise<HTMLElement>;
   
   private refreshMutex = Mutex();
 
@@ -292,7 +293,7 @@ export class View extends Base
   {
     context = context || {};
     
-    return this.init().then<HTMLElement>(()=>{
+    return this.isRendered = this.init().then<HTMLElement>(()=>{
       var html, root;
 
       if(this.template){
@@ -349,17 +350,23 @@ export class View extends Base
   
    @method clean
   */
-  clean()
+  clean(): Promise<any>
   {
-    if(this.root){
-      var nodes = this.nodes;
-      for (var i=0, len=nodes.length; i<len; i++){
-        try{
-          this.root.removeChild(nodes[i]);
-        }catch(err){
-          // ignore error since it is an unexisting node.
+    if(this.isRendered){
+      return this.isRendered.then(()=>{
+        if(this.root){
+          var nodes = this.nodes;
+          for (var i=0, len=nodes.length; i<len; i++){
+            try{
+              this.root.removeChild(nodes[i]);
+            }catch(err){
+              // ignore error since it is an unexisting node.
+            }
+          }
         }
-      }
+      });
+    }else{
+      return Promise.resolved();
     }
   }
   
@@ -425,16 +432,18 @@ export class View extends Base
    private init(): Promise<any>
    {
      if(!this.isInitialized){
-       this.isInitialized = true;
-       
        if(_.isUndefined(this.html)){
-         return View.fetchTemplate(this.templateUrl, this.cssUrl).then((templ)=>{
+         this.isInitialized = View.fetchTemplate(this.templateUrl, this.cssUrl).then((templ)=>{
            templ = this.templateStr || templ;
            if(templ) this.template = this.templateEngine(Util.trim(templ));
          }).then(() => this.initChildren());
+       }else{
+         this.isInitialized = Promise.resolved();
        }
+     } else {
+       this.isInitialized = this.initChildren();
      }
-     return this.initChildren();
+     return this.isInitialized;
    }
    
    private initChildren(): Promise<any[]>
