@@ -320,19 +320,17 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   resync(args?): Promise<any>
   {
     if(args){
-      /*
-      var strictArgs = this.__strict ? this.__schema.fromObject(args) : args;
-      this.set(strictArgs, {nosync: true, nocache: true});
-      */
       this.set(args, {nosync: true, nocache: true});
       return Promise.resolved();
     }else{
       // Fetch the model from the server.
       this.retain();
       return using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
-        // HACK to avoid change: events due to different cids
-        delete args['_cid'];
-        return this.resync(args).ensure(()=>this.release());
+        if(args){
+          return this.resync(args).ensure(()=>this.release());
+        }else{
+          this.release();
+        }
       });
     }
   }
@@ -362,16 +360,16 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    */
   static extend(bucket: string, schema?: Schema)
   {
-    var _super = this;
+    var __super = this;
     
     function __(args, _bucket, opts) {
       var constructor = this.constructor;
       this.__schema = this.__schema || __['__schema'];
       this.__strict = this.__strict || __['__strict'];
-      _super.call(this, args, bucket || _bucket, opts || _bucket);
+      __super.call(this, args, bucket || _bucket, opts || _bucket);
       
       // Call constructor if different from Model constructor and Base
-      if(constructor && (_super != constructor) && (constructor != Base)){
+      if(constructor && (__super != constructor) && (constructor != Base)){
         constructor.call(this, args);
       }
     }; 
@@ -393,11 +391,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     _.each(statics, (method) => __[method] = this[method]);
     // _.each(this, (property) => __[property] = this[property]);
       
-    _.extend(__, {
-      __schema: Schema.extend(this.__schema, schema),
-      __bucket: bucket,
-      __strict: !!schema
-    });
+    __['__schema'] = Schema.extend(this.__schema, schema);
+    __['__bucket'] = bucket;
+    __['__strict'] = !!schema;
 
     return __;
   }
@@ -603,7 +599,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     var val = this.get(key);
     if(_.isUndefined(val)){
       var promise = new Promise();
-      this.on(key, (val) => promise.resolve(val));
+      this.on(key, (val) => {
+        promise.resolve(val)
+      });
       return promise;
     }
     return val;
@@ -798,7 +796,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
     using.syncManager && using.syncManager.observe(this);
     
-    this.on('changed:', (doc, options) => {
+    this.on('changed:', (doc: any, options: any) => {
       options = options || {};
       if(!options.nosync && !_.isEqual(doc, options.doc)){
         this.update(doc);
@@ -864,7 +862,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   // static all(parent: Model, bucket?: string): Collection;
   static all(parent?: Model, argsOrKeypath?, bucket?: string): Collection
   {
-    var allInstances = (parent, keyPath, args) =>
+    var allInstances = (parent: Model, keyPath: string[], args: {}) =>
       Container.create(Collection, this, {key: _.last(keyPath)}, parent);
  
     return overload({
@@ -908,7 +906,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   static seq(parent: Model, bucket: string): Sequence; //
   static seq(parent?: Model, args?: {}, bucket?: string): Sequence //
   {
-    var allInstances = (parent, keyPath, args) =>
+    var allInstances = (parent: Model, keyPath: string[], args: {}) =>
       Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
 
     return overload({
@@ -1040,8 +1038,8 @@ export class ModelProxy extends Promise<Model>
   model: Model;
   
   constructor(model: Model);
-  constructor(modelOrArgs: {}, classUrl?: string);
-  constructor(modelOrArgs, classUrl?: string)
+  constructor(modelOrArgs: any, classUrl?: string);
+  constructor(modelOrArgs: any, classUrl?: string)
   {
     super();
     
@@ -1052,6 +1050,7 @@ export class ModelProxy extends Promise<Model>
       this['__schema'] = this.model['__schema'];
     }else{
       _.extend(this, modelOrArgs);
+      
       curl([classUrl]).then(
         (modelClass: IModel) => {
           var fn = _.bind(_.omit, _, this);

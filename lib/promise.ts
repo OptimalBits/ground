@@ -261,7 +261,8 @@ export class Promise<T> extends Base
   **/
   fail<U>(onRejected?: (reason: Error) => any): Promise<U>
   {
-    return this.then(null, onRejected || ()=>{});
+    var noop = ()=>{};
+    return this.then(null, onRejected || noop);
   }
   
   /**

@@ -106,7 +106,7 @@ export class Queue extends Base implements IStorage
 
   private static itemEquals(item1, item2){
     return (!item1 && !item2) || 
-      (item1 && item2 && (item1.doc._id === item2.doc._id || item1.doc._cid === item2.doc._cid));
+      (item1 && item2 && (item1.doc._cid === item2.doc._cid));
   }
 
   constructor(local: IStorage, remote?: IStorage, autosync?: boolean)
@@ -167,7 +167,6 @@ export class Queue extends Base implements IStorage
     var promise = new Promise();
     
     this.localStorage.fetch(keyPath).then((doc)=>{
-      //var id = doc['_id'] = _.last(keyPath);
       var id = _.last(keyPath);
       var remotePromise = this.useRemote && doc._persisted ? 
         this.fetchRemote(keyPath) : new Promise(doc);
@@ -252,8 +251,7 @@ export class Queue extends Base implements IStorage
         
       function findItem(items, itemToFind){
         return _.find(items, function(item){
-            return (item._cid === itemToFind._cid || 
-                    item._id === itemToFind._id);
+            return (item._cid === itemToFind._cid);
         });
       }
         
@@ -261,7 +259,7 @@ export class Queue extends Base implements IStorage
       _.each(oldItems, (oldItem) => {
         if(Query.match(query.cond || {}, oldItem)){
           if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
-            itemsToRemove.push(oldItem._cid, oldItem._id);
+            itemsToRemove.push(oldItem._cid);
           }else if(oldItem.__op !== 'rm'){
             result.push(oldItem);
           }
@@ -280,7 +278,6 @@ export class Queue extends Base implements IStorage
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
           var elemKeyPath = itemKeyPath.concat(doc._cid);
-    //      doc._cid = doc._id; // ??
           return storage.put(elemKeyPath, doc, {});
         })
         .then(() => storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}))
