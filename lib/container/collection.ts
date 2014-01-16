@@ -203,7 +203,8 @@ export class Collection extends Container implements CollectionEvents
     var keyPath = this.getKeyPath();
     if(keyPath && !this.opts.nosync){
       this.retain();
-      using.storageQueue.find(keyPath, this.opts.query, {}).then((result) => {
+      var noremote = parent && !parent.isPersisted() ? true : false;
+      using.storageQueue.find(keyPath, this.opts.query, {noremote:noremote}).then((result) => {
         this.resync(result[0]);
         result[1]
           .then((items) => this.resync(items))

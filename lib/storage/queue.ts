@@ -392,33 +392,40 @@ export class Queue extends Base implements IStorage
     return promise;
   }
   
-  all(keyPath: string[], query: {}, opts: {}): Promise<any[]>
+  // This function is very similar to the find function, and it should be
+  // possible to refactor it.
+  all(keyPath: string[], query: {}, opts: {noremote?:boolean}): Promise<any[]>
   {
     var promise = new Promise();
     var remotePromise = new Promise();
+    var useRemote = this.useRemote && !opts.noremote;
     
     var localOpts = _.extend({snapshot:true}, opts);
      
     this.localStorage.all(keyPath, query, localOpts).then((result: any) => {
       promise.resolve([result, remotePromise]);
       
-      if(this.useRemote){
+      if(useRemote){
         this.allRemote(keyPath, query, opts)
           .then((itemsRemote) => remotePromise.resolve(itemsRemote))
           .fail((err) => remotePromise.reject(err));
+      }else{
+        remotePromise.resolve(result);
       }
     }, (err) => {
-      if(!this.useRemote) return promise.reject(err);
+      if(!useRemote) return promise.reject(err);
 
       this.allRemote(keyPath, query, opts).then((itemsRemote)=>{
         remotePromise.resolve(itemsRemote);
         promise.resolve([itemsRemote, remotePromise]);
-      }).fail((err) => promise.reject(err));
+      }).fail((err) => {
+        promise.reject(err);
+      }); 
     });
     return promise;
   }
   
-  allRemote(keyPath: string[], query: {}, opts: {})
+  allRemote(keyPath: string[], query: {noremote?:boolean}, opts: {})
   {
     var localOpts = _.extend({snapshot:true}, opts);
     
