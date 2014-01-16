@@ -22,7 +22,7 @@ export enum Rights {
 
 export interface Acl
 {
-  isAllowed(userId: string, resource: string, permissions: string, cb: (err, allowed) => void): void;
+  isAllowed(userId: string, resource: string, permissions: string): Promise<Boolean>;
 }
 
 export interface CreateRule {
@@ -52,20 +52,20 @@ export interface RemoveRule {
 }
 
 /**
-  Rules interface.
+  Policies interface.
   
-  A rules object containes rules for operations that imply the creation or
+  A policies object containes policies for operations that imply the creation or
   destruction of resources.
   
-  A rules object must be defined for every application, with the specific
+  A policies object must be defined for every application, with the specific
   rights relationships for that application.
 
   Note: Documentation incomplete needs to be much more detailed and provide 
   examples.
 
-  @class Rules
+  @class Policies
 */
-export interface Rules
+export interface Policies
 {
   create?: {[index: string]: CreateRule;};
   put?: {[index: string]: PutRule;};
@@ -74,41 +74,38 @@ export interface Rules
   remove?: {[index: string]: RemoveRule;};
 }
 
-class RulesManager 
+class PolicyManager 
 {
-  private rules: Rules;
+  private policies: Policies;
   private acl: Acl;
   
-  constructor(acl: Acl, rules: Rules){
-    this.rules = rules;
+  constructor(acl: Acl, policies: Policies){
+    this.policies = policies;
     this.acl = acl;
   }
   
-  applyCreate(userId: string, keyPath: string[], doc: any): Promise<any>
+  applyPolicy(userId: string, policyType: string, keyPath: string[], ...args: any[]): Promise<void>
   {
-    var rule = <CreateRule>this.matchRule(this.rules.create, keyPath);
-    if(rule){
-      return rule.call(this.acl, arguments);
-    }
-    return Promise.resolved();
-  }
-
-  applyPut(userId: string, keyPath: string[], doc: any): Promise<any>
-  {
-    var rule = <PutRule>this.matchRule(this.rules.put, keyPath);
-    if(rule){
-      return rule.call(this.acl, arguments);
+    var policy = this.matchPolicy(policyType, keyPath);
+    if(policy){
+      return policy.apply(this.acl, [keyPath].concat(args));
     }
     return Promise.resolved();
   }
   
-  applyDel(userId: string, keyPath: string[]): Promise<any>
+  applyCreate(userId: string, keyPath: string[], doc: any): Promise<void>
   {
-    var rule = <DeleteRule>this.matchRule(this.rules.del, keyPath);
-    if(rule){
-      return rule.apply(this.acl, arguments);
-    }
-    return Promise.resolved();
+    return this.applyPolicy(userId, 'create', keyPath, doc);
+  }
+
+  applyPut(userId: string, keyPath: string[], doc: any): Promise<void>
+  {
+    return this.applyPolicy(userId, 'put', keyPath, doc);
+  }
+  
+  applyDel(userId: string, keyPath: string[]): Promise<void>
+  {
+    return this.applyPolicy(userId, 'del', keyPath);
   }
   
   applyAdd(userId: string, 
@@ -116,11 +113,7 @@ class RulesManager
            itemsKeyPath: string[],
            itemIds:string[]): Promise<void>
   {
-    var rule = <AddRule>this.matchRule(this.rules.add, keyPath);
-    if(rule){
-      return rule.apply(this.acl, arguments);
-    }
-    return Promise.resolved();
+    return this.applyPolicy(userId, 'add', keyPath, itemsKeyPath, itemIds);
   }
   
   applyRemove(userId: string,
@@ -128,78 +121,70 @@ class RulesManager
               itemsKeyPath: string[],
               itemIds:string[]): Promise<void>
   {
-    var rule = <RemoveRule>this.matchRule(this.rules.remove, keyPath);
-    if(rule){
-      return rule(userId, keyPath, itemsKeyPath, itemIds);
-    }
-    return Promise.resolved();
+    return this.applyPolicy(userId, 'remove', keyPath, itemsKeyPath, itemIds);
   }
 
-  private matchRule(rules: {}, keyPath: string[])
+  private matchPolicy(policyType: string, keyPath: string[])
   {
-    if(rules){
-      var patterns = Object.keys(rules);
+    var policies = this.policies[policyType];
+    
+    if(policies){
+      var patterns = Object.keys(policies);
     
       for(var i=0; i<patterns.length; i++){
         var pattern = patterns[i].split('/');
         if (pattern.length == keyPath.length){
           for(var j=0; j<keyPath.length; j++){
             if(keyPath[j] == pattern[j]){
-              return rules[patterns[i]];
+              return policies[patterns[i]];
             }
           }
         }
       }
-      return rules['*'];
+      // Rerturn the default policy if any
+      return policies['*'];
     }
   }
 }
 
 /**
   This class is used internally by the framework to provide rights for the users.
-  
-  
+
   @class RightsManager
   @constructor
   @param acl {Acl} an instance of the Acl module.
-  @param rules {Rules} rules to be used by this rights manager.
+  @param policies {Policies} policies to be used by this rights manager.
 */
 export class RightsManager 
 {
   private acl: Acl;
-  private rulesManager: RulesManager;
+  private policyManager: PolicyManager;
   
-  constructor(acl?: Acl, rules?: Rules){
+  constructor(acl?: Acl, rules?: Policies){
     this.acl = acl;
     
     if(rules){
-      this.rulesManager = new RulesManager(acl, rules);
+      this.policyManager = new PolicyManager(acl, rules);
     }
   }
   
-  checkRights(userId: string, keyPath: string[], rights: Rights): Promise<boolean>; // Promise<bool>
+  checkRights(userId: string, keyPath: string[], rights: Rights): Promise<boolean>;
+  checkRights(userId: string, keyPath: string[], rights: Rights, doc: any): Promise<boolean>;  
   checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise<boolean>;
-  checkRights(userId: string, keyPath: string[], rights: any): Promise<boolean>
+  checkRights(userId: string, keyPath: string[], rights: Rights[], doc: any): Promise<boolean>;
+  checkRights(userId: string, keyPath: string[], rights: any, doc?:any): Promise<boolean>
   {
-    var promise = new Promise();
     if(this.acl){
-      this.acl.isAllowed(userId, keyPath.join('/'), rights, (err?, allowed?) =>{
-        if(err){
-          promise.reject(err);
-        }else{
-          promise.resolve(allowed);
-        }
-      });
+      return this.acl.isAllowed(userId, keyPath.join('/'), rights);
     }else{
-      promise.resolve(true);
+      return Promise.resolved(true);
     }
-    return promise;
   }
   
   create(userId: string, keyPath: string[], doc: any): Promise<string>
   {
-    if(this.rulesManager){
-      this.rulesManager.applyCreate(userId, keyPath, doc);
+    if(this.policyManager){
+      this.policyManager.applyCreate(userId, keyPath, doc);
     }else{
       return Promise.resolved();
     }
@@ -207,8 +192,8 @@ export class RightsManager
   
   put(userId: string, keyPath: string[], doc: any): Promise<void>
   {
-    if(this.rulesManager){
-      this.rulesManager.applyPut(userId, keyPath, doc);
+    if(this.policyManager){
+      this.policyManager.applyPut(userId, keyPath, doc);
     }else{
       return Promise.resolved();
     }
@@ -216,8 +201,8 @@ export class RightsManager
   
   del(userId: string, keyPath: string[]): Promise<void>
   {
-    if(this.rulesManager){
-      this.rulesManager.applyDel(userId, keyPath);
+    if(this.policyManager){
+      this.policyManager.applyDel(userId, keyPath);
     }else{
       return Promise.resolved();
     }
@@ -228,8 +213,8 @@ export class RightsManager
       itemsKeyPath: string[],
       itemIds:string[]): Promise<void>
   {
-    if(this.rulesManager){
-      return this.rulesManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds);
+    if(this.policyManager){
+      return this.policyManager.applyAdd(userId, keyPath, itemsKeyPath, itemIds);
     }else{
       return Promise.resolved<void>();
     }
@@ -240,8 +225,8 @@ export class RightsManager
          itemsKeyPath: string[], 
          itemIds:string[]): Promise<void>
   {
-    if(this.rulesManager){
-      return this.rulesManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds);
+    if(this.policyManager){
+      return this.policyManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds);
     }else{
       return Promise.resolved();
     }    
@@ -252,12 +237,12 @@ export class RightsManager
 /*
 function(acl){
   
-  function addCreateRights(userId, keypath, doc, cb){
-    acl.allow(userId, keypath.join('/'), [GET, PUT, DEL], cb);
+  function addCreateRights(userId, keypath, doc){
+    return acl.allow(userId, keypath.join('/'), [GET, PUT, DEL]);
   }
   
   function removeRights(userId, keypath, cb){
-    acl.removeAllow(userId, keypath.join('/'), [GET, PUT, DEL], cb);
+    return acl.removeAllow(userId, keypath.join('/'), [GET, PUT, DEL], cb);
   }
   
 return
@@ -268,14 +253,13 @@ return
     'displays/:id': addCreateRights,
     'playlists/:id': () => {
       addCreateRights();
-      acl.allow(userId, keypath.concat('entries').join('/'), [ADD, REMOVE, FIND], cb);
+      return acl.allow(userId, keypath.concat('entries').join('/'), [ADD, REMOVE, FIND]);
     },
     'group/:id': () => {
       addCreateRights();
       acl.allow(userId, keypath.concat('resources').join('/'), [ADD, REMOVE, FIND], cb);
       acl.allow(userId, keypath.concat('users').join('/'), [ADD, REMOVE, FIND], cb);
     },
-    
     'resource/:id': (userId, keypath, doc, cb) => {
       doc.permissions
       acl.

@@ -8,6 +8,7 @@
 */
 
 /// <reference path="log.ts" />
+/// <reference path="error.ts" />
 /// <reference path="storage/storage.ts" />
 /// <reference path="sync/sync-backend.ts" />
 /// <reference path="session/rightsmanager.ts" />
@@ -20,6 +21,8 @@
 // TODO: Improve error handling after ACL rights setting.
 module Gnd {
 
+  export var InsufficientRightsError = Error(ServerError.MISSING_RIGHTS+"");
+  
   /**
     This is the main server class that glues all server components together.
     
@@ -57,32 +60,36 @@ export class Server {
   
   create(userId: string, keyPath: string[], doc: any, opts: {}): Promise<any>
   {
-    return this.rm.checkRights(userId, keyPath, Rights.CREATE).then((allowed) => {
+    return this.rm.checkRights(userId, keyPath, Rights.CREATE, doc).then((allowed) => {
       if(allowed){
         return this.storage.create(keyPath, doc, opts).then((id) => {
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
           return this.rm.create(userId, newKeyPath, doc).then(()=>{
             return id;
-          }).fail((err)=>{
+          }, (err)=>{
             // TODO: remove doc
           });
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
   
   put(clientId: string, userId: string, keyPath: string[], doc: any, opts: {}): Promise<any>
   {
-    return this.rm.checkRights(userId, keyPath, Rights.PUT).then((allowed) => {
+    return this.rm.checkRights(userId, keyPath, Rights.PUT, doc).then((allowed) => {
       if(allowed){
         return this.rm.put(userId, keyPath, doc).then(() => {
           return this.storage.put(keyPath, doc, opts).then(()=>{
             this.syncHub && this.syncHub.update(clientId, keyPath, doc);
-          }).fail((err)=>{
+          }, (err)=>{
             // TODO: remove rights
             log("Error updating document:", keyPath, err)
           });
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -92,6 +99,8 @@ export class Server {
     return this.rm.checkRights(userId, keyPath, Rights.GET).then((allowed) => {
       if(allowed){
         return this.storage.fetch(keyPath);
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -105,6 +114,8 @@ export class Server {
             this.syncHub && this.syncHub.delete(clientId, keyPath);
           });
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -126,6 +137,8 @@ export class Server {
             this.syncHub && this.syncHub.add(clientId, keyPath, itemsKeyPath, itemIds);
           });
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -144,6 +157,8 @@ export class Server {
             this.syncHub && this.syncHub.remove(clientId, keyPath, itemsKeyPath, itemIds);
           })
         );
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -153,6 +168,8 @@ export class Server {
     return this.rm.checkRights(userId, keyPath, Rights.GET).then<any[]>((allowed?) => {
       if(allowed){
         return this.storage.find(keyPath, query, opts);
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -165,6 +182,8 @@ export class Server {
     return this.rm.checkRights(userId, keyPath, Rights.GET).then<any[]>((allowed?) => {
       if(allowed){
         return this.storage.all(keyPath, query, opts);
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -176,6 +195,8 @@ export class Server {
         return this.storage.deleteItem(keyPath, id, opts).then(() => {
           this.syncHub && this.syncHub.deleteItem(clientId, keyPath, id);
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }
@@ -193,6 +214,8 @@ export class Server {
           this.syncHub && this.syncHub.insertBefore(clientId, keyPath, res.id, itemKeyPath, res.refId);
           return res;
         });
+      }else{
+        throw InsufficientRightsError;
       }
     });
   }  
