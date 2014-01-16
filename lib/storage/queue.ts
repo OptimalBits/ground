@@ -618,10 +618,10 @@ export class Queue extends Base implements IStorage
           case 'add':
             return storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts)
               .then<void>(() => storage.add(cmd.keyPath,
-                                      cmd.itemsKeyPath, 
-                                      cmd.itemIds,
-                                      opts));
-          case 'remove': 
+                                            cmd.itemsKeyPath, 
+                                            cmd.itemIds,
+                                            opts));
+          case 'remove':
             var itemsToRemove = (cmd.oldItemIds || []).concat(cmd.itemIds || []);
             return storage.remove(cmd.keyPath, cmd.itemsKeyPath, itemsToRemove, opts);
           case 'deleteItem':
@@ -631,9 +631,13 @@ export class Queue extends Base implements IStorage
       })().ensure(() => syncFn());
       
     }else{
-      Gnd.log("Queue error:"+ err, this.queue[0]);
+      var errCode = parseInt(err.message);
+      err.message = ServerError[err.message];
+      
+      Gnd.log("Queue error:", err, errCode, this.queue[0]);
       
       // HACK
+      /*
       if(err.message == 'Invalid ObjectId'){
         err.message = ''+ServerError.INVALID_ID;
       }
@@ -644,12 +648,14 @@ export class Queue extends Base implements IStorage
       }else{
         errCode = parseInt(err.message);
       }
+      */
       
       switch(errCode){
         case ServerError.INVALID_ID:
         case ServerError.INVALID_SESSION:
         case ServerError.DOCUMENT_NOT_FOUND:
         case ServerError.MODEL_NOT_FOUND:
+        case ServerError.MISSING_RIGHTS:
           // Discard command
           this.dequeueCmd();
           this.emit('error:', err);

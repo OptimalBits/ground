@@ -24,7 +24,7 @@ function scb(cb){
 function callback(promise, cb){
   promise.then((val)=>{
     cb(null, val);
-  }).fail((err)=>{
+  }, (err)=>{
     cb(err.message)
   });
 }
@@ -47,9 +47,7 @@ export class SocketBackend {
       var clientId = socket.id;
       
       // TODO: Use socket.io authentication mechanism to guarantee there is a session?
-      
-      server.sessionManager.getSession(socket.handshake.headers.cookie, (err?, session?) => {    
-        
+      server.sessionManager.getSession(socket.handshake.headers.cookie).then((session) => {
         // Models
         socket.on('create', function(keyPath: string[], doc: {}, cb: (err: ServerError, key?: string) => void){
           log("Request to create instance:", clientId, keyPath, session);
@@ -101,6 +99,8 @@ export class SocketBackend {
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.insertBefore(clientId, session.userId, keyPath, id, itemKeyPath, opts), cb);
         });
+      }, function(err){
+        console.log("Error getting session", err);
       });
     });
   }
