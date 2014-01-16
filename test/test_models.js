@@ -119,7 +119,6 @@ describe('Model Datatype', function(){
       Gnd.Model.__useDepot = false;
       
       Animal.create({name: 'pinguin', legs: 2}, true).then(function(pinguin){
-        pinguin.save();
         
         expect(pinguin).to.have.property('legs');
         expect(pinguin).to.have.property('name');
@@ -134,31 +133,29 @@ describe('Model Datatype', function(){
             expect(pinguin2).to.have.property('name');
             expect(pinguin2.legs).to.be(2);
             
-            sm2.observe(pinguin2);
-            
             // Force start since we only have one global sync proxy(needed for test)
             sm2.start(pinguin2.getKeyPath());
-            
+
             pinguin2.once('legs', function(legs){
               expect(pinguin2.legs).to.be(3);
             
-              pinguin.on('changed:', function(){
+              pinguin.once('changed:', function(){
                 expect(pinguin.name).to.be('super pinguin');
-                expect(pinguin.legs).to.be(2);
+                expect(pinguin.legs).to.be(5);
               
                 expect(pinguin2.name).to.be('super pinguin');
-                expect(pinguin2.legs).to.be(2);
+                expect(pinguin2.legs).to.be(5);
               
                 pinguin.release();
                 pinguin2.release();
                 
                 done();
-              })
-            
-              pinguin2.set({name:'super pinguin', legs:2});
+              });
+
+              pinguin2.set({name:'super pinguin', legs:5});
             })
 
-            pinguin.set('legs', 3);
+            pinguin.set({name: 'emperor pinguin', 'legs': 3});
           });
         });
       });

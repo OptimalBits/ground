@@ -197,20 +197,21 @@ describe('Collection Datatype', function(){
         zoo.all(Animal).then(function(animals){
 
           var leopard = new Animal({name:"leopard"});
+          
           animals.add(leopard).then(function(){
             expect(leopard).to.be.an(Object);
             expect(leopard.name).to.be.eql('leopard');
-
-            leopard.once('changed:', function(args){
-              expect(args).to.be.an(Object);
-              expect(args.legs).to.be(5);
-              // animals.release();
-              // zoo.release();
-              leopard.release();
-              done();
-            });
-
+            
             storageQueue.waitUntilSynced(function(){
+              leopard.once('changed:', function(args){
+                expect(args).to.be.an(Object);
+                expect(args.legs).to.be(5);
+                // animals.release();
+                // zoo.release();
+                leopard.release();
+                done();
+              });
+              
               Animal.findById(leopard.id()).then(function(animal){
                 animal.keepSynced();
                 leopard.set('legs', 5);

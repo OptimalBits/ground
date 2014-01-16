@@ -5,11 +5,14 @@
 var Gnd = require('../index');
 
 var express = require('express'),
+    app = express(),
+    http = require('http'),
+    server = http.createServer(app),
     mongoose = require('mongoose'),
-    app = express.createServer(),
-    appSessions = express.createServer(),
-    sio = require('socket.io').listen(app),
-    sioSessions = require('socket.io').listen(appSessions),
+    appSessions = express(),
+    serverSessions = http.createServer(appSessions),
+    sio = require('socket.io').listen(server),
+    sioSessions = require('socket.io').listen(serverSessions),
     redis = require('redis'),
     cabinet = require('cabinet'),
     passport = require('passport'),
@@ -19,12 +22,13 @@ var express = require('express'),
     uuid = require('node-uuid'),
     Cookies = require('cookies'),
     acl = require('acl'),
-    requirejs = require('requirejs'),
-    posix = require('posix');
+    requirejs = require('requirejs');
 
-// Increase limits to avoid problems with cabinet. 
-var limits = posix.setrlimit('nofile', {soft: 8000, hard: 8000});
-limits = posix.getrlimit('nofile');
+requirejs.config({
+  paths: {
+    gnd: '../build/lib/gnd'
+  }
+});
 
 var models = requirejs('fixtures/models');
 
@@ -128,7 +132,24 @@ app.del('/parade/:seqId/animals/:id', function(req, res){
 });
 
 // Server for sessions
-var sessionManager = new Gnd.SessionManager(TEST_COOKIE, cookie.parse);
+//var sessionManager = new Gnd.SessionManager(TEST_COOKIE, cookie.parse);
+
+var cookieParser = express.cookieParser(TEST_COOKIE);
+var sessionCookieParser = function(rawData){
+  var data = {headers: {cookie: rawData}};
+  
+  var promise = new Gnd.Promise();
+  cookieParser(data, {}, function(err){
+    if(err){
+      promise.reject(err);
+    }else{
+      promise.resolve(data.signedCookies[config.cookieId]);
+    }
+  });
+  return promise;
+}
+
+var sessionManager = new Gnd.SessionManager(sessionCookieParser);
 
 rules = {
   create: {
@@ -228,9 +249,9 @@ mongoose.connect(mongooseDB, function(){
     mongoose.disconnect(function(){
       mongoose.connect(mongooseDB);
 
-      app.listen(10000);
-      appSessions.listen(9999);
-      console.log("Started test server at port: %d in %s mode", app.address().port, app.settings.env);
+      server.listen(10000);
+      serverSessions.listen(9999);
+      console.log("Started test server at port: %d in %s mode", server.address().port, app.settings.env);
     });
   });
 });

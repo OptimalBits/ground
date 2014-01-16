@@ -1,7 +1,7 @@
 define(['gnd'], function(Gnd){
 "use strict";
 
-describe('Session', function(){
+describe.skip('Session', function(){
   
   var Animal = Gnd.Model.extend('animals');
   var storageLocal;
