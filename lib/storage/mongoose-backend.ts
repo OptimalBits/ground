@@ -282,7 +282,7 @@ export class MongooseStorage implements Storage.IStorage {
         update(doc);
       }
       function update(doc){
-        found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc, (err, oldDoc) => {
+        found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc).lean().exec((err, oldDoc) => {
           if(!err){
             // Note: isEqual should only check the properties present in doc!
             if(!_.isEqual(doc, oldDoc)){
@@ -315,7 +315,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then((found) => {
       var promise = new Promise()
-      found.Model.findOne({_cid: _.last(keyPath)}, (err, doc?) => {
+      found.Model.findOne({_cid: _.last(keyPath)}).lean().exec((err, doc?) => {
         if(doc){
           if(found.Model['gnd-hooks'] && found.Model['gnd-hooks'].fetch){
             // Workaround since promises do not work correctly when resolving with a promise
@@ -341,7 +341,6 @@ export class MongooseStorage implements Storage.IStorage {
     return this.getModel(keyPath).then<void>((found) => {
       var promise = new Promise<void>();
       found.Model.findOne({_cid:_.last(keyPath)}, (err?, doc?) => {
-        
         if(!err && doc){
           doc.remove((err?)=>{
             !err && promise.resolve();
@@ -406,7 +405,7 @@ export class MongooseStorage implements Storage.IStorage {
 
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: any): Promise<void>
   {
-    if(itemIds.length === 0) return Promise.resolved(); //nothing to do
+    if(itemIds.length === 0) return Promise.resolved<void>(); //nothing to do
     
     return this.getModel(keyPath).then<void>((found) => {
       var promise = new Promise<void>();
@@ -468,6 +467,7 @@ export class MongooseStorage implements Storage.IStorage {
     var promise = new Promise();
     Model
       .findOne({_cid:id})
+      .lean()
       .select(setName)
       .exec((err, doc) => {
         if(err){
@@ -497,6 +497,7 @@ export class MongooseStorage implements Storage.IStorage {
     
     Model
       .find(query.cond, query.fields, query.opts)
+      .lean()
       .where('_cid').in(arr)
       .exec((err, doc) => {
         if(err) {
@@ -526,7 +527,7 @@ export class MongooseStorage implements Storage.IStorage {
       });
     }else{
       var promise = new Promise();
-      this.ListContainer.find({_cid: id}, (err, docs) => {
+      this.ListContainer.find({_cid: id}).lean().exec((err, docs) => {
         if(err) return promise.reject(err);
         if(docs.length !== 1) return promise.reject(Error('container '+id+' not found'));
         return promise.resolve(docs[0]);
@@ -538,12 +539,13 @@ export class MongooseStorage implements Storage.IStorage {
   private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
     var promise = new Promise();
-    ParentModel.findOne({_cid: parentId}).select(name).exec((err, doc) => {
+    ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
       if(err) return promise.reject(err);
       else if(!doc) return promise.reject(Error('could not find end points'));
       else if(!doc[name] || doc[name].length === 0) promise.resolve();
       else {
         this.ListContainer.find()
+          .lean()
           .where('_cid').in(doc[name])
           .or([{type:'_begin'}, {type:'_end'}])
           .exec((err, docs)=>{
@@ -565,7 +567,7 @@ export class MongooseStorage implements Storage.IStorage {
 
   private removeFromSeq(containerId: string): Promise<void>
   {
-    var promise = new Promise();
+    var promise = new Promise<void>();
     this.ListContainer.update(
       {_cid: containerId},
       {
@@ -585,7 +587,7 @@ export class MongooseStorage implements Storage.IStorage {
   private initSequence(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
     var promise = new Promise(); 
-    ParentModel.findOne({_cid: parentId}).select(name).exec((err, doc) => {
+    ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
       if(err){
         promise.reject(err);
       }else if(doc && doc[name].length < 2){
@@ -647,7 +649,7 @@ export class MongooseStorage implements Storage.IStorage {
   // Returns the id of the new container
   private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<void>
   {
-    var promise = new Promise();
+    var promise = new Promise<void>();
     var newContainer = new this.ListContainer({
       _cid: opts.cid || Util.uuid(),
       next: nextId,
@@ -688,7 +690,7 @@ export class MongooseStorage implements Storage.IStorage {
     return traverse(null).then(() => all);
   }
 
-  private next(keyPath: string[], id: string, opts: {}): Promise<{id: string; refId: string;}>
+  private next(keyPath: string[], id: string, opts: {}): Promise<{id: string; keyPath: string; doc: any;}>
   {
     return this.getModel(keyPath).then<any>((found) => {
       var ParentModel = found.Model;
