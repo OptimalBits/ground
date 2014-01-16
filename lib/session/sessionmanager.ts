@@ -2,8 +2,15 @@
   Ground Web Framework. Session Management. (c) OptimalBits 2013.
 */
 
+/// <reference path="../promise.ts" />
+
 module Gnd
 {
+  
+export class Session
+{
+  userId: string;
+}
   
 /**
   A session storage interface. This interface can be implemented using any
@@ -20,7 +27,7 @@ export interface ISessionStore
     @param session {Object} plain object with the session data.
     @param cb {Function} nodejs style callback with the save result.
   */
-  save(sessionId: string, session: {}, cb: (err?: Error) => void);
+  save(sessionId: string, session: Session): Promise<void>;
   
   /**
   
@@ -28,7 +35,7 @@ export interface ISessionStore
     @param sessionId {String} the session id.
     @param cb {Function} nodejs style callback with load result.
   */
-  load(sessionId: string, cb: (err?: Error, session?: {}) => void);
+  load(sessionId: string): Promise<Session>;
   
   /**
   
@@ -36,7 +43,7 @@ export interface ISessionStore
     @param sessionId {String} the session id.
     @param cb {Function} nodejs style callback with the remove result.
   */
-  remove(sessionId: string, cb: (err?: Error) => void);
+  remove(sessionId: string): Promise<void>;
 }
 
 /**
@@ -54,65 +61,62 @@ export class SessionManager
 {
   private expire: number;
   private cookieId: string;
-  private cookieParser: (cookie: string) => {};
+  private cookieParser: (cookie: string) => Promise<string>;
   private sessionStore: ISessionStore;
   private useSessions: boolean;
   
   constructor();
-  constructor(cookieId: string, cookieParser: (cookie: string) => {}, store?: ISessionStore);
-  constructor(cookieId?: string, cookieParser?: (cookie: string) => {}, store?: ISessionStore)
+  constructor(cookieParser: (rawCookies: string) => Promise<string>, store?: ISessionStore);
+  constructor(cookieParser?: (rawCookies: string) => Promise<string>, store?: ISessionStore)
   {
-    this.cookieId = cookieId;
     this.cookieParser = cookieParser;
     this.sessionStore = store || new MemorySessionStore();
     
-    this.useSessions = !!cookieId && !!cookieParser;
+    this.useSessions = !!cookieParser;
   }
-  
-  setSession(sessionId: string, session: {}, cb: (err?: Error) => void)
+
+  setSession(sessionId: string, session: Session): Promise<void>
   {
     //
     // TODO: Registers listeners for this session (session.on('userId', function(){...}))
     //
     
-    this.sessionStore.save(sessionId, session, cb);
+    return this.sessionStore.save(sessionId, session);
   }
   
-  getSession(cookie: string, cb: (err?: Error, session?: any) => void)
+  getSession(cookie: string): Promise<Session>
   {
     if(this.useSessions){
-      var sessionId = this.getSessionId(cookie);
-      if(sessionId){
-        return this.sessionStore.load(sessionId, cb);
-      }
-    
-      cb(new Error("No sessionId available in cookies"));
+      return this.getSessionId(cookie).then<Session>((sessionId)=>{
+        if(sessionId){
+          return this.sessionStore.load(sessionId);
+        }else{
+          throw Error("No sessionId available in cookies"); 
+        }
+      });
     }else{
-      cb(null, {userId: 'guest'});
+      return Promise.resolved({userId: 'guest'});
     }
   }
   
-  removeSession(cookie: string, cb: (err?: Error)=>void)
+  removeSession(cookie: string): Promise<void>
   {
     if(this.useSessions){  
-      var sessionId = this.getSessionId(cookie);
-      if(sessionId){
-        return this.sessionStore.remove(sessionId, cb);
-      }
-    
-      cb(new Error("No sessionId available in cookies"));
+      return this.getSessionId(cookie).then<void>((sessionId)=>{
+        if(sessionId){
+          return this.sessionStore.remove(sessionId);
+        }else{
+          throw Error("No sessionId available in cookies");
+        }
+      });
     }else{
-      cb();
+      return Promise.resolved();
     }
   }
   
-  getSessionId(cookie: string)
+  getSessionId(rawCookies: string): Promise<string>
   {
-    var cookies = this.cookieParser(cookie);
-    if(cookies){
-       return cookies[this.cookieId];
-    }
-    return;
+    return this.cookieParser(rawCookies);
   }
 }
 
@@ -135,29 +139,29 @@ export class MemorySessionStore implements ISessionStore
     this.expireTime = expireTime || this.expireTime;
   }
   
-  save(sessionId: string, session: {}, cb: (err?: Error) => void)
+  save(sessionId: string, session: Session): Promise<void>
   {
     this.touch(sessionId);
     this.sessions[sessionId] = session;
-    cb();
+    return Promise.resolved();
   }
   
-  load(sessionId: string, cb: (err?: Error, session?: {}) => void)
+  load(sessionId: string): Promise<Session>
   {
     var session = this.sessions[sessionId];
     if(session){
       this.touch(sessionId);
-      cb(null, session);
+      return Promise.resolved(session);
     }else{
-      cb(new Error("Session not available"));
+      return Promise.rejected(Error("Session not available"));
     }
   }
   
-  remove(sessionId: string, cb: (err?: Error) => void)
+  remove(sessionId: string): Promise<void>
   {
     delete this.sessions[sessionId];
     clearTimeout(this.expires[sessionId]);
-    cb();
+    return Promise.resolved();
   }
   
   private touch(sessionId: string){
