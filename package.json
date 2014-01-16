@@ -43,19 +43,18 @@
   },
   "dependencies": {
     "redis": ">=0.8.3",
-    "lodash": "*",
-    "socket.io": "0.9.10",
+    "lodash": "~2.4.1",
     "acl": "*",
     "commander": "*",
     "mkdirp": "*"
   },
   "devDependencies": {
-    "mocha": "*",
+    "mocha": "~1.17.0",
     "expect.js": "*",
     "should": "~0.5.1",
-    "express": "2.5.11",
+    "express": "~3.4.8",
     "mongoose": "3.4.0",
-    "cabinet": ">=0.2.1",
+    "cabinet": "~0.2.13",
     "node-uuid": "*",
     "typescript": "*",
     "passport": "*",
@@ -71,7 +70,8 @@
     "grunt-contrib-compress": "~0.5.0",
     "requirejs": "~2.1.8",
     "grunt-contrib-yuidoc": "~0.4.0",
-    "posix": "~1.0.2"
+    "posix": "~1.0.2",
+    "socket.io": "~0.9.16"
   },
   "scripts": {
     "test": "mocha tests/*",
