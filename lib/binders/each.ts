@@ -25,26 +25,26 @@ interface Callbacks
   The Each binder is used to bind collections to HTML Elements. Using this
   binder it is possible to define a dynamic list of elements that are bound
   to their Collection or Sequence counterparts.
-  
+
   It is possible to define *added* and *removed* event callbacks to perform
   operations such as animations when an item is added or removed to the DOM.
-  
+
   The binder works by defining a item alias for a collection or sequence,
   after that the alias can be used to bind properties with the *TwoWayBinder*
-  
-      Syntax: data-each="collection: itemContextName [| added:callback0] [| removed: callback1]"
-      
-      callback signature: 
-        added(el: HTMLElement, item: Model);
-        removed(el: HTMLElement);
-      
-      Example: 
-      
-        <lu>
-          <li>Todos Header</li>
-          <li data-each="todos: todo" data-bind="todo.description | added: todo.addedTodo | removed: todo.removedTodo"></li>
-        </lu>
-         
+
+  Syntax: data-each="collection: itemContextName [| added:callback0] [| removed: callback1]"
+
+  callback signature: 
+    added(el: HTMLElement, item: Model);
+    removed(el: HTMLElement);
+
+    Example:
+
+    <lu>
+      <li>Todos Header</li>
+      <li data-each="todos: todo" data-bind="todo.description | added: todo.addedTodo | removed: todo.removedTodo"></li>
+    </lu>
+
   @class EachBinder
   @implements Binder
   @namespace Binders
@@ -59,7 +59,8 @@ export class EachBinder implements Binder
   private collection: Collection;
   private addedListener: (item: Model)=>void;
   private removedListener: (item: Model)=>void;
-  private updatedListener: ()=>void;
+  private refreshListener: ()=>void;
+  private updatedListener: (item: Model)=>void;
   private callbacks;
   private el;
   
@@ -81,7 +82,7 @@ export class EachBinder implements Binder
     
     var
       mappings = this.mappings,
-      nextSibling = el.nextSibling,
+      nextSibling = el.nextSibling || null,
       keyPath = makeKeypathArray(match[1]),
       collection = <Collection> viewModel.resolveContext(keyPath),
       itemContextName = match[2];
@@ -112,7 +113,7 @@ export class EachBinder implements Binder
         }
         callbacks.added && callbacks.added(node, item);
       }
-    
+
       var addNode = (item, nextSibling) => {
         var 
           id = item.id(),
@@ -153,31 +154,44 @@ export class EachBinder implements Binder
           itemNode['gnd-listener'] = modelListener;
         }
       }
+
+      var update = (item: Model) => {
+        var id = item.id();
+        var el = mappings[id];
+
+        if(collection.isFiltered(item)){
+          // Find new pos.
+          var items = collection.getItems();
+          var i, j;
+          var nextItem = null;
+          for(i=0; i<items.length; i++){
+            if(items[i] === item){
+              for(j=i+1; j<items.length;j++){
+                if(collection.isFiltered(items[j])){
+                  nextItem = mappings[items[j].id()] || null;
+                  if(nextItem) break;
+                }
+              }
+              break;
+            }
+          }
+
+          nextItem = nextItem || nextSibling;
+          if(el){
+            parent.insertBefore(el, nextItem);
+          }else{
+            addNode(item, nextItem);
+          }
+        }else if(el){
+          this.removeNode(id);
+        }
+      }
       
       var refresh = () => {
         collection.filtered((err: Error, models?: Model[]) => {
           if(!err){
-            
-            // Gather DOM nodes to be reused
-            var newMappings = {};
-            _.each(models, (item) => {
-              var id = item.id();
-              if(mappings[id]){
-                newMappings[id] = mappings[id];
-              }
-            });
-            
-            // Remove un-used nodes.
-            _.each(mappings, (node, id?) => {
-              !newMappings[id] && this.removeNode(id);
-            });
-            
-            // assign new mapping
-            this.mappings = mappings = newMappings;
-            
-            // Re-add nodes in their proper position.
-            _.each(models, (item) => {
-              addNode(item, nextSibling);
+            _.each(models, (model) => {
+              update(model);
             });
           }
         });
@@ -190,29 +204,32 @@ export class EachBinder implements Binder
           addNode(item, nextSibling);
         }
       }
-      
+
       this.removedListener = (item: Model) => {
         if(mappings[item.id()]){
           this.removeNode(item.id());
         }
       }
-      
-      this.updatedListener = refresh;
-      
+
+      this.refreshListener = refresh;
+      this.updatedListener = update;
+
       collection
         .on('added:', this.addedListener)
         .on('removed:', this.removedListener)
-        .on('filterFn sorted: updated: inserted:', this.updatedListener);
+        .on('filterFn sorted:', this.refreshListener)
+        .on('updated: inserted:', this.updatedListener);
     }else{
       log("Warning: not found a valid collection: ", match[1]);
     }
   }
 
   unbind(){
-    this.collection.off('added: inserted:', this.addedListener);
+    this.collection.off('added:', this.addedListener);
     this.collection.off('removed:', this.removedListener);
-    this.collection.off('filterFn sorted: updated:', this.updatedListener);
-    
+    this.collection.off('filterFn sorted:', this.refreshListener);
+    this.collection.off('updated: inserted:', this.updatedListener);
+
     this.removeNodes();
     
     this.parent.appendChild(this.el);
