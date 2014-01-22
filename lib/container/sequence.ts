@@ -40,7 +40,7 @@ export interface SequenceEvents
   * @param item {Model}
   * @param args {any}
   */
-  on(evt: 'updated:', item: Model, args:any);
+  on(evt: 'updated:', cb: (item: Model, args:any) => void);
   
   /**
   * Fired when a model has been inserted in the sequence
@@ -49,7 +49,7 @@ export interface SequenceEvents
   * @param item {Model}
   * @param index {Number}
   */
-  on(evt: 'inserted:', item: Model, index: number);
+  on(evt: 'inserted:', cb: (item: Model, index: number) => void);
   
   /**
   * Fired when a model has been removed from the sequence
@@ -58,7 +58,7 @@ export interface SequenceEvents
   * @param item {Model}
   * @param index {Number}
   */
-  on(evt: 'removed:', item: Model, index: number);
+  on(evt: 'removed:', cb: (item: Model, index: number) => void);
   
   /**
   * Fired when the collection has been resynced.
@@ -166,7 +166,7 @@ export class Sequence extends Container implements SequenceEvents
     
     this.initItems(this.getItems());
 
-    this.updateFn = (args)=>{
+    this.updateFn = function(args){
       this.emit('updated:', this, args);
     };
 
