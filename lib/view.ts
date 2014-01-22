@@ -342,7 +342,7 @@ export class View extends Base
   }
   
   private applyStyles(styles){
-    _.each(this.nodes, (node) => $(node).css(styles));
+    _.each(this.nodes, (node) => _.isElement(node) && $(node).css(styles));
   }
   
   /**
