@@ -155,28 +155,32 @@ export class EachBinder implements Binder
         }
       }
 
-      var update = (item: Model) => {
+      var update = (item: Model, append?: boolean) => {
         var id = item.id();
         var el = mappings[id];
 
         if(collection.isFiltered(item)){
-          // Find new pos.
-          var items = collection.getItems();
-          var i, j;
-          var nextItem = null;
-          for(i=0; i<items.length; i++){
-            if(items[i] === item){
-              for(j=i+1; j<items.length;j++){
-                if(collection.isFiltered(items[j])){
-                  nextItem = mappings[items[j].id()] || null;
-                  if(nextItem) break;
+          
+          if(!append){
+            // Find new pos.
+            var items = collection.getItems();
+            var i, j;
+            var nextItem = null;
+            for(i=0; i<items.length; i++){
+              if(items[i] === item){
+                for(j=i+1; j<items.length;j++){
+                  if(collection.isFiltered(items[j])){
+                    nextItem = mappings[items[j].id()] || null;
+                    if(nextItem) break;
+                  }
                 }
+                break;
               }
-              break;
             }
           }
-
+          
           nextItem = nextItem || nextSibling;
+          
           if(el){
             parent.insertBefore(el, nextItem);
           }else{
@@ -186,14 +190,11 @@ export class EachBinder implements Binder
           this.removeNode(id);
         }
       }
-      
+
       var refresh = () => {
-        collection.filtered((err: Error, models?: Model[]) => {
-          if(!err){
-            _.each(models, (model) => {
-              update(model);
-            });
-          }
+        var items = collection.filtered();
+        _.each(items, (item) => {
+          update(item, true);
         });
       }
 
@@ -212,7 +213,9 @@ export class EachBinder implements Binder
       }
 
       this.refreshListener = refresh;
-      this.updatedListener = update;
+      this.updatedListener = (item: Model) => {
+        update(item); // we need to wrap here since the event may carry more args than just item.
+      }
 
       collection
         .on('added:', this.addedListener)
