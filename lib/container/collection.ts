@@ -188,7 +188,7 @@ export class Collection extends Container implements CollectionEvents
     this.on('sortByFn sortOrder', (fn) => {
       var oldItems = this.items;
       if(this.sortByFn){
-        this.items = this['sortBy'](this.sortByFn)
+        this.items = this['sortBy'](this.sortByFn);
       }
       (this.sortOrder == 'desc') && this.items.reverse();
       this.emit('sorted:', this.items, oldItems);
