@@ -242,13 +242,12 @@ module Gnd
       @method filtered
       @deprecated
     */
-    filtered(result: (err: Error, models?: Model[])=>void)
+    filtered(cb?: (err: Error, models?: Model[])=>void): any[]
     {
-      if(this.filterFn){
-        result(null, this.filter(this.filterFn));
-      }else{
-        result(null, this.getItems());
-      }
+      var result = this.filterFn ? this.filter(this.filterFn) : this.getItems();
+
+      cb && cb(null, result);
+      return result;
     }
   
     /**
