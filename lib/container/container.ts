@@ -135,6 +135,11 @@ module Gnd
       this.resyncFn = (items?) => this.resync(items);
       
       parent && parent.isAutosync() && this.autosync(true);
+      
+      if(this.items){
+        this.initItems(this.getItems());
+        this.set('count', this.items.length);
+      }
     }
     
     destroy()

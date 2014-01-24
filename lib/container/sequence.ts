@@ -164,10 +164,10 @@ export class Sequence extends Container implements SequenceEvents
   {
     super(model, opts, parent, items);
     
-    this.initItems(this.getItems());
-
+    var _this = this;
+    
     this.updateFn = function(args){
-      this.emit('updated:', this, args);
+      _this.emit('updated:', this, args);
     };
 
     this.deleteFn = (model)=>{
