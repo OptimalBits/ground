@@ -46,7 +46,7 @@ export class TwoWayBinder implements Binder
   private attrBindings: {[index: string]: string[];} = {};
   private attrFormatters: {[index: string]: (input: string)=>string;} = {};
     
-  private static re = /((\s*(\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
+  private static re = /((\s*(\.?\w+)\s*\:\s*((\w+\.*)+)\s*(\|\s*(\w+)\s*)?);?)/gi;
   
   private parse(value: string, 
                 formatters: {[index: string]: (input: string)=>string;})
@@ -54,15 +54,29 @@ export class TwoWayBinder implements Binder
     var match, formatter;
     while(match = TwoWayBinder.re.exec(value)){
       var attr = match[3];
+            
+      var isProperty = this.isProperty(match[3]);
+      if(isProperty){
+        attr = attr.slice(1);
+      }
+      
       this.attrBindings[attr] = makeKeypathArray(match[4]);
+      if(isProperty){
+        this.attrBindings[attr]['__isProperty'] = true;
+      }
+
       formatter = formatters[match[7]];
       if(formatter){
         this.attrFormatters[attr] = formatter;
       }
     }
   }
+
+  private isProperty(attr: string){
+    return attr[0] === '.'
+  }
   
-  private createBinding(attr: string, el: Element, viewModel: ViewModel)
+  private createBinding(attr: string, el: Element, viewModel: ViewModel, isProperty?: boolean)
   {
     var 
       attrBinding = this.attrBindings[attr],
@@ -83,8 +97,8 @@ export class TwoWayBinder implements Binder
         setText(el, format());
         modelListener = () => setText(el, format());
       }else{
-        setAttr(el, attr, format());
-        modelListener = () => setAttr(el, attr, format());
+        setAttr(el, attr, format(), isProperty);
+        modelListener = () => setAttr(el, attr, format(), isProperty);
         elemListener = (value) => obj.set(keypath, getAttr(el, attr));
       }
       obj.retain();
@@ -103,9 +117,9 @@ export class TwoWayBinder implements Binder
         
     this.el = el;
     
-    for(var attr in this.attrBindings){
-      this.createBinding(attr, el, viewModel);
-    }
+    _.each(this.attrBindings, (val: any, attr) => {
+      this.createBinding(attr, el, viewModel, val.__isProperty);
+    });
   }
 
   unbind(){
