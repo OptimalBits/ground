@@ -420,10 +420,10 @@ export class Collection extends Container implements CollectionEvents
   // This function feel a bit hacky
   private sortedAdd(item: Model): number
   {    
-    (this.sortOrder === 'asc') && this.items.reverse();
+    (this.sortOrder === 'desc') && this.items.reverse();
     var i = this['sortedIndex'](item, this.sortByFn);
     this.items.splice(i, 0, item);
-    (this.sortOrder === 'asc') && this.items.reverse();
+    (this.sortOrder === 'desc') && this.items.reverse();
     return i;
   }
   
