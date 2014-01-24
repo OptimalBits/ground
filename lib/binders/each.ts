@@ -192,8 +192,7 @@ export class EachBinder implements Binder
       }
 
       var refresh = () => {
-        var items = collection.filtered();
-        _.each(items, (item) => {
+        _.each(collection.getItems(), (item) => {
           update(item, true);
         });
       }
