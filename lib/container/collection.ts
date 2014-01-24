@@ -172,7 +172,8 @@ export class Collection extends Container implements CollectionEvents
     super(model, opts, parent, items);
     
     var _this = this;
-    this.updateFn = function(args){
+    
+    var updateFn = function(args){
       if(_this.sortByFn){
         var index = _this['indexOf'](this);
         _this.items.splice(index, 1);
@@ -180,10 +181,12 @@ export class Collection extends Container implements CollectionEvents
       }
       _this.emit('updated:', this, args);
     };
-    
-    this.deleteFn = (model)=>{
+  
+    var deleteFn = (model)=>{
       this.remove(model.id(), false);
     };
+    
+    this._init(updateFn, deleteFn);
 
     this.on('sortByFn sortOrder', (fn) => {
       var oldItems = this.items;

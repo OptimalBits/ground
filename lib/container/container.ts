@@ -135,6 +135,12 @@ module Gnd
       this.resyncFn = (items?) => this.resync(items);
       
       parent && parent.isAutosync() && this.autosync(true);
+    }
+    
+    // protected
+    _init(updateFn?, deleteFn?){
+      this.updateFn = updateFn || this.updateFn;
+      this.deleteFn = deleteFn || this.deleteFn;
       
       if(this.items){
         this.initItems(this.getItems());

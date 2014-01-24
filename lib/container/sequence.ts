@@ -166,17 +166,19 @@ export class Sequence extends Container implements SequenceEvents
     
     var _this = this;
     
-    this.updateFn = function(args){
+    var updateFn = function(args){
       _this.emit('updated:', this, args);
     };
 
-    this.deleteFn = (model)=>{
+    var deleteFn = (model)=>{
       for(var i = this.items.length-1; i >= 0; i--){
         if(this.items[i].model.id() === model.id()){
           this.remove(i);
         }
       }
     };
+    
+    this._init(updateFn, deleteFn);
     
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
