@@ -55,6 +55,22 @@ describe('ViewModel', function(){
       expect(el.title).to.be.eql('The tiger (Panthera tigris) is the largest cat species');
     });
     
+    it('force binding to a property instead of an attribute', function(){
+      var el = document.createElement('div');
+      Gnd.setAttr(el, 'data-bind', '.foo: feline.name');
+      
+      var feline = new Gnd.Base();
+      _.extend(feline, ({name: 'tiger'}));
+      
+      var vm = new Gnd.ViewModel(el, {feline: feline});
+      expect(el.foo).to.be.eql('tiger');
+      
+      for(var name in ['leopard', 'lion', 'panther']){
+        feline.set('name', name);
+        expect(el.foo).to.be.eql(name);
+      }
+    });
+    
     it('bind to several attributes and use formatters', function(){
       var el = document.createElement('div');
       Gnd.setAttr(el, 'data-bind', 'text: tiger.name | uppercase; title: tiger.desc | lowercase');
