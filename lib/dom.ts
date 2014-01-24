@@ -526,10 +526,13 @@ export function makeElement(html: string): DocumentFragment
 
 */
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
-export function setAttr(el: Element, attr: string, value: any){
-  if(!_.isUndefined(el[attr])) {
+export function setAttr(el: Element, attr: string, value: any, forceAsProperty?: boolean){
+  if(!_.isUndefined(el[attr]) || forceAsProperty) {
     el[attr] = value;
   }
+  
+  if (forceAsProperty) return;
+  
   if(value){
     el.setAttribute(attr, value);
   }else{
