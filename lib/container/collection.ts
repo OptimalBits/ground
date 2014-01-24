@@ -194,8 +194,11 @@ export class Collection extends Container implements CollectionEvents
       this.emit('sorted:', this.items, oldItems);
     });
     
-    this.initItems(this.items);
-    
+    if(this.items){
+      this.initItems(this.items);
+      this.set('count', this.items.length);
+    }
+
     if(parent && parent.isKeptSynced()){
       this.keepSynced()
     }
