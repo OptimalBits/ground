@@ -188,13 +188,13 @@ export class Collection extends Container implements CollectionEvents
     
     this._init(updateFn, deleteFn);
 
-    this.on('sortByFn sortOrder', (fn) => {
-      var oldItems = this.items;
+    this.on('sortByFn sortOrder', () => {
       if(this.sortByFn){
+        var oldItems = this.items;
         this.items = this['sortBy'](this.sortByFn);
+        (this.sortOrder == 'desc') && this.items.reverse();
+        this.emit('sorted:', this.items, oldItems);
       }
-      (this.sortOrder == 'desc') && this.items.reverse();
-      this.emit('sorted:', this.items, oldItems);
     });
 
     if(parent && parent.isKeptSynced()){
