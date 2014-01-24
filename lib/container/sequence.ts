@@ -185,8 +185,8 @@ export class Sequence extends Container implements SequenceEvents
     var keyPath = this.getKeyPath();
     if(keyPath && !this.opts.nosync){
       this.retain();
-      var noremote = parent && !parent.isPersisted() ? true : false;
-      using.storageQueue.all(keyPath, {}, {noremote:noremote}).then((result) => {
+      var noremote = parent && !parent._persisting ? true : false;
+      using.storageQueue.all(keyPath, {}, {noremote: noremote}).then((result) => {
         this.resync(result[0]);
         result[1].then((items?) => this.resync(items))
           .ensure(() => {

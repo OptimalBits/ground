@@ -201,7 +201,9 @@ export class Collection extends Container implements CollectionEvents
     var keyPath = this.getKeyPath();
     if(keyPath && !this.opts.nosync){
       this.retain();
-      var noremote = parent && !parent.isPersisted() ? true : false;
+      // This logic is smelly. There should always try to get from remote or
+      // not doing anything at all, not a halfways (only local)
+      var noremote = parent && !parent._persisting ? true : false;
       using.storageQueue.find(keyPath, this.opts.query, {noremote:noremote}).then((result) => {
         this.resync(result[0]);
         result[1]
