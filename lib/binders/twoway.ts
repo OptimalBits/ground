@@ -103,7 +103,8 @@ export class TwoWayBinder implements Binder
       }
       obj.retain();
       obj.on(keypath, modelListener);
-      $(el).on('change', elemListener);
+      
+      !isProperty && $(el).on('change', elemListener);
         
       this.bindings.push([obj, keypath, modelListener, elemListener]);
     }else{
