@@ -25,7 +25,7 @@ function callback(promise, cb){
   promise.then((val)=>{
     cb(null, val);
   }, (err)=>{
-    cb(err.message)
+    cb(err && err.message);
   });
 }
   
