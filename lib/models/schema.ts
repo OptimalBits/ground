@@ -47,7 +47,7 @@ module Gnd
     
     constructor(schema?)//: SchemaDefinition)
     {
-      super(this);
+      super(this); // should'nt we have super(schema) ?
       this.schema = schema;
       this.compiledSchema = this.compile(schema || {});
     }
@@ -75,7 +75,7 @@ module Gnd
         return this.compiledSchema[property].validate(value);
       }else{
         // TODO: Implement validation
-        return new Promise<boolean>(true);
+        return Promise.resolved(true);
         /*
         return Promise.map(_.keys(this.schema), (property) =>
           this.validate(obj, property, obj[property]));
@@ -227,7 +227,7 @@ module Gnd
     }
 
     /**
-      Extends a schema with the properties of another Schema creatign a new Schema.
+      Extends a schema with the properties of another Schema returning a new Schema.
       Note that it will overwrite existing properties with new ones.
       
       @method extend
