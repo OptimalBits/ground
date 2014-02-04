@@ -6,6 +6,7 @@
   Promise Module. Minimal promise implementation.
 */
 /// <reference path="base.ts" />
+/// <reference path="log.ts" />
 
 module Gnd {
 "use strict";
@@ -19,6 +20,13 @@ function isPromise(promise){
 //export class Promise<T> {
 
 var CancelError = Error('Operation Cancelled');
+
+export interface Deferred<T>
+{
+  resolve: (val?: any) => void;
+  reject: (err: Error) => void;
+  promise: Promise<T>;
+}
 
 /**
   Promise implementation of http://dom.spec.whatwg.org/#promises
@@ -36,7 +44,19 @@ export class Promise<T> extends Base
   reason: Error;
   isFulfilled : boolean;
   
-  
+  static defer<U>()
+  {
+    var deferred: Deferred<U> = {};
+    
+    var resolver = (resolve, reject) => {
+      deferred.resolve = resolve;
+      deferred.reject = reject;
+    }
+    
+    deferred.promise = new Gnd.Promise<U>(resolver);
+    return deferred;
+  }
+
   /**
     Maps every element of the array using an asynchronous function that returns
     a Promise.
@@ -72,7 +92,7 @@ export class Promise<T> extends Base
         }, (err) => promise.reject(err));
       })(i);
     }
-  
+
     return promise;
   }
   
@@ -165,7 +185,7 @@ export class Promise<T> extends Base
   **/
   static resolved<U>(value?: U): Promise<U>
   {
-    return (new Promise()).resolve(value);
+    return new Promise((resolve)=>resolve(value));
   }
   
   /**
@@ -178,21 +198,22 @@ export class Promise<T> extends Base
   **/
   static rejected<U>(err: Error): Promise<U>
   {
-    return new Promise(err);
+    return new Promise((resolve, reject) => reject(err));
   }
   
-  constructor(value?: any)
+  constructor(resolver?: (resolve: (val?: any) => Promise<T>, reject: (err: Error) => Promise<T>) => void)
   {
     super();
     
-    if(value instanceof Error){
-      this.reject(value);
-    }else if(value){
-      this.resolve(value);
+    if(resolver){
+      try{
+        resolver(_.bind(this.resolve, this), _.bind(this.reject, this));
+      }catch(err){
+        this.reject(err);
+      }
     }
   }
-
-
+  
   /**
   
     Then method waits for a promise to resolve or reject, and returns a new
@@ -210,46 +231,40 @@ export class Promise<T> extends Base
   then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise<void>;
   then(onFulfilled: (value: T) => any, onRejected?: (reason: Error) => void): Promise<any>
   {
-    var promise = new Promise();
-    
-    var wrapper = (fn, reject?: boolean) => {
-      if(!(fn instanceof Function)){
-        fn = (value) => {
-          if(reject) throw(value); 
-          return value
+    return new Promise((resolve, reject) => {
+      var wrapper = (fn, shouldReject?: boolean) => {
+        
+        fn = _.isFunction(fn) ? fn : (value) => {
+          if(shouldReject) throw(value);
+          return value;
         };
-      }
-      return (value) => {
-        try{
-          var result = fn(value);
-          if(isPromise(result)){
-            result.then((val) => { 
-              promise.resolve(val);
-            }, (err) => {
-              promise.reject(err);
-            });
-          }else{
-            promise.resolve(result);
-          }
-        }catch(err){
-          promise.reject(err);
-          if(err !== CancelError){
-            console.log(err.stack);
+        
+        return (value) => {
+          try{
+            var result = fn(value);
+            if(isPromise(result)){
+              result.then(resolve, reject);
+            }else{
+              resolve(result);
+            }
+          }catch(err){
+            reject(err);
+            if(err !== CancelError){
+              log(err.stack);
+            }
           }
         }
       }
-    }
     
-    if(!_.isUndefined(this._value)){
-      this.fire(wrapper(onFulfilled), this._value);
-    }else if(!_.isUndefined(this.reason)){
-      this.fire(wrapper(onRejected, true), this.reason);
-    }else{   
-      this.fulfilledFns.push(wrapper(onFulfilled));
-      this.rejectedFns.push(wrapper(onRejected, true));
-    }
-    
-    return promise;
+      if(!_.isUndefined(this._value)){
+        this.fire(wrapper(onFulfilled), this._value);
+      }else if(!_.isUndefined(this.reason)){
+        this.fire(wrapper(onRejected, true), this.reason);
+      }else{   
+        this.fulfilledFns.push(wrapper(onFulfilled));
+        this.rejectedFns.push(wrapper(onRejected, true));
+      }
+    });
   }
   
   /**
@@ -298,14 +313,14 @@ export class Promise<T> extends Base
     @param value {Any} value to resolve this promise with.
     @chainable
   */
-  resolve(value?: T): Promise<T>
-  {
+  private resolve(value?: T): void
+  {    
     if(this.isFulfilled) return;
     this.isFulfilled = true;
     
     this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
-    return this;
+   // return this; // Should not return this.
   }
 
   /**
@@ -315,14 +330,14 @@ export class Promise<T> extends Base
     @param reason {Error} value to resolve this promise with.
     @chainable
   */
-  reject(reason: Error): Promise<T>
+  private reject(reason: Error): void
   {
     if(this.isFulfilled) return;
     this.isFulfilled = true;
     
     this.reason = reason || null;
     this.fireCallbacks(this.rejectedFns, reason);
-    return this;
+    // return this; // Should not return this.
   }
   
   /**
@@ -348,7 +363,7 @@ export class Promise<T> extends Base
   private fireCallbacks(callbacks, value){
     var len = callbacks.length;
     for(var i=0;i<len;i++){
-        this.fire(callbacks[i], value);
+      this.fire(callbacks[i], value);
     }
   }
 }

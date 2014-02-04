@@ -157,26 +157,26 @@ export class View extends Base
   static fetchTemplate(templateUrl?: string, cssUrl?: string): Promise<string>
   static fetchTemplate(templateUrl?: string, cssUrl?: any): Promise<string>
   {
-    var items = [], promise = new Promise();
+    var items = [];
+    
+    return new Promise((resolve, reject) => {
+      templateUrl && items.push('text!'+templateUrl);
+      if(cssUrl){
+        cssUrl = _.map(!_.isArray(cssUrl) ? [cssUrl] : cssUrl, function(url){
+          //return 'css!'+url;
+          return 'style!'+url;
+        });
+        items = items.concat(cssUrl);
+      }
   
-    templateUrl && items.push('text!'+templateUrl);
-    if(cssUrl){
-      cssUrl = _.map(!_.isArray(cssUrl) ? [cssUrl] : cssUrl, function(url){
-        //return 'css!'+url;
-        return 'style!'+url;
-      });
-      items = items.concat(cssUrl);
-    }
-  
-    try{
-      curl(items, function(templ){
-        promise.resolve(templ);
-      });
-    } catch(err){
-      promise.reject(err);
-    }
-  
-    return promise;
+      try{
+        curl(items, function(templ){
+          resolve(templ);
+        });
+      } catch(err){
+        reject(err);
+      }  
+    });
   }
   
   /**

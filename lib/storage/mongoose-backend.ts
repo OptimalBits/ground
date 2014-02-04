@@ -240,63 +240,61 @@ export class MongooseStorage implements Storage.IStorage {
       doc._cid = Util.uuid();
     }
     return this.getModel(keyPath).then<string>((found) => {
-      var promise = new Promise<string>();
-
-      if(found.Model['filter']){
-        found.Model['filter'](doc, (err, doc) =>{
-          if(!err){
-            create(doc);
-          }
-        });
-      }else{
-        create(doc);
-      }
+      return new Promise<string>((resolve, reject)=>{
+        if(found.Model['filter']){
+          found.Model['filter'](doc, (err, doc) =>{
+            if(!err){
+              create(doc);
+            }
+          });
+        }else{
+          create(doc);
+        }
       
-      function create(doc){
-        var instance = new found.Model(doc);
-        instance.save(function(err, doc){
-          if(!err){
-            doc.__rev = 0;
-            promise.resolve(doc._cid);
-          }else{
-            promise.reject(err);
-          }
-        });
-      }
-
-      return promise;
+        function create(doc){
+          var instance = new found.Model(doc);
+          instance.save(function(err, doc){
+            if(!err){
+              doc.__rev = 0;
+              resolve(doc._cid);
+            }else{
+              reject(err);
+            }
+          });
+        }
+      });
     });
   }
   
   put(keyPath: string[], doc: any): Promise<void>
   {
     return this.getModel(keyPath).then<void>(function(found){
-      var promise = new Promise<void>();
-      if(found.Model['filter']){
-        found.Model['filter'](doc, (err, doc) =>{
-          if(!err){
-            update(doc);
-          }
-        });
-      }else{
-        update(doc);
-      }
-      function update(doc){
-        found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc).lean().exec((err, oldDoc) => {
-          if(!err){
-            // Note: isEqual should only check the properties present in doc!
-            if(!_.isEqual(doc, oldDoc)){
-              // only if doc modified synchronize
-              // Why is this out commented?
-              //this.sync && this.sync.update(keyPath, doc);
-              promise.resolve();
+      return new Promise<void>((resolve, reject) => {
+        if(found.Model['filter']){
+          found.Model['filter'](doc, (err, doc) =>{
+            if(!err){
+              update(doc);
             }
-          }else{
-            promise.reject(err);
-          }
-        });
-      }
-      return promise;
+          });
+        }else{
+          update(doc);
+        }
+        function update(doc){
+          found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc).lean().exec((err, oldDoc) => {
+            if(!err){
+              // Note: isEqual should only check the properties present in doc!
+              if(!_.isEqual(doc, oldDoc)){
+                // only if doc modified synchronize
+                // Why is this out commented?
+                //this.sync && this.sync.update(keyPath, doc);
+                resolve();
+              }
+            }else{
+              reject(err);
+            }
+          });
+        }
+      });
     });
   }
 
@@ -310,47 +308,53 @@ export class MongooseStorage implements Storage.IStorage {
       render('cat', cat);
       });
   */
-  
   fetch(keyPath: string[]): Promise<any>
   {
     return this.getModel(keyPath).then((found) => {
-      var promise = new Promise()
-      found.Model.findOne({_cid: _.last(keyPath)}).lean().exec((err, doc?) => {
+      return found.Model.findOne({_cid: _.last(keyPath)}).lean().exec().then((doc) => {
         if(doc){
           if(found.Model['gnd-hooks'] && found.Model['gnd-hooks'].fetch){
-            // Workaround since promises do not work correctly when resolving with a promise
-            found.Model['gnd-hooks'].fetch(this, doc).then(function(doc){
-              promise.resolve(doc);
-            }, function(err){
-              promise.reject(err);
-            })
+            return found.Model['gnd-hooks'].fetch(this, doc);
           }else{
-            promise.resolve(doc);
+            return doc;
           }
-        }else{
-          console.log("Document:", keyPath, "not Found!");
-          promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
         }
+        console.log("Document:", keyPath, "not Found!");
+        //promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
+        throw Error(''+ServerError.DOCUMENT_NOT_FOUND);
       });
-      return promise;
     });
   }
   
   del(keyPath: string[]): Promise<void>
   {
     return this.getModel(keyPath).then<void>((found) => {
-      var promise = new Promise<void>();
+      return new Promise<void>((resolve, reject) =>{
+        found.Model.remove({_cid:_.last(keyPath)}, (err?)=>{
+          if(err){
+            reject(err);
+          }else{
+            resolve();
+          }
+        });
+      });
+      
+      // Obsolete?
+      /*
       found.Model.findOne({_cid:_.last(keyPath)}, (err?, doc?) => {
         if(!err && doc){
           doc.remove((err?)=>{
-            !err && promise.resolve();
-            err && promise.reject(err);
+            if(err){
+              reject(err);
+            }else{
+              resolve();
+            }
           });
         }else{
-          promise.reject(err);
+          reject(err);
         }
       });
-      
+      */
       //found.Model.findByIdAndRemove({_id:_.last(keyPath)}, (err, doc)=>{
       /*
       found.Model.remove({_id:_.last(keyPath)}, (err?)=>{
@@ -368,38 +372,38 @@ export class MongooseStorage implements Storage.IStorage {
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise<void>
   {    
     return this.getModel(keyPath).then<void>((found) => {
-      var promise = new Promise<void>();
-      var id = keyPath[keyPath.length-2];
-      var setName = _.last(keyPath);
-      if(found.Model.add){
-        found.Model.add(id, setName, itemIds, (err, ids)=>{
-          if(!err){
-            // Use FindAndModify to get added items
-            // sync.add(id, setName, ids);
-            promise.resolve();
-          }else{
-            promise.reject(err);
-          }
-        });
-      }else{
-        var update = {$addToSet: {}};
-        update.$addToSet[setName] = {$each:itemIds};
-        found.Model.update({_cid:id}, update, (err) => {
-          if(!err){
-            // Use FindAndModify to get added items
-            // sync.add(id, setName, ids);
-            promise.resolve();
-          }else{
-            promise.reject(err);
-          }
-        });
-      }      
-      /*
-      else{
-        promise.reject(new Error("No parent or add function available"));
-      }
-      */
-      return promise;
+      return new Promise<void>((resolve, reject) => {
+        var id = keyPath[keyPath.length-2];
+        var setName = _.last(keyPath);
+        if(found.Model.add){
+          found.Model.add(id, setName, itemIds, (err, ids)=>{
+            if(!err){
+              // Use FindAndModify to get added items
+              // sync.add(id, setName, ids);
+              resolve();
+            }else{
+              reject(err);
+            }
+          });
+        }else{
+          var update = {$addToSet: {}};
+          update.$addToSet[setName] = {$each:itemIds};
+          found.Model.update({_cid:id}, update, (err) => {
+            if(!err){
+              // Use FindAndModify to get added items
+              // sync.add(id, setName, ids);
+              resolve();
+            }else{
+              reject(err);
+            }
+          });
+        }
+        /*
+        else{
+          promise.reject(new Error("No parent or add function available"));
+        }
+        */
+      });
     });
   }
 
@@ -408,21 +412,20 @@ export class MongooseStorage implements Storage.IStorage {
     if(itemIds.length === 0) return Promise.resolved<void>(); //nothing to do
     
     return this.getModel(keyPath).then<void>((found) => {
-      var promise = new Promise<void>();
-      
-      var id = keyPath[keyPath.length-2];  
-      var setName = _.last(keyPath);
-      var update = {$pullAll: {}};
-      update.$pullAll[setName] = itemIds;
-      found.Model.update({_cid:id}, update, function(err){
-        // TODO: Use FindAndModify to get removed items
-        if(!err){
-          promise.resolve();
-        }else{
-          promise.reject(err);
-        }
+      return new Promise<void>((resolve, reject) => {
+        var id = keyPath[keyPath.length-2];  
+        var setName = _.last(keyPath);
+        var update = {$pullAll: {}};
+        update.$pullAll[setName] = itemIds;
+        found.Model.update({_cid:id}, update, function(err){
+          // TODO: Use FindAndModify to get removed items
+          if(!err){
+            resolve();
+          }else{
+            reject(err);
+          }
+        });
       });
-      return promise;
     });
   }
   
@@ -442,18 +445,7 @@ export class MongooseStorage implements Storage.IStorage {
   private findAll(Model: IMongooseModel, query: Storage.IStorageQuery): Promise<any[]>
   {
     query = query || {};
-    var promise = new Promise();
-    Model
-      .find(query.cond, query.fields, query.opts)
-      .exec((err, doc?) => {
-        if(err){
-          promise.reject(err);
-        }else{
-          promise.resolve(doc);
-        }
-      });
-    
-    return promise;
+    return Model.find(query.cond, query.fields, query.opts).exec();
   }
 
   private findById(Model: IMongooseModel, 
@@ -464,49 +456,39 @@ export class MongooseStorage implements Storage.IStorage {
   {
     query = query || {};
 
-    var promise = new Promise();
-    Model
-      .findOne({_cid:id})
-      .lean()
-      .select(setName)
-      .exec((err, doc) => {
-        if(err){
-          promise.reject(err);
-        }else{
-          // Currently collection bucket and set name must be identical
-          // this is a known limitation that we want to remove ASAP.
-          var model = this.models[setName];
-          if(model && doc){
-            this.populate(model, query, doc[setName]).then(function(docs){
-              promise.resolve(docs);
-            }, function(err){
-              promise.reject(err);
-            })
+    return new Promise((resolve, reject)=>{
+      Model
+        .findOne({_cid:id})
+        .lean()
+        .select(setName)
+        .exec((err, doc) => {
+          if(err){
+            reject(err);
           }else{
-            promise.reject(new Error("Collection model "+setName+" not found"));
+            // Currently collection bucket and set name must be identical
+            // this is a known limitation that we want to remove ASAP.
+            var model = this.models[setName];
+            if(model && doc){
+              this.populate(model, query, doc[setName]).then(function(docs){
+                resolve(docs);
+              }, function(err){
+                reject(err);
+              })
+            }else{
+              reject(new Error("Collection model "+setName+" not found"));
+            }
           }
-        }
-      });
-      
-    return promise;
+        });
+    });
   }
   
   private populate(Model: IMongooseModel, query: Storage.IStorageQuery, arr): Promise<any>
   {
-    var promise = new Promise();
-    
-    Model
+    return Model
       .find(query.cond, query.fields, query.opts)
       .lean()
       .where('_cid').in(arr)
-      .exec((err, doc) => {
-        if(err) {
-          promise.reject(err);
-        }else{
-          promise.resolve(doc);
-        }
-      });
-    return promise;
+      .exec();
   }
   
 /*
@@ -526,155 +508,153 @@ export class MongooseStorage implements Storage.IStorage {
         return res ? res.begin : res;
       });
     }else{
-      var promise = new Promise();
-      this.ListContainer.find({_cid: id}).lean().exec((err, docs) => {
-        if(err) return promise.reject(err);
-        if(docs.length !== 1) return promise.reject(Error('container '+id+' not found'));
-        return promise.resolve(docs[0]);
+      return new Promise((resolve, reject) =>{
+        this.ListContainer.find({_cid: id}).lean().exec((err, docs) => {
+          if(err) return reject(err);
+          if(docs.length !== 1) return reject(Error('container '+id+' not found'));
+          return resolve(docs[0]);
+        });
       });
-      return promise;
     }
   }
   
   private findEndPoints(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
-    var promise = new Promise();
-    ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
-      if(err) return promise.reject(err);
-      else if(!doc) return promise.reject(Error('could not find end points'));
-      else if(!doc[name] || doc[name].length === 0) promise.resolve();
-      else {
-        this.ListContainer.find()
-          .lean()
-          .where('_cid').in(doc[name])
-          .or([{type:'_begin'}, {type:'_end'}])
-          .exec((err, docs)=>{
-            if(err) return promise.reject(err);
-            if(docs.length < 2) return promise.reject(Error('could not find end points'));
-            promise.resolve({
-              begin: _.find(docs, (doc) => {
-                return doc.type === '_begin';
-              }),
-              end: _.find(docs, (doc) => {
-                return doc.type === '_end';
-              })
+    return new Promise((resolve, reject) => {
+      ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
+        if(err) return reject(err);
+        else if(!doc) return reject(Error('could not find end points'));
+        else if(!doc[name] || doc[name].length === 0) resolve();
+        else {
+          this.ListContainer.find()
+            .lean()
+            .where('_cid').in(doc[name])
+            .or([{type:'_begin'}, {type:'_end'}])
+            .exec((err, docs)=>{
+              if(err) return reject(err);
+              if(docs.length < 2) return reject(Error('could not find end points'));
+              resolve({
+                begin: _.find(docs, (doc) => {
+                  return doc.type === '_begin';
+                }),
+                end: _.find(docs, (doc) => {
+                  return doc.type === '_end';
+                })
+              });
             });
-          });
-      }
+        }
+      });
     });
-    return promise;
   }
 
   private removeFromSeq(containerId: string): Promise<void>
   {
-    var promise = new Promise<void>();
-    this.ListContainer.update(
-      {_cid: containerId},
-      {
-        $set: {type: '_rip'}
-      },
-      (err) => {
-        if(err){
-          promise.reject(err);
-        }else{
-          promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      this.ListContainer.update(
+        {_cid: containerId},
+        {
+          $set: {type: '_rip'}
+        },
+        (err) => {
+          if(err){
+            reject(err);
+          }else{
+            resolve();
+          }
         }
-      }
-    );
-    return promise;
+      );
+    });
   }
   
   private initSequence(ParentModel: IMongooseModel, parentId, name): Promise<any>
   {
-    var promise = new Promise(); 
-    ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
-      if(err){
-        promise.reject(err);
-      }else if(doc && doc[name].length < 2){
-        var first = new this.ListContainer({
-          _cid: Util.uuid(),
-          type: '_begin'
-        });
+    return new Promise((resolve, reject) => {
+      ParentModel.findOne({_cid: parentId}).lean().select(name).exec((err, doc) => {
+        if(err){
+          reject(err);
+        }else if(doc && doc[name].length < 2){
+          var first = new this.ListContainer({
+            _cid: Util.uuid(),
+            type: '_begin'
+          });
         
-        //
-        // This series of DB updates can imply difficult hazzards, we need
-        // some kind of transaction support for this.
-        //
-        first.save((err, first)=>{
-          if(err){
-            promise.reject(err);
-          }else{
-            var last = new this.ListContainer({
-              _cid: Util.uuid(),
-              type: '_end',
-            });
+          //
+          // This series of DB updates can imply difficult hazzards, we need
+          // some kind of transaction support for this.
+          //
+          first.save((err, first)=>{
+            if(err){
+              reject(err);
+            }else{
+              var last = new this.ListContainer({
+                _cid: Util.uuid(),
+                type: '_end',
+              });
             
-            last.save((err, last)=>{
-              if(err){
-                promise.reject(err);
-              }else{
-                first.next = last._cid;
-                first.save((err, first)=>{
-                  if(err){
-                    promise.reject(err);
-                  }else{
-                    var delta = {};
-                    delta[name] = [first._cid, last._cid];
+              last.save((err, last)=>{
+                if(err){
+                  reject(err);
+                }else{
+                  first.next = last._cid;
+                  first.save((err, first)=>{
+                    if(err){
+                      reject(err);
+                    }else{
+                      var delta = {};
+                      delta[name] = [first._cid, last._cid];
                   
-                    ParentModel.update({_cid: parentId}, delta, (err)=> {
-                      if(err){
-                        promise.reject(err);
-                      }else{
-                        promise.resolve(last._cid);
-                      }
-                    });
-                  }
-                });
-              }
-            });
-          }
-        });
-      }else{
-        this.findEndPoints(ParentModel, parentId, name).then((res: any) =>{
-          promise.resolve(res.end._cid);
-        }, (err) =>{
-          promise.reject(err);
-        });
-      }
+                      ParentModel.update({_cid: parentId}, delta, (err)=> {
+                        if(err){
+                          reject(err);
+                        }else{
+                          resolve(last._cid);
+                        }
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }else{
+          this.findEndPoints(ParentModel, parentId, name).then((res: any) =>{
+            resolve(res.end._cid);
+          }, (err) =>{
+            reject(err);
+          });
+        }
+      });
     });
-    
-    return promise;
   }
   
   // Returns the id of the new container
   private insertContainerBefore(ParentModel:IMongooseModel, parentId, name, nextId, itemKey, opts): Promise<void>
   {
-    var promise = new Promise<void>();
-    var newContainer = new this.ListContainer({
-      _cid: opts.cid || Util.uuid(),
-      next: nextId,
-      modelId: itemKey
-    });
+    return new Promise<void>((resolve, reject) => {
+      var newContainer = new this.ListContainer({
+        _cid: opts.cid || Util.uuid(),
+        next: nextId,
+        modelId: itemKey
+      });
     
-    newContainer.save((err, newContainer)=>{
-      if(err) return promise.reject(err);
+      newContainer.save((err, newContainer)=>{
+        if(err) return reject(err);
       
-      this.ListContainer.update({next: nextId}, {next: newContainer._cid}, (err)=>{
-        if(err){
-          // rollback
-          newContainer.remove();
-          return promise.reject(err);
-        }
-        var delta = {};
-        delta[name] = newContainer._cid;
-        ParentModel.update({_cid: parentId}, {$push: delta}, (err)=>{
-          if(err) promise.reject(err);
-          else promise.resolve(newContainer._cid);
+        this.ListContainer.update({next: nextId}, {next: newContainer._cid}, (err)=>{
+          if(err){
+            // rollback
+            newContainer.remove();
+            return reject(err);
+          }
+          var delta = {};
+          delta[name] = newContainer._cid;
+          ParentModel.update({_cid: parentId}, {$push: delta}, (err)=>{
+            if(err) reject(err);
+            else resolve(newContainer._cid);
+          });
         });
       });
     });
-    
-    return promise;
   }
 
   all(keyPath: string[], query: {}, opts: {}): Promise<any[]>
@@ -763,21 +743,21 @@ export class MongooseStorage implements Storage.IStorage {
     //
     // ex. /cars/1234/engines/3456/carburetors
     //
-    var promise = new Promise();
-    var last = keyPath.length - 1;
-    var index = last - last & 1;
-    var bucket = keyPath[index]; //TODO rename?
+    return new Promise((resolve, reject) => {
+      var last = keyPath.length - 1;
+      var index = last - last & 1;
+      var bucket = keyPath[index]; //TODO rename?
     
-    if(bucket in this.models){
-      promise.resolve({
-        Model: this.models[bucket], 
-        id: this.models[keyPath[last]]
-      });
-    }else{
-      console.log("Model not found:", keyPath);
-      promise.reject(new Error(''+ServerError.MODEL_NOT_FOUND));
-    }
-    return promise;
+      if(bucket in this.models){
+        resolve({
+          Model: this.models[bucket], 
+          id: this.models[keyPath[last]]
+        });
+      }else{
+        console.log("Model not found:", keyPath);
+        reject(Error(''+ServerError.MODEL_NOT_FOUND));
+      }
+    });
   }
 
 }

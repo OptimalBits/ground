@@ -3,18 +3,18 @@ var Gnd = require("../");
 
 var adapter = {}
 
-adapter.pending = function () {
+adapter.deferred = function () {
   var promise = new Gnd.Promise();
   
-  console.log(promise)
+//  console.log(promise)
   
 	return {
     promise: promise,
-		fulfill: promise.resolve.bind(promise),
+		resolve: promise.resolve.bind(promise),
 		reject: promise.reject.bind(promise)
 	};
 };
 
-promisesAplusTests(adapter, function (err) {
+promisesAplusTests(adapter, { reporter: "spec" }, function (err) {
     // All done; output is in the console. Or check `err` for number of failures.
 });

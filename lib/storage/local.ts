@@ -110,26 +110,26 @@ export class Local implements IStorage {
 
   create(keyPath: string[], doc: any): Promise<string>
   {
-    var promise = new Promise();
-    if(!doc._cid){
-      doc._cid = Util.uuid();
-    }
-    this.createCollectionLink(keyPath[0]);
-    this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
-    
-    return promise.resolve(doc._cid);
+    return new Promise((resolve, reject) => {
+      if(!doc._cid){
+        doc._cid = Util.uuid();
+      }
+      this.createCollectionLink(keyPath[0]);
+      this.store.put(this.makeKey(keyPath.concat(doc._cid)), doc);
+      resolve(doc._cid);
+    });
   }
   
   fetch(keyPath: string[]): Promise<any>
   {
-    var promise = new Promise();
-    var keyValue = this.traverseLinks(this.makeKey(keyPath));
-    if(keyValue){
-      promise.resolve(keyValue.value);
-    }else {
-      promise.reject(InvalidKeyError());
-    }
-    return promise;
+    return new Promise((resolve, reject) => {
+      var keyValue = this.traverseLinks(this.makeKey(keyPath));
+      if(keyValue){
+        resolve(keyValue.value);
+      }else {
+        reject(InvalidKeyError());
+      }
+    });
   }
   
   put(keyPath: string[], doc: {}, opts: {}): Promise<void>
@@ -154,7 +154,7 @@ export class Local implements IStorage {
     this.traverseLinks(this.makeKey(keyPath), (key)=>{
       this.store.del(this.makeKey(keyPath));
     });
-    return new Promise(true);
+    return Promise.resolved();
   }
     
   link(newKeyPath: string[], oldKeyPath: string[]): Promise<void>
@@ -171,7 +171,7 @@ export class Local implements IStorage {
         this.store.put(link, keys[i]);
       }
     }
-    return new Promise(true);
+    return Promise.resolved();
   }
   
   //
@@ -255,8 +255,8 @@ export class Local implements IStorage {
     
     if(keyPath.length === 1){
       var keyValue = this.traverseLinks(keyPath[0]);
-      return keyValue ? new Promise<any[]>(getItems(keyValue.value)) : 
-                        new Promise<any[]>([]);
+      return keyValue ? Promise.resolved(getItems(keyValue.value)) : 
+                        Promise.resolved([]);
     }else{
       return this.fetch(keyPath).then((collection) => getItems(collection), 
         // This is wrong but necessary due to how .all api works right now...
@@ -269,44 +269,44 @@ export class Local implements IStorage {
   //
   all(keyPath: string[], query, opts) : Promise<any[]>
   {
-    var promise = new Promise();
+    return new Promise((resolve, reject) =>{
+      var key = this.makeKey(keyPath);
+      var keyValue = this.traverseLinks(key);
+      var itemKeys = keyValue ? keyValue.value || [] : [];
+      key = keyValue ? keyValue.key : key;
 
-    var key = this.makeKey(keyPath);
-    var keyValue = this.traverseLinks(key);
-    var itemKeys = keyValue ? keyValue.value || [] : [];
-    key = keyValue ? keyValue.key : key;
+      var all = [];
+      var visited = {};
 
-    var all = [];
-    var visited = {};
+      if(itemKeys.length === 0) return resolve(all);
 
-    if(itemKeys.length === 0) return promise.resolve(all);
-
-    var traverse = (i) => {
-      var item = itemKeys[i];
-      if(!item || item.next < 0) return; //last pointer
-        var itemId = item._id || item._cid;
-        var itemKeyPath = this.parseKey(item.key);
-        var op = item.sync;
-        if(op !== 'rm'){// || !options.snapshot){
-          var itemKeyValue = this.traverseLinks(item.key);
-          if(itemKeyValue){
-            var doc = itemKeyValue.value;
-            if(!opts.snapshot) doc.__op = op; //why?
-            var iDoc = {
-              id: itemId,
-              doc: doc
-            };
-            all.push(iDoc);
+      var traverse = (i) => {
+        var item = itemKeys[i];
+        if(!item || item.next < 0) return; //last pointer
+          var itemId = item._id || item._cid;
+          var itemKeyPath = this.parseKey(item.key);
+          var op = item.sync;
+          if(op !== 'rm'){// || !options.snapshot){
+            var itemKeyValue = this.traverseLinks(item.key);
+            if(itemKeyValue){
+              var doc = itemKeyValue.value;
+              if(!opts.snapshot) doc.__op = op; //why?
+              var iDoc = {
+                id: itemId,
+                doc: doc
+              };
+              all.push(iDoc);
+            }
           }
-        }
-        if(visited[itemId]) return; //circular sequence
-        visited[itemId] = true;
-        traverse(item.next);
-    };
+          if(visited[itemId]) return; //circular sequence
+          visited[itemId] = true;
+          traverse(item.next);
+      };
     
-    var first = itemKeys[0].next;
-    traverse(first);
-    return promise.resolve(all);
+      var first = itemKeys[0].next;
+      traverse(first);
+      resolve(all);
+    });
   }
 
   private initSequence(seq){
@@ -326,83 +326,85 @@ export class Local implements IStorage {
   
   deleteItem(keyPath: string[], id: string, opts): Promise<void>
   {
-    var promise = new Promise();
-    var key = this.makeKey(keyPath);
-    var keyValue = this.traverseLinks(key);
-    var itemKeys = keyValue ? keyValue.value || [] : [];
-    key = keyValue ? keyValue.key : key;
+    return new Promise((resolve, reject) =>{
+      var key = this.makeKey(keyPath);
+      var keyValue = this.traverseLinks(key);
+      var itemKeys = keyValue ? keyValue.value || [] : [];
+      key = keyValue ? keyValue.key : key;
 
-    var item = _.find(itemKeys, (item) => {
-      return item._id === id || item._cid === id;
-    });
+      var item = _.find(itemKeys, (item) => {
+        return item._id === id || item._cid === id;
+      });
     
-    // We do not reject the promise if trying to delete an unexistent item.
-    if(item){
-      if(opts.insync || opts.noremote){ //noremote implies insync
-        itemKeys[itemKeys[item.prev].next] = 'deleted';
-        itemKeys[item.prev].next = item.next;
-        itemKeys[item.next].prev = item.prev;
-      }else{
-        item.sync = 'rm'; //tombstone
+      // We do not reject the promise if trying to delete an unexistent item.
+      if(item){
+        if(opts.insync || opts.noremote){ //noremote implies insync
+          itemKeys[itemKeys[item.prev].next] = 'deleted';
+          itemKeys[item.prev].next = item.next;
+          itemKeys[item.next].prev = item.prev;
+        }else{
+          item.sync = 'rm'; //tombstone
+        }
+
+        this.store.put(key, itemKeys);
       }
 
-      this.store.put(key, itemKeys);
-    }
-
-    return promise.resolve()
+      return resolve()
+    });
   }
   
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise<{id: string; refId: string}>
   {
     id = id || '##@_end';
-    var promise = new Promise();
-    var key = this.makeKey(keyPath);
-    var itemKey = this.makeKey(itemKeyPath);
-    var keyValue = this.traverseLinks(key);
-    var itemKeys = keyValue ? keyValue.value || [] : [];
-    key = keyValue ? keyValue.key : key;
-    this.initSequence(itemKeys);
+    return new Promise((resolve, reject) => {
+      var key = this.makeKey(keyPath);
+      var itemKey = this.makeKey(itemKeyPath);
+      var keyValue = this.traverseLinks(key);
+      var itemKeys = keyValue ? keyValue.value || [] : [];
+      key = keyValue ? keyValue.key : key;
+      this.initSequence(itemKeys);
 
-    // Check for already inserted id
-    if(opts.id){
-    var found = _.find(itemKeys, function(item){ return item._id === opts.id || item._cid === opts.id; });
-    if(found){
-      var next = itemKeys[found.next];
-      if(next._id === id || next._cid === id){
-        //Already at the right place
-        return promise.resolve({id: opts.id, refId: id});
-      }else{
-        //Already in the sequence but not at the right place
-        return Promise.rejected(Error('Tried to insert duplicate container'));
+      // Check for already inserted id
+      if(opts.id){
+      var found = _.find(itemKeys, function(item){ return item._id === opts.id || item._cid === opts.id; });
+      if(found){
+        var next = itemKeys[found.next];
+        if(next._id === id || next._cid === id){
+          //Already at the right place
+          return resolve({id: opts.id, refId: id});
+        }else{
+          //Already in the sequence but not at the right place
+          return reject(Error('Tried to insert duplicate container'));
+        }
       }
-    }
-    }
+      }
 
-    var refItem = _.find(itemKeys, (item) => {
-      return item._id === id || item._cid === id;
-    });
+      var refItem = _.find(itemKeys, (item) => {
+        return item._id === id || item._cid === id;
+      });
 
-    if(!refItem) return promise.reject(Error('reference item not found'));
-    var prevItem = itemKeys[refItem.prev];
+      if(!refItem) return reject(Error('reference item not found'));
+      var prevItem = itemKeys[refItem.prev];
     
-    var newItem: any = {
-      key: itemKey,
-      sync: opts.insync || opts.noremote ? 'insync' : 'ib', //noremote implied insync
-      prev: refItem.prev,
-      next: prevItem.next
-    };
-    if(opts.id){
-      newItem._id = opts.id;
-    }else{
-      newItem._cid = Util.uuid();
-    }
+      var newItem: any = {
+        key: itemKey,
+        sync: opts.insync || opts.noremote ? 'insync' : 'ib', //noremote implied insync
+        prev: refItem.prev,
+        next: prevItem.next
+      };
+      if(opts.id){
+        newItem._id = opts.id;
+      }else{
+        newItem._cid = Util.uuid();
+      }
 
-    itemKeys.push(newItem);
-    prevItem.next = refItem.prev = itemKeys.length-1;
+      itemKeys.push(newItem);
+      prevItem.next = refItem.prev = itemKeys.length-1;
 
-    this.store.put(key, itemKeys);
-    var refId = newItem.next !== '##@_end' ? newItem.next : null;
-    return promise.resolve({id: newItem._id || newItem._cid, refId: refId});
+      this.store.put(key, itemKeys);
+      var refId = newItem.next !== '##@_end' ? newItem.next : null;
+      resolve({id: newItem._id || newItem._cid, refId: refId});
+    });
   }
 
   ack(keyPath: string[], id: string, sid: string, opts): Promise<void>

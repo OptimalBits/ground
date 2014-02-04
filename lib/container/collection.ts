@@ -201,24 +201,26 @@ export class Collection extends Container implements CollectionEvents
       this.keepSynced()
     }
     
-    var keyPath = this.getKeyPath();
-    if(keyPath && !this.opts.nosync){
-      this.retain();
-      // This logic is smelly. There should always try to get from remote or
-      // not doing anything at all, not a halfways (only local)
-      var noremote = parent && !parent._persisting ? true : false;
-      using.storageQueue.find(keyPath, this.opts.query, {noremote:noremote}).then((result) => {
-        this.resync(result[0]);
-        result[1]
-          .then((items) => this.resync(items))
-          .ensure(() => {
-            this.resolve(this);
-            this.release();
-          })
-      });
-    }else{
-      this.resolve(this);
-    }
+    this._promise = new Promise((resolve, reject) => {
+      var keyPath = this.getKeyPath();
+      if(keyPath && !this.opts.nosync){
+        this.retain();
+        // This logic is smelly. There should always try to get from remote or
+        // not doing anything at all, not a halfways (only local)
+        var noremote = parent && !parent._persisting ? true : false;
+        using.storageQueue.find(keyPath, this.opts.query, {noremote:noremote}).then((result) => {
+          this.resync(result[0]);
+          result[1]
+            .then((items) => this.resync(items))
+            .ensure(() => {
+              resolve(this);
+              this.release();
+            })
+        });
+      }else{
+        resolve(this);
+      }
+    });
   }
   
   destroy(){
@@ -294,7 +296,7 @@ export class Collection extends Container implements CollectionEvents
           return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
         }
       }
-      return new Promise(true);
+      return Promise.resolved();
     });
   }
   
@@ -391,7 +393,7 @@ export class Collection extends Container implements CollectionEvents
 
   private addItem(item: Model, opts): Promise<void>
   {
-    if(this.findById(item.id())) return new Promise().resolve();
+    if(this.findById(item.id())) Promise.resolved();
     
     if(this.sortByFn){
       this.sortedAdd(item);
@@ -445,7 +447,7 @@ export class Collection extends Container implements CollectionEvents
             return this.addItem(item, {nosync: true});
           });
         }
-        return new Promise(true);
+        return Promise.resolved(true);
       });
     });
 

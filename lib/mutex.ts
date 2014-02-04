@@ -16,7 +16,7 @@ module Gnd {
 export interface Handler
 {
   () : any;
-  promise?: Promise<any>;
+  defer?: Deferred<any>;
   wait?: Promise<any>;
 }
 
@@ -47,13 +47,13 @@ export interface Handler
           return Gnd.Ajax.post(url, obj);
         });
       }
-**/ 
+**/
 export function Mutex(){
   var queue = [];
 
   return function(handler: Handler){
-    handler.promise = new Promise();
-    handler.wait = handler.promise.then(handler);
+    handler.defer = Promise.defer();
+    handler.wait = handler.defer.promise.then(handler);
     
     queue.push(handler);
     if(queue.length === 1){
@@ -63,7 +63,7 @@ export function Mutex(){
   }
 
   function exec(handler){
-    handler.promise.resolve();
+    handler.defer.resolve();
     handler.wait.ensure(() => {
       queue.shift();
       var next = queue[0];

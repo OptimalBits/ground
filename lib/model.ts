@@ -231,7 +231,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     new Schema({
       _cid: String, 
       _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
-            
+
       // TO DEPRECATE:
       _persisting: Boolean,
       _persisted: Boolean,
@@ -241,7 +241,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     return this.__schema;
   }
   
-  private _promise = new Promise<Model>();
+  private _promise: Promise<Model>;
   
   private __bucket: string;
   private __schema: Schema;
@@ -293,24 +293,26 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       });
     }
 
-    var keyPath = this.getKeyPath();
-    if(this.opts.fetch){
-      this._persisting = true;
-      this.retain();
-      using.storageQueue.fetch(keyPath).then((result) => {
-        this.resync(result[0]);// not sure if nosync should be true or not here...
-        result[1]
-          .then((doc) => this.resync(doc))
-          .ensure(() => {
-            this.resolve(this);
-            this.release();
-          });
-      }, (err) => {
-        this.reject(err).ensure(() => this.release());
-      });
-    }else{
-      this.resolve(this);
-    }
+    this._promise = new Promise<Model>((resolve, reject) =>{
+      var keyPath = this.getKeyPath();
+      if(this.opts.fetch){
+        this._persisting = true;
+        this.retain();
+        using.storageQueue.fetch(keyPath).then((result) => {
+          this.resync(result[0]); // not sure if nosync should be true or not here...
+          result[1]
+            .then((doc) => this.resync(doc))
+            .ensure(() => {
+              resolve(this);
+              this.release();
+            });
+        }, (err) => {
+          reject(err).ensure(() => this.release());
+        });
+      }else{
+        resolve(this);
+      }
+    });
 
     this.opts.autosync && this.keepSynced();
     
@@ -358,6 +360,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
      
      var tiger = Animal.create({name: 'tiger', legs: 4});
    */
+   // TODO: extensorFn?: (_super: Model) => any
   static extend(bucket: string, schema?: Schema)
   {
     var __super = this;
@@ -552,7 +555,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   */
   init(): Promise<Model>
   {
-    return new Promise(this);
+    return Promise.resolved(this);
   }
   
   /**
@@ -598,11 +601,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     var val = this.get(key);
     if(_.isUndefined(val)){
-      var promise = new Promise();
-      this.on(key, (val) => {
-        promise.resolve(val)
+      return new Promise((resolve, reject)=>{
+        this.on(key, (val) => {
+          resolve(val)
+        });
       });
-      return promise;
     }
     return val;
   }
@@ -680,13 +683,13 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   */
   whenPersisted(): Promise<void>
   {
-    var promise = new Promise<void>();
-    if(this.isPersisted()){
-      promise.resolve();
-    }else{
-      this.once('persisted:', () => promise.resolve());
-    }
-    return promise;
+    return new Promise<void>((resolve, reject) =>{
+      if(this.isPersisted()){
+        resolve();
+      }else{
+        this.once('persisted:', () => resolve());
+      }
+    });
   }
 
   /**
@@ -978,31 +981,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this._promise.ensure.apply(this._promise, arguments);
   }
-  
-  /**
-    Resolves the promise with the given value.
-  
-    @method resolve
-    @param value {Any} value to resolve this promise with.
-    @chainable
-  */
-  resolve(value?: Model): Promise<Model>
-  {
-    return this._promise.resolve.apply(this._promise, arguments);
-  }
-  
-  /**
-    Resolves the promise with the given value.
 
-    @method reject
-    @param reason {Error} value to resolve this promise with.
-    @chainable
-  */
-  reject(reason: Error): Promise<Model>
-  {
-    return this._promise.reject.apply(this._promise, arguments);
-  }
-  
   /**
     Cancels the promise (rejects with reason CancelError)
     
@@ -1034,40 +1013,42 @@ declare var curl;
   @class ModelProxy
 */
 export class ModelProxy extends Promise<Model>
-{  
+{
   model: Model;
   
   constructor(model: Model);
   constructor(modelOrArgs: any, classUrl?: string);
   constructor(modelOrArgs: any, classUrl?: string)
   {
-    super();
+    super((resolve, reject) =>{
     
-    // Should only check for instanceof Model...
-    if(modelOrArgs instanceof Base){
-      this.model = modelOrArgs.retain();
-      this.resolve(modelOrArgs);
-      this['__schema'] = this.model['__schema'];
-    }else{
-      _.extend(this, modelOrArgs);
+      // Should only check for instanceof Model...
+      if(modelOrArgs instanceof Base){
+        this.model = modelOrArgs.retain();
+        resolve(modelOrArgs);
+        this['__schema'] = this.model['__schema'];
+      }else{
+        _.extend(this, modelOrArgs);
       
-      curl([classUrl]).then(
-        (modelClass: IModel) => {
-          var fn = _.bind(_.omit, _, this);
-          var args = fn.apply(this, _.functions(this));
-          this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
-          this['__schema'] = modelClass.schema();
-          this.model.resync(args);
-          this.model.on('*', () => {
-            this.emit.apply(this, arguments);
-          });
-          this.resolve(this.model)
-        },
-        (err) => this.reject(err)
-      );
-    }
+        curl([classUrl]).then(
+          (modelClass: IModel) => {
+            var fn = _.bind(_.omit, _, this);
+            var args = fn.apply(this, _.functions(this));
+            this.model = modelClass.create ? modelClass.create(args) : new modelClass(args);
+            this['__schema'] = modelClass.schema();
+            this.model.resync(args);
+            this.model.on('*', () => {
+              this.emit.apply(this, arguments);
+            });
+            resolve(this.model)
+          },
+          (err) => reject(err)
+        );
+      }
+    
+    });
   }
-  
+
   destroy(){
     Base.release(this.model);
     super.destroy();
@@ -1081,11 +1062,10 @@ export class ModelProxy extends Promise<Model>
   //set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, opts?: {}): Base
   {
-      this.model ? this.model.set(keyOrObj, val, opts) : 
-      super.set(keyOrObj, val, opts);
-      return this;
+    this.model ? this.model.set(keyOrObj, val, opts) : 
+    super.set(keyOrObj, val, opts);
+    return this;
   }
 }
-
 
 }

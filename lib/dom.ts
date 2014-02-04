@@ -673,32 +673,31 @@ module Gnd.Ajax
   
   function base(method: string, url: string, obj?: {}): Promise<any>
   {
-    var promise = new Promise();
-    
-    var xhr = getXhr();
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === 4) {
-        xhr.onreadystatechange = null;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          var res;
-          try {
-            res = JSON.parse(xhr.responseText || {});
-          } catch(e) {};
-          promise.resolve(res);
+    return new Promise((resolve, reject) => {;
+      var xhr = getXhr();
+      
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4) {
+          xhr.onreadystatechange = null;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            var res;
+            try {
+              res = JSON.parse(xhr.responseText || {});
+            } catch(e) {};
+            resolve(res);
+          } else {
+            var err = new Error("Ajax Error: "+xhr.responseText);
+            err['status'] = xhr.status;
+            reject(err);
+          }
         } else {
-          var err = new Error("Ajax Error: "+xhr.responseText);
-          err['status'] = xhr.status;
-          promise.reject(err);
-        }
-      } else {
           // still not ready
+        }
       }
-    }
-    xhr.open(method, url);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify(obj || {}));
-
-    return promise;
+      xhr.open(method, url);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(obj || {}));
+    });
   }
 } // Ajax
 

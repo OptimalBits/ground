@@ -46,7 +46,7 @@ module Gnd
     @param [parent] {Model}
     @param [items] {Array} array of models
    **/
-  export class Container extends Promise<Container> implements Sync.ISynchronizable
+  export class Container extends Base implements Sync.ISynchronizable
   {
     public storageQueue: Storage.Queue;
   
@@ -77,7 +77,7 @@ module Gnd
     // Abstract
     public resync(items?: any[]): Promise<any>
     {
-      return new Promise(true);
+      return Promise.resolved(true);
     }
   
     public model: IModel;
@@ -87,6 +87,7 @@ module Gnd
     // Protected
     public items: any[];
     public opts: ContainerOptions;
+    public _promise: Promise<Container>;
     
     private static getItemIds(items: Model[])
     {
@@ -323,6 +324,63 @@ module Gnd
         item.off('deleted:', this.deleteFn);
         item.release();
       }
+    }
+    
+    //
+    // Promise Mixin
+    //
+    /**
+  
+      Then method waits for a promise to resolve or reject, and returns a new
+      promise that resolves directly if the onFulfilled callback returns a value,
+      or if the onFulfilled callback returns a promise then when 
+      the returned promise resolves.
+  
+      @method then
+      @param [onFulfilled] {Function}
+      @param [onRejected] {Function}
+      @return {Promise} A promise according to the rules specified 
+    **/
+    then<U>(onFulfilled: (value: Container) => U, onRejected?: (reason: Error) => void): Promise<U>;
+    then<U>(onFulfilled: (value: Container) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>;
+    then(onFulfilled: (value: Container) => void, onRejected?: (reason: Error) => void): Promise<void>;
+    then(onFulfilled: (value: Container) => any, onRejected?: (reason: Error) => void): Promise<any>
+    {
+      return this._promise.then.apply(this._promise, arguments);
+    }
+  
+    /**
+      This method is syntactic sugar for then when only caring about a promise
+      rejection.
+    
+      @method fail
+      @param onRejected {Function}
+    **/
+    fail<U>(onRejected?: (reason: Error) => any): Promise<U>
+    {
+      return this._promise.fail.apply(this._promise, arguments);
+    }
+  
+    /**
+      Ensures that the callback is called when the promise resolves or rejects.
+    
+      @method ensure
+      @param always {Function} callback to be executed always independetly if the 
+      project was resolved or rejected.
+    **/
+    ensure(always: () => any)
+    {
+      return this._promise.ensure.apply(this._promise, arguments);
+    }
+
+    /**
+      Cancels the promise (rejects with reason CancelError)
+    
+      @chainable
+    **/
+    cancel()
+    {
+      return this._promise.cancel.apply(this._promise, arguments);
     }
   }
 }

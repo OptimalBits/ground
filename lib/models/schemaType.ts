@@ -45,7 +45,7 @@ module Gnd
     */
     validate(val: any): Promise<boolean>
     {
-      return new Promise(true);
+      return Promise.resolved(true);
     }
     
     /**

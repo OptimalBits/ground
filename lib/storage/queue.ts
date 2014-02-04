@@ -145,15 +145,15 @@ export class Queue extends Base implements IStorage
   */
   exec(): Promise<void>
   {
-    var promise = new Promise();
-    if(!this.currentTransfer && this.queue.length === 0){
-      return promise.resolve();
-    } 
-    this.once('synced:', ()=>{
-      promise.resolve();
+    return new Promise((resolve, reject) => {
+      if(!this.currentTransfer && this.queue.length === 0){
+        return resolve();
+      }
+      this.once('synced:', ()=>{
+        resolve();
+      });
+      this.syncFn();
     });
-    this.syncFn();
-    return promise;
   }
   
   /**
@@ -164,24 +164,19 @@ export class Queue extends Base implements IStorage
   */
   fetch(keyPath: string[]): Promise<any>
   {
-    var promise = new Promise();
-    
-    this.localStorage.fetch(keyPath).then((doc)=>{
+    return this.localStorage.fetch(keyPath).then((doc)=>{
       var id = _.last(keyPath);
       var remotePromise = this.useRemote && doc._persisted ? 
-        this.fetchRemote(keyPath) : new Promise(doc);
+        this.fetchRemote(keyPath) : Promise.resolved(doc);
 
-      promise.resolve([doc, remotePromise]);
+        return [doc, remotePromise];
     }, (err) => {
-      if(!this.useRemote) return promise.reject(err);
+      if(!this.useRemote) throw err;
 
-      this.fetchRemote(keyPath).then((docRemote)=>{
-        promise.resolve([docRemote, new Promise(docRemote)]);
-      }).fail((err)=>{
-        promise.reject(err);
+      return this.fetchRemote(keyPath).then((docRemote)=>{
+        return [docRemote, Promise.resolved(docRemote)];
       });
     });
-    return promise;
   }
   
   fetchRemote(keyPath: string[]): Promise<any>
@@ -209,7 +204,7 @@ export class Queue extends Base implements IStorage
         case 'update':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts);
         default:
-          return new Promise(Error('Invalid command: '+cmd));
+          return Promise.rejected(Error('Invalid command: '+cmd));
       }
     });
   }
@@ -225,11 +220,8 @@ export class Queue extends Base implements IStorage
   }
   
   //
-  // CHALLENGE: This method must be ATOMIC, and this only holds if using
-  // a synchronouse local store.
-  // This can be solved using a transacional schema, where all storages
-  // are implemented with the delegate pattern, and the super class Store
-  // has a built in transactional schema.
+  // This method must be atomic, it can be achieved using the Mutex, since
+  // the queue is a singleton.
   //
   private updateLocalCollection(keyPath: string[], 
                                 query: IStorageQuery, 
@@ -360,66 +352,66 @@ export class Queue extends Base implements IStorage
   
   find(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean}): Promise<any[]>
   {
-    var promise = new Promise();
-    var remotePromise = new Promise();
-    var useRemote = this.useRemote && !opts.noremote;
+    return new Promise((resolve, reject) => {
+      var remoteDeferred = Promise.defer();
+      var useRemote = this.useRemote && !opts.noremote;
     
-    var localOpts = _.extend({snapshot:true}, opts);
+      var localOpts = _.extend({snapshot:true}, opts);
     
-    this.localStorage.find(keyPath, query, localOpts).then((items)=>{
-      promise.resolve([items, remotePromise]);
+      this.localStorage.find(keyPath, query, localOpts).then((items)=>{
+        resolve([items, remoteDeferred.promise]);
       
-      if(useRemote){
-        this.findRemote(keyPath, query, opts)
-          .then((itemsRemote) => remotePromise.resolve(itemsRemote))
-          .fail((err) => remotePromise.reject(err));
-      }else{
-        remotePromise.resolve(items)
-      }
-    }, (err) => {
-      if(!useRemote) return promise.reject(err);
+        if(useRemote){
+          this.findRemote(keyPath, query, opts)
+            .then((itemsRemote) => remoteDeferred.resolve(itemsRemote))
+            .fail((err) => remoteDeferred.reject(err));
+        }else{
+          remoteDeferred.resolve(items)
+        }
+      }, (err) => {
+        if(!useRemote) return reject(err);
 
-      this.findRemote(keyPath, query, opts).then((itemsRemote)=>{
-        remotePromise.resolve(itemsRemote);
-        promise.resolve([itemsRemote, remotePromise]);
-      }).fail((err)=>{
-        promise.reject(err);
+        this.findRemote(keyPath, query, opts).then((itemsRemote)=>{
+          remoteDeferred.resolve(itemsRemote);
+          resolve([itemsRemote, remoteDeferred.promise]);
+        }).fail((err)=>{
+          reject(err);
+        });
       });
     });
-    return promise;
   }
   
   // This function is very similar to the find function, and it should be
   // possible to refactor it.
   all(keyPath: string[], query: {}, opts: {noremote?:boolean}): Promise<any[]>
   {
-    var promise = new Promise();
-    var remotePromise = new Promise();
-    var useRemote = this.useRemote && !opts.noremote;
+    return new Promise((resolve, reject) => {
+      var remoteDeferred = Promise.defer();
+      var useRemote = this.useRemote && !opts.noremote;
     
-    var localOpts = _.extend({snapshot:true}, opts);
+      var localOpts = _.extend({snapshot:true}, opts);
      
-    this.localStorage.all(keyPath, query, localOpts).then((result: any) => {
-      promise.resolve([result, remotePromise]);
+      this.localStorage.all(keyPath, query, localOpts).then((result: any) => {
+        resolve([result, remoteDeferred.promise]);
       
-      if(useRemote){
-        this.allRemote(keyPath, query, opts)
-          .then((itemsRemote) => remotePromise.resolve(itemsRemote))
-          .fail((err) => remotePromise.reject(err));
-      }else{
-        remotePromise.resolve(result);
-      }
-    }, (err) => {
-      if(!useRemote) return promise.reject(err);
+        if(useRemote){
+          this.allRemote(keyPath, query, opts)
+            .then((itemsRemote) => remoteDeferred.resolve(itemsRemote))
+            .fail((err) => remoteDeferred.reject(err));
+        }else{
+          remoteDeferred.resolve(result);
+        }
+      }, (err) => {
+        if(!useRemote) return reject(err);
 
-      this.allRemote(keyPath, query, opts).then((itemsRemote)=>{
-        remotePromise.resolve(itemsRemote);
-        promise.resolve([itemsRemote, remotePromise]);
-      }).fail((err) => {
-        promise.reject(err);
-      }); 
+        this.allRemote(keyPath, query, opts).then((itemsRemote)=>{
+          remoteDeferred.resolve(itemsRemote);
+          resolve([itemsRemote, remoteDeferred.promise]);
+        }).fail((err) => {
+          reject(err);
+        }); 
+      });
     });
-    return promise;
   }
   
   allRemote(keyPath: string[], query: {noremote?:boolean}, opts: {})
@@ -491,7 +483,7 @@ export class Queue extends Base implements IStorage
             remoteStorage.put(keyPath, args, {}).then(done, done);
             break;
           case 'delete':
-            remoteStorage.del(keyPath, {}).then(done, done);
+            remoteStorage.del(keyPath, {}).then(() => done(), (err) => done());
             break;
           case 'add':
             remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(done, done);
@@ -632,20 +624,6 @@ export class Queue extends Base implements IStorage
       err.message = ServerError[err.message];
       
       Gnd.log("Queue error:", err, errCode, this.queue[0]);
-      
-      // HACK
-      /*
-      if(err.message == 'Invalid ObjectId'){
-        err.message = ''+ServerError.INVALID_ID;
-      }
-      
-      var errCode;
-      if(err.message == 'Invalid ObjectId'){
-        errCode = ServerError.INVALID_ID;
-      }else{
-        errCode = parseInt(err.message);
-      }
-      */
       
       switch(errCode){
         case ServerError.INVALID_ID:

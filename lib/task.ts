@@ -28,10 +28,16 @@ export interface Task {
 */
 export class TaskQueue {
   private tasks: any[] = [];
-  private endPromise: Promise<void> = new Promise();
+  private endDefer: Deferred<void>;
+  private endPromise: Promise<void>;
   private isExecuting: boolean;
   private isEnded: boolean;
   private isCancelled: boolean;
+  
+  constructor(){
+    this.endDefer = Promise.defer<void>();
+    this.endPromise = this.endDefer.promise;
+  }
   
   /**
      Appends one or several tasks to the queue. The tasks are executed in order. A task is just a
@@ -75,7 +81,7 @@ export class TaskQueue {
   {
     this.isEnded = true;
     if(!this.isExecuting){
-      this.endPromise.resolve();
+      this.endDefer.resolve();
     }
     return this;
   }
@@ -101,7 +107,7 @@ export class TaskQueue {
         this.executeTasks();
       });
     }else if(this.isEnded || this.isCancelled){
-      this.endPromise.resolve();
+      this.endDefer.resolve();
     }
   }
 }

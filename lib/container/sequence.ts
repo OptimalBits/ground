@@ -184,28 +184,31 @@ export class Sequence extends Container implements SequenceEvents
       this.keepSynced()
     }
     
-    var keyPath = this.getKeyPath();
-    if(keyPath && !this.opts.nosync){
-      this.retain();
-      var noremote = parent && !parent._persisting ? true : false;
-      using.storageQueue.all(keyPath, {}, {noremote: noremote}).then((result) => {
-        this.resync(result[0]);
-        result[1].then((items?) => this.resync(items))
-          .ensure(() => {
-            this.resolve(this);
-            this.release();
-          });
-      });
-    }else{
-      this.resolve(this);
-    }
+    this._promise = new Promise((resolve, reject) => {
+      var keyPath = this.getKeyPath();
+      if(keyPath && !this.opts.nosync){
+        this.retain();
+        // TODO: get rid of noremote since we should always want to save remotely if we want persistence.
+        var noremote = parent && !parent._persisting ? true : false;
+        using.storageQueue.all(keyPath, {}, {noremote: noremote}).then((result) => {
+          this.resync(result[0]);
+          result[1].then((items?) => this.resync(items))
+            .ensure(() => {
+              resolve(this);
+              this.release();
+            });
+        });
+      }else{
+        resolve(this);
+      }
+    });
   }
 
   private deleteItem(id: string, opts): Promise<any>
   {
     var idx = _.findIndex(this.items, {'id': id});
     
-    if(idx === -1) return new Promise(this); //already deleted
+    if(idx === -1) return Promise.resolved(this); //already deleted
     return this.remove(idx, opts);
   }
 
@@ -395,7 +398,7 @@ export class Sequence extends Container implements SequenceEvents
         });
       }
     }
-    return new Promise(new Error("Invalid indexes:"+startIdx+", "+endIdx));
+    return Promise.rejected(Error("Invalid indexes:"+startIdx+", "+endIdx));
   }
 
   /**
