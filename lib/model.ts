@@ -307,7 +307,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
               this.release();
             });
         }, (err) => {
-          reject(err).ensure(() => this.release());
+          reject(err);
+          this._promise.ensure(() => this.release());
         });
       }else{
         resolve(this);
