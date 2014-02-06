@@ -482,6 +482,7 @@ export class Sequence extends Container implements SequenceEvents
 
   static merge(source: any[], target: any[], fns: MergeFunctions): MergeCommand[]
   {
+    source = source || [];
     var insertCommands: MergeCommand[] = [];
     var removeCommands: MergeCommand[] = [];
     var updateCommands: MergeCommand[] = [];
