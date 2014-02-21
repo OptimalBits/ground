@@ -478,7 +478,7 @@ export class Request {
         return this._get(component, selector, {}, middelwares, handler);
       },
       'String String Array Function': function(component, selector, middelwares, cb){
-        return this._get(component, selector, {}, middelwares, cb);
+        return this._get(component, selector, {}, middelwares, undefined, cb);
       },
       'String String Function': function(component, selector, cb){
         return this._get(component, selector, {}, [], undefined, cb);
