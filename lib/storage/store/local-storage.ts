@@ -41,7 +41,12 @@ module Gnd.Storage.Store {
     get(key: string): any {
       var doc = this.localCache.getItem(key);
       if(doc){
-        return JSON.parse(doc);
+        try{
+          return JSON.parse(doc);
+        }catch(e){
+          console.log('localCache inconsistency encountered: '+key);
+          return null;
+        }
       }
       return null;
     }
