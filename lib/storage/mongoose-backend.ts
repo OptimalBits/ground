@@ -134,9 +134,10 @@ export class MongooseStorage implements Storage.IStorage {
           new mongoose.Schema(translated, {strict: false});
       // new mongoose.Schema(translated); // strict false is just temporary...
 
-      if(model['__mongoose']){
-        var extra = model['__mongoose'];
-
+      var extra = model['__mongoose'];
+      
+      if(extra){
+        
         if(extra.methods){
           mongooseSchema.methods = mongooseSchema.methods || {};
           _.extend(mongooseSchema.methods, extra.methods);
@@ -161,6 +162,10 @@ export class MongooseStorage implements Storage.IStorage {
       
       this.models[bucket] =
         mongoose.model(name, mongooseSchema, bucket);
+        
+      if(extra){
+        this.models[bucket]['extra'] = extra;
+      }
         
       if(model['filter']){
         this.models[bucket]['filter'] = model['filter'];
@@ -330,42 +335,33 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return this.getModel(keyPath).then<void>((found) => {
       return new Promise<void>((resolve, reject) =>{
-        found.Model.remove({_cid:_.last(keyPath)}, (err?)=>{
-          if(err){
-            reject(err);
-          }else{
-            resolve();
-          }
-        });
-      });
-      
-      // Obsolete?
-      /*
-      found.Model.findOne({_cid:_.last(keyPath)}, (err?, doc?) => {
-        if(!err && doc){
-          doc.remove((err?)=>{
+        var extra = found.Model['extra'];
+        if(extra && extra.pre && extra.pre.remove){
+          // Slower remove needed to apply middleware
+          found.Model.findOne({_cid:_.last(keyPath)}, (err?, doc?) => {
+            if(!err && doc){
+              doc.remove((err?)=>{
+                if(err){
+                  reject(err);
+                }else{
+                  resolve();
+                }
+              });
+            }else{
+              reject(err);
+            }
+          });
+        }else{
+          // Faster remove
+          found.Model.remove({_cid:_.last(keyPath)}, (err?)=>{
             if(err){
               reject(err);
             }else{
               resolve();
             }
           });
-        }else{
-          reject(err);
         }
       });
-      */
-      //found.Model.findByIdAndRemove({_id:_.last(keyPath)}, (err, doc)=>{
-      /*
-      found.Model.remove({_id:_.last(keyPath)}, (err?)=>{
-        if(!err){
-          promise.resolve();
-        }else{
-          promise.reject(err);
-        }
-      });
-      return promise;
-      */
     });
   }
   
