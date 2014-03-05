@@ -8,6 +8,7 @@
 
 /// <reference path="storage.ts" />
 /// <reference path="../util.ts" />
+/// <reference path="../error.ts" />
 
 /**
   @module Gnd
@@ -46,7 +47,7 @@ export class Socket implements IStorage {
     function proxyCb(err, res){
       socket.removeListener('disconnect', errorFn);
       if(err){
-        defer.reject(Error(err));
+        defer.reject(Error(ServerError[err]));
       }else{
         defer.resolve(res);
       }
