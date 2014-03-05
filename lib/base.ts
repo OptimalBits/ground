@@ -456,16 +456,17 @@ function generateEvents(root: Base, val, keys: string[], keypath: string, cage){
   // Generate events for all segments of the keypaths
   // creating an object with the change at every step
   //
-  var res, key, len = keys.length-1;
-  for(var i=len; i>0; i--){
+  var res = val, key, len = keys.length-1;
+  for(var i=len; i>=0; i--){
+        
+    // TODO: Also save the old value
+    storeEvent(root, cage, keypath, res);
     key = keys[i];
     res = {};
     res[key] = val;
-    keypath = keypath.substr(0, (keypath.length-key.length)-1);
-    
-    // TODO: Also save the old value
-    storeEvent(root, cage, keypath, res);
     val = res;
+    
+    keypath = keypath.substr(0, (keypath.length-key.length)-1);
   }
 }
 
