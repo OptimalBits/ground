@@ -116,6 +116,24 @@ describe('Base', function(){
       resource.set('item.name', 'falcon');
     });
     
+    it('listen to change in a property in a sub object by a keypath changing the sub object', function(done){
+      var resource = new Gnd.Base();
+      var item = new Gnd.Base();
+      item.name = "papegoya"
+      
+      resource.item = item;
+      
+      expect(resource.get('item.name', 'papegoya'));
+      
+      resource.once('item.name', function(value){
+        expect(value).to.be('falcon');
+        expect(resource.get('item.name', 'falcon'));
+        done();
+      });
+          
+      item.set('name', 'falcon');
+    });
+    
     it('listen to segment changes in a property described by a keypath', function(done){
       var counter = 2;
       obj.baz = {foo:32, bar:56};

@@ -120,6 +120,31 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   }
   
   /**
+   This is a specialized listener that takes into consideration keypaths.
+    
+  */
+  on(eventNames: string, listener: (...args: any[]) => void): EventEmitter
+  {
+    var res = findSubobject(this, eventNames, (obj, keypath) => {
+      return obj.on(keypath, listener);
+    });
+    if(res) return res;
+    
+    return super.on(eventNames, listener);
+  }
+
+  off(eventNames?: string, listener?): EventEmitter
+  {
+    if(eventNames){
+      var res = findSubobject(this, eventNames, (obj, keypath) => {
+        return obj.off(keypath, listener);
+      });
+      if(res) return res;
+    }
+    return super.off(eventNames, listener);
+  }
+
+  /**
    *  Sets a property and notifies any listeners attached to it if changed.
    *
    *  Code smell: when setting a whole object of properties, if one of them
@@ -369,6 +394,24 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   isDestroyed(): boolean
   {
     return this._refCounter === 0;
+  }
+}
+
+function findSubobject(obj, rawKeypath, cb){
+  var keypath = rawKeypath.split('.');
+  if(keypath.length){
+    for(var i=0; i<keypath.length-1;i++){
+      var key = keypath[i];
+      rawKeypath = rawKeypath.substr(key.length+1);
+      obj = obj[key];
+      if(obj instanceof Base){
+        return cb(obj, rawKeypath);
+      }
+      if(_.isUndefined(obj)){
+        break;
+      }
+      
+    }
   }
 }
 
