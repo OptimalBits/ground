@@ -47,7 +47,7 @@ export class Socket implements IStorage {
     function proxyCb(err, res){
       socket.removeListener('disconnect', errorFn);
       if(err){
-        defer.reject(Error(ServerError[err]));
+        defer.reject(Error(ServerError[err] || err));
       }else{
         defer.resolve(res);
       }
