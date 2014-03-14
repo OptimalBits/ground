@@ -86,6 +86,11 @@ module Gnd
     public static type = String;
   }
   
+  export class ObjectType extends SchemaType
+  {
+    public static type = Object;
+  }
+  
   export class NumberType extends SchemaType
   {
     public static type = Number;

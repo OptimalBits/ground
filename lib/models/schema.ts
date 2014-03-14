@@ -269,6 +269,10 @@ module Gnd
         return new ArrayType(definition);
       }
 
+      if(_.isPlainObject(type)){
+        return new ObjectType(definition);
+      }
+
       for(var i=0; i<types.length; i++){
         if(type == types[i].type){
           return new types[i](definition);
@@ -316,6 +320,7 @@ module Gnd
     
     // {type: any; Class: ISchemaType;}
     private static types: ISchemaType[] = [
+      ObjectType,
       StringType,
       NumberType,
       BooleanType,
