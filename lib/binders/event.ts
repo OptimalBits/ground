@@ -75,9 +75,6 @@ export class EventBinder implements Binder
             obj || 
             _.reduce(viewModel.contexts, (memo, ctx) => _.extend(memo, ctx), {});
 
-//          var fn = _.bind(handler, ctx);
-          
-//          elementListener = (evt) => fn(el, evt);
           elementListener = (evt) => handler.call(ctx, el, evt);
           
           $(el).on(eventName, elementListener);
