@@ -249,9 +249,6 @@ export class Promise<T> extends Base
             }
           }catch(err){
             reject(err);
-            if(err !== CancelError){
-              log(err.stack);
-            }
           }
         }
       }
@@ -320,7 +317,6 @@ export class Promise<T> extends Base
     
     this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
-   // return this; // Should not return this.
   }
 
   /**
@@ -336,8 +332,14 @@ export class Promise<T> extends Base
     this.isFulfilled = true;
     
     this.reason = reason || null;
-    this.fireCallbacks(this.rejectedFns, reason);
-    // return this; // Should not return this.
+    if(this.rejectedFns.length){
+      this.fireCallbacks(this.rejectedFns, reason);
+    }else if(reason !== CancelError){
+      //
+      // We log out unhandled errors
+      //
+      log("Unhandled", reason['stack']);
+    }
   }
   
   /**
