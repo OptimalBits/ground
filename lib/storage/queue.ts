@@ -620,11 +620,10 @@ export class Queue extends Base implements IStorage
       })().ensure(() => syncFn());
       
     }else{
-      var errCode = parseInt(err.message);
-      err.message = ServerError[err.message];
+      var errCode = ServerError[err.message];
       
       Gnd.log("Queue error:", err, errCode, this.queue[0]);
-      
+  
       switch(errCode){
         case ServerError.INVALID_ID:
         case ServerError.INVALID_SESSION:
