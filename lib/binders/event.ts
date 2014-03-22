@@ -93,7 +93,7 @@ export class EventBinder implements Binder
  
   unbind(){
     _.each(this.bindings, (item) => {
-      item[0].release();
+      item[0] && item[0].release();
       $(this.el).off(item[1], item[2]);
     });
   }
