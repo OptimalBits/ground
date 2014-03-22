@@ -184,18 +184,37 @@ export class ViewModel extends Base
   {
     var binders = [];
     
+    var makeBinding = (binding) => {
+      if(this.binders[binding.type]){
+        var binder: Binder = new this.binders[binding.type]();
+        binder.bind(node, binding.value, this);
+        binders.push(binder);
+      }
+    }
+    
     if(node.attributes){
+      var foundDataBindings = [];
       var attributes = node.attributes;
       for(var j=0;j<attributes.length;j++){
         if(dataBindingReqExp.test(attributes[j].name)){
           var type = attributes[j].name.replace(dataBindingReqExp, '');
           var value = attributes[j].value;
-          if(this.binders[type]){
-            var binder: Binder = new this.binders[type]();
-            binder.bind(node, value, this);
-            binders.push(binder);
-          }
+          foundDataBindings.push({type: type, value: value});
         }
+      }
+      
+      //
+      // Check if we have an each binder, if so we will only use that binder
+      // and ignore the rest (they will be binded for every item in the collection)
+      //
+      var each = _.find(foundDataBindings, {type: 'each'});
+      if(each){
+        makeBinding(each);
+        return binders;
+      }else{
+        _.each(foundDataBindings, function(binding){
+          makeBinding(binding);
+        });
       }
     }
     
