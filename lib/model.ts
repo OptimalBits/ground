@@ -667,7 +667,6 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   */  
   isPersisted(): boolean
   {
-    //return !Model.isClientId(this.id());
     return this._persisted;
   }
 
