@@ -201,13 +201,15 @@ export class Promise<T> extends Base
     return new Promise((resolve, reject) => reject(err));
   }
   
-  constructor(resolver?: (resolve: (val?: any) => Promise<T>, reject: (err: Error) => Promise<T>) => void)
+  constructor(resolver?: (resolve: (val?: any) => void, reject: (err: Error) => void) => void)
   {
     super();
     
     if(resolver){
       try{
-        resolver(_.bind(this.resolve, this), _.bind(this.reject, this));
+        resolver(
+          _.bind(this.resolve, this),
+          (err: Error) => Util.nextTick(()=>{this.reject(err)}));
       }catch(err){
         this.reject(err);
       }
