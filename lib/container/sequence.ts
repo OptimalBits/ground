@@ -179,11 +179,7 @@ export class Sequence extends Container implements SequenceEvents
     };
     
     this._init(updateFn, deleteFn);
-    
-    if(parent && parent.isKeptSynced()){
-      this.keepSynced()
-    }
-    
+  
     this._promise = new Promise((resolve, reject) => {
       var keyPath = this.getKeyPath();
       if(keyPath && !this.opts.nosync){

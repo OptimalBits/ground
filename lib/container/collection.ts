@@ -196,10 +196,6 @@ export class Collection extends Container implements CollectionEvents
         this.emit('sorted:', this.items, oldItems);
       }
     });
-
-    if(parent && parent.isKeptSynced()){
-      this.keepSynced()
-    }
     
     this._promise = new Promise((resolve, reject) => {
       var keyPath = this.getKeyPath();
