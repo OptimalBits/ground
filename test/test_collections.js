@@ -771,19 +771,21 @@ describe('Collection Datatype', function(){
       var zoo = Zoo.create({}, true)
       var tiger = Animal.create({name:"tiger"}, true);
       
-      var animals = zoo.all(Animal);
-      animals.add(tiger);
-      
       storageQueue.waitUntilSynced(function(){
+        var animals = zoo.all(Animal);
+        animals.add(tiger);
         
-        socket.disconnect();
+        storageQueue.waitUntilSynced(function(){
+        
+          socket.disconnect();
       
-        Gnd.Ajax.del('/zoo/'+zoo.id()+'/animals/'+tiger.id(), null).then(function() {
-          animals.once('removed:', function(){
-            expect(animals.count).to.be(0);
-            done();
+          Gnd.Ajax.del('/zoo/'+zoo.id()+'/animals/'+tiger.id(), null).then(function() {
+            animals.once('removed:', function(){
+              expect(animals.count).to.be(0);
+              done();
+            });
+            socket.socket.connect();
           });
-          socket.socket.connect();
         });
       });
     });

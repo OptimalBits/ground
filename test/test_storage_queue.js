@@ -449,7 +449,9 @@ describe('Storage Queue', function(){
                 //q2 should not have the new animal yet
                 expect(docs).to.have.property('length', 0);
                 result[1].then(function(docs){
-                //q2.once('resync:'+Gnd.Storage.Queue.makeKey(kp), function(docs){
+                  expect(docs).to.have.property('length', 0);
+                  q.exec();
+                }, function(err){
                   expect(docs).to.have.property('length', 0);
                   q.exec();
                 });
@@ -483,7 +485,6 @@ describe('Storage Queue', function(){
                 });
               });
             }, 100);
-
             q.on('synced:', fail);
           });
         });
