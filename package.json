@@ -71,7 +71,8 @@
     "requirejs": "~2.1.8",
     "grunt-contrib-yuidoc": "~0.4.0",
     "posix": "~1.0.2",
-    "socket.io": "~0.9.16"
+    "socket.io": "~0.9.16",
+    "bluebird": "^1.1.1"
   },
   "scripts": {
     "test": "mocha tests/*",
