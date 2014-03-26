@@ -366,7 +366,7 @@ export class MongooseStorage implements Storage.IStorage {
   }
   
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts:any): Promise<void>
-  {    
+  {
     return this.getModel(keyPath).then<void>((found) => {
       return new Promise<void>((resolve, reject) => {
         var id = keyPath[keyPath.length-2];
@@ -470,8 +470,10 @@ export class MongooseStorage implements Storage.IStorage {
               }, function(err){
                 reject(err);
               })
-            }else{
+            }else if(!model){
               reject(new Error("Collection model "+setName+" not found"));
+            }else{
+              resolve([]);
             }
           }
         });
