@@ -185,10 +185,7 @@ export class Sequence extends Container implements SequenceEvents
       if(keyPath && !this.opts.nosync){
         this.retain();
         
-        // TODO: get rid of noremote since we should always want to save remotely if we want persistence.
-        //var noremote = parent && !parent._persisting ? true : false;
-        var noremote = parent && !parent.isPersisted() ? true : false;
-        using.storageQueue.all(keyPath, {}, {noremote: noremote}).then((result) => {
+        using.storageQueue.all(keyPath).then((result) => {
           this.resync(result[0]);
           result[1].then((items?) => this.resync(items))
             .ensure(() => {

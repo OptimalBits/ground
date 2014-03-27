@@ -383,8 +383,10 @@ export class Queue extends Base implements IStorage
   
   // This function is very similar to the find function, and it should be
   // possible to refactor it.
-  all(keyPath: string[], query: {}, opts: {noremote?:boolean}): Promise<any[]>
+  all(keyPath: string[], query?: {}, opts?: {noremote?:boolean}): Promise<any[]>
   {
+    query = query || {};
+    opts = opts || {};
     return new Promise((resolve, reject) => {
       var remoteDeferred = Promise.defer();
       var useRemote = this.useRemote && !opts.noremote;
