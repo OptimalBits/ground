@@ -96,6 +96,28 @@ export class Promise<T> extends Base
     return promise;
   }
   
+  static all<U>(promises: Promise<U>[])
+  {
+    var
+      len = promises.length,
+      counter = len,
+      results = []; results.length = len;
+    
+    return new Promise<U>((resolve, reject) => {
+      for(var i=0; i<len; i++){
+        ((index) => {
+          promises[index].then((result) => {
+            results[index] = result;
+            counter--;
+            if(counter === 0){
+              resolve(results);
+            }
+          }, (err) => reject(err));
+        })(i);
+      }
+    });
+  }
+  
   /**
     Returns a Promise that resolves after the given amount of milliseconds have
     passed.
