@@ -98,12 +98,16 @@ export class Promise<T> extends Base
   
   static all<U>(promises: Promise<U>[])
   {
-    var
+    var 
       len = promises.length,
-      counter = len,
-      results = []; results.length = len;
-    
+      results = [];
+
+    if(!len) return Promise.resolved<U[]>(results);
+
     return new Promise<U>((resolve, reject) => {
+      var counter = len;
+
+      results.length = len;
       for(var i=0; i<len; i++){
         ((index) => {
           promises[index].then((result) => {
