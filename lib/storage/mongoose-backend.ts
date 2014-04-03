@@ -452,31 +452,23 @@ export class MongooseStorage implements Storage.IStorage {
   {
     query = query || {};
 
-    return new Promise((resolve, reject)=>{
-      Model
-        .findOne({_cid:id})
-        .lean()
-        .select(setName)
-        .exec((err, doc) => {
-          if(err){
-            reject(err);
+    return Model
+      .findOne({_cid:id})
+      .lean()
+      .select(setName)
+      .exec().then((doc) => {
+        // Currently collection bucket and set name must be identical
+        // this is a known limitation that we want to remove ASAP.
+        var model = this.models[setName];
+        if(model){
+          if(doc && doc[setName]){
+            return this.populate(model, query, doc[setName]);
           }else{
-            // Currently collection bucket and set name must be identical
-            // this is a known limitation that we want to remove ASAP.
-            var model = this.models[setName];
-            if(model && doc){
-              this.populate(model, query, doc[setName]).then(function(docs){
-                resolve(docs);
-              }, function(err){
-                reject(err);
-              })
-            }else if(!model){
-              reject(new Error("Collection model "+setName+" not found"));
-            }else{
-              resolve([]);
-            }
+            return [];
           }
-        });
+        }else{
+          throw Error("Collection model "+setName+" not found");
+        }
     });
   }
   
