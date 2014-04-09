@@ -116,7 +116,7 @@ describe('Base', function(){
       resource.set('item.name', 'falcon');
     });
     
-    it('listen to change in a property in a sub object by a keypath changing the sub object', function(done){
+    it('listen to change in a property in a sub object by a keypath', function(done){
       var resource = new Gnd.Base();
       var item = new Gnd.Base();
       item.name = "papegoya"
@@ -131,32 +131,71 @@ describe('Base', function(){
         done();
       });
           
+      resource.set('item.name', 'falcon');
+    });
+    
+    it('listen to change in a property in a sub object by a keypath changing the sub object', function(done){
+      var resource = new Gnd.Base();
+      var item = new Gnd.Base();
+      item.name = "papegoya"
+      
+      resource.item = item;
+      
+      expect(resource.get('item.name', 'papegoya'));
+      
+      resource.once('item.name', function(value){
+        expect(value).to.be('falcon');
+        expect(resource.get('item.name', 'falcon'));
+        done();
+      });
+
       item.set('name', 'falcon');
     });
     
-    it('listen to segment changes in a property described by a keypath', function(done){
-      var counter = 2;
-      obj.baz = {foo:32, bar:56};
+    it('should emit an event when setting an array as a property value', function(done){    
+      obj.once('hours', function(value){
+        expect(value).to.be.an("array");
+        expect(value).to.have.length(3);
+        expect(value[0]).to.be(1);
+        expect(value[1]).to.be(2);
+        expect(value[2]).to.be(3);
+        expect(obj.hours).to.be.an("array");
+        done();
+      });
+  
+      obj.set('hours', [1,2,3]);
+    });
     
-      obj.on('baz.foo', function(value){
-        expect(value).to.be(42);
-        expect(obj.get('baz.foo')).to.be(42);
-        expect(obj.baz.foo).to.be(42);
-        counter--;
-        if(counter == 0) done();
+    it('should emit an event when setting a smaller array as a property value', function(done){
+      obj.hours = [1,2];
+
+      obj.once('hours', function(value){
+        expect(value[2]).to.be(3);
+        expect(obj.hours).to.be.an("array");
+        expect(obj.hours).to.have.length(3);
+        expect(obj.hours[0]).to.be(1);
+        expect(obj.hours[1]).to.be(2);
+        expect(obj.hours[2]).to.be(3);
+        expect(obj.hours).to.be.an("array");
+        done();
       });
+  
+      obj.set('hours', [1,2,3]);
+    });
+    
+    it('should emit an event when setting an array as a subproperty value', function(done){
+      obj.foo = {hours: []};
       
-      obj.on('baz', function(args){
-        expect(args).to.be.an(Object);
-        expect(args.foo).to.be(42);
-        expect(args.bar).to.be(undefined);
-        counter--;
-        if(counter == 0) done();
+      obj.once('foo.hours', function(value){
+        expect(obj.foo.hours).to.be.an("array");
+        expect(obj.foo.hours).to.have.length(3);
+        expect(obj.foo.hours[0]).to.be(1);
+        expect(obj.foo.hours[1]).to.be(2);
+        expect(obj.foo.hours[2]).to.be(3);
+        done();
       });
-          
-      obj.set('baz.foo', 42);
-      obj.off('baz.foo');
-      obj.off('baz');
+  
+      obj.set('foo.hours', [1,2,3]);
     });
     
     it('listen to segment changes in chaging property by object', function(done){
