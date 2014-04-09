@@ -174,6 +174,8 @@ export class MongooseStorage implements Storage.IStorage {
       if(model['hooks']){
        this.models[bucket]['gnd-hooks'] = model['hooks'];
       }
+      
+      this.models[bucket]['gnd-schema'] = schema;
     }
   }
 
@@ -226,8 +228,8 @@ export class MongooseStorage implements Storage.IStorage {
             break;
           case Gnd.Sequence:
           case Gnd.Collection:
-            if(!mapping[res.ref.bucket]){
-              throw new Error("Model bucket " + res.ref.bucket + " does not have a valid mapping name");
+            if(!mapping[res.ref.model.__bucket]){
+              throw new Error("Model bucket " + res.ref.model.__bucket + " does not have a valid mapping name");
             }else{
               res = {type: [{type: String, ref: mapping[res.ref.bucket]}], 
                     select: false};
@@ -394,11 +396,6 @@ export class MongooseStorage implements Storage.IStorage {
             }
           });
         }
-        /*
-        else{
-          promise.reject(new Error("No parent or add function available"));
-        }
-        */
       });
     });
   }
@@ -457,9 +454,21 @@ export class MongooseStorage implements Storage.IStorage {
       .lean()
       .select(setName)
       .exec().then((doc) => {
-        // Currently collection bucket and set name must be identical
-        // this is a known limitation that we want to remove ASAP.
-        var model = this.models[setName];
+        //
+        // We check if the setName is a collection property, if so
+        // we must retrieve the Model from the CollectionSchemaType
+        //
+        var schemaType = Model['gnd-schema'] ? 
+          Model['gnd-schema'].getSchemaType(setName) : undefined;
+        
+        var model = schemaType instanceof CollectionSchemaType ?
+          this.models[schemaType.definition.ref.model.__bucket] :
+          this.models[setName];
+
+        if(!schemaType){
+          console.log(setName);
+        }
+
         if(model){
           if(doc && doc[setName]){
             return this.populate(model, query, doc[setName]);

@@ -93,6 +93,11 @@ export class SequenceSchemaType extends SchemaType
     super({type: Sequence, ref:{model: model, bucket: bucket || model.__bucket}});
   }
   
+  init(property: string)
+  {
+    this.definition.ref.bucket = property;
+  }
+  
   toObject(obj)
   {
     // undefined since a sequence is never serialized.

@@ -213,6 +213,10 @@ module Gnd
       _.each(schema, (definition, property?) => {
         if(definition){
           var type = definition.type ? definition.type : definition;
+          
+          if(definition.init){
+            definition.init(property);
+          }
 
           var compiledType = Schema.compileType(type, definition);
           if(compiledType){
