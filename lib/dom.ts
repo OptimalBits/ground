@@ -531,16 +531,20 @@ export function makeElement(html: string): DocumentFragment
 */
 // See: http://www.quirksmode.org/dom/w3c_core.html#attributes
 export function setAttr(el: Element, attr: string, value: any, forceAsProperty?: boolean){
-  if(!_.isUndefined(el[attr]) || forceAsProperty) {
-    el[attr] = value;
-  }
-  
-  if (forceAsProperty) return;
-  
-  if(value){
-    el.setAttribute(attr, value);
+  if(isPromise(value)){
+    value.then((value)=>setAttr(el, attr, value, forceAsProperty));
   }else{
-    el.removeAttribute(attr);
+    if(!_.isUndefined(el[attr]) || forceAsProperty) {
+      el[attr] = value;
+    }
+  
+    if (forceAsProperty) return;
+  
+    if(value){
+      el.setAttribute(attr, value);
+    }else{
+      el.removeAttribute(attr);
+    }
   }
 }
 

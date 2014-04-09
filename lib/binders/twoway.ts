@@ -133,7 +133,9 @@ export class TwoWayBinder implements Binder
 }
 
 function setText(el: Element, value){
-  if(isElement(value)){
+  if(isPromise(value)){
+    value.then((value) => setText(el, value));
+  } else if(isElement(value)){
     el.parentNode.replaceChild(value, el);
   }else{
     $(el).html(value);

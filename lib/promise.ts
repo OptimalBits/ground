@@ -11,7 +11,7 @@
 module Gnd {
 "use strict";
 
-function isPromise(promise){
+export function isPromise(promise){
   return (promise instanceof Object) && (promise.then instanceof Function);
 }
 
