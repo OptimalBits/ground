@@ -71,15 +71,17 @@ describe('Promises and Tasks', function(){
     });
   });
   
-  it.skip('aborted promise does not trigger then after resolution', function(){  
-    var promise = new gnd.Promise();
+  it('a cancelled promise should reject with CancellationError', function(done){
+    var defer = gnd.Promise.defer();
     
-    promise.then(function(){
+    defer.promise.then(function(){
       expect(0).to.be(true);
+    }, function(err){
+      expect(err).to.be(gnd.CancellationError);
+      done();
     });
     
-    promise.abort();
-    promise.resolve();
+    promise.cancel();
   });
   
   it.skip('simple promise queue with 2 promises triggers after second', function(){

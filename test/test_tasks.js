@@ -154,17 +154,52 @@ describe('Promises and Tasks', function(){
     
     end = true;   
   });
-  
-  it('aborted promise does not trigger then after resolution', function(){  
-    var promise = new Gnd.Promise();
     
-    promise.then(function(){
+  it('a cancelled direct promise should reject with CancellationError', function(done){
+    var defer = Gnd.Promise.defer();
+    defer.promise.then(function(){
       expect(0).to.be(true);
+    }, function(err){
+      expect(err).to.be(Gnd.CancellationError);
+      done();
     });
     
-    promise.abort();
-    promise.resolve();
+    defer.promise.cancel();
   });
+  
+  it('a cancelled then promise should reject with CancellationError', function(done){
+    var defer = Gnd.Promise.defer();
+    var output = defer.promise.then(function(){
+      expect(0).to.be(true);
+    }, function(err){
+      expect(err).to.be(Gnd.CancellationError);
+      done();
+    });
+    
+    output.cancel();
+  });
+  
+  it('a chain of cancelled promise should reject with CancellationError', function(done){    
+    var deferParent = Gnd.Promise.defer();
+    var deferChildren = Gnd.Promise.defer();
+    
+    var output = deferParent.promise.then(function(){
+      return deferChildren.promise.then(function(){
+        expect(0).to.be(true);
+      }).then(function(){
+        expect(0).to.be(true);
+      })
+    })
+    
+    output.fail(function(err){
+      expect(err).to.be(Gnd.CancellationError);
+      done();
+    });
+    
+    deferParent.resolve();
+    output.cancel();
+  });
+  
 
   it.skip('simple promise queue with 2 promises triggers after second', function(){
     var promise1 = new Gnd.Promise(), promise2 = new Gnd.Promise();
