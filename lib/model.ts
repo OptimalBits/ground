@@ -865,8 +865,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   // static all(parent: Model, bucket?: string): Collection;
   static all(parent?: Model, argsOrKeypath?, bucket?: string): Collection
   {
-    var allInstances = (parent: Model, keyPath: string[], args: {}) =>
-      Container.create(Collection, this, {key: _.last(keyPath)}, parent);
+    var allInstances = (parent: Model, keyPath: string[], args: {}) => {
+      var opts = _.extend({key: _.last(keyPath)}, args);
+      return Container.create(Collection, this, opts, parent);
+    }
  
     return overload({
       'Model Array Object': function(parent, keyPath, args){
@@ -909,8 +911,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   static seq(parent: Model, bucket: string): Sequence; //
   static seq(parent?: Model, args?: {}, bucket?: string): Sequence //
   {
-    var allInstances = (parent: Model, keyPath: string[], args: {}) =>
-      Container.create(Sequence, this, {key:_.last(keyPath)}, parent);
+    var allInstances = (parent: Model, keyPath: string[], args: {}) => {
+      var opts = _.extend({key: _.last(keyPath)}, args);
+      return Container.create(Sequence, this, opts, parent);
+    }
 
     return overload({
       'Model Array Object': function(parent, keyPath, args){
