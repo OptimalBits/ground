@@ -228,7 +228,7 @@ export class Query // implements QueryNodes
       _.each(this, (el) => {
         if(!el) return;
         
-        if(el.emoveEventListener){
+        if(el.removeEventListener){
           // W3C DOM
           el.removeEventListener(eventName, handler);
         }else if (el['detachEvent']) { 
