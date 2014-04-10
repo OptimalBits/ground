@@ -19,7 +19,7 @@ export function isPromise(promise){
 // in the same turn in the proper order.
 //export class Promise<T> {
 
-var CancelError = Error('Operation Cancelled');
+export var CancellationError = Error('Promise Cancelled');
 
 export interface Deferred<T>
 {
@@ -43,6 +43,7 @@ export class Promise<T> extends Base
   _value : any;
   reason: Error;
   isFulfilled : boolean;
+  onCancelled: () => void;
   
   static defer<U>()
   {
@@ -227,10 +228,12 @@ export class Promise<T> extends Base
     return new Promise((resolve, reject) => reject(err));
   }
   
-  constructor(resolver?: (resolve: (val?: any) => void, reject: (err: Error) => void) => void)
+  constructor(
+    resolver?: (resolve: (val?: any) => void, reject: (err: Error) => void) => void,
+    onCancelled?: () => void)
   {
     super();
-    
+
     if(resolver){
       try{
         resolver(
@@ -240,6 +243,7 @@ export class Promise<T> extends Base
         this.reject(err);
       }
     }
+    this.onCancelled = onCancelled;
   }
   
   /**
@@ -259,6 +263,7 @@ export class Promise<T> extends Base
   then(onFulfilled: (value: T) => void, onRejected?: (reason: Error) => void): Promise<void>;
   then(onFulfilled: (value: T) => any, onRejected?: (reason: Error) => void): Promise<any>
   {
+    var children;
     return new Promise((resolve, reject) => {
       var wrapper = (fn, shouldReject?: boolean) => {
         
@@ -269,18 +274,20 @@ export class Promise<T> extends Base
         
         return (value) => {
           try{
-            var result = fn(value);
-            if(isPromise(result)){
-              result.then(resolve, reject);
+            var child = fn(value);
+            if(isPromise(child)){
+              !children && (children = []);
+              children.push(child);
+              child.then(resolve, reject);
             }else{
-              resolve(result);
+              resolve(child);
             }
           }catch(err){
             reject(err);
           }
         }
       }
-    
+
       if(!_.isUndefined(this._value)){
         this.fire(wrapper(onFulfilled), this._value);
       }else if(!_.isUndefined(this.reason)){
@@ -289,6 +296,9 @@ export class Promise<T> extends Base
         this.fulfilledFns.push(wrapper(onFulfilled));
         this.rejectedFns.push(wrapper(onRejected, true));
       }
+    }, () => {
+      _.invoke(children, 'cancel');
+      this.cancel();
     });
   }
   
@@ -336,7 +346,6 @@ export class Promise<T> extends Base
   
     @method resolve
     @param value {Any} value to resolve this promise with.
-    @chainable
   */
   private resolve(value?: T): void
   {    
@@ -352,7 +361,6 @@ export class Promise<T> extends Base
 
     @method reject
     @param reason {Error} value to resolve this promise with.
-    @chainable
   */
   private reject(reason: Error): void
   {
@@ -362,7 +370,7 @@ export class Promise<T> extends Base
     this.reason = reason || null;
     if(this.rejectedFns.length){
       this.fireCallbacks(this.rejectedFns, reason);
-    }else if(reason !== CancelError){
+    }else if(reason !== CancellationError){
       //
       // We log out unhandled errors
       //
@@ -371,13 +379,32 @@ export class Promise<T> extends Base
   }
   
   /**
-    Cancels the promise (rejects with reason CancelError)
+    Cancels a promise. 
     
-    @chainable
-  **/
+    A canceled promise will be rejected with CancellationError
+    
+    @method cancel
+  */
   cancel()
   {
-    return this.reject(CancelError);
+    if(!this.isFulfilled){
+      if(this.onCancelled){
+        try{
+          this.onCancelled();
+        }catch(err){
+          this.reject(err);
+        }
+      }
+    }
+    this.reject(CancellationError);
+  }
+  
+  /**
+    Forks the promise returning one that if cancelled will not 
+    cancel the original promise.
+  */
+  fork() {
+    return new Promise(resolve => resolve(this), Util.noop);
   }
   
   private fireNext(cb, value){
