@@ -681,9 +681,9 @@ module Gnd.Ajax
   
   function base(method: string, url: string, obj?: {}): Promise<any>
   {
+    var xhr = getXhr();
+    
     return new Promise((resolve, reject) => {;
-      var xhr = getXhr();
-      
       xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
           xhr.onreadystatechange = null;
@@ -705,6 +705,8 @@ module Gnd.Ajax
       xhr.open(method, url);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.send(JSON.stringify(obj || {}));
+    }, () => {
+      xhr.abort();
     });
   }
 } // Ajax
