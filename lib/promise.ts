@@ -74,28 +74,15 @@ export class Promise<T> extends Base
     
     var
       len = elements.length,
-      counter = len,
-      promise = new Promise<U[]>(),
-      results = []; results.length = len;
-    
-    if(!len){
-      promise.resolve(results);
-    }
-    
+      promises = [];
+        
     for(var i=0; i<len; i++){
-      ((index) => {
-        fn(elements[index]).then((result) => {
-          results[index] = result;
-          counter--;
-          if(counter === 0){
-            promise.resolve(results);
-          }
-        }, (err) => promise.reject(err));
-      })(i);
+      promises.push(fn(elements[i]))
     }
 
-    return promise;
+    return Promise.all(promises);;
   }
+  
   
   static all<U>(promises: Promise<U>[])
   {
