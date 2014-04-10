@@ -123,10 +123,12 @@ export class Promise<T> extends Base
   **/
   static delay(ms: number): Promise<void>
   {
-    var promise = new Promise<void>();
-    var timeout = setTimeout(()=>promise.resolve(), ms);
-    promise.fail(()=>clearTimeout(timeout));
-    return promise;
+    var timeout;
+    return new Promise<void>((resolve, reject) => {
+      timeout = setTimeout(()=>resolve(), ms);
+    }, () => {
+      clearTimeout(timeout);
+    });
   }
   
   /**
