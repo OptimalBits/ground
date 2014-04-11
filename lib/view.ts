@@ -350,26 +350,23 @@ export class View extends Base
   
    @method clean
   */
-  clean(): Promise<any>
+  clean(): void
   {
     if(this.isRendered){
-      return this.isRendered.then(()=>{
-        if(this.root){
-          var nodes = this.nodes;
-          for (var i=0, len=nodes.length; i<len; i++){
-            try{
-              this.root.removeChild(nodes[i]);
-            }catch(err){
-              // ignore error since it is an unexisting node.
-            }
+      this.isRendered.cancel();
+      
+      if(this.root){
+        _.each(this.nodes, node => {
+          try{
+            this.root.removeChild(node);
+          }catch(err){
+            // ignore error since it is an unexisting node.
           }
-        }
-      });
-    }else{
-      return Promise.resolved();
+        })
+      }
     }
   }
-  
+
   /**
     Refresh the view and subhierarchy, i.e., clean it and re-render again.
     
