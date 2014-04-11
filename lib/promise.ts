@@ -20,6 +20,7 @@ export function isPromise(promise){
 //export class Promise<T> {
 
 export var CancellationError = Error('Promise Cancelled');
+CancellationError.name = "Cancel";
 
 export interface Deferred<T>
 {
