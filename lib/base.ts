@@ -214,9 +214,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       len = path.length;
     
     if(!len) return;
-    
+
     for(var i=0; i<len; i++){
-      result = result[path[i]];
+      result = path[i] === '' ? result : result[path[i]];
       result = _.isFunction(result) ? result.call(this) : result;    
       if(!_.isObject(result)) break;
     }
