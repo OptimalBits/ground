@@ -84,7 +84,6 @@ export class Promise<T> extends Base
     return Promise.all(promises);;
   }
   
-  
   static all<U>(promises: Promise<U>[])
   {
     var 
@@ -95,7 +94,7 @@ export class Promise<T> extends Base
 
     return new Promise<U>((resolve, reject) => {
       var counter = len;
-
+      
       results.length = len;
       for(var i=0; i<len; i++){
         ((index) => {
@@ -105,10 +104,25 @@ export class Promise<T> extends Base
             if(counter === 0){
               resolve(results);
             }
-          }, (err) => reject(err));
+          }, reject);
         })(i);
       }
+    }, () => {
+      _.invoke(promises, 'cancel');
     });
+  }
+  
+  static race<U>(promises: Promise<U>[])
+  {
+    var cancelAll = () => {
+      _.invoke(promises, 'cancel');
+    }
+    
+    return new Promise<U>((resolve, reject) => {
+      _.each(promises, (promise) => {
+        promise.then(resolve, reject).ensure(cancelAll);
+      });
+    }, cancelAll);
   }
   
   /**
