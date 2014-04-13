@@ -181,7 +181,8 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       keypath = keypathOrObj;
       // This is not entirely correct...
       obj = {};
-      obj[keypath] = val;
+
+      obj[keypath] = this.willChange(keypath, val);
     }
     
     opts = opts || {};
