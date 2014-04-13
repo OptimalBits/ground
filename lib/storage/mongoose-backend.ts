@@ -279,7 +279,9 @@ export class MongooseStorage implements Storage.IStorage {
       return new Promise<void>((resolve, reject) => {
         if(found.Model['filter']){
           found.Model['filter'](doc, (err, doc) =>{
-            if(!err){
+            if(err){
+              reject(err);
+            }else{
               update(doc);
             }
           });
@@ -288,16 +290,14 @@ export class MongooseStorage implements Storage.IStorage {
         }
         function update(doc){
           found.Model.findOneAndUpdate({_cid:_.last(keyPath)}, doc).lean().exec((err, oldDoc) => {
-            if(!err){
-              // Note: isEqual should only check the properties present in doc!
-              if(!_.isEqual(doc, oldDoc)){
-                // only if doc modified synchronize
-                // Why is this out commented?
-                //this.sync && this.sync.update(keyPath, doc);
-                resolve();
-              }
-            }else{
+            if(err){
               reject(err);
+            }else{
+              // Note: isEqual should only check the properties present in doc!
+              // if(!_.isEqual(doc, oldDoc)){
+              // only if doc modified should we synchronize...
+              //}
+              resolve(oldDoc);
             }
           });
         }
