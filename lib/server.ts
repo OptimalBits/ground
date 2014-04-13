@@ -80,13 +80,8 @@ export class Server {
   {
     return this.rm.checkRights(userId, keyPath, Rights.PUT, doc).then((allowed) => {
       if(allowed){
-        return this.rm.put(userId, keyPath, doc).then(() => {
-          return this.storage.put(keyPath, doc, opts).then(()=>{
-            this.syncHub && this.syncHub.update(clientId, keyPath, doc);
-          }, (err)=>{
-            // TODO: remove rights
-            log("Error updating document:", keyPath, err)
-          });
+        return this.storage.put(keyPath, doc, opts).then(()=>{
+          this.syncHub && this.syncHub.update(clientId, keyPath, doc);
         });
       }else{
         throw InsufficientRightsError;
