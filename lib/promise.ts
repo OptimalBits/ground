@@ -44,6 +44,7 @@ export class Promise<T> extends Base
   _value : any;
   reason: Error;
   isFulfilled : boolean;
+  isRejected: boolean;
   onCancelled: () => void;
   
   static defer<U>()
@@ -369,7 +370,7 @@ export class Promise<T> extends Base
   private reject(reason: Error): void
   {
     if(this.isFulfilled) return;
-    this.isFulfilled = true;
+    this.isFulfilled = this.isRejected = true;
     
     this.reason = reason || null;
     if(this.rejectedFns.length){
