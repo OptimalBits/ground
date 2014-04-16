@@ -13,6 +13,8 @@
 
 module Gnd {
   
+var MAX_MUTEX_LENGTH = 100;
+  
 export interface Handler
 {
   () : any;
@@ -54,11 +56,16 @@ export function Mutex(){
   return function(handler: Handler){
     handler.defer = Promise.defer();
     handler.wait = handler.defer.promise.then(handler);
-    
-    queue.push(handler);
-    if(queue.length === 1){
-      exec(handler);
+
+    if(queue.length >= MAX_MUTEX_LENGTH){
+      handler.defer.reject(Error("Mutex grew too large: "+queue.length));
+    }else{
+      queue.push(handler);
+      if(queue.length === 1){
+        exec(handler);
+      }
     }
+
     return handler.wait;
   }
 
