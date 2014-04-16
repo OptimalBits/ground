@@ -222,6 +222,10 @@ export class Queue extends Base implements IStorage
   //
   // This method must be atomic, it can be achieved using the Mutex, since
   // the queue is a singleton.
+  // TODO: We need to fix "itemKeypath" since now it is always taken the 
+  // last keypath component, which is not correct if the model has defined
+  // the collection in a different property name different from the 
+  // item's collection.
   //
   private updateLocalCollection(keyPath: string[], 
                                 query: IStorageQuery, 
