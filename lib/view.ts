@@ -428,7 +428,7 @@ export class View extends Base
    */
    private init(): Promise<any>
    {
-     if(!this.isInitialized){
+     if(!this.isInitialized || this.isInitialized.isRejected){
        if(_.isUndefined(this.html)){
          this.isInitialized = View.fetchTemplate(this.templateUrl, this.cssUrl).then((templ)=>{
            templ = this.templateStr || templ;
