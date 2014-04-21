@@ -51,10 +51,10 @@ interface Callbacks
 */
 export class EachBinder implements Binder
 {
-  private items: Element[] = [];
+  private items: HTMLElement[] = [];
   private mappings: {[index: string]: Element;} = {};
   private viewModel: ViewModel;
-  private parent: Element;
+  private parent: HTMLElement;
   
   private collection: Collection;
   private addedListener: (item: Model)=>void;
@@ -64,7 +64,7 @@ export class EachBinder implements Binder
   private callbacks;
   private el;
   
-  bind(el: Element, value: string, viewModel: ViewModel)
+  bind(el: HTMLElement, value: string, viewModel: ViewModel)
   {
     var match = value.match(/((?:\w+\.?\w+)+)\s*:\s*(\w+)/);
     
@@ -87,7 +87,7 @@ export class EachBinder implements Binder
       collection = <Collection> viewModel.resolveContext(keyPath),
       itemContextName = match[2];
       
-    var parent = this.parent = <Element> el.parentNode;
+    var parent = this.parent = <HTMLElement> el.parentNode;
       
     this.viewModel = viewModel;
       
@@ -97,15 +97,22 @@ export class EachBinder implements Binder
     // 
     if(collection instanceof Container){
       this.collection = collection;
-      
+
+      //
+      // Remove the mold and save it for clean up.
+      // 
       parent.removeChild(el);
-      
-      this.el = el.cloneNode(true);
-      
+      this.el = el;
+
+      //
+      // Clone the mold and remove unnecessary attributes
+      //
+      el = <HTMLElement> el.cloneNode(true);
+
       el.removeAttribute('data-each');
       el.removeAttribute('id');
-      
-      var attachNode = (node: Node, nextSibling: Element, item) => {
+
+      var attachNode = (node: HTMLElement, nextSibling: HTMLElement, item) => {
         if(nextSibling){
           parent.insertBefore(node, nextSibling)
         }else{
@@ -120,11 +127,11 @@ export class EachBinder implements Binder
           existingNode = mappings[id];
 
         if(existingNode){
-          var oldChild = parent.removeChild(existingNode);
+          var oldChild = <HTMLElement> parent.removeChild(existingNode);
           attachNode(oldChild, nextSibling, item);
         }else{
           var 
-            itemNode = <Element> el.cloneNode(true),
+            itemNode = <HTMLElement> el.cloneNode(true),
             modelListener = (newId) => {
               if(!(newId in mappings)){ // This check is necessary to avoid side-effects.
                 delete mappings[id];
