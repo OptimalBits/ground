@@ -163,7 +163,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    *  
    * @method set
    * @param {Object} doc object with properties to set.
-   * @param {Object} [opts]
+   * @param {Object} [opts] {nosync?: boolean, nocache?: boolean, replace?: boolean}
    * @chainable
    */
   set(doc: {}, opts?: {});
@@ -439,7 +439,7 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
     key = keys[i+1];
   }
   
-  if(_.isArray(val) || _.isPlainObject(val)){
+  if((_.isArray(val) || _.isPlainObject(val)) && !opts.replace){
     var lastKey = key;
 
     if(!_.isUndefined(obj) && (!lastKey || _.isUndefined(obj[lastKey])) && obj.willChange){
