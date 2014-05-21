@@ -472,8 +472,8 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
       opts.nocache = true;
     }
     
-    changed = oldval !== val;
-    if(changed || opts.force){
+    changed = (oldval !== val) || opts.force;
+    if(changed){
       if(obj.willChange){
         val = obj.willChange(key, val);
       }
