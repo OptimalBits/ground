@@ -40,6 +40,29 @@ describe('Base', function(){
       obj.off('changed:');
     });
     
+    it('should not emit changed if value did not change', function(){
+      obj.set('baz', 42);
+      
+      obj.on('changed:', function(args){
+        expect(true).to.be(false);
+        done();
+      });
+      
+      obj.set('baz', 42);
+      obj.off('changed:');     
+    });
+    
+    it('should emit changed if value did not change but forced was used', function(done){
+      obj.set('baz', 42);
+      obj.on('changed:', function(args){
+        expect(args).to.be.an(Object);
+        expect(args).to.have.property('baz');
+        done();
+      });
+      obj.set('baz', 42, {force: true});
+      obj.off('changed:');
+    });
+    
     it('listen to several properties changed at once', function(done){
       var counter = 2;
       obj.on('bar', function(value){
