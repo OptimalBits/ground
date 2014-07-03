@@ -379,7 +379,7 @@ export class Promise<T> extends Base
       //
       // We log out unhandled errors
       //
-      log("Unhandled", reason['stack']);
+      log("Unhandled", reason ? reason['stack'] : "undefined reason");
     }
   }
   
