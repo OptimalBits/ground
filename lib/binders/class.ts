@@ -85,7 +85,11 @@ export class ClassBinder implements Binder
     }
       
     for(var i=0; i<classSets.length; i++){
-      var keyVal = classSets[i].split(':');
+      var classSet = classSets[i];
+
+      if(classSet == "") continue;
+      
+      var keyVal = classSet.split(':');
       if(keyVal.length === 2){
         var 
           classes = keyVal[0].trim().split(' '),
