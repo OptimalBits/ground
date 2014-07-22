@@ -77,7 +77,7 @@ module Gnd
     */
     default()
     {
-      return this.definition.default;
+      return _.cloneDeep(this.definition.default);
     }
   }
   
