@@ -1016,6 +1016,7 @@ declare var curl;
   
   @class ModelProxy
 */
+// Investigate if we can derive directly from Model instead of a Promise.
 export class ModelProxy extends Promise<Model>
 {
   model: Model;
