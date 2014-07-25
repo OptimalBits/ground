@@ -431,6 +431,7 @@ export class Promise<T> extends Base
 }
 
 Promise.prototype['otherwise'] = Promise.prototype.fail;
+Promise.prototype['catch'] = Promise.prototype.fail;
 
 /*
 export class PromiseQueue {
