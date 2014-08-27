@@ -81,12 +81,12 @@ export class Socket implements IStorage {
       socket.on('error', errorFn);
     }
   
-    if(socket.socket.connected){
+    if(socket.connected){
       emit()
-    }else if(socket.socket.connecting){
-      delayedEmit('connect', 'connect_failed');
-    }else if(socket.socket.reconnecting){
-      delayedEmit('reconnect', 'reconnect_failed');
+    }else if(socket.io.readyState === 'opening'){
+      delayedEmit('connect', 'connect_error');
+    }else if(socket.io.reconnecting){
+      delayedEmit('connect', 'reconnect_failed');
     }else{
       errorFn();
     }

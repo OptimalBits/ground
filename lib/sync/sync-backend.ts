@@ -101,27 +101,27 @@ export class Hub {
         switch(channel)
         {
           case 'update:':
-            sio.in(id).except(clientId).emit('update:', args.keyPath, args.doc);
+            emitExcept(sio, id, clientId, "update:", args.keyPath, args.doc);
             this.emit('update', _.initial(args.keyPath), args.keyPath, args.doc);
             break;
           case 'delete:': 
-            sio.in(id).except(clientId).emit('delete:', args.keyPath);
+            emitExcept(sio, id, clientId, 'delete:', args.keyPath);
             this.emit('delete', _.initial(args.keyPath), args.keyPath);
             break;
           case 'add:':
-            sio.in(id).except(clientId).emit('add:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            emitExcept(sio, id, clientId, 'add:', args.keyPath, args.itemsKeyPath, args.itemIds);
             this.emit('add', args.keyPath, args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'remove:':
-            sio.in(id).except(clientId).emit('remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
+            emitExcept(sio, id, clientId, 'remove:', args.keyPath, args.itemsKeyPath, args.itemIds);
             this.emit('remove', args.keyPath, args.keyPath, args.itemsKeyPath, args.itemIds);
             break;
           case 'insertBefore:':
-            sio.in(id).except(clientId).emit('insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
+            emitExcept(sio, id, clientId, 'insertBefore:', args.keyPath, args.id, args.itemKeyPath, args.refId);
             this.emit('insertBefore', args.keyPath, args.keyPath, args.id, args.itemsKeyPath, args.refId);
             break;
           case 'deleteItem:':
-            sio.in(id).except(clientId).emit('deleteItem:', args.keyPath, args.id);
+            emitExcept(sio, id, clientId, 'deleteItem:', args.keyPath, args.id);
             this.eventEmitter.emit(this.makeEvent('delete', args.keyPath), args.keyPath, args.id);
             break;
         }
@@ -269,6 +269,22 @@ export class Hub {
     log('deleteItem-synchub', args);
     this.pubClient.publish('deleteItem:', JSON.stringify(args));
   }
+}
+
+function emitExcept(ns, room, socketId, ...args: any[]){
+  var socket;
+
+  if(socketId){
+    socket = ns.connected[socketId];
+
+//    console.log(socket)
+//    console.log("connected", ns.connected)
+
+  }
+
+  socket && socket.leave(room);
+  ns.in(room).emit.apply(ns, args);
+  socket &&socket.join(room);
 }
 
 }
