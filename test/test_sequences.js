@@ -59,14 +59,13 @@ describe('Sequence Datatype', function(){
   }
 
   beforeEach(function(done){
-    console.log('before');
+    this.timeout(15000);
     Gnd.using.storageQueue = q1;
     Gnd.using.syncManager = sm1;
     parade = Parade.create();
     parade.once('persisted:', function(){
       done();
     });
-    // });
     parade.save();
   });
 
@@ -324,65 +323,64 @@ describe('Sequence Datatype', function(){
       });
     });
     describe('Complex moves', function(){
-      it('Many rotations', function(done){
+      it('Many rotations', function(){
         var target = ['tiger','dog','ant','shark'];
-        seq.move(0, 3).then(function(){
-          seq.move(0, 3).then(function(){
-            seq.move(0, 3).then(function(){
-              seq.move(0, 3).then(function(){
-                seq.move(0, 3).then(function(){
-                  seq.move(0, 3).then(function(){
-                    seq.move(0, 3).then(function(){
-                      seq.move(0, 3).then(function(){
-                        seq.move(0, 3).then(function(){
-                          seq.move(0, 3).then(function(){
-                            seq.move(0, 3).then(function(){
-                              seq.move(0, 3).then(function(){
-                                seq.each(function(item, i){
-                                  expect(item).to.have.property('name', target[i]);
-                                });
-                                done();
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
+        return seq.move(0, 3).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3)
+         }).then(function(){
+          return seq.move(0, 3)
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          return seq.move(0, 3);
+         }).then(function(){
+          seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
           });
         });
       });
-      it('Many rotations2', function(done){
+      it('Many rotations2', function(){
+        this.timeout(5000)
         var target = ['tiger','dog','ant','shark'];
-        seq.move(0, 2).then(function(){
-          seq.move(0, 2).then(function(){
-            seq.move(0, 2).then(function(){
-              seq.move(1, 3).then(function(){
-                seq.move(1, 3).then(function(){
-                  seq.move(1, 3).then(function(){
-                    seq.move(0, 1).then(function(){
-                      seq.move(0, 1).then(function(){
-                        seq.move(1, 2).then(function(){
-                          seq.move(1, 2).then(function(){
-                            seq.move(2, 3).then(function(){
-                              seq.move(2, 3).then(function(){
-                                seq.each(function(item, i){
-                                  expect(item).to.have.property('name', target[i]);
-                                });
-                                done();
-                              });
-                            });
-                          });
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
+        return seq.move(0, 2).then(function(){
+          return seq.move(0, 2);
+        }).then(function(){
+          return seq.move(0, 2);
+        }).then(function(){
+          return seq.move(1, 3);
+        }).then(function(){
+          return seq.move(1, 3);
+        }).then(function(){
+          return seq.move(1, 3);
+        }).then(function(){
+          return seq.move(0, 1);
+        }).then(function(){
+          return seq.move(0, 1);
+        }).then(function(){
+          return seq.move(1, 2);
+        }).then(function(){
+          return seq.move(1, 2)
+        }).then(function(){
+          return seq.move(2, 3);
+        }).then(function(){
+          return seq.move(2, 3);
+        }).then(function(){
+          return seq.each(function(item, i){
+            expect(item).to.have.property('name', target[i]);
           });
         });
       });

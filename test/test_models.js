@@ -302,7 +302,7 @@ describe('Model Datatype', function(){
 
       var tempAnimal = Animal.create({legs : 8, name:'gorilla'}, true);
         
-      socket.socket.connect();
+      socket.io.connect();
       
       tempAnimal.on('persisted:', function(){
         Animal.findById(tempAnimal.id()).then(function(doc){
@@ -326,7 +326,7 @@ describe('Model Datatype', function(){
         Animal.findById(bat.id()).then(function(offlineBat){
           expect(offlineBat).to.be.ok();
           expect(offlineBat.id()).to.be(bat.id());
-          socket.socket.connect();
+          socket.io.connect();
           done();
         })
       });
@@ -391,7 +391,7 @@ describe('Model Datatype', function(){
         
         socket.disconnect();
         
-        socket.once('connect', function(){
+        socket.once('reconnect', function(){
           storageQueue.waitUntilSynced(function(){
             Animal.findById(tempAnimal.id()).fail(function(err){
               expect(err).to.be.an(Error);
@@ -401,7 +401,7 @@ describe('Model Datatype', function(){
         });
         
         tempAnimal.remove().then(function(){
-          socket.socket.connect();
+          socket.io.reconnect();
         });
       });
       
@@ -422,8 +422,8 @@ describe('Model Datatype', function(){
               }, function(err){
                 expect(err).to.be.an(Error);
 
-                socket.socket.connect();
-                socket.once('connect', done);
+                socket.io.reconnect();
+                socket.once('reconnect', done);
               });
             })
           
@@ -452,7 +452,7 @@ describe('Model Datatype', function(){
               done();
             })
             
-            socket.socket.connect(); 
+            socket.io.connect(); 
           });
         })
         socket.disconnect();

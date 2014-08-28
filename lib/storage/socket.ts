@@ -81,7 +81,7 @@ export class Socket implements IStorage {
       socket.on('error', errorFn);
     }
   
-    if(socket.connected){
+    if(socket.io.connected){
       emit()
     }else if(socket.io.readyState === 'opening'){
       delayedEmit('connect', 'connect_error');

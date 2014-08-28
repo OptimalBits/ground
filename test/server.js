@@ -2,7 +2,7 @@
 
 /*global _:true*/
 
-var Gnd = require('../index');
+// var Gnd = require('../index');
 
 var express = require('express'),
     app = express(),
@@ -26,10 +26,12 @@ var express = require('express'),
 
 requirejs.config({
   paths: {
-    gnd: '../build/lib/gnd'
+    gnd: '../build/gnd-server'
   }
 });
 
+_ = require('lodash');
+var Gnd = requirejs('gnd');
 var models = requirejs('fixtures/models');
 
 app.use(passport.initialize());
@@ -64,6 +66,19 @@ app.use(cabinet(staticDir,
 app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
   sio.sockets.emit('file_changed:', url);
 }));
+
+
+sio.on('connection', function(socket){
+  console.log("Socket %s connected", socket.id)
+
+  socket.on('disconnect', function(){
+    console.log("Socket %s diconnected", socket.id)  
+  })
+})
+
+sio.on('disconnect', function(socket){
+  
+})
 
 app.use(express.bodyParser());
 
@@ -242,7 +257,8 @@ app.del('/sessions',  function(req, res) {
 // Mongoose test database
 //
 var mongooseDB = 'mongodb://localhost/GndTestDB';
-
+//var mongooseDB = 'mongodb://localhost:27018/GndTestDB';
+console.log(mongooseDB)
 mongoose.connect(mongooseDB, function(){
   mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
     console.log(result);

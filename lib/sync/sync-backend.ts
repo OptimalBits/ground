@@ -271,20 +271,25 @@ export class Hub {
   }
 }
 
+//
+// Workaround since socket.io does not support "except" anymore.
+// https://github.com/Automattic/socket.io/issues/1595
+//
 function emitExcept(ns, room, socketId, ...args: any[]){
   var socket;
 
   if(socketId){
     socket = ns.connected[socketId];
-
-//    console.log(socket)
-//    console.log("connected", ns.connected)
-
   }
 
-  socket && socket.leave(room);
-  ns.in(room).emit.apply(ns, args);
-  socket &&socket.join(room);
+  if(socket){
+    socket.leave(room, function(){
+      ns.in(room).emit.apply(ns, args);    
+      socket.join(room);
+    });
+  } else {
+    ns.in(room).emit.apply(ns, args);  
+  }
 }
 
 }

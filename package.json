@@ -1,6 +1,6 @@
 {
   "name": "gnd",
-  "version": "0.4.18",
+  "version": "0.5.0",
   "engines": {
     "node": ">=0.6.10"
   },
@@ -42,37 +42,37 @@
     "email": "info@optimalbits.com"
   },
   "dependencies": {
-    "redis": ">=0.8.3",
-    "lodash": "~2.4.1",
     "acl": "*",
     "commander": "*",
-    "mkdirp": "*"
+    "lodash": "^2.4.1",
+    "mkdirp": "*",
+    "redis": "^0.11.0"
   },
   "devDependencies": {
-    "mocha": "~1.17.0",
-    "expect.js": "*",
-    "should": "~0.5.1",
-    "express": "~3.4.8",
-    "mongoose": "~3.8.6",
+    "bluebird": "^1.1.1",
     "cabinet": "~0.2.13",
-    "node-uuid": "*",
-    "typescript": "*",
-    "passport": "*",
-    "passport-local": "*",
     "connect": "*",
     "cookie": "*",
     "cookies": "*",
-    "promises-aplus-tests": "*",
-    "time-grunt": "~0.1.1",
+    "expect.js": "*",
+    "express": "~3.4.8",
     "grunt": "~0.4.2",
-    "grunt-typescript": "0.2.5",
-    "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-compress": "~0.5.0",
-    "requirejs": "~2.1.8",
+    "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-yuidoc": "~0.4.0",
+    "grunt-typescript": "0.2.5",
+    "mocha": "~1.17.0",
+    "mongoose": "^3.8.14",
+    "node-uuid": "*",
+    "passport": "*",
+    "passport-local": "*",
     "posix": "~1.0.2",
-    "socket.io": "~0.9.16",
-    "bluebird": "^1.1.1"
+    "promises-aplus-tests": "*",
+    "requirejs": "~2.1.8",
+    "should": "~0.5.1",
+    "socket.io": "^1.0.6",
+    "time-grunt": "~0.1.1",
+    "typescript": "*"
   },
   "scripts": {
     "test": "mocha tests/*",

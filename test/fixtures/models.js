@@ -13,7 +13,7 @@ define(['gnd'], function(Gnd){
   models.Animal = Gnd.Model.extend('animals', AnimalSchema);
   
   var ZooSchema = new Gnd.Schema({
-    animals: new Gnd.CollectionSchemaType(models.Animal, 'animals')
+    animals: new Gnd.CollectionSchemaType(models.Animal)
   });
   
   models.Zoo = Gnd.Model.extend('zoo', ZooSchema);
