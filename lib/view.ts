@@ -68,7 +68,9 @@ export interface ViewArgs
   /**
     Template string. This template will be rendered with the template engine
     when rendering the view. The scope/context used for rendering the template
-    is given in the view's render method as a parameter
+    is given in the view's render method as a parameter and merged with the
+    View static object "locals". The locals variable is useful for providing
+    data that is going to be reused by many views, for example i18n functions.
     
     @property templateStr
     @type {String}
@@ -144,6 +146,8 @@ export class View extends Base
   
   public nodes: HTMLElement[];
   public children: View[] = [];
+
+  static locals: {} = {};
   
   /**
     @example
@@ -292,6 +296,7 @@ export class View extends Base
   render(context?: {}): Promise<HTMLElement>
   {
     context = context || {};
+    _.defaults(context, View.locals);
     
     return this.isRendered = this.init().then<HTMLElement>(()=>{
       var html, root;
