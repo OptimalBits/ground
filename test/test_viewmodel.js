@@ -191,6 +191,27 @@ describe('ViewModel', function(){
       Gnd.$(el).trigger('change');
       expect(tiger.desc).to.be('quxbaz');
     });
+
+    it('bind to input type number autoconverts to number', function(){
+      var el = document.createElement('input');
+      el.setAttribute('type', 'number');
+      el.checked = false;
+      el.setAttribute('data-bind', 'value: tiger.legs');
+      
+      var tiger = new Animal({
+        name: 'tiger',
+        legs: 4,
+      });
+      
+      var vm = new Gnd.ViewModel(el, {tiger: tiger});
+      expect(el.getAttribute('value')).to.be('4');
+      
+      el.value = "5";
+      el.setAttribute('value', '5');
+      Gnd.$(el).trigger('change');
+
+      expect(tiger.legs).to.be(5);
+    });
     
     it('unbind elements', function(){
       var tiger = new Animal({name: 'tiger', desc:'1'});

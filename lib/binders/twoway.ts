@@ -99,7 +99,14 @@ export class TwoWayBinder implements Binder
       }else{
         setAttr(el, attr, format(), isProperty);
         modelListener = () => setAttr(el, attr, format(), isProperty);
-        elemListener = (value) => obj.set(keypath, getAttr(el, attr));
+        //
+        // We can add more complex conversions and validations here using the type attribute.
+        //
+        elemListener = (value) => {
+          value = getAttr(el, attr);
+          value = getAttr(el, 'type') === 'number' ? Number(value) : value;
+          obj.set(keypath, value);
+        }
       }
       obj.retain();
       obj.on(keypath, modelListener);
