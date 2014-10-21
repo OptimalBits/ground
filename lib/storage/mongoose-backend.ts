@@ -130,8 +130,10 @@ export class MongooseStorage implements Storage.IStorage {
     
     if(bucket){
       var translated = this.translateSchema(mongoose, nameMapping, schema);
+      // Disable key versioning (hack from mongoose not recommended to use)
+      translated.__v = {type: Number, select: false};
       var mongooseSchema =
-          new mongoose.Schema(translated, {strict: false});
+          new mongoose.Schema(translated, {strict: false, versionKey: false});
       // new mongoose.Schema(translated); // strict false is just temporary...
 
       var extra = model['__mongoose'];
@@ -318,17 +320,24 @@ export class MongooseStorage implements Storage.IStorage {
   fetch(keyPath: string[]): Promise<any>
   {
     return this.getModel(keyPath).then((found) => {
-      return found.Model.findOne({_cid: _.last(keyPath)}).lean().exec().then((doc) => {
+      return found.Model.findOne({_cid: _.last(keyPath)}).select('-__v -_id').lean().exec().then((doc) => {
         if(doc){
-          if(found.Model['gnd-hooks'] && found.Model['gnd-hooks'].fetch){
-            return found.Model['gnd-hooks'].fetch(this, doc);
+          var hooks = found.Model['gnd-hooks'];
+          if(hooks && hooks.fetch){
+            return hooks.fetch(this, doc);
           }else{
             return doc;
           }
+        } else {
+          console.log("Document:", keyPath, "not Found!");
+          throw Error(''+ServerError.DOCUMENT_NOT_FOUND);
+        }        
+      }).then((doc) => {
+        if(hasFetchPost(found.Model)){
+          return fetchPost(found.Model, doc);  
+        }else{
+          return doc;
         }
-        console.log("Document:", keyPath, "not Found!");
-        //promise.reject(err || new Error(''+ServerError.DOCUMENT_NOT_FOUND))
-        throw Error(''+ServerError.DOCUMENT_NOT_FOUND);
       });
     });
   }
@@ -424,13 +433,21 @@ export class MongooseStorage implements Storage.IStorage {
   
   find(keyPath: string[], query: Storage.IStorageQuery, opts: {}): Promise<any[]>
   {
+    var Model;
     return this.getModel(keyPath).then<any[]>((found)=>{
+      Model = found.Model;
       if(keyPath.length === 1){
-        return this.findAll(found.Model, query);
+        return this.findAll(Model, query);
       }else{
         var id = keyPath[keyPath.length-2];
         var setName = _.last(keyPath);
-        return this.findById(found.Model, id, setName, query, opts);
+        return this.findById(Model, id, setName, query, opts);
+      }
+    }).then<any[]>((docs: any[]) =>{
+      if(hasFetchPost(Model)){
+        return Promise.all<any>(_.map(docs, (doc) => fetchPost(Model, doc)));
+      }else{
+        return Promise.resolved(docs);
       }
     });
   }
@@ -485,11 +502,12 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return Model
       .find(query.cond, query.fields, query.opts)
+      .select('-v__ -_id')
       .lean()
       .where('_cid').in(arr)
       .exec();
   }
-  
+
 /*
   Sequences
   A sequence is represented as a linked list of listContainers. Every ListContainer has
@@ -759,6 +777,17 @@ export class MongooseStorage implements Storage.IStorage {
     });
   }
 
+}
+
+function hasFetchPost(Model){
+  var extra = Model['extra'];
+  return extra && extra.post && extra.post.fetch;
+}
+
+function fetchPost(Model: IMongooseModel, doc): Promise<any>
+{
+  var extra = Model['extra'];
+  return extra.post.fetch(Model, doc);
 }
 
 }
