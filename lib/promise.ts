@@ -246,7 +246,14 @@ export class Promise<T> extends Base
       try{
         resolver(
           _.bind(this.resolve, this),
-          (err: Error) => Util.nextTick(()=>{this.reject(err)}));
+          (err: Error) => {
+            if(err !== CancellationError){
+              // Why do we need to call nextTick here??
+              Util.nextTick(()=>{this.reject(err)});
+            }else{
+              this.reject(err);
+            }
+          });
       }catch(err){
         this.reject(err);
       }
