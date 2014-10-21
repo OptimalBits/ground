@@ -46,7 +46,8 @@
     "commander": "*",
     "lodash": "^2.4.1",
     "mkdirp": "*",
-    "redis": "^0.11.0"
+    "redis": "^0.11.0",
+    "socket.io": "^1.1.0"
   },
   "devDependencies": {
     "bluebird": "^1.1.1",
