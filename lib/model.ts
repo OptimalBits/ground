@@ -602,8 +602,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     var val = this.get(key);
     if(_.isUndefined(val)){
-      return new Promise((resolve, reject)=>{
-        this.on(key, (val) => {
+      return new Promise((resolve)=>{
+        this.once(key, (val) => {
           resolve(val)
         });
       });
