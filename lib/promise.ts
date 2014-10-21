@@ -29,6 +29,8 @@ export interface Deferred<T>
   promise: Promise<T>;
 }
 
+enum PromiseState {Pending = 0, Fulfilled = 1, Rejected = 2};
+
 /**
   Promise implementation of http://dom.spec.whatwg.org/#promises
 
@@ -39,12 +41,13 @@ export interface Deferred<T>
  **/
 export class Promise<T> extends Base
 {
-  fulfilledFns : any[] = [];
-  rejectedFns: any[] = [];
-  _value : any;
+  private state: PromiseState = PromiseState.Pending;
+  private fulfilledFns : any[] = [];
+  private rejectedFns: any[] = [];
+  private _value : any;
+
   reason: Error;
-  isFulfilled : boolean;
-  isRejected: boolean;
+
   onCancelled: () => void;
   
   static defer<U>()
@@ -345,6 +348,11 @@ export class Promise<T> extends Base
     
     return this.then(alwaysOnSuccess, alwaysOnFailure);
   }
+
+  isRejected()
+  {
+    return this.state === PromiseState.Rejected;
+  }
   
   /**
     Resolves the promise with the given value.
@@ -354,8 +362,8 @@ export class Promise<T> extends Base
   */
   private resolve(value?: T): void
   {    
-    if(this.isFulfilled) return;
-    this.isFulfilled = true;
+    if(this.state > 0) return;
+    this.state = PromiseState.Fulfilled;
     
     this._value = value || null;
     this.fireCallbacks(this.fulfilledFns, value);
@@ -369,9 +377,9 @@ export class Promise<T> extends Base
   */
   private reject(reason: Error): void
   {
-    if(this.isFulfilled) return;
-    this.isFulfilled = this.isRejected = true;
-    
+    if(this.state > 0) return;
+    this.state = PromiseState.Rejected;
+
     this.reason = reason || null;
     if(this.rejectedFns.length){
       this.fireCallbacks(this.rejectedFns, reason);
@@ -379,7 +387,7 @@ export class Promise<T> extends Base
       //
       // We log out unhandled errors
       //
-      log("Unhandled", reason['stack'] || reason);
+      logerr("Unhandled", reason['stack'] || reason);
     }
   }
   
@@ -392,13 +400,11 @@ export class Promise<T> extends Base
   */
   cancel()
   {
-    if(!this.isFulfilled){
-      if(this.onCancelled){
-        try{
-          this.onCancelled();
-        }catch(err){
-          this.reject(err);
-        }
+    if(this.state == PromiseState.Pending && this.onCancelled){
+      try{
+        this.onCancelled();
+      }catch(err){
+        this.reject(err);
       }
     }
     this.reject(CancellationError);
