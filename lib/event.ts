@@ -118,9 +118,7 @@ export class EventEmitter {
       var events = eventNames.split(' ')
       
       for(var i=0, len=events.length;i<len;i++){
-        if(this._removeListener(events[i], listener)){
-          break;
-        }
+        this._removeListener(events[i], listener)
       }
     }else{
       this.removeAllListeners(eventNames);
