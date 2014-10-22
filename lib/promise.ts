@@ -46,6 +46,8 @@ export class Promise<T> extends Base
   private rejectedFns: any[] = [];
   private _value : any;
 
+  uncancellable: Boolean = false;
+
   reason: Error;
 
   onCancelled: () => void;
@@ -384,6 +386,8 @@ export class Promise<T> extends Base
   */
   private reject(reason: Error): void
   {
+    if(this.uncancellable && reason === CancellationError) return;
+
     if(this.state > 0) return;
     this.state = PromiseState.Rejected;
 
