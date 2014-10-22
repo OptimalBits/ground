@@ -315,6 +315,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       }
     });
 
+    this._promise.uncancellable = true;
+
     this.opts.autosync && this.keepSynced();
     
     this.once('_persisted', (val) => val && this.emit('persisted:'));
@@ -993,7 +995,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   **/
   cancel()
   {
-    return this._promise.cancel.apply(this._promise, arguments);
+    //
+    // We made this a noop so that models are uncancelable
+    //return this._promise.cancel.apply(this._promise, arguments);
   }
 }
 
@@ -1052,6 +1056,11 @@ export class ModelProxy extends Promise<Model>
       }
     
     });
+    this.uncancellable = true;
+  }
+
+  cancel(){
+    // Override Cancel with a noop since models should not be cancelable.
   }
 
   destroy(){
