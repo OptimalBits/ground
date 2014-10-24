@@ -211,17 +211,18 @@ export class Collection extends Container implements CollectionEvents
         var noremote = parent && !parent._persisting ? true : false;
         using.storageQueue.find(keyPath, this.opts.query, {noremote:noremote}).then((result) => {
           this.resync(result[0]);
-          result[1]
-            .then((items) => this.resync(items))
-            .ensure(() => {
-              resolve(this);
-              this.release();
-            })
+          return result[1];
+        })
+        .then((items) => this.resync(items))
+        .ensure(() => {
+          resolve(this);
+          this.release();
         });
       }else{
         resolve(this);
       }
     });
+    this._promise.uncancellable = true;
   }
   
   destroy(){

@@ -202,6 +202,7 @@ export class Sequence extends Container implements SequenceEvents
         resolve(this);
       }
     });
+    this._promise.uncancellable = true;
   }
 
   private deleteItem(id: string, opts): Promise<any>
