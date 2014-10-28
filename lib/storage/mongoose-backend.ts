@@ -320,7 +320,7 @@ export class MongooseStorage implements Storage.IStorage {
   fetch(keyPath: string[]): Promise<any>
   {
     return this.getModel(keyPath).then((found) => {
-      return found.Model.findOne({_cid: _.last(keyPath)}).select('-__v -_id').lean().exec().then((doc) => {
+      return found.Model.findOne({_cid: _.last(keyPath)}).select('-__v').lean().exec().then((doc) => {
         if(doc){
           var hooks = found.Model['gnd-hooks'];
           if(hooks && hooks.fetch){
@@ -502,7 +502,7 @@ export class MongooseStorage implements Storage.IStorage {
   {
     return Model
       .find(query.cond, query.fields, query.opts)
-      .select('-v__ -_id')
+      .select('-v__')
       .lean()
       .where('_cid').in(arr)
       .exec();
