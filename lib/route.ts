@@ -314,7 +314,12 @@ export class AutoreleasePool
   
   public drain(){
     for(var i=0, len=this.pool.length;i<len;i++){
-      this.pool[i].release();
+      try{
+        var obj = this.pool[i];
+        obj.release();
+      }catch(err){
+        log('Error releasing object', obj, err);
+      }
     }
     this.pool = [];
     this.drained = true;
@@ -803,7 +808,7 @@ export class Request {
         try{
           objs.push(JSON.parse(arguments[i]));
         }catch(e){
-          console.log("Error parsing data: "+e.name+"::"+e.message);
+          log("Error parsing data: "+e.name+"::"+e.message);
         }
       }
       objs = objs.length===1?objs[0]:objs;
