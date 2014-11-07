@@ -188,7 +188,7 @@ export class Collection extends Container implements CollectionEvents
     };
   
     var deleteFn = (model)=>{
-      this.remove(model.id(), false);
+      this.remove(model.id(), {nosync: true});
     };
     
     this._init(updateFn, deleteFn);

@@ -178,7 +178,7 @@ export class Sequence extends Container implements SequenceEvents
     var deleteFn = (model)=>{
       for(var i = this.items.length-1; i >= 0; i--){
         if(this.items[i].model.id() === model.id()){
-          this.remove(i);
+          this.remove(i, {nosync: true});
         }
       }
     };
