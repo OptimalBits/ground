@@ -26,6 +26,8 @@ function callback(promise, cb){
     cb(null, val);
   }, (err)=>{
     cb(err && err.message);
+    // TODO: We need accesss to bunyan here...
+    console.log("Unexpected Error in socket backend", err);
   });
 }
   
