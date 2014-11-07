@@ -196,7 +196,7 @@ export class Sequence extends Container implements SequenceEvents
             .ensure(() => {
               resolve(this);
               this.release();
-            });
+            }).fail((err) => {});
         });
       }else{
         resolve(this);
