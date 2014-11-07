@@ -178,6 +178,11 @@ export class Queue extends Base implements IStorage
       });
     });
   }
+
+  fetchLocal(keyPath: string[]): Promise<any>
+  {
+    return this.localStorage.fetch(keyPath);
+  }
   
   fetchRemote(keyPath: string[]): Promise<any>
   {

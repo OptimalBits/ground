@@ -293,27 +293,25 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       });
     }
 
-    this._promise = new Promise<Model>((resolve, reject) =>{
-      var keyPath = this.getKeyPath();
-      if(this.opts.fetch){
-        this._persisting = true;
-        this.retain();
-        using.storageQueue.fetch(keyPath).then((result) => {
-          this.resync(result[0]); // not sure if nosync should be true or not here...
-          result[1]
-            .then((doc) => this.resync(doc))
-            .ensure(() => {
-              resolve(this);
-              this.release();
-            });
-        }, (err) => {
-          reject(err);
-          this._promise.ensure(() => this.release());
-        });
-      }else{
-        resolve(this);
-      }
-    });
+    var keyPath = this.getKeyPath();
+    if(this.opts.fetch){
+      this._persisting = true;
+      this.retain();
+
+      // We need to manually create a promise so that
+      // we can resolve to this (which also is a promise)
+      this._promise = new Promise<Model>((resolve, reject) =>{
+        using.storageQueue.fetchLocal(keyPath)
+          .then((doc) => this.resync(doc), (err) => {})
+          .then(() => this.resync())
+          .ensure(() => {
+            this.release();
+            resolve(this);
+          }).fail((err) => {});
+      });
+    }else{
+      this._promise = Promise.resolved(this);
+    }
 
     this._promise.uncancellable = true;
 
@@ -330,13 +328,18 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     }else{
       // Fetch the model from the server.
       this.retain();
-      return using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
+
+      var fetcher = using.storageQueue.fetchRemote(this.getKeyPath()).then((args)=>{
         if(args){
-          return this.resync(args).ensure(()=>this.release());
-        }else{
-          this.release();
+          return this.resync(args);
         }
+      }).fail((err) => {});
+
+      fetcher.ensure(()=>{
+        this.release()
       });
+
+      return fetcher;
     }
   }
 
