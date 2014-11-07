@@ -38,60 +38,56 @@ export class Socket implements IStorage {
   */
   static safeEmit<T>(socket, ...args:any[]): Promise<T>
   {
-    var defer = Promise.defer<T>();
-   
-    function errorFn(){
-      defer.reject(Error('Socket disconnected'));
-    };
+    return new Promise(function(resolve, reject){
+      function errorFn(){
+        reject(Error('Socket disconnected'));
+      };
   
-    function proxyCb(err, res){
-      socket.removeListener('disconnect', errorFn);
-      if(err){
-        defer.reject(Error(ServerError[err] || err));
-      }else{
-        defer.resolve(res);
+      function proxyCb(err, res){
+        socket.removeListener('disconnect', errorFn);
+        if(err){
+          reject(Error(ServerError[err] || err));
+        }else{
+          resolve(res);
+        }
+      };
+  
+      args.push(proxyCb);
+  
+      function emit(){
+        socket.once('disconnect', errorFn);
+        socket.emit.apply(socket, args);
       }
-    };
   
-    args.push(proxyCb);
-  
-    function emit(){
-      socket.once('disconnect', errorFn);
-      socket.emit.apply(socket, args);
-    }
-  
-    function delayedEmit(connectedEvent, failedEvent){
-      var removeListeners = function(){
-        socket.removeListener(connectedEvent, succeedFn);
-        socket.removeListener(failedEvent, errorFn);
-        socket.removeListener('error', errorFn);
-      }
+      function delayedEmit(connectedEvent, failedEvent){
+        var removeListeners = function(){
+          socket.removeListener(connectedEvent, succeedFn);
+          socket.removeListener(failedEvent, errorFn);
+          socket.removeListener('error', errorFn);
+        }
       
-      var errorFn = function(){
-        removeListeners();
-        defer.reject(Error('Socket connection failed'));
-      }
-      var succeedFn = function(){
-        removeListeners();
-        emit();
-      }
+        var errorFn = function(reason){
+          removeListeners();
+          reject(Error('Socket connection failed:'+reason));
+        }
+        var succeedFn = function(){
+          removeListeners();
+          emit();
+        }
     
-      socket.on(connectedEvent, succeedFn);
-      socket.on(failedEvent, errorFn);
-      socket.on('error', errorFn);
-    }
+        socket.once(connectedEvent, succeedFn);
+        socket.once(failedEvent, errorFn);
+        socket.once('error', errorFn);
+      }
   
-    if(socket.io.connected){
-      emit()
-    }else if(socket.io.readyState === 'opening'){
-      delayedEmit('connect', 'connect_error');
-    }else if(socket.io.reconnecting){
-      delayedEmit('connect', 'reconnect_failed');
-    }else{
-      errorFn();
-    }
-  
-    return defer.promise;
+      if(socket.io.connected){
+        emit()
+      }else if(socket.io.readyState === 'opening'){
+        delayedEmit('connect', 'connect_error');
+      }else{
+        errorFn();
+      }
+    });
   }
   
   constructor(socket){
