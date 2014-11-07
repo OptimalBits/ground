@@ -60,8 +60,11 @@ export class Manager extends Base {
       _.each<ISynchronizable[]>(proxy.docs, (docs: ISynchronizable[], id: string) => {
         var doc = docs[0];
 
-        Gnd.Storage.Socket.safeEmit(socket, 'observe', doc.getKeyPath()).then(() => {
-          log('Observe', doc.getKeyPath().join('/'))
+        var keyPath = doc.getKeyPath();
+        Gnd.Storage.Socket.safeEmit(socket, 'observe', keyPath).then(() => {
+          log('Observe', keyPath);
+        }, (err)=>{
+          log('Error re-observing', keyPath, err);
         });
         
         doc.resync();
@@ -170,6 +173,8 @@ export class Manager extends Base {
   {
     Gnd.Storage.Socket.safeEmit(this.socket, 'observe', keyPath).then(() => {
       log('Started observing', keyPath);
+    }, (err)=>{
+      log('Error starting observing', keyPath, err);
     });
   }
   
@@ -177,6 +182,8 @@ export class Manager extends Base {
   {
     Gnd.Storage.Socket.safeEmit(this.socket, 'unobserve', keyPath).then(() => {
       log('Stopped observing', keyPath);
+    }, (err)=>{
+      log('Error stopping observing', keyPath, err);
     });
   }
 }
