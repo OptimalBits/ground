@@ -23,4 +23,17 @@ module Gnd {
       console.log.apply(console, args);
     }
   }
+
+/**
+    @for Gnd
+    @method log
+    @param args* {Any}
+  */ 
+  export function logerr(...args: any[]){
+    if(Gnd['debugMode']){
+      prependTimestamp(args);
+      console.error.apply(console, args);
+    }
+  }
+
 }
