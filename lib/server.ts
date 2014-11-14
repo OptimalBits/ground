@@ -62,6 +62,8 @@ export class Server {
   {
     return this.rm.checkRights(userId, keyPath, Rights.CREATE, doc).then((allowed) => {
       if(allowed){
+        doc = _.extend(doc, {_persisted: true});
+
         return this.storage.create(keyPath, doc, opts).then((id) => {
           var newKeyPath = id ? keyPath.concat([id]) : keyPath;
           return this.rm.create(userId, newKeyPath, doc).then(()=>{
