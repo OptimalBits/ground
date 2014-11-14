@@ -265,6 +265,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   private opts: ModelOpts;
 
   private _storageQueue: Storage.Queue;
+  private lazys: Base[] = [];
 
   constructor(args: {}, opts?: ModelOpts);
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
@@ -552,6 +553,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   destroy(): void
   {
     using.syncManager && using.syncManager.unobserve(this);
+    _.invoke(this.lazys, Base.release);
     super.destroy();
   }
 
@@ -592,11 +594,30 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
    var value = super.get(key);
    if(_.isUndefined(value)){
-     // Check if it is a lazy property and populate it if so.
-     value = this.__schema.get(this, key, args, opts);
-     if (!_.isUndefined(value)) this[key] = value;
+      // Check if it is a lazy property and populate it if so.
+      value = this.__schema.get(this, key, args, opts);
+      if (!_.isUndefined(value)){
+        this[key] = value;
+        if(value instanceof Base){
+          this.lazys.push(value); 
+        }
+      } 
    }
    return value;
+  }
+
+  /**
+    Clears a given property from the model. This is mostly useful for lazy properties,
+    since they get cached automatically, and in some ocassions we want to release them
+    before the model itself gets destructed.
+  */
+  clear(key: string)
+  {
+    var value = this[key];
+    if(value instanceof Base){
+      Base.release(value);
+    }
+    delete this[key];
   }
   
   /**
