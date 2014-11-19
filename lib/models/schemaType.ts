@@ -67,7 +67,7 @@ module Gnd
       @method fromObject
       @param args {Any} some argument or arguments to convert to the type.
     */
-    fromObject(args)
+    fromObject(args, opts?)
     {
       return args;
     }

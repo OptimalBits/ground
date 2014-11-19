@@ -121,12 +121,12 @@ module Gnd
       @method fromObject
       @param args {Any} arguments to build the type from.
     */
-    fromObject(args: any): any
+    fromObject(args: any,  opts?): any
     {
       var obj = {};
       _.each(this.compiledSchema, (type: SchemaType, property?) => {
         var src = args[property];
-        var value = !_.isUndefined(src) ? type.fromObject(src) : type.default();
+        var value = !_.isUndefined(src) ? type.fromObject(src, opts) : type.default();
         
         if(!_.isUndefined(value)){
           obj[property] = value;
