@@ -241,6 +241,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     return this.__schema;
   }
   
+  // This is part of the extends hack for models....
+  private _constructed: boolean;
+
   private _promise: Promise<Model>;
   
   private __bucket: string;
@@ -276,7 +279,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       _.extend(this, args);
     }
     this.__schema = this.__schema || this['constructor'].__schema;
-    _.extend(this, this.__schema.fromObject(args));
+    _.extend(this, this.__schema.fromObject(args, opts));
     
     this._cid = this._cid || Util.uuid();
 
@@ -372,17 +375,25 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     var __super = this;
     
+    //
+    // This is quite hacky right now. Large Model hierarchies are discouraged...
+    //
     function __(args, _bucket, opts) {
       var constructor = this.constructor;
       this.__schema = this.__schema || __['__schema'];
       this.__strict = this.__strict || __['__strict'];
       __super.call(this, args, bucket || _bucket, opts || _bucket);
+
+      if(__super == constructor){
+        this._constructed = true;
+      }
       
       // Call constructor if different from Model constructor and Base
-      if(constructor && (__super != constructor) && (constructor != Base)){
+      if(constructor && (constructor != Base) && !this._constructed){
+        this._constructed = true;
         constructor.call(this, args);
       }
-    }; 
+    };
 
     Util.inherits(__, this);
 
