@@ -211,7 +211,16 @@ export class Promise<T> extends Base
       waiting && end();
     });
   }
-  
+
+  static timeout<T>(promise: Promise<T>, ms: Number)
+  {
+    var timer = setTimeout(() => {
+      promise.cancel("TimeoutError");
+    }, ms);
+
+    return promise.ensure(()=>clearTimeout(timer));
+  }
+
   /**
     Creates an already resolved promise
     
@@ -409,7 +418,7 @@ export class Promise<T> extends Base
     
     @method cancel
   */
-  cancel()
+  cancel(reason?: string)
   {
     if(this.state == PromiseState.Pending && this.onCancelled){
       try{
@@ -419,6 +428,10 @@ export class Promise<T> extends Base
       }
     }
     this.reject(CancellationError);
+  }
+
+  timeout(ms: Number){
+    return Promise.timeout(this, ms);
   }
   
   /**
