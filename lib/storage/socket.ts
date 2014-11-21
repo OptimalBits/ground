@@ -39,12 +39,12 @@ export class Socket implements IStorage {
   static safeEmit<T>(socket, ...args:any[]): Promise<T>
   {
     return new Promise(function(resolve, reject){
-      function errorFn(){
+      function socketErrorFn(){
         reject(Error('Socket disconnected'));
       };
   
       function proxyCb(err, res){
-        socket.removeListener('disconnect', errorFn);
+        socket.removeListener('disconnect', socketErrorFn);
         if(err){
           reject(Error(ServerError[err] || err));
         }else{
@@ -55,7 +55,7 @@ export class Socket implements IStorage {
       args.push(proxyCb);
   
       function emit(){
-        socket.once('disconnect', errorFn);
+        socket.once('disconnect', socketErrorFn);
         socket.emit.apply(socket, args);
       }
   
@@ -85,7 +85,7 @@ export class Socket implements IStorage {
       }else if(socket.io.readyState === 'opening'){
         delayedEmit('connect', 'connect_error');
       }else{
-        errorFn();
+        socketErrorFn();
       }
     });
   }
