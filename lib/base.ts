@@ -87,7 +87,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   private _bindings: any = {};
   private _destroyed: boolean;
   private _destroyedTrace: string;
-  private _undoMgr: UndoManager = new UndoManager();
+  // private _undoMgr: UndoManager = new UndoManager();
   
   /**
     Retains the given objects (see reference count for details).
