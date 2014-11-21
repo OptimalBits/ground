@@ -457,6 +457,9 @@ export class Promise<T> extends Base
     for(var i=0;i<len;i++){
       this.fire(callbacks[i], value);
     }
+    // Nullify callback arrays to help avoiding memory leaks
+    this.rejectedFns = null;
+    this.fulfilledFns = null;
   }
 }
 
