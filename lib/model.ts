@@ -269,6 +269,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   private _storageQueue: Storage.Queue;
   private lazys: Base[] = [];
+  private createdFn;
 
   constructor(args: {}, opts?: ModelOpts);
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
@@ -292,9 +293,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       using.storageQueue || new Storage.Queue(using.memStorage);
 
     if(!this.isPersisted()){
-      this._storageQueue.once('created:'+this.id(), () => {
+      this.createdFn = () => {
         this.set('_persisted', true, {nosync: true});
-      });
+        this.emit('persisted:');
+      }
+      this._storageQueue.once('created:'+this.id(), this.createdFn);
     }
 
     var keyPath = this.getKeyPath();
@@ -565,6 +568,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     using.syncManager && using.syncManager.unobserve(this);
     _.invoke(this.lazys, Base.release);
+    this.createdFn && this._storageQueue.off('created:'+this.id(), this.createdFn);
+
+    // Nullify promise to help avoiding memory leaks.
+    this._promise = null;
     super.destroy();
   }
 
@@ -779,10 +786,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       });
     }else{
       args['_persisting'] = this._persisting = true;
-      this._storageQueue.once('created:'+id, () => {
-        this._persisted = true;
-        this.emit('persisted:');
-      });
+      // Not sure if this is needed but I do not think so since there is already on
+      // the constructor.
+      //this._storageQueue.once('created:'+id, this.createdFn);
       Util.merge(this, args);
       return this._storageQueue.create([bucket], args, {});
     }
