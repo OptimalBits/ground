@@ -155,6 +155,7 @@ export class EventEmitter {
       self.off(eventName, wrapper);
       listener.apply(this, arguments);
     }
+    wrapper['__listener'] = listener;
 		return self.on(eventName, wrapper);
   }
   
@@ -223,9 +224,14 @@ export class EventEmitter {
    var listeners = this._listeners, index;
      
     if(listeners && listeners[event]) { 
-      index = _.indexOf(listeners[event], listener);
+      index = _.findIndex(listeners[event], function(_listener){
+        return (_listener == listener) || (_listener.__listener == listener)
+      });
       if(index !== -1) {
         listeners[event].splice(index, 1);
+        if(listeners[event].length == 0){
+          delete listeners[event];
+        }
         return true;
       }
     }
