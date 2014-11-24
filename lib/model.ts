@@ -178,8 +178,10 @@ export class ModelSchemaType extends SchemaType
       return this.definition.type.findById(args, opts && opts.autosync);
     }else if(args.module){
       return new ModelProxy(args, args.module);
+    }else{
+      args['_persisted'] = true; // To avoid triggering a creation server side.
+      return this.definition.type.create(args, opts && opts.autosync);
     }
-    return this.definition.type.create(args, opts && opts.autosync);
   }
   
   toObject(obj)
