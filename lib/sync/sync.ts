@@ -64,7 +64,7 @@ export class Manager extends Base {
         Gnd.Storage.Socket.safeEmit(socket, 'observe', keyPath).then(() => {
           log('Observe', keyPath);
         }, (err)=>{
-          log('Error re-observing', keyPath, err);
+          log('Error re-observing', keyPath, err && err.toString());
         });
         
         doc.resync();
@@ -174,7 +174,7 @@ export class Manager extends Base {
     Gnd.Storage.Socket.safeEmit(this.socket, 'observe', keyPath).then(() => {
       log('Started observing', keyPath);
     }, (err)=>{
-      log('Error starting observing', keyPath, err);
+      log('Error starting observing', keyPath, err && err.toString());
     });
   }
   
@@ -183,7 +183,7 @@ export class Manager extends Base {
     Gnd.Storage.Socket.safeEmit(this.socket, 'unobserve', keyPath).then(() => {
       log('Stopped observing', keyPath);
     }, (err)=>{
-      log('Error stopping observing', keyPath, err);
+      log('Error stopping observing', keyPath, err && err.toString());
     });
   }
 }
