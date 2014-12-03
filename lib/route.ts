@@ -761,9 +761,6 @@ export class Request {
     });
   }
   
-  //
-  // Can't we just use Ajax for this?
-  //
   private _load(urls, cb){
     var base = this.currentSubPath(),
         i,
