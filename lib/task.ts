@@ -5,18 +5,17 @@
 
 /**
   Task Module. Include classes for Task management including Promises.
+  
+  TODO: Reimplement using Promise's cancel functionality.
 */
 
 /// <reference path="util.ts" />
 /// <reference path="promise.ts" />
 
 module Gnd {
-export interface TaskCallback {
-  () : void;
-}
 
-export interface Task {
-  (done? : TaskCallback) : void;
+export interface Task<T> {
+  () : Promise<T>;
 }
 
 
@@ -26,17 +25,16 @@ export interface Task {
   @class TaskQueue
   @constructor
 */
-export class TaskQueue {
+export class TaskQueue<T> {
   private tasks: any[] = [];
-  private endDefer: Deferred<void>;
-  private endPromise: Promise<void>;
+  private endDefer: Deferred<T>;
+  
   private isExecuting: boolean;
   private isEnded: boolean;
   private isCancelled: boolean;
   
   constructor(){
-    this.endDefer = Promise.defer<void>();
-    this.endPromise = this.endDefer.promise;
+    this.endDefer = Promise.defer<T>();
   }
   
   /**
@@ -50,7 +48,7 @@ export class TaskQueue {
      @param tasks* {Task}
      @chainable
   */
-  append(...tasks:Task[]) : TaskQueue
+  append(...tasks:Task<T>[]) : TaskQueue<T>
   {
     if(this.isEnded){
       throw new Error("TaskQueue already ended");
@@ -68,8 +66,9 @@ export class TaskQueue {
   cancel() : void
   {
     this.isCancelled = true;
+    this.endDefer.promise.cancel();
   }
-  
+
   /**
     Ends this task queue. This function just mark this queue as ended,
     trying to append more tasks after it will raise an exception.
@@ -77,7 +76,7 @@ export class TaskQueue {
     @method end
     @chainable
   **/
-  end() : TaskQueue
+  end(): TaskQueue<T>
   {
     this.isEnded = true;
     if(!this.isExecuting){
@@ -92,22 +91,27 @@ export class TaskQueue {
     @method wait
     @param cb {Function} Callback called after waiting the queue to finalize.
   */
-  wait(cb : () => void)
+  wait(): Promise<T>
   {
-    this.endPromise.then(cb);
+    return this.endDefer.promise
   }
   
-  private executeTasks() : void {
+  private executeTasks() : Promise<T>
+  {
     if(this.tasks.length>0 && !this.isCancelled && !this.isExecuting){
       this.isExecuting = true;
       
-      var fn = this.tasks.splice(0,1)[0];
-      fn( () => {
+      var result = this.tasks.splice(0, 1)[0]();
+      
+      result = isPromise(result) ? result : Promise.resolved(result);
+      
+      return result.then(() => {
         this.isExecuting = false;
-        this.executeTasks();
+        return this.executeTasks();
       });
     }else if(this.isEnded || this.isCancelled){
       this.endDefer.resolve();
+      return this.wait();
     }
   }
 }

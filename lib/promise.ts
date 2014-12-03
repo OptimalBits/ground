@@ -39,6 +39,7 @@ enum PromiseState {Pending = 0, Fulfilled = 1, Rejected = 2};
   @constructor
   @param [value] {Any}
  **/
+ // We do not want to derive from Base, but ModelProxy depends on this
 export class Promise<T> extends Base
 {
   private state: PromiseState = PromiseState.Pending;
@@ -90,11 +91,11 @@ export class Promise<T> extends Base
     return Promise.all(promises);;
   }
   
-  static all<U>(promises: Promise<U>[])
+  static all<U>(promises: Promise<U>[]): Promise<U[]>
   {
     var 
       len = promises.length,
-      results = [];
+      results: U[] = [];
 
     if(!len) return Promise.resolved<U[]>(results);
 
@@ -104,7 +105,7 @@ export class Promise<T> extends Base
       results.length = len;
       for(var i=0; i<len; i++){
         ((index) => {
-          promises[index].then((result) => {
+          promises[index].then((result: U) => {
             results[index] = result;
             counter--;
             if(counter === 0){

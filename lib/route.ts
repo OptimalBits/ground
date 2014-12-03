@@ -14,6 +14,7 @@
 /// <reference path="task.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="dom.ts" />
+/// <reference path="promise.ts" />
 /// <reference path="using.ts" />
 
 declare var curl;
@@ -27,15 +28,15 @@ export interface RouteNode
 {
   el: Element;
   selector: string;
-  select: Task;
-  enter: Task;
-  hide: Task;
-  show: Task;
-  drain: Task;
-  before: Task;
-  after: Task;
-  render: Task;
-  load: Task;
+  select: Task<void>;
+  enter: Task<void>;
+  hide: Task<void>;
+  show: Task<void>;
+  drain: Task<void>;
+  before: Task<void>;
+  after: Task<void>;
+  render: Task<void>;
+  load: Task<void>;
   autoreleasePool: AutoreleasePool;
 }
 
@@ -174,14 +175,14 @@ export class Router
       //
       var index = req.index;
     
-      this.routeHandler(req);
+      routeHandler(req);
     
       if(req.index == index ){
         req.isNotFound = true;
         req.queue.end();
       }
     
-      req.queue.wait(() => {
+      req.queue.wait().then(() => {
         if(req.isNotFound){
           if(req.notFoundFn){
             req.index = 1;
@@ -326,33 +327,6 @@ export class AutoreleasePool
   }
 }
 
-/**
-  A Task factory for route actions.
-*/
-var wrap = overload({
-  'Function Array Function': function(fn, args, cb) {
-    return function(done){
-      var _args = _.clone(args);
-      _args.push(function(){
-        cb(done);
-        if(cb.length === 0){
-          done();
-        }
-      });
-      fn.apply(null, _args);
-    }
-  },
-  'Function Function': function(fn, cb){
-    return wrap(fn, [], cb);
-  },
-  'Function Array': function(fn, args){
-    return wrap(fn, args, Util.noop);
-  },
-  'Function': function(fn){
-    return wrap(fn, []);
-  }
-})
-
 //
 // Decompose URL into components and query object.
 //
@@ -381,7 +355,7 @@ function exitNodes(queue, nodes, start){
   }
 }
 
-function enqueueNode(queue: TaskQueue, node: RouteNode): void {
+function enqueueNode(queue: TaskQueue<void>, node: RouteNode): void {
   queue.append(node.select, 
                node.hide, 
                node.before, 
@@ -414,7 +388,7 @@ export class Request {
   public index: number = 0;
   public level: number = 0;
   public params: {} = {};
-  public queue: TaskQueue = new TaskQueue();
+  public queue: TaskQueue<void> = new TaskQueue<void>();
   public components: string[];
   public startIndex: number;
   public prevNodes: any[];
@@ -519,11 +493,12 @@ export class Request {
     return this;
   }
   
-  private createRouteTask(level, selector, args, middlewares, handler, cb) : Task
+  private createRouteTask(level, selector, args, middlewares, handler, cb) : Task<void>
   {
-    return (done?: TaskCallback) : void =>
+    return () =>
     {
-      processMiddlewares(this, middlewares, (err) => {
+      return new Promise((resolve) => {
+        processMiddlewares(this, middlewares, (err) => {
         var
           node = this.node(),
           pool = node.autoreleasePool,
@@ -537,13 +512,16 @@ export class Request {
 
           if(cb){
             this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
-            done();
+            resolve();
           }else{
             curl([handler], (cb) => {
               this.enterNode(cb, node, index, level, args, pool, isLastRoute);
-              done();
+              resolve();
             });
           }
+      });
+
+
       });
     };
   }
@@ -552,26 +530,26 @@ export class Request {
   public initNode(selector: string, node?: RouteNode){
   
     ((node: RouteNode) => {
-      node.select = wrap((done) => {
+      node.select = () => {
         node.el = this.el = $(selector)[0];
-        done();
-      });
+        return Promise.resolved();
+      };
       node.selector = selector;
    
-      node.hide = wrap((done) => {
+      node.hide = () => {
         node.el && hide(node.el);
-        done();
-      });
+        return Promise.resolved();
+      };
    
-      node.show = wrap((done) => {
+      node.show = () => {
         node.el && show(node.el);
-        done();
-      });
+        return Promise.resolved();
+      };
      
-      node.drain = wrap((done) => {
+      node.drain = () => {
         node.autoreleasePool.drain();
-        done();
-      });
+        return Promise.resolved();
+      };
     })(node || this.node());
   }
   
@@ -639,45 +617,43 @@ export class Request {
   
   public redirect(url, params?, opts?){
     url = params ? url+'?'+serialize(params) : url;
-    this.queue.wait(function(){
+    this.queue.wait().then(() => {
       router.redirect(url, opts);
     })
     this.wantsRedirect = true;
   }
   
   public before(cb): Request {
-    this.node().before = wrap((cb)=>{cb()}, cb);
+    this.node().before = cb;
     return this;
   }
   
   public after(cb): Request {
-    this.node().after = wrap((cb)=>{cb()}, cb);
+    this.node().after = cb;
     return this;
   }
   
-  public enter(fn: (el: HTMLElement, done?: ()=>void) => void): Request
+  public enter(fn: (el: HTMLElement) => Promise<void>): Request
   {
     var node = this.node();
-    node.enter = wrap(function(done){
-      node.el && fn(node.el, done);
-      (fn.length==1) && done();
-    });
+    node.enter = () => {
+      node.el && fn(node.el);
+    };
     return this;
   }
   
-  public exit(fn: (el: HTMLElement, done?: ()=>void) => void): Request
+  public exit(fn: (el: HTMLElement) => Promise<void>): Request
   {
     var node = this.node();
-    node.exit = wrap(function(done){
-      node.el && fn(node.el, done);
-      (fn.length==1) && done();
-    });
+    node.exit = () => {
+      node.el && fn(node.el);
+    };
     return this;
   }
   
-  public leave(cb:(done?:()=>void) =>void): Request 
+  public leave(cb:() => Promise<void>): Request 
   {
-    this.node().leave = wrap((cb)=>{cb()}, cb);
+    this.node().leave = cb;
     return this;
   }
   
@@ -700,8 +676,9 @@ export class Request {
   public render(templateUrl, css?: any, locals?: {}, cb?: (err?: Error)=>void): Request {
     return overload({
       "String Array Object Function": function(url, css, locals, cb){
-        var fn = _.bind(this._render, this);
-        this.node().render = wrap(fn, [{templateUrl: url, cssUrl: css}, locals], cb);
+        this.node().render = () => {
+          return this._render({templateUrl: url, cssUrl: css}, locals, cb);
+        }
         return this;
       },
       "String String Object Function": function(url, css, locals, cb){
@@ -718,8 +695,9 @@ export class Request {
         return this.render(view, locals, Util.noop);
       },
       "Object Object Function": function(view, locals, cb){
-        var fn = _.bind(this._render, this);
-        this.node().render = wrap(fn, [view, locals], cb);
+        this.node().render = () => {
+          return this._render(view, locals, cb);
+        }
         return this;
       },
       "String String Function": function(templateUrl, css, cb){
@@ -758,8 +736,9 @@ export class Request {
       cb = urls;
       urls = null;
     }
-    var fn = _.bind(this._load, this);
-    this.node().load = wrap(fn,[urls], cb);
+    this.node().load = () => {
+      return this._load(urls, cb);
+    }
     return this;
   }
   
@@ -774,15 +753,17 @@ export class Request {
     var view: View = args instanceof View ? args.retain() : new View(args);
     
     // we need to get the pool for this node
-    //this.autoreleasePool.autorelease(view);
+    // this.autoreleasePool.autorelease(view);
     
-    //return view.parent(this.el).render(context);
     $(this.el).empty();
     return view.parent(this.el).render(ctx).then(function(){
       cb && cb(null);
     });
   }
   
+  //
+  // Can't we just use Ajax for this?
+  //
   private _load(urls, cb){
     var base = this.currentSubPath(),
         i,
@@ -801,19 +782,22 @@ export class Request {
       _urls.push('text!'+urls[i]);
     }
   
-    curl(_urls, () => {
-      var args = arguments;
-      var objs = [];
-      for(i=0, len=args.length;i<len;i++){
-        try{
-          objs.push(JSON.parse(arguments[i]));
-        }catch(e){
-          log("Error parsing data: "+e.name+"::"+e.message);
+    return new Promise((resolve, reject) => {
+      curl(_urls, (...args: any[]) => {
+        var objs = [];
+        for(i=0, len=args.length;i<len;i++){
+          try{
+            objs.push(JSON.parse(arguments[i]));
+          }catch(err){
+            log("Error parsing data: "+err.name+"::"+err.message);
+            reject(err)
+          }
         }
-      }
-      objs = objs.length===1?objs[0]:objs;
-      this.data = objs;
-      cb && cb();
+        objs = objs.length===1?objs[0]:objs;
+        this.data = objs;
+        cb && cb();
+        resolve();
+      });
     });
   }
 }
