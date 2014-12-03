@@ -657,7 +657,7 @@ describe('simple routes', function(){
           });
         })
       });
-    })s;
+    });
     goToUrl('/foo');
   });
   
