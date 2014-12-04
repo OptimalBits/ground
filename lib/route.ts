@@ -637,7 +637,11 @@ export class Request {
   {
     var node = this.node();
     node.enter = () => {
-      node.el && fn(node.el);
+      if(node.el){
+        return fn(node.el);
+      } else {
+        return Promise.resolved();
+      }
     };
     return this;
   }
@@ -646,7 +650,11 @@ export class Request {
   {
     var node = this.node();
     node.exit = () => {
-      node.el && fn(node.el);
+      if(node.el){
+        return fn(node.el);
+      } else {
+        return Promise.resolved();
+      }
     };
     return this;
   }
