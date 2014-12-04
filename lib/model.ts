@@ -845,11 +845,13 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     using.syncManager && using.syncManager.observe(this);
     
     this.on('changed:', (doc: any, options: any) => {
-      options = options || {};
-      if(!options.nosync && !_.isEqual(doc, options.doc)){
-        this.update(doc);
-      }else if(!options.nocache){
-        this._storageQueue.putLocal(this.getKeyPath(), doc, {});
+      if(doc){
+        options = options || {};
+        if(!options.nosync && !_.isEqual(doc, options.doc)){
+          this.update(doc);
+        }else if(!options.nocache){
+          this._storageQueue.putLocal(this.getKeyPath(), doc, {});
+        }
       }
     });
     return this;
