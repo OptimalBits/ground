@@ -44,7 +44,7 @@ module Gnd.Storage.Store {
         try{
           return JSON.parse(doc);
         }catch(e){
-          console.log('localCache inconsistency encountered: '+key);
+          console.log('localCache inconsistency encountered: '+key, doc);
           return null;
         }
       }
