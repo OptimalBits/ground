@@ -316,7 +316,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
           .ensure(() => {
             this.release();
             resolve(this);
-          }).fail((err) => {});
+          }).fail((err) => {
+            console.log(err);
+          });
       });
     }else{
       this._promise = Promise.resolved(this);
