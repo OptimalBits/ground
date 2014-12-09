@@ -80,7 +80,10 @@ export class Socket implements IStorage {
         socket.once('error', errorFn);
       }
   
-      if(socket.io.connected){
+      // We need to study if it is enough just checking for socket.socket.connected
+      // Currently socket.io.connected could be truthy while socket.socket.connected is false
+      // socket.io bug?
+      if(socket.io.connected && (!socket.socket || socket.socket.connected)){
         emit()
       }else if(socket.io.readyState === 'opening'){
         delayedEmit('connect', 'connect_error');
