@@ -250,7 +250,11 @@ export class Local implements IStorage {
           }
         }
       });
-      return _.values(result);
+      var values = _.values(result);
+      if(query && query['cond']){
+        values = _.filter(values, query['cond']);
+      }
+      return values;
     }
     
     if(keyPath.length === 1){
