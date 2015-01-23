@@ -259,7 +259,7 @@ export var router = new Router();
 /**
   Parses A query string and returns an object with key, value pairs.
 */
-var parseQuery = function(queryString : string){
+export var parseQuery = function(queryString : string){
   if(queryString){
     var keyValues = queryString.split('&'),
         i,
@@ -330,7 +330,7 @@ export class AutoreleasePool
 //
 // Decompose URL into components and query object.
 //
-var decomposeUrl = function(url){
+export var decomposeUrl = function(url){
   var s = url.split('?'), components, len;
   
   components = s[0].split('/');
