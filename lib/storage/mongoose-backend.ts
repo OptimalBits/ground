@@ -482,10 +482,6 @@ export class MongooseStorage implements Storage.IStorage {
           this.models[schemaType.definition.ref.model.__bucket] :
           this.models[setName];
 
-        if(!schemaType){
-          console.log(setName);
-        }
-
         if(model){
           if(doc && doc[setName]){
             return this.populate(model, query, doc[setName]);
