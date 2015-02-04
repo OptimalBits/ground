@@ -42,7 +42,6 @@
     "email": "info@optimalbits.com"
   },
   "dependencies": {
-    "acl": "*",
     "commander": "*",
     "lodash": "^2.4.1",
     "mkdirp": "*",
