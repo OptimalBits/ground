@@ -190,7 +190,7 @@ export class Queue extends Base implements IStorage
       return this.localStorage.put(keyPath, docRemote, {}).then(() => {
         return docRemote;
       });
-    });
+    }).timeout(5000);
   }
 
   private execCmds(keyPath: string[], commands: MergeCommand[]): Promise<void[]>
