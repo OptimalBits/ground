@@ -1,6 +1,6 @@
 {
   "name": "gnd",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "engines": {
     "node": ">=0.6.10"
   },
@@ -44,7 +44,7 @@
   "dependencies": {
     "commander": "*",
     "lodash": "^2.4.1",
-    "mkdirp": "*",
+    "mkdirp": "^0.5.0",
     "redis": "^0.11.0",
     "socket.io": "^1.1.0"
   },
