@@ -295,10 +295,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       using.storageQueue || new Storage.Queue(using.memStorage);
 
     if(!this.isPersisted()){
-      this.createdFn = () => {
-        this.set('_persisted', true, {nosync: true});
-        this.emit('persisted:');
-      }
+      this.createdFn = () => this.set('_persisted', true, {nosync: true});
       this._storageQueue.once('created:'+this.id(), this.createdFn);
     }
 
