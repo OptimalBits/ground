@@ -115,6 +115,11 @@ module Gnd
     public static type = 'ObjectId';
   }
   
+  export class MongoObjectIdType extends SchemaType
+  {
+    public static type = 'MongoObjectId';
+  }
+
   export class ArrayType extends SchemaType
   {
     public static type = Array;

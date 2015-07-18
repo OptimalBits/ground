@@ -311,6 +311,16 @@ module Gnd
     public static ObjectId = 'ObjectId';
     
     /**
+      @property Mongo.ObjectId
+      @type String
+      @final
+      @static
+    */
+    public static Mongo = {
+      ObjectId: 'MongoObjectId'
+    };
+    
+    /**
       @property Abstract
       @type String
       @final
@@ -331,6 +341,7 @@ module Gnd
       DateType,
       SchemaType,
       ObjectIdType,
+      MongoObjectIdType,
       AbstractType,
     ];
   }

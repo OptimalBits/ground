@@ -37,6 +37,7 @@ declare module "underscore" {
   export function isEqual (object : any, other : any) : boolean;
   export function isFunction (object : any) : boolean;
   export function initial (array : any[], n? : number) : any[];
+  export function isPlainObject (obj) : boolean;
 }
 
 /**
@@ -201,6 +202,49 @@ export class MongooseStorage implements Storage.IStorage {
     
     legacy && _.extend(this.models, legacy);
   }
+  
+  private translateDefinition(mongoose, mapping, definition){
+    var res;
+
+    if(definition.type){
+      res = _.clone(definition);
+    }else{
+      res = {type: definition};
+    }
+
+    if(res.type.__schema){
+      return this.translateSchema(mongoose, mapping, res.type.__schema);
+    }
+    
+    if(res.type instanceof Array && res.type.length){
+      return [this.translateDefinition(mongoose, mapping, res.type[0])];
+    }
+
+    if(_.isPlainObject(res.type)){
+      return this.translateSchema(mongoose, mapping, new Schema(res.type));
+    }
+
+    switch(res.type){
+      case Gnd.Schema.ObjectId:
+        res.type = String;
+        break;
+      case Gnd.Schema.Mongo.ObjectId:
+        res.type = mongoose.Schema.Types.ObjectId;
+        break;
+      case Gnd.Schema.Abstract:
+        break;
+      case Gnd.Sequence:
+      case Gnd.Collection:
+        if(!mapping[res.ref.model.__bucket]){
+          throw new Error("Model bucket " + res.ref.model.__bucket + " does not have a valid mapping name");
+        }else{
+          res = {type: [{type: String, ref: mapping[res.ref.bucket]}], 
+                 select: false};
+        }
+        break;
+    }
+    return res;
+  }
 
   private translateSchema(mongoose, mapping, schema: Schema): any
   {
@@ -212,33 +256,8 @@ export class MongooseStorage implements Storage.IStorage {
         if(value instanceof Schema){
           return this.translateSchema(mongoose, mapping, value);
         }
-        if(value.definition.type){
-          res = _.clone(value.definition);
-        }else{
-          res = {type: value.definition};
-        }
         
-        if(res.type.__schema){
-          return this.translateSchema(mongoose, mapping, res.type.__schema);
-        }
-        
-        switch(res.type){
-          case Gnd.Schema.ObjectId:
-            res.type = String;
-            break;
-          case Gnd.Schema.Abstract:
-            break;
-          case Gnd.Sequence:
-          case Gnd.Collection:
-            if(!mapping[res.ref.model.__bucket]){
-              throw new Error("Model bucket " + res.ref.model.__bucket + " does not have a valid mapping name");
-            }else{
-              res = {type: [{type: String, ref: mapping[res.ref.bucket]}], 
-                    select: false};
-            }
-            break;
-        }
-        return res;
+        return this.translateDefinition(mongoose, mapping, value.definition);
       }
     });
   }
