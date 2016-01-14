@@ -1,0 +1,24 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bug </title>
+  <link rel="stylesheet" href="mocha.css" />
+  <script src="socket.io/socket.io.js"></script>
+</head>
+<body>
+	<script>
+		var socket = io('/abc');
+
+		socket.on('connect', function(){
+			console.log("Connected");
+
+			var socket1 = io.connect('/1')
+			socket1.on('connect', function(){
+				console.log("Connected 1");
+			})
+		})
+
+	</script>
+</body>
+</html>
+

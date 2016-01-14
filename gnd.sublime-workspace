@@ -1,0 +1,509 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "gnd.ts",
+			"settings":
+			{
+				"buffer_size": 1611,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lib/route.ts",
+			"settings":
+			{
+				"buffer_size": 20922,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lib/task.ts",
+			"settings":
+			{
+				"buffer_size": 2525,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "test/test_routes.js",
+			"settings":
+			{
+				"buffer_size": 19818,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lib/storage/mongoose-backend.ts",
+			"settings":
+			{
+				"buffer_size": 23176,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lib/promise.ts",
+			"settings":
+			{
+				"buffer_size": 11071,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "build/gnd-server.js",
+			"settings":
+			{
+				"buffer_size": 220753,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "lib/container/collection.ts",
+			"settings":
+			{
+				"buffer_size": 14166,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"command_palette":
+	{
+		"height": 347.0,
+		"selected_items":
+		[
+			[
+				"pack",
+				"Package Control: Install Package"
+			],
+			[
+				"package",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 449.0
+	},
+	"console":
+	{
+		"height": 125.0
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/Users/manuel/dev/gnd/lib/task.js",
+		"/Users/manuel/dev/gnd/gnd.sublime-project",
+		"/Users/manuel/dev/castmill/dooh/player_server.js",
+		"/Users/manuel/dev/castmill/dooh/static/js/dooh/clock.js",
+		"/Users/manuel/dev/castmill/dooh/static/js/dooh/cache.js",
+		"/Users/manuel/dev/castmill/dooh/models/calendar.js",
+		"/Users/manuel/dev/castmill/dooh/deploy/populate/init_widgets.js",
+		"/Users/manuel/dev/castmill/dooh/deploy/populate/init_paymillOffers.js",
+		"/Users/manuel/dev/castmill/dooh/deploy/populate/extend_quotas.js",
+		"/Users/manuel/dev/castmill/dooh/deploy/populate/init_add_users_to_default_group.js"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+			"/Users/manuel/dev/castmill/dooh/static",
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"console",
+			"find",
+			"cond",
+			"fetchPost",
+			"pre.",
+			"fetchPost",
+			".fetch",
+			"findAll",
+			"populate",
+			".pre",
+			"pre",
+			"executeRoute",
+			"routeHandler",
+			"executeRoute",
+			"_load",
+			"done",
+			"createRouteTask",
+			"Task",
+			"bodyP",
+			"body",
+			"bodyP",
+			"body",
+			"bodyp",
+			"formi",
+			"playlist-data",
+			"'playlist-data'",
+			"extraQuota",
+			"lodash",
+			"underscore",
+			"underscore'"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 4,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "gnd.ts",
+					"settings":
+					{
+						"buffer_size": 1611,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "lib/route.ts",
+					"settings":
+					{
+						"buffer_size": 20922,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2838,
+								2850
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1507.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "lib/task.ts",
+					"settings":
+					{
+						"buffer_size": 2525,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1776,
+								1776
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 874.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "test/test_routes.js",
+					"settings":
+					{
+						"buffer_size": 19818,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								17267,
+								17267
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 9292.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "lib/storage/mongoose-backend.ts",
+					"settings":
+					{
+						"buffer_size": 23176,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								13909,
+								13909
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 6922.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "lib/promise.ts",
+					"settings":
+					{
+						"buffer_size": 11071,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2116,
+								2116
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1291.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "build/gnd-server.js",
+					"settings":
+					{
+						"buffer_size": 220753,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JavaScript.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 14692.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "lib/container/collection.ts",
+					"settings":
+					{
+						"buffer_size": 14166,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6108,
+								6112
+							]
+						],
+						"settings":
+						{
+							"auto_complete": false,
+							"extensions":
+							[
+								"ts"
+							],
+							"syntax": "Packages/T3S/Typescript.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3470.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 216.0
+	},
+	"output.jslint_result_view":
+	{
+		"height": 145.0
+	},
+	"replace":
+	{
+		"height": 0.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 212.0,
+	"status_bar_visible": true
+}

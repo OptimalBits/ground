@@ -33,7 +33,7 @@ describe('Collection Datatype', function(){
   */
   
   before(function(done){
-    socket1 = io.connect('/', {'force new connection': true});
+    socket1 = io('/1', {'force new connection': true});
     sl1  = new Gnd.Storage.Local();
     ss1 = new Gnd.Storage.Socket(socket1);
     storageQueue  = q1 = new Gnd.Storage.Queue(sl1, ss1);
@@ -475,7 +475,7 @@ describe('Collection Datatype', function(){
           zoo.all(Animal).then(function(animals){
             var found = animals.findById(bat.id());
             expect(found).to.be.ok();
-            socket.socket.connect();
+            socket.connect();
             done();
           });
         });
@@ -515,7 +515,7 @@ describe('Collection Datatype', function(){
               expect(animals.count).to.be(1);
               collection.release();
             // socket.socket.reconnect();
-              socket.socket.connect();
+              socket.connect();
             });
           });
         });
@@ -549,7 +549,7 @@ describe('Collection Datatype', function(){
               expect(collection.count).to.be(1);
               expect(animals.count).to.be(1);
               collection.release();
-              socket.socket.connect();
+              socket.connect();
             });
           });
         });
@@ -592,7 +592,7 @@ describe('Collection Datatype', function(){
                 expect(collection).to.be.an(Object);
                 expect(collection.items).to.be.an(Array);
                 expect(collection.count).to.be(0);
-                socket.socket.connect();
+                socket.connect();
               });
             });
           });
@@ -604,7 +604,9 @@ describe('Collection Datatype', function(){
       zoo.all(Animal).then(function(animals){
         expect(animals).to.be.an(Object);
         var tiger = new Animal({name:"tiger"});
-        animals.add(tiger).then(function(){
+        animals.add(tiger);
+
+        storageQueue.waitUntilSynced(function(){
                     
           socket.disconnect();
             
@@ -615,8 +617,9 @@ describe('Collection Datatype', function(){
               
             expect(offlineTiger).to.be.an(Object);
             expect(offlineTiger.id()).to.be.equal(tiger.id());
-            socket.socket.connect();
+            socket.connect();
             socket.once('connect', done);
+            socket.once('error', done);
             });
           });
         });
@@ -639,7 +642,7 @@ describe('Collection Datatype', function(){
             expect(animals.count).to.be(1);
             done();
           });
-          socket.socket.connect();
+          socket.connect();
         });
       });
     });
@@ -657,7 +660,7 @@ describe('Collection Datatype', function(){
             expect(animals.count).to.be(1);
             done();
           });
-          socket.socket.connect();
+          socket.connect();
         });
       });
     });
@@ -691,7 +694,7 @@ describe('Collection Datatype', function(){
                   
                       Gnd.Base.release(onlineAnimals);
                   
-                      socket.socket.connect();
+                      socket.connect();
                       socket.once('connect', done);
                     });
                   })
@@ -756,7 +759,7 @@ describe('Collection Datatype', function(){
                     expect(emptyZoo.count).to.be(0);
                     
                     Gnd.Base.release(onlineAnimals, emptyZoo);
-                    socket.socket.connect();
+                    socket.connect();
                     socket.once('connect', done);
                   });
                 });
@@ -784,7 +787,7 @@ describe('Collection Datatype', function(){
               expect(animals.count).to.be(0);
               done();
             });
-            socket.socket.connect();
+            socket.connect();
           });
         });
       });

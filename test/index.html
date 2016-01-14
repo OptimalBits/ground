@@ -83,6 +83,19 @@
     };
   
     var socket = io.connect();
+/*
+    socket.on('connect', function(){
+      console.log("connected 1");
+    
+      //socket.disconnect();
+
+      //socket.io.reconnect();
+    });
+
+    socket.on('reconnect', function(){
+      console.log("reconnected", socket.connected);
+    });
+*/
     socket.once('connect', function(){
       socket.on('file_changed:', function(url){
         document.location.reload(true)
@@ -117,6 +130,7 @@
         });
       });
     });
+
   </script>
 </head>
 <body>

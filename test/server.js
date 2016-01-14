@@ -21,7 +21,6 @@ var express = require('express'),
     oneMinute = 60*1000,
     uuid = require('node-uuid'),
     Cookies = require('cookies'),
-    acl = require('acl'),
     requirejs = require('requirejs');
 
 requirejs.config({
@@ -68,6 +67,13 @@ app.use(cabinet(__dirname, {ignore:['.git', '*~']}, function(url){
 }));
 
 
+sio.of('/abc').on('connection', function(socket){
+  console.log("Connected to socket on namespace 1", socket.id);
+  socket.on('disconnect', function(){
+    console.log("Socket %s diconnected", socket.id);
+  })
+})
+
 sio.on('connection', function(socket){
   console.log("Socket %s connected", socket.id)
 
@@ -79,6 +85,7 @@ sio.on('connection', function(socket){
 sio.on('disconnect', function(socket){
   
 })
+
 
 app.use(express.bodyParser());
 
@@ -188,7 +195,7 @@ rules = {
   },
 }
 
-var rightsManager = new Gnd.RightsManager(acl, rules);
+var rightsManager = new Gnd.RightsManager({}, rules);
 
 var gndSessionServer = new Gnd.Server(mongooseStorage, sessionManager, syncHub);
 

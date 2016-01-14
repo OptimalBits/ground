@@ -1,0 +1,63 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Declarative Bindings</title>
+  
+  <script src="https://raw.github.com/amdjs/underscore/master/underscore-min.js"></script>
+  
+  <script type="text/javascript">
+    curl = {
+           baseUrl: 'http://localhost:8080/',
+           packages: {
+             'jquery': {
+               path:'http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/',
+               main:'jquery.min'
+             },
+             'underscore':{
+               path:'https://raw.github.com/amdjs/underscore/master/',
+               main:'underscore-min'
+             },
+             'gnd': {
+                path: 'http://localhost:8080/',
+                main: 'gnd.ts?',
+                lib: ''
+             }
+           }
+       };
+  </script>
+  
+  <div id="1">
+    <p data-bind="text: tiger.name"></p>
+  
+    <lu>
+      <li><----- List Header -----></li>
+      <li data-each="zoo.animals: animal" data-bind="text: animal.name"></li>
+      <li><----- List Footer -----></li>
+    </lu>
+  </div>
+  
+  <script src="http://localhost:8080/curl.js"></script>
+  
+  <script>  
+    curl(['jquery', 'gnd'], function($, Gnd){
+      var Animal = Gnd.Model.extend('animals');
+      
+      var tiger = new Animal({name: 'tiger'});
+      var lion = new Animal({name: 'lion'});
+      var leopard = new Animal({name: 'leopard'});
+      
+      var Zoo = Gnd.Model.extend('zoo');
+      var zoo = new Zoo();
+      zoo.animals = new Gnd.Collection(Animal, Zoo, [tiger, lion, leopard]);
+      
+      // Bind stuff
+      var el = document.getElementById('1');
+      var vm = new Gnd.ViewModel(el, {tiger: tiger, zoo: zoo, animal: tiger});
+      
+    });
+  </script>
+</head>
+<body>
+  <div id="mocha"></div>
+</body>
+</html>

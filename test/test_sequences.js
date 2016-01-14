@@ -891,7 +891,7 @@ describe('Sequence Datatype', function(){
                 done();
               });
               
-              socket.socket.connect();
+              socket.connect();
             });
           });
           socket.disconnect();
@@ -917,7 +917,7 @@ describe('Sequence Datatype', function(){
                 done();
               });
               
-              socket.socket.connect();
+              socket.connect();
             });
           });
           socket.disconnect();
