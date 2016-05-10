@@ -6,39 +6,39 @@
 
 module Gnd
 {
-  
+
 export class Session
 {
   userId: string;
 }
-  
+
 /**
   A session storage interface. This interface can be implemented using any
   available storage in the server.
-  
+
   @class ISessionStore
 */
 export interface ISessionStore
 {
   /**
-  
+
     @method save
     @param sessionId {String} the session id.
     @param session {Object} plain object with the session data.
     @param cb {Function} nodejs style callback with the save result.
   */
   save(sessionId: string, session: Session): Promise<void>;
-  
+
   /**
-  
+
     @method load
     @param sessionId {String} the session id.
     @param cb {Function} nodejs style callback with load result.
   */
   load(sessionId: string): Promise<Session>;
-  
+
   /**
-  
+
     @method remove
     @param sessionId {String} the session id.
     @param cb {Function} nodejs style callback with the remove result.
@@ -64,14 +64,14 @@ export class SessionManager
   private cookieParser: (cookie: string) => Promise<string>;
   private sessionStore: ISessionStore;
   private useSessions: boolean;
-  
+
   constructor();
   constructor(cookieParser: (rawCookies: string) => Promise<string>, store?: ISessionStore);
   constructor(cookieParser?: (rawCookies: string) => Promise<string>, store?: ISessionStore)
   {
     this.cookieParser = cookieParser;
     this.sessionStore = store || new MemorySessionStore();
-    
+
     this.useSessions = !!cookieParser;
   }
 
@@ -80,10 +80,10 @@ export class SessionManager
     //
     // TODO: Registers listeners for this session (session.on('userId', function(){...}))
     //
-    
+
     return this.sessionStore.save(sessionId, session);
   }
-  
+
   getSession(cookie: string): Promise<Session>
   {
     if(this.useSessions){
@@ -91,17 +91,17 @@ export class SessionManager
         if(sessionId){
           return this.sessionStore.load(sessionId);
         }else{
-          throw Error("No sessionId available in cookies"); 
+          throw Error("No sessionId available in cookies");
         }
       });
     }else{
       return Promise.resolved({userId: 'guest'});
     }
   }
-  
+
   removeSession(cookie: string): Promise<void>
   {
-    if(this.useSessions){  
+    if(this.useSessions){
       return this.getSessionId(cookie).then<void>((sessionId)=>{
         if(sessionId){
           return this.sessionStore.remove(sessionId);
@@ -110,10 +110,10 @@ export class SessionManager
         }
       });
     }else{
-      return Promise.resolved();
+      return Promise.resolved(void 0);
     }
   }
-  
+
   getSessionId(rawCookies: string): Promise<string>
   {
     return this.cookieParser(rawCookies);
@@ -133,19 +133,19 @@ export class MemorySessionStore implements ISessionStore
   private sessions = {};
   private expires = {};
   private expireTime = 1000*60*60; // One hour default expiration time
-  
+
   constructor(expireTime?: number)
   {
     this.expireTime = expireTime || this.expireTime;
   }
-  
+
   save(sessionId: string, session: Session): Promise<void>
   {
     this.touch(sessionId);
     this.sessions[sessionId] = session;
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-  
+
   load(sessionId: string): Promise<Session>
   {
     var session = this.sessions[sessionId];
@@ -156,14 +156,14 @@ export class MemorySessionStore implements ISessionStore
       return Promise.rejected(Error("Session not available"));
     }
   }
-  
+
   remove(sessionId: string): Promise<void>
   {
     delete this.sessions[sessionId];
     clearTimeout(this.expires[sessionId]);
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-  
+
   private touch(sessionId: string){
     if(this.expires[sessionId]){
       clearTimeout(this.expires[sessionId]);

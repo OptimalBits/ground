@@ -3,7 +3,7 @@
 */
 /**
   Hierarchical Routing.
-  
+
   Define routes hierarchically creating views by rendering templates at
   the specified DOM nodes in the hierarchy.
 */
@@ -40,22 +40,22 @@ export interface RouteNode
   autoreleasePool: AutoreleasePool;
 }
 
-interface Middleware 
+interface Middleware
 {
   (req: Request, done: (err?:Error)=>{});
 }
 
 //
 // Route
-// Listen to changes in location hash, and routes to the specified routes. 
+// Listen to changes in location hash, and routes to the specified routes.
 // route([root='/':String], callback:Function)
 //
 /**
   Url Route management.
-  
+
   This static class provides hierarchical url routing that maps the hierarchical
   structure of the DOM.
-  
+
   For a complete description of the route manager check the [guide](http://gnd.io/#Routing)
 
   @class Route
@@ -65,24 +65,24 @@ export class Router
   private interval;
   private req: Request;
   private routeHandler;
-  
+
   private handlePopStateFn;
   private handleClickUrlFn;
-  
+
   private basepath: string;
-  
+
   public route: Route = new Route();
-  
-  constructor(){    
+
+  constructor(){
     this.handlePopStateFn = (evt) => {
       this.routeHandler && this.executeRoute(location.pathname, this.routeHandler);
     }
-    
+
     this.handleClickUrlFn = (evt) => {
       var link = findLink(evt.target || evt.srcElement);
       if(link){
         var url = link.href;
-    
+
         // check if url is within the basepath
         if(url = getRelativeUrl(url, this.basepath)){
           evt.preventDefault();
@@ -91,10 +91,10 @@ export class Router
       }
     }
   }
-  
+
   /**
     Listen to changes in the url and calls the route handler accordingly.
-    
+
     @method listen
     @param [root=""] {String} specify the root url.
     @param cb {Function} route handler.
@@ -107,15 +107,15 @@ export class Router
       cb = root;
       root = '';
     }
-  
+
     this.routeHandler = cb;
     this.basepath = location['origin'] + '/' + Util.trim(root);
-    
+
     var url;
     if(using.historyApi){
       // Listen to all link clicks.
       $("document").on('click', this.handleClickUrlFn);
-    
+
       window.addEventListener("popstate", this.handlePopStateFn);
       url = getRelativeUrl(location.href, this.basepath);
     }else{
@@ -130,10 +130,10 @@ export class Router
 
     this.executeRoute(url, cb);
   }
-  
+
   /**
     Stop listening for url changes.
-  
+
     @method stop
   */
   public stop(){
@@ -146,7 +146,7 @@ export class Router
 
   /**
     Redirect to given url.
-    
+
     @method redirect
     @param url {String} url to redirect to.
     @param [opts] {Object} Object with some options (force and forceLast)
@@ -159,36 +159,36 @@ export class Router
     }
     this.routeHandler && this.executeRoute(url, this.routeHandler, opts);
   }
-  
+
   private executeRoute(url, routeHandler, opts?){
     if(!this.req || (this.req.url !== url)){
       this.req && this.req.queue.cancel();
-      
+
       var req = new Request(url, this.req && this.req.nodes || [], opts);
-      
+
       this.route.notifyRouteChange(this.req, req);
-      
+
       this.req = req;
-    
+
       //
       // Starts the recursive route traversing
       //
       var index = req.index;
-    
+
       routeHandler(req);
-    
+
       if(req.index == index ){
         req.isNotFound = true;
         req.queue.end();
       }
-    
+
       req.queue.wait().then(() => {
         if(req.isNotFound){
           if(req.notFoundFn){
             req.index = 1;
             req.initNode('body');
             req.notFoundFn.call(req, req);
-            var queue = new TaskQueue();
+            var queue = new TaskQueue<void>();
             enqueueNode(queue, req.node())
           }else{
             log('Undefined route:', url);
@@ -207,7 +207,7 @@ export class Route extends Base
     // TODO: This should be performed not at once but during route traversal.
     var index = 0;
     var components = req.components;
-    
+
     if(prevReq){
       var prevComponents = prevReq.components;
       var maxLen = Math.min(prevComponents.length, components.length);
@@ -218,7 +218,7 @@ export class Route extends Base
           break;
         }
       }
-      
+
       if(index < prevComponents.length){
         // clean old components
         var start = prevComponents[0] != '' ? 0 : 1;
@@ -227,7 +227,7 @@ export class Route extends Base
         }
       }
     }
-      
+
     if(index < components.length){
       // set new components
       if(components[index] == '') index++;
@@ -264,9 +264,9 @@ export var parseQuery = function(queryString : string){
     var keyValues = queryString.split('&'),
         i,
         len = keyValues.length;
-  
+
     var obj = {};
-  
+
     for(i=0;i<len;i++){
       var keyValue = keyValues[i].split('=');
       obj[decodeURIComponent(keyValue[0])] = keyValue[1] ? decodeURIComponent(keyValue[1]):'';
@@ -294,13 +294,13 @@ export interface PoolEntry
 }
 
 export class AutoreleasePool
-{ 
+{
   private drained : boolean = false;
   private pool : Base[] = [];
-  
+
   public autorelease(...objs:Base[]) : void;
   public autorelease(objs:Base[]) : void;
-  
+
   public autorelease(){
     var pool = this.pool;
     _.each(arguments, function(obj){
@@ -312,7 +312,7 @@ export class AutoreleasePool
     });
     this.drained && this.drain();
   }
-  
+
   public drain(){
     for(var i=0, len=this.pool.length;i<len;i++){
       try{
@@ -332,7 +332,7 @@ export class AutoreleasePool
 //
 export var decomposeUrl = function(url){
   var s = url.split('?'), components, len;
-  
+
   components = s[0].split('/');
   len = components.length
   if(_.last(components) === '' && len > 1){
@@ -356,24 +356,24 @@ function exitNodes(queue, nodes, start){
 }
 
 function enqueueNode(queue: TaskQueue<void>, node: RouteNode): void {
-  queue.append(node.select, 
-               node.hide, 
-               node.before, 
-               node.load, 
-               node.render, 
-               node.enter || node.show, 
+  queue.append(node.select,
+               node.hide,
+               node.before,
+               node.load,
+               node.render,
+               node.enter || node.show,
                node.after);
 }
 
 /**
   Represents a request operation in the routing system.
-  
+
   Instances of this class are created by Route.listen and are used to define
   the route to be consumed and to act upon.
-  
+
 */
 export class Request {
-  
+
   private wantsRedirect: boolean;
   private el: HTMLElement;
 
@@ -381,7 +381,7 @@ export class Request {
 
   public isNotFound: boolean;
   public notFoundFn;
-  
+
   public data: any[];
   public url: string;
   public nodes: any[] = [];
@@ -395,33 +395,33 @@ export class Request {
 
   constructor(url:string, prevNodes:any[], opts?){
     var components, i, len, prevLen;
-    
+
     opts = opts || {};
-  
+
     _.extend(this, decomposeUrl(url));
-    
+
     components = this.components;
     len = components.length;
     prevLen = prevNodes.length;
-    
+
     this.url = url;
     this.prevNodes = prevNodes;
-    
+
     //
     // Reuse previous autorelease pools and find the starting index for the new route.
     ///
     for (i=0; i<len; i++){
-      var 
+      var
         prev = prevNodes[i],
         prevNext = prevNodes[i+1];
-        
+
       if(opts.forceLast && i === len-1) break;
-                
+
       if(prev && (prev.component === components[i])){
         if((i+1 < prevLen) && _.findWhere(prevNodes.slice(i+1), {'selector': prev.selector})){
           break;
         }
-        
+
         this.nodes.push({
           component:components[i],
           autoreleasePool:prev.autoreleasePool
@@ -431,7 +431,7 @@ export class Request {
       }
     }
     this.startIndex = i;
-  
+
     //
     // Create new nodes
     //
@@ -439,7 +439,7 @@ export class Request {
       this.nodes.push({component:components[i], autoreleasePool: new AutoreleasePool()});
     }
   }
-  
+
   public get(cb: ()=>void);
   public get(component: string, cb: ()=>void);
   public get(component: string, selector: string, cb: ()=>void);
@@ -474,85 +474,82 @@ export class Request {
       // TODO: Implement middleware's overloading functions
     }).apply(this, arguments);
   }
-  
+
   private _get(component: string,
-               selector: string, 
+               selector: string,
                args: {},
                middelwares:{ (): void; }[],
-               handler: string, 
+               handler: string,
                cb: () => void): Request
   {
     if(this.wantsRedirect || !this.consume(component, this.level)){
       return this;
     }
-      
+
     this.queue.append(
       this.createRouteTask(this.level, selector, args, middelwares, handler, cb)
     );
-    
+
     return this;
   }
-  
+
   private createRouteTask(level, selector, args, middlewares, handler, cb) : Task<void>
   {
-    return () =>
-    {
-      return new Promise((resolve) => {
+    return () => {
+      return new Promise<void>((resolve) => {
         processMiddlewares(this, middlewares, (err) => {
-        var
-          node = this.node(),
-          pool = node.autoreleasePool,
-          index = this.index,
-          isLastRoute = index === this.components.length;
-        
-          if(index == this.startIndex){
+          var
+            node = this.node(),
+            pool = node.autoreleasePool,
+            index = this.index,
+            isLastRoute = index === this.components.length;
+
+          if (index == this.startIndex) {
             exitNodes(this.queue, this.prevNodes, this.startIndex);
           }
           this.initNode(selector, node);
 
-          if(cb){
+          if (cb) {
             this.enterNode(cb, node, index, level, {}, pool, isLastRoute);
-            resolve();
-          }else{
+            resolve(void 0);
+          } else {
             curl([handler], (cb) => {
               this.enterNode(cb, node, index, level, args, pool, isLastRoute);
-              resolve();
+              resolve(void 0);
             });
           }
-      });
-
-
+        });
       });
     };
   }
-  
+
   // TODO: Generate error if selector returns empty set or more than one DOM node!
   public initNode(selector: string, node?: RouteNode){
-  
+
     ((node: RouteNode) => {
       node.select = () => {
         node.el = this.el = $(selector)[0];
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       };
       node.selector = selector;
-   
+
       node.hide = () => {
         node.el && hide(node.el);
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       };
-   
+
       node.show = () => {
         node.el && show(node.el);
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       };
-     
+
       node.drain = () => {
         node.autoreleasePool.drain();
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       };
     })(node || this.node());
   }
-  
+
   private enterNode(fn, node, index, level, args, pool, isLastRoute){
     this.level = level + 1;
     if(arguments.length==7){
@@ -561,17 +558,17 @@ export class Request {
       fn && fn.call(this, args);
       isLastRoute = pool;
     }
-  
+
     this.isNotFound = (index >= this.index) && !isLastRoute;
     if(!this.isNotFound && index > this.startIndex){
       enqueueNode(this.queue, node);
     }
-          
+
     if(this.isNotFound || isLastRoute){
       this.queue.end();
     }
   }
-  
+
   private currentSubPath(){
     var subPath = '';
     for(var i=0, len=this.index;i<len;i++){
@@ -582,10 +579,10 @@ export class Request {
     }
     return subPath;
   }
-  
+
   private consume(expr, level) : boolean {
     var index = this.index;
-  
+
     if(expr){
       if((level != index) || (index >= this.components.length)){
         return false
@@ -598,15 +595,15 @@ export class Request {
     this.index++;
     return true;
   }
-  
+
   private notFound(fn){
     this.notFoundFn = fn;
   }
-  
+
   public node(){
     return this.nodes[this.index<=0 ? 0:(this.index-1)];
   }
-  
+
   public isLast(){
     return this.index >= this.components.length;
   }
@@ -614,7 +611,7 @@ export class Request {
   public nextComponent(){
     return this.components[this.index];
   }
-  
+
   public redirect(url, params?, opts?){
     url = params ? url+'?'+serialize(params) : url;
     this.queue.wait().then(() => {
@@ -622,17 +619,17 @@ export class Request {
     })
     this.wantsRedirect = true;
   }
-  
+
   public before(cb): Request {
     this.node().before = cb;
     return this;
   }
-  
+
   public after(cb): Request {
     this.node().after = cb;
     return this;
   }
-  
+
   public enter(fn: (el: HTMLElement) => Promise<void>): Request
   {
     var node = this.node();
@@ -640,12 +637,12 @@ export class Request {
       if(node.el){
         return fn(node.el);
       } else {
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       }
     };
     return this;
   }
-  
+
   public exit(fn: (el: HTMLElement) => Promise<void>): Request
   {
     var node = this.node();
@@ -653,21 +650,21 @@ export class Request {
       if(node.el){
         return fn(node.el);
       } else {
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       }
     };
     return this;
   }
-  
-  public leave(cb:() => Promise<void>): Request 
+
+  public leave(cb:() => Promise<void>): Request
   {
     this.node().leave = cb;
     return this;
   }
-  
+
   /**
     Renders a template into the current DOM node.
-    
+
     @method render
     @param templateUrlOrSelector {String} An url or a selector id where to
     fetch the template.
@@ -738,7 +735,7 @@ export class Request {
     }).apply(this, arguments);
   }
 
-  public load(urls?, cb?): Request 
+  public load(urls?, cb?): Request
   {
     if(_.isFunction(urls)){
       cb = urls;
@@ -749,50 +746,51 @@ export class Request {
     }
     return this;
   }
-  
+
   private _render(args, locals, cb){
     if(args.templateUrl && args.templateUrl[0] == '#'){
       args.templateStr = Gnd.$(args.templateUrl).text();
       args.templateUrl = null;
     }
-    
+
     var ctx = _.extend({}, locals, this.data);
-    
+
     var view: View = args instanceof View ? args.retain() : new View(args);
-    
+
     // we need to get the pool for this node
     // this.autoreleasePool.autorelease(view);
-    
+
     $(this.el).empty();
     return view.parent(this.el).render(ctx).then(function(){
       cb && cb(null);
     });
   }
-  
+
   private _load(urls, cb){
     var base = this.currentSubPath(),
         i,
         len;
-      
+    var args = arguments;
+
     if(urls === null){
       urls = this.data;
     }
-      
+
     if(!_.isArray(urls)){
       urls = [urls];
     }
-  
+
     var _urls = [];
     for(i=0, len=urls.length;i<len;i++){
       _urls.push('text!'+urls[i]);
     }
-  
+
     return new Promise((resolve, reject) => {
       curl(_urls, (...args: any[]) => {
         var objs = [];
         for(i=0, len=args.length;i<len;i++){
           try{
-            objs.push(JSON.parse(arguments[i]));
+            objs.push(JSON.parse(args[i]));
           }catch(err){
             log("Error parsing data: "+err.name+"::"+err.message);
             reject(err)

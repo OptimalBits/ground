@@ -7,7 +7,7 @@
   <script src="mocha.js"></script>
   <script src="lodash.js"></script>
   <script src="socket.io/socket.io.js"></script>
-  
+
   <script type="text/javascript">
     curl = {
            baseUrl: '/',
@@ -69,9 +69,9 @@
            }
        };
   </script>
-  
+
   <script src="curl.js"></script>
-  
+
   <script>
     mocha.setup('bdd')
     this.__extends = function (d, b) {
@@ -81,12 +81,12 @@
       __.prototype = b.prototype;
       d.prototype = new __();
     };
-  
+
     var socket = io.connect();
 /*
     socket.on('connect', function(){
       console.log("connected 1");
-    
+
       //socket.disconnect();
 
       //socket.io.reconnect();
@@ -98,10 +98,11 @@
 */
     socket.once('connect', function(){
       socket.on('file_changed:', function(url){
-        document.location.reload(true)
+      //  document.location.reload(true)
       });
       curl(['test/test_cache'], function(){
         curl(['test/test_session',
+              'test/test_rest',
               'test/test_mutex',
                 'test/test_dom',
                 'test/test_util',
@@ -115,15 +116,15 @@
                 'test/test_sequences',
                 'test/test_tasks',
                 'test/test_events',
-                
+
                 'test/test_viewmodel',
-                
+
                 'test/test_view',
-                
+
                 'test/test_routes',
                 'test/test_base',
                  //'test/test_declare',
-                
+
                 ], function(Storage){
           // We need to run this first.
           mocha.run().globals(['socket']) // acceptable globals
@@ -139,7 +140,7 @@
   <div id="dummy2" class="test1"></div>
   <div id="dummy3" class="test1"></div>
   <div id="views"></div>
-  
+
   <script type="text/html" id="test_templ1">
     <h2><%= animal %></h2>
   </script>

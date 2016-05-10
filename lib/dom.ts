@@ -3,9 +3,9 @@
 */
 /**
   DOM Utils.
-    
+
   Simple and lightweight utility functions for cross browser DOM manipulation.
-  
+
   Some functions based or inspired by 140medley
     https://github.com/honza/140medley
   and sizzle
@@ -25,18 +25,18 @@ module Gnd
    *   $('.name');
    *
    */
-  
+
    /**
      @class Gnd
      @static
    */
-   
+
    /**
-     Query factory method. 
-     
+     Query factory method.
+
      This function is compatible with jQuery $ function (although with much
      less functionality)
-   
+
      @for Gnd
      @method $
      @param selector {String}
@@ -47,29 +47,29 @@ module Gnd
   export function $(element: Element): Query;
   export function $(selector: string, context?: HTMLElement): Query;
   export function $(selector: string, context?: string): Query;
-  export function $(selectorOrElement: any, context?: HTMLElement): Query
+  export function $(selectorOrElement: any, context?: any): Query
   {
     var ctx = context ? $(context)[0] : document;
-    
+
     if(selectorOrElement instanceof Query){
       return selectorOrElement;
     }
-    
+
     var
       query = new Query(),
-      el, 
+      el,
       push = function(elements: any){
         for(var i: number=0; i<elements.length; i++){
           query[i] = elements[i];
         }
         query.length = elements.length;
       }
-      
+
     if(!selectorOrElement) return query;
-      
+
     if(_.isString(selectorOrElement)){
       var selector = selectorOrElement;
-    
+
       switch(selector[0]){
         case '#':
           var id = selector.slice(1);
@@ -82,7 +82,7 @@ module Gnd
             }
           }
           break;
-        case '.': 
+        case '.':
           var className = selector.slice(1);
           push(ctx.getElementsByClassName(className));
           break;
@@ -92,7 +92,7 @@ module Gnd
         default:
           push((selector != 'document' ? <any>ctx.getElementsByTagName(selector) : [document]));
       }
-    }else if(!_.isUndefined(selectorOrElement['length']) && 
+    }else if(!_.isUndefined(selectorOrElement['length']) &&
              !(selectorOrElement instanceof HTMLSelectElement)){
       push(selectorOrElement);
     }else{
@@ -115,55 +115,57 @@ export interface QueryNodes{
 export class Query // implements QueryNodes
 {
   public length: number;
-  
+
   /**
     Appends the specified content to the set of matching elements.
-    
+
     @method append
     @param content {String}
     @chainable
   */
   /**
     Appends the specified content to the set of matching elements.
-    
+
     @method append
     @param content {Element}
     @chainable
   */
   /**
     Appends the specified content to the set of matching elements.
-    
+
     @method append
     @param content {Query}
     @chainable
   */
-  append(content)
+  append(content: Query)
   {
-    _.each(this, (parent) => {
-      _.each($(content), (child) => {
+    var list: any = this;
+    _.each(list, (parent: HTMLElement) => {
+      var $content: any = $(content);
+      _.each($content, (child: HTMLElement) => {
         parent.appendChild(child);
       });
     });
     return this;
   }
-  
+
   /**
     Appends the current set of matching elements to the specified target
-    
+
     @method appendTo
     @param content {String}
     @chainable
   */
   /**
     Appends the current set of matching elements to the specified target
-    
+
     @method appendTo
     @param content {Element}
     @chainable
   */
   /**
     Appends the current set of matching elements to the specified target
-    
+
     @method appendTo
     @param content {Query}
     @chainable
@@ -172,7 +174,7 @@ export class Query // implements QueryNodes
   {
     return $(target).append(this);
   }
-  
+
   /**
    * Listen to DOM events.
    *
@@ -183,8 +185,9 @@ export class Query // implements QueryNodes
    */
   on(eventNames: string, handler: (evt) => void): Query
   {
+    var list: any = this;
     _.each(eventNames.split(' '), (eventName) => {
-      _.each(this, (el) => {
+      _.each(list, (el: HTMLElement) => {
         if(el.addEventListener){
           // W3C DOM
           el.addEventListener(eventName, handler);
@@ -196,7 +199,7 @@ export class Query // implements QueryNodes
     });
     return this;
   }
-  
+
   /**
    * Listen just once to DOM events.
    *
@@ -213,7 +216,7 @@ export class Query // implements QueryNodes
     }
     return this.on(eventNames, wrapper);
   }
-  
+
   /**
    * Stop listening to DOM events.
    *
@@ -224,14 +227,15 @@ export class Query // implements QueryNodes
    */
   off(eventNames: string, handler: (evt) => void): Query
   {
+    var list: any = this;
     _.each(eventNames.split(' '), (eventName) => {
-      _.each(this, (el) => {
+      _.each(list, (el: HTMLElement) => {
         if(!el) return;
-        
+
         if(el.removeEventListener){
           // W3C DOM
           el.removeEventListener(eventName, handler);
-        }else if (el['detachEvent']) { 
+        }else if (el['detachEvent']) {
           // IE DOM 6, 7, 8
           el['detachEvent']("on"+eventName, handler);
         }
@@ -239,7 +243,7 @@ export class Query // implements QueryNodes
     });
     return this;
   }
-  
+
   /**
    * Trigger DOM events.
    *
@@ -249,12 +253,13 @@ export class Query // implements QueryNodes
    */
   trigger(eventNames: string)
   {
+    var list: any = this;
     _.each(eventNames.split(' '), (eventName) => {
-      _.each(this, (element) => {
-        if (document.createEventObject){
+      _.each(list, (element: HTMLElement) => {
+        if (document['createEventObject']){
           // dispatch for IE
-          var evt = document.createEventObject();
-          element.fireEvent('on'+eventName, evt)
+          var evt = document['createEventObject']();
+          element['fireEvent']('on'+eventName, evt)
         }else{
           // dispatch for firefox + others
           var msEvent = document.createEvent("HTMLEvents");
@@ -265,7 +270,7 @@ export class Query // implements QueryNodes
     });
     return this;
   }
-  
+
   /**
    * Gets DOM attributes.
    *
@@ -274,7 +279,7 @@ export class Query // implements QueryNodes
    * @return {Any} attribute value.
    */
   attr(attr: string): any;
-  
+
   /**
    * Sets DOM attributes.
    *
@@ -284,12 +289,13 @@ export class Query // implements QueryNodes
    * @chainable
    */
   attr(attr: string, value: any): Query;
-  
+
   attr(attr: string, value?: any)
   {
-    if(!this.length) return;
+    var list: any = this;
+    if(!list.length) return;
     if(!_.isUndefined(value)){
-      _.each(this, (el) => {
+      _.each(list, (el: HTMLElement) => {
         setAttr(el, attr, value);
       })
       return this;
@@ -297,7 +303,7 @@ export class Query // implements QueryNodes
       return getAttr(this[0], attr);
     }
   }
-  
+
   /**
    * Sets DOM styles.
    *
@@ -307,10 +313,11 @@ export class Query // implements QueryNodes
    */
   css(styles: {[index: string]: string;})
   {
-    _.each(this, (el) => el.style && _.extend(el.style, styles));
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => el.style && _.extend(el.style, styles));
     return this;
   }
-  
+
   /**
    * Shows DOM Elements
    *
@@ -319,7 +326,8 @@ export class Query // implements QueryNodes
    */
   show()
   {
-    _.each(this, (el) => show(el));
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => show(el));
     return this;
   }
 
@@ -331,7 +339,8 @@ export class Query // implements QueryNodes
    */
   hide()
   {
-    _.each(this, (el) => hide(el));
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => hide(el));
     return this;
   }
 
@@ -343,7 +352,7 @@ export class Query // implements QueryNodes
    * @chainable
    */
   text(text: string): Query;
-  
+
   /**
    * Gets a text string as content for the first matched element.
    *
@@ -351,16 +360,16 @@ export class Query // implements QueryNodes
    * @return {String} first DOM element content.
    */
   text(): string;
-   
-  text(text?: string)
+  text(text?: string): any
   {
-    var el = this[0];
+    var list: any = this;
+    var el: HTMLElement = this[0];
     if(el.textContent){
       if(_.isUndefined(text)) return el.textContent;
-      _.each(this, (el) => el.textContent = text);
+      _.each(list, (el: HTMLElement) => el.textContent = text);
     }else{
       if(_.isUndefined(text)) return el.innerText;
-      _.each(this, (el) => el.innerText = text);
+      _.each(list, (el: HTMLElement) => el.innerText = text);
     }
     return this;
   }
@@ -373,7 +382,7 @@ export class Query // implements QueryNodes
    * @chainable
    */
   html(html: string): Query;
-  
+
   /**
    * Gets a html string as content for the first matched element.
    *
@@ -384,11 +393,12 @@ export class Query // implements QueryNodes
 
   html(html?: string)
   {
+    var list: any = this;
     if(_.isUndefined(html)) return this[0].innerHTML;
-    _.each(this, (el) => el.innerHTML = html);
+    _.each(list, (el: HTMLElement) => el.innerHTML = html);
     return this;
   }
-  
+
   /**
    * Remove all matched elements from their parents.
    *
@@ -398,8 +408,9 @@ export class Query // implements QueryNodes
    */
   remove(): Query
   {
+    var list: any = this;
     // TODO: remove also all events associated to this node.
-    _.each(this, (el) => this.removeNode(el));
+    _.each(list, (el: HTMLElement) => this.removeNode(el));
     return this;
   }
 
@@ -409,38 +420,40 @@ export class Query // implements QueryNodes
    * @method empty
    * @chainabe
    *
-   */  
+   */
   empty(): Query
   {
-    _.each(this, (el) => {
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => {
       while (el.hasChildNodes()) {
         el.removeChild(el.lastChild);
       }
     });
     return this;
   }
-  
+
   /**
    *
    * Add classnames to the matched set of DOM elements.
-   * 
+   *
    * @method addClass
    * @params classNames {String} List of classnames separated by spaces.
    * @chainable
    */
   addClass(classNames: string): Query
   {
-    _.each(this, (el) => {
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => {
       var oldClassNames = el.className ? _.compact(el.className.split(' ')) : [];
       el.className = _.union(oldClassNames, classNames.split(' ')).join(' ');
     });
     return this;
   }
-  
+
   /**
    *
    * Remove classnames from the matched set of DOM elements.
-   * 
+   *
    * @method removeClass
    *
    * @params classNames {String} List of classnames separated by spaces.
@@ -448,14 +461,15 @@ export class Query // implements QueryNodes
    */
   removeClass(classNames): Query
   {
-    _.each(this, (el) => {
+    var list: any = this;
+    _.each(list, (el: HTMLElement) => {
       var oldClassNames = el.className ? _.compact(el.className.split(' ')) : [];
-      el.className = 
+      el.className =
         _.difference(oldClassNames, classNames.split(' ')).join(' ');
     });
     return this;
   }
-  
+
   /**
    *
    * Calculates the bounding client rectangle of the first matched DOM element.
@@ -471,20 +485,22 @@ export class Query // implements QueryNodes
       return {height: 0, width: 0, top: 0, left: 0, right: 0, bottom: 0};
     }
   }
-  
+
   /**
    *
    * Get all parents from the matched set of DOM elements.
-   * 
+   *
    * @params classNames {String} List of classnames separated by spaces.
    * @return {Query} set of parents for all the matched elements.
    * TODO: remove possible duplicates.
    */
   parent(): Query
   {
-    return $(_.map(this, (el) => el.parentNode));
+    var list: any = this;
+    var node: any = _.map(list, (el: HTMLElement) => el.parentNode)
+    return $(node);
   }
-  
+
   private removeNode(el){
     el.parentNode.removeChild(el);
   }
@@ -511,16 +527,16 @@ export function isElement(object) {
  */
 export function makeElement(html: string): DocumentFragment
 {
-  var 
+  var
     child,
     container = document.createElement("div"),
     fragment = document.createDocumentFragment();
-    
+
   container.innerHTML = html;
-  
+
   while (child = <HTMLElement> container.firstChild){
     fragment.appendChild(child);
-  } 
+  }
 
   return fragment;
 }
@@ -537,9 +553,9 @@ export function setAttr(el: Element, attr: string, value: any, forceAsProperty?:
     if(!_.isUndefined(el[attr]) || forceAsProperty) {
       el[attr] = value;
     }
-  
+
     if (forceAsProperty) return;
-  
+
     if(value){
       el.setAttribute(attr, value);
     }else{
@@ -564,7 +580,7 @@ export function getAttr(el: Element, attr){
 
 /**
   Show / Hide
-  
+
 */
 export function show(el: Element)
 {
@@ -594,7 +610,7 @@ export function serialize(obj) {
 //------------------------------------------------------------------------------
 //
 // Ajax
-// 
+//
 //------------------------------------------------------------------------------
 /**
   @class Ajax
@@ -604,7 +620,7 @@ module Gnd.Ajax
 {
   /**
     Performs a HTTP GET operation.
-  
+
     @method get
     @params url {String} url where to perform the operation.
     @params obj {Object} Plain object with data to send to the server.
@@ -614,10 +630,10 @@ module Gnd.Ajax
   {
     return base('GET', url, obj);
   }
-  
+
   /**
     Performs a HTTP PUT operation.
-  
+
     @method put
     @params url {String} url where to perform the operation.
     @params obj {Object} Plain object with data to send to the server.
@@ -627,10 +643,10 @@ module Gnd.Ajax
   {
     return base('PUT', url, obj);
   }
-  
+
   /**
     Performs a HTTP POST operation.
-  
+
     @method post
     @params url {String} url where to perform the operation.
     @params obj {Object} Plain object with data to send to the server.
@@ -640,10 +656,10 @@ module Gnd.Ajax
   {
     return base('POST', url, obj);
   }
-  
+
   /**
     Performs a HTTP DELETE operation.
-  
+
     @method get
     @params url {String} url where to perform the operation.
     @params [obj] {Object} Plain object with data to send to the server.
@@ -668,9 +684,9 @@ module Gnd.Ajax
   function getXhr(): XMLHttpRequest
   {
     for(var i=0; i<4; i++){
-      try{        
-        return i ? 
-          new ActiveXObject([, "Msxml2", "Msxml3", "Microsoft"][i] + ".XMLHTTP")               
+      try{
+        return i ?
+          new ActiveXObject([, "Msxml2", "Msxml3", "Microsoft"][i] + ".XMLHTTP")
           : new XMLHttpRequest;
       }
       catch(e){
@@ -678,11 +694,11 @@ module Gnd.Ajax
       }
     }
   }
-  
+
   function base(method: string, url: string, obj?: {}): Promise<any>
   {
     var xhr = getXhr();
-    
+
     return new Promise((resolve, reject) => {;
       xhr.onreadystatechange = () => {
         if (xhr.readyState === 4) {
@@ -690,8 +706,10 @@ module Gnd.Ajax
           if (xhr.status >= 200 && xhr.status < 300) {
             var res;
             try {
-              res = JSON.parse(xhr.responseText || {});
-            } catch(e) {};
+              res = JSON.parse(xhr.responseText) || {};
+            } catch(e) {
+              res = xhr.responseText;
+            };
             resolve(res);
           } else {
             var err = new Error("Ajax Error: "+xhr.responseText);
@@ -713,7 +731,7 @@ module Gnd.Ajax
 
 module Gnd {
 
-  var keyMapping = {
+  var keyMapping: any = {
     'backspace': 8,
     'enter': 13,
     'caps': 20,
@@ -730,7 +748,7 @@ module Gnd {
     'shift': 16,
     'tab': 9
   };
-  
+
   var modifiers = {
     'shiftKey': 16,
     'ctrlKey': 17,
@@ -740,31 +758,31 @@ module Gnd {
 
 /**
   This function returns a key handler suitable for DOM keydown events.
-  
+
   It provides a chainable API where the last link should provide a callback
   that is executed when the event matches the key and modifiers.
-  
+
   This function allows to register handlers to key presses including
   key modifiers such as shift, ctrl, alt and meta.
-  
+
   @for Gnd
   @method keypressed
-  @example 
-      
-      // Attaching keydown events directly to the DOM 
+  @example
+
+      // Attaching keydown events directly to the DOM
       Gnd.$('document').on('keydown', Gnd.keypressed('a').ctrl().alt(function(){
           // Called when a + ctrl + alt is pressed
       });
-      
+
       // Attaching key events to view model events
       room.onKeyPress = Gnd.keypressed().enter(function(evt){
         sendMessage();
       });
-      
-      var viewModel = new Gnd.ViewModel('#msgbox', { 
+
+      var viewModel = new Gnd.ViewModel('#msgbox', {
         room: room
       });
-      
+
       //
       // <input id="msgbox" type="text" data-event="keypress: room.onKeyPress">
       //
@@ -774,7 +792,7 @@ export function keypressed(str?: string, cb?): (evtOrEl, evt?) => void
 {
   var callbacks = [];
   var keys = [];
-  
+
   if(_.isString(str)){
     _.each(str.split(''), (c) => {
       keys.push(c.toUpperCase().charCodeAt(0))
@@ -782,33 +800,33 @@ export function keypressed(str?: string, cb?): (evtOrEl, evt?) => void
   }else{
     cb = str;
   }
-  
+
   cb && callbacks.push(cb);
-  
+
   var handleEvent = (evtOrEl, evt?) =>
   {
     var pressed = [];
-    
+
     evt = !_.isUndefined(evtOrEl.which) ? evtOrEl : evt;
-    
+
     for(var modifier in modifiers){
       evt[modifier] && pressed.push(modifiers[modifier]);
     }
-    
+
     pressed.push(evt.which);
     pressed = _.unique(pressed);
-    
+
     if(pressed.length === keys.length && !_.difference(keys, pressed).length){
       _.each(callbacks, (cb) => cb(evt));
     }
   }
-  
+
   _.each(keyMapping, (keyCode, key?) => handleEvent[key] = (cb) => {
-    cb && callbacks.push(cb); 
+    cb && callbacks.push(cb);
     keys.push(keyCode);
     return handleEvent;
   });
-    
+
   return handleEvent;
 }
 

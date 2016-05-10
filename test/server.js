@@ -78,17 +78,18 @@ sio.on('connection', function(socket){
   console.log("Socket %s connected", socket.id)
 
   socket.on('disconnect', function(){
-    console.log("Socket %s diconnected", socket.id)  
+    console.log("Socket %s diconnected", socket.id)
   })
 })
 
 sio.on('disconnect', function(socket){
-  
+
 })
 
+var bodyParser = require('body-parser');
+app.use(bodyParser.json());
 
-app.use(express.bodyParser());
-
+mongoose.Promise = require('bluebird');
 var mongooseStorage = new Gnd.Storage.MongooseStorage(mongoose, models);
 var TEST_COOKIE = 'testCookie';
 
@@ -97,11 +98,13 @@ var pubClient = redis.createClient(6379, "127.0.0.1"),
 
 var syncHub = new Gnd.Sync.Hub(pubClient, subClient, sio.sockets);
 
-var gndServer = new Gnd.Server(mongooseStorage, 
-                               new Gnd.SessionManager(), 
+var gndServer = new Gnd.Server(mongooseStorage,
+                               new Gnd.SessionManager(),
                                syncHub);
-                               
+
 var socketServer = new Gnd.SocketBackend(sio.sockets, gndServer);
+
+var restServer = new Gnd.RestBackend(app, bodyParser, gndServer);
 
 //
 // Ajax APIs used for some unit tests
@@ -124,7 +127,7 @@ app.put('/zoo/:zooId/animals/:id', function(req, res){
   });
 });
 
-app.del('/zoo/:zooId/animals/:id', function(req, res){
+app.delete('/zoo/:zooId/animals/:id', function(req, res){
   mongooseStorage.remove(['zoo', req.params.zooId, 'animals'], ['animals'], [req.params.id], {}).then(function(){
     res.send(204);
   }, function(){
@@ -134,8 +137,8 @@ app.del('/zoo/:zooId/animals/:id', function(req, res){
 
 app.put('/parade/:seqId/animals/:id', function(req, res){
   console.log('pushing '+req.params.id+' to '+req.params.seqId);
-  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'], 
-                                 null, 
+  gndServer.storage.insertBefore(['parade', req.params.seqId, 'animals'],
+                                 null,
                                  ['animals', req.params.id], {}).then(function(){
     res.send(204);
   }).fail(function(err){
@@ -143,7 +146,7 @@ app.put('/parade/:seqId/animals/:id', function(req, res){
   });
 });
 
-app.del('/parade/:seqId/animals/:id', function(req, res){
+app.delete('/parade/:seqId/animals/:id', function(req, res){
   console.log('deleting '+req.params.id+' from '+req.params.seqId);
   mongooseStorage.deleteItem(['parade', req.params.seqId, 'animals'],
                                req.params.id, {}).then(function(){
@@ -155,11 +158,11 @@ app.del('/parade/:seqId/animals/:id', function(req, res){
 
 // Server for sessions
 //var sessionManager = new Gnd.SessionManager(TEST_COOKIE, cookie.parse);
-
-var cookieParser = express.cookieParser(TEST_COOKIE);
+var cookieParser = require('cookie-parser');
+var cookieParser = cookieParser(TEST_COOKIE);
 var sessionCookieParser = function(rawData){
   var data = {headers: {cookie: rawData}};
-  
+
   var promise = new Gnd.Promise();
   cookieParser(data, {}, function(err){
     if(err){
@@ -175,23 +178,23 @@ var sessionManager = new Gnd.SessionManager(sessionCookieParser);
 
 rules = {
   create: {
-    
+
   },
-  
+
   put: {
-  
+
   },
-  
+
   del: {
-  
+
   },
-  
+
   add: {
-  
+
   },
-  
+
   remove: {
-  
+
   },
 }
 
@@ -228,7 +231,7 @@ app.post('/sessions', passport.authenticate('local'), function(req, res) {
   cookies = new Cookies(req, res);
   var sessionId = uuid.v1()
   cookies.set(TEST_COOKIE, sessionId);
-  
+
   sessionManager.setSession(sessionId, req.user, function(err){
     if(!err){
       res.send(req.user);
@@ -238,7 +241,7 @@ app.post('/sessions', passport.authenticate('local'), function(req, res) {
   });
 });
 
-app.get('/sessions',  function(req, res) {  
+app.get('/sessions',  function(req, res) {
   sessionManager.getSession(req.headers.cookie, function(err, session){
     console.log(err);
     if(!err){
@@ -249,7 +252,7 @@ app.get('/sessions',  function(req, res) {
   })
 });
 
-app.del('/sessions',  function(req, res) {
+app.delete('/sessions',  function(req, res) {
   sessionManager.removeSession(req.headers.cookie, function(err){
     if(!err){
       res.send(200);
@@ -267,14 +270,17 @@ var mongooseDB = 'mongodb://localhost/GndTestDB';
 //var mongooseDB = 'mongodb://localhost:27018/GndTestDB';
 console.log(mongooseDB)
 mongoose.connect(mongooseDB, function(){
-  mongoose.connection.db.executeDbCommand( {dropDatabase:1}, function(err, result) {
+  mongoose.connection.db.command( {dropDatabase:1}, function(err, result) {
     console.log(result);
     mongoose.disconnect(function(){
-      mongoose.connect(mongooseDB);
 
-      server.listen(10000);
-      serverSessions.listen(9999);
-      console.log("Started test server at port: %d in %s mode", server.address().port, app.settings.env);
+      setTimeout(function(){
+        mongoose.connect(mongooseDB);
+
+        server.listen(10000);
+        serverSessions.listen(9999);
+        console.log("Started test server at port: %d in %s mode", server.address().port, app.settings.env);
+      }, 1000);
     });
   });
 });

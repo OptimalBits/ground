@@ -3,12 +3,10 @@
 */
 /**
   Method Overload.
-  
-  This module provides a mechanism for cleaner method overload.
-  
-*/
 
-/// <reference path="../third/lodash.d.ts" />
+  This module provides a mechanism for cleaner method overload.
+
+*/
 
 /*
 References:
@@ -19,7 +17,7 @@ module Gnd {
 
 export function overload(map:{}) {
   return function(...args:any[]) : any {
-    
+
     // Create string with parameters
     var key = '';
     if(args.length){
@@ -32,7 +30,7 @@ export function overload(map:{}) {
         }
       }
     }
-    
+
     // Match signature
     if(map[key]){
       return map[key].apply(this, args);

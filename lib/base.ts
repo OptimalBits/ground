@@ -4,11 +4,10 @@
 */
 /**
   Base Class.
-  
+
   Most classes extends the base class in order to be observable,
   get property bindings and reference counting.
 */
-
 /// <reference path="util.ts" />
 /// <reference path="event.ts" />
 /// <reference path="undo.ts" />
@@ -20,13 +19,14 @@
 */
 // Error.prototype.stack = Error.prototype.stack || '';
 
+
 /**
   @module Gnd
 */
 module Gnd {
 "use strict";
 
-export interface IObservable 
+export interface IObservable
 {
   // TODO: Implement
 }
@@ -44,16 +44,16 @@ export interface IGettable
 export interface BaseEvents
 {
   on(evt: string, listener: (...args: any[]) => void);
-  
+
   /**
   * Fired when any property changes.
   *
   * @event changed:
-  * @param obj {any} 
+  * @param obj {any}
   * @param options {any}
   */
   on(evt: 'changed:', listener: (obj?: any, options?: any) => void); // TODO: Define options interface
-  
+
   /**
   * Fired when the object is destroyed.
   *
@@ -69,12 +69,12 @@ interface EventCageItem
   oldval: any;
 }
 
-interface EventCage { 
+interface EventCage {
   [name: string]: EventCageItem;
 }
 
 /**
- * The {{#crossLink "Base"}}{{/crossLink}} class is the base class for all 
+ * The {{#crossLink "Base"}}{{/crossLink}} class is the base class for all
  * objects in Ground.
  *
  * @class Base
@@ -88,7 +88,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
   private _destroyed: boolean;
   private _destroyedTrace: string;
   // private _undoMgr: UndoManager = new UndoManager();
-  
+
   /**
     Retains the given objects (see reference count for details).
 
@@ -106,7 +106,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
 
   /**
     Release the given objects (see reference count for details).
- 
+
     @method release
     @static
     @param objs* {Array | Any} object or objects to release. If any of the objs
@@ -118,10 +118,10 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       obj && obj.release();
     });
   }
-  
+
   /**
    This is a specialized listener that takes into consideration keypaths.
-    
+
   */
   on(eventNames: string, listener: (...args: any[]) => void): EventEmitter
   {
@@ -129,7 +129,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       return obj.on(keypath, listener);
     });
     if(res) return res;
-    
+
     return super.on(eventNames, listener);
   }
 
@@ -150,17 +150,17 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    *  Code smell: when setting a whole object of properties, if one of them
    *  is a function, nosync will be set to true and none of the properties will
    *  be synchronized...
-   *  
+   *
    * @method set
-   * @param {String} keypath 
+   * @param {String} keypath
    * @param {Object} val
    * @param {Object} [opts]
    * @chainable
    */
   set(keypath: string, val: any, opts?: {});
-  
+
   /**
-   *  
+   *
    * @method set
    * @param {Object} doc object with properties to set.
    * @param {Object} [opts] {nosync?: boolean, nocache?: boolean, replace?: boolean}
@@ -168,9 +168,9 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    */
   set(doc: {}, opts?: {});
   set(keypathOrObj, val?, opts?){
-    var 
+    var
       cage: EventCage = {},
-      keypath, 
+      keypath,
       obj;
 
     if(_.isObject(keypathOrObj)){
@@ -184,52 +184,52 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
 
       obj[keypath] = this.willChange(keypath, val);
     }
-    
+
     opts = opts || {};
-    
+
     if(set(this, keypath, val, cage, opts)){
       _.each(cage, function(val, key){
         val.emitter.emit(key, val.val, val.oldval, opts);
       });
-      this.emit('changed:', obj, opts);  
+      this.emit('changed:', obj, opts);
     };
     return this;
   }
-  
+
   willChange(keypath, val) {
     return val;
   }
-  
+
   /**
    *  Gets a property.
    *
-   * @method get 
+   * @method get
    * @param {Object} key property to get.
    * @returns {any}
    */
   get(key: string): any
   {
-    var 
+    var
       path = key.split('.'),
       result: any = this,
       len = path.length;
-    
+
     if(!len) return;
 
     for(var i=0; i<len; i++){
       result = path[i] === '' ? result : result[path[i]];
-      result = _.isFunction(result) ? result.call(this) : result;    
+      result = _.isFunction(result) ? result.call(this) : result;
       if(!_.isObject(result)) break;
     }
-    
+
     return result;
   }
-    
+
   /**
-   * Creates a binding between two properties. 
-   * Binded properties will be updated automatically as long as set method 
+   * Creates a binding between two properties.
+   * Binded properties will be updated automatically as long as set method
    * is used to updata them.
-   * 
+   *
    * Note: If the keys have different values when binding, the caller will get
    * the value of the target object key.
    *
@@ -244,18 +244,18 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     var dstKey = objectKey || key
 
     this.unbind(key)
-  
-    var dstListener = _.bind(object.set, object, dstKey)
+
+    var dstListener = <Listener>_.bind(object.set, object, dstKey);
     this.on(key, dstListener)
-  
-    var srcListener = _.bind(this.set, this, key)
+
+    var srcListener = <Listener>_.bind(this.set, this, key)
     object.on(dstKey, srcListener)
-  
+
     this._bindings[key] = [dstListener, object, dstKey, srcListener];
-  
+
     // sync
     this.set(key, object[dstKey])
-  
+
     return this
   }
   /**
@@ -276,7 +276,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       delete bindings[key]
     }
   }
-  
+
   /**
     Begins an undo operation over setting a given key to a value.
   */
@@ -299,7 +299,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
         base.set(key, value)
     })}(this[key]))
   }
-  
+
   /**
     Sets a key value while registering it as an undo operation
   */
@@ -309,11 +309,11 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     this.set(key, value)
     this.endUndoSet(key)
   }
-  
+
   /**
    * Destroys this object. Removes all event listeners and cleans itself up.
    * Note: this method should never be called directly.
-   *  
+   *
    * @method destroy
    * @protected
    */
@@ -324,10 +324,10 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     this._destroyedTrace = "";// Error().stack;
     this.off();
   }
-  
+
   /**
    * Retains a reference of this object.
-   *  
+   *
    * @method retain
    * @chainable
    *
@@ -340,13 +340,13 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     this._refCounter++;
     return this;
   }
-  
+
   /**
    * Releases a reference of this object.
    *
    * When all references of an object reaches zero, the object is automatically
-   * destroyed (calling the destroy method) 
-   *  
+   * destroyed (calling the destroy method)
+   *
    * @method release
    * @chainable
    *
@@ -371,11 +371,11 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     }
     return this;
   }
-  
+
   /**
    * Autoreleases a reference of this object.
    * i.e. releases the object in the next event loop.
-   *  
+   *
    * @method autorelease
    * @chainable
    *
@@ -385,7 +385,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
     Util.nextTick(() => this.release());
     return this;
   }
-  
+
   /**
   * Checks if the object has been destroyed.
   *
@@ -411,7 +411,7 @@ function findSubobject(obj, rawKeypath, cb){
       if(_.isUndefined(obj)){
         break;
       }
-      
+
     }
   }
 }
@@ -419,26 +419,26 @@ function findSubobject(obj, rawKeypath, cb){
 function set(root: Base, keypath: string, val:any, cage: {}, opts?)
 {
   opts = opts || {};
-  
+
   var changed = false;
-  
+
   //
   // Traverse object using the keypath
   //
   var obj = root;
   var keys = keypath.split('.');
-  
+
   var key = keys[0], dst, len = keys.length-1;
   for(var i=0; i<len; i++){
     dst = obj[key];
     if(!_.isObject(dst)){
       dst = obj[key] = {};
-    } 
-    
+    }
+
     obj = dst;
     key = keys[i+1];
   }
-  
+
   if((_.isArray(val) || _.isPlainObject(val)) && !opts.replace){
     var lastKey = key;
 
@@ -453,14 +453,14 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
         return true;
       }
     }
-    
+
     _.each(val, function(subval, subkey: string){
       var subkeypath: string = keypath ? keypath+'.'+subkey : subkey;
       changed = set(root, subkeypath, subval, cage, opts) ? true : changed;
     });
-  }else{ 
+  }else{
     var oldval = obj[key];
-    
+
     // Virtual properties are a bit hacky right now
     var isVirtual = obj['isVirtual'] && obj['isVirtual'](key);//Util.isVirtualProperty(oldval);
     if(isVirtual){
@@ -471,7 +471,7 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
       opts.nosync = true;
       opts.nocache = true;
     }
-    
+
     changed = (oldval !== val) || opts.force;
     if(changed){
       if(obj.willChange){
@@ -488,7 +488,7 @@ function set(root: Base, keypath: string, val:any, cage: {}, opts?)
       }else if(obj !== root || key !== keypath){
         storeEvent(root, cage, keypath, val);
       }
-      
+
       generateEvents(root, val, keys, keypath, cage);
     }
   }
@@ -502,14 +502,14 @@ function generateEvents(root: Base, val, keys: string[], keypath: string, cage){
   //
   var res = val, key, len = keys.length-1;
   for(var i=len; i>=0; i--){
-        
+
     // TODO: Also save the old value
     storeEvent(root, cage, keypath, res);
     key = keys[i];
     res = {};
     res[key] = val;
     val = res;
-    
+
     keypath = keypath.substr(0, (keypath.length-key.length)-1);
   }
 }

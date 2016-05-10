@@ -8,7 +8,6 @@
   the framework.
 */
 
-/// <reference path="../third/lodash.d.ts" />
 /// <reference path="overload.ts" />
 /// <reference path="base.ts" />
 
@@ -20,7 +19,7 @@ module Gnd.Util {
 
 /**
   Assorted utilities.
-    
+
   @class Util
 */
 
@@ -51,11 +50,11 @@ export function uuid(a?,b?){
 
 /**
   Computes the adler32 checksum of a string.
-  
+
   credits: https://gist.github.com/1200559/1c2b2093a661c4727958ff232cd12de8b8fb9db9
   @method adler32
   @param s {String} string from where to compute adler32 checksum.
-*/ 
+*/
 export function adler32(s: string): number
 {
   for(var b=65521,c=1,d=0,e=0,f; f=s.charCodeAt(e++); d=(d+c)%b){
@@ -66,7 +65,7 @@ export function adler32(s: string): number
 
 /**
   Refreshes the browser.
-  
+
   @method refresh
 */
 export function refresh(){
@@ -76,9 +75,9 @@ export function refresh(){
 /**
 
   http://jsperf.com/test002/5
-  
+
   @method nextTick
-  @param 
+  @param
 */
 //
 // http://jsperf.com/test002/5
@@ -105,10 +104,10 @@ if((typeof process !== 'undefined') && (process.nextTick)){
 
 /**
   Trims a string.
-  
+
   @method trim
   @param str {String} the string to trim.
-  @param [maxLen] {Number} 
+  @param [maxLen] {Number}
   @param [suffix] {String}
 */
 export function trim(str: string, maxLen?: number, suffix?: string): string
@@ -129,7 +128,7 @@ export function trim(str: string, maxLen?: number, suffix?: string): string
 export function asyncDebounce(fn) {
   fn = fn || noop;
   var delayedFunc = null, executing = null;
-  
+
   return function debounced() {
     var context = this,
       args = arguments,
@@ -139,7 +138,7 @@ export function asyncDebounce(fn) {
         executing = fn;
         fn.apply(context, args);
       };
-  
+
     args[nargs-1] = function(){
       cb.apply(context, arguments);
       executing = null;
@@ -149,7 +148,7 @@ export function asyncDebounce(fn) {
         f();
       }
     };
-  
+
     if(executing){
       delayedFunc = delayed;
     }else{
@@ -160,15 +159,15 @@ export function asyncDebounce(fn) {
 
 
 /**
-  Search Filter. returns true if any of the fields of the 
+  Search Filter. returns true if any of the fields of the
   obj includes the search string.
-  
+
   @method searchFilter
   @param obj {Object} object to check the search string.
   @param search {String} search string.
   @param fields {Array} array of string with the fields to search for.
   @return {Boolean} true if the object includes the search string.
-*/ 
+*/
 export function searchFilter(obj: {}, search: string, fields: string []): boolean
 {
   if(search){
@@ -193,7 +192,7 @@ export function searchFilter(obj: {}, search: string, fields: string []): boolea
 */
 export function asyncForEach(array, fn, cb) {
   var completed = 0;
-    
+
   function iter(item, len){
     fn(item, function(err) {
       if(err){
@@ -207,7 +206,7 @@ export function asyncForEach(array, fn, cb) {
       }
     });
   }
-    
+
   if(_.isArray(array)){
     if(array.length === 0) {
       cb && cb(null);
@@ -224,7 +223,7 @@ export function asyncForEach(array, fn, cb) {
 /**
     @method asyncForEachSeries
     @deprecated
-    
+
     Credits: https://github.com/caolan/async
 */
 export function asyncForEachSeries(arr, fn, cb){
@@ -273,16 +272,16 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
   var d = function Derived(){
     parent.apply(this, arguments);
   }
-  
+
   if(subclass){
     methods = subclass(parent.prototype);
     d = methods.constructor;
   }
-  
+
   inherits(d, parent);
-  
+
   _.extend(d.prototype, methods);
-  
+
   return d;
 }
 
@@ -304,7 +303,7 @@ export function extend(parent: ()=>void, subclass?: (_super?: ()=>void)=>any){
         },
         b: 3
       }
-    
+
   @method expand
 */
 export function expand(args: {}): {}
@@ -316,7 +315,7 @@ export function expand(args: {}): {}
   });
   return obj;
 }
- 
+
 /**
   Expand a single property and decorate the object obj with it
 
@@ -357,7 +356,7 @@ function deepExtend(doc, args, callFns?: boolean): {}
   _.each(keys, (key) => {
     var dst = doc[key];
     var val = args[key];
-    
+
     if(isVirtualProperty(doc, dst)){
       doc[key](val);
     }else{
@@ -411,14 +410,14 @@ var handlerQueue = [];
 /**
   Enqueue a task. If the queue is not currently scheduled to be
   drained, schedule it.
-  
+
   From [whenjs](https://github.com/cujojs/when)
-  Shared handler queue processing 
-  
+  Shared handler queue processing
+
   Credit to Twisol (https://github.com/Twisol) for suggesting
   this type of extensible queue + trampoline approach for
   next-tick conflation.
-  
+
   @method enqueue
   @param {function} task
 */
@@ -447,4 +446,3 @@ export function drainQueue() {
 
 
 } // Gnd.Util
-  

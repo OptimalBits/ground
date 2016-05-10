@@ -9,7 +9,6 @@
 /// <reference path="../log.ts" />
 /// <reference path="../server.ts" />
 /// <reference path="../error.ts" />
-/// <reference path="../../third/socket.io.d.ts" />
 
 // This functions picks the error message and pass it to socket.io callback ack
 function scb(cb){
@@ -30,13 +29,13 @@ function callback(promise, cb){
     console.log("Unexpected Error in socket backend", err);
   });
 }
-  
+
 module Gnd {
-  
+
   /**
-    Server backend for socket.io. Works in tandem with 
+    Server backend for socket.io. Works in tandem with
     {{#crossLink "Storage.Socket"}}{{/crossLink}}
-  
+
     @class SocketBackend
     @constructor
     @param socketManager {Socket} A socket.io server instance.
@@ -44,10 +43,10 @@ module Gnd {
   */
 export class SocketBackend {
   constructor(socketManager: any, server: Server){
-    
+
     socketManager.on('connection', function(socket){
       var clientId = socket.id;
-      
+
       // TODO: Use socket.io authentication mechanism to guarantee there is a session?
       server.sessionManager.getSession(socket.handshake.headers.cookie).then((session) => {
         // Models
@@ -56,28 +55,28 @@ export class SocketBackend {
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.create(session.userId, keyPath, doc, {}), cb);
         });
-    
+
         socket.on('put', function(keyPath: string[], doc: {}, cb: (err?: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.put(clientId, session.userId, keyPath, doc, {}), cb);
         });
-    
+
         socket.on('get', function(keyPath: string[], cb: (err?: ServerError, doc?: {}) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.fetch(session.userId, keyPath), cb);
         });
-    
+
         socket.on('del', function(keyPath: string[], cb: (err?: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.del(clientId, session.userId, keyPath, {}), cb);
         });
-    
+
         // Collections / Sets
         socket.on('add', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.add(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}), cb);
         });
-    
+
         socket.on('remove', function(keyPath: string[], itemsKeyPath: string[], itemIds:string[], cb: (err: ServerError) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.remove(clientId, session.userId, keyPath, itemsKeyPath, itemIds, {}), cb);
@@ -87,7 +86,7 @@ export class SocketBackend {
           if(!session) return cb(ServerError.INVALID_SESSION);
           callback(server.find(session.userId, keyPath, query, opts), cb);
         });
-        
+
         // Sequences
         socket.on('all', function(keyPath: string[], query: {}, opts: {}, cb: (err: ServerError, result?: {}[]) => void){
           if(!session) return cb(ServerError.INVALID_SESSION);

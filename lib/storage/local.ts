@@ -28,13 +28,13 @@ var InvalidKeyError = () => Error('Invalid Key');
 
 /**
   Generic Storage implementation for local storages.
-  
+
   Provide an implementation of the IStore interface to create local storages,
   a Memory and HTML5 LocalStorage stores are provided by the framework.
 
   @class Storage.Local
   @extends IStorage
-  
+
   @constructor
   @param [store=Storage.Store.LocalStore] specifies what store to use. Defaults
   to LocalStorage.
@@ -119,7 +119,7 @@ export class Local implements IStorage {
       resolve(doc._cid);
     });
   }
-  
+
   fetch(keyPath: string[]): Promise<any>
   {
     return new Promise((resolve, reject) => {
@@ -131,38 +131,38 @@ export class Local implements IStorage {
       }
     });
   }
-  
+
   put(keyPath: string[], doc: {}, opts: {}): Promise<void>
   {
-    var 
+    var
       key = this.makeKey(keyPath),
       keyValue = this.traverseLinks(this.makeKey(keyPath));
-      
-    if(keyValue){  
+
+    if(keyValue){
       this.store.put(keyValue.key, Util.merge(keyValue.value, doc));
-    }else{ 
+    }else{
       //
       // Upsert
       //
       this.store.put(key, doc);
     }
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-    
+
   del(keyPath: string[]): Promise<void>
   {
     this.traverseLinks(this.makeKey(keyPath), (key)=>{
       this.store.del(this.makeKey(keyPath));
     });
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-    
+
   link(newKeyPath: string[], oldKeyPath: string[]): Promise<void>
   {
     // Find all the keypaths with oldKeyPath as subpath, replacing them by the new subkeypath
     var oldKey = this.makeKey(oldKeyPath);
     var newKey = this.makeKey(newKeyPath);
-    
+
     var keys = this.store.allKeys(); //localCache.getKeys();
     for(var i=0; i<keys.length; i++){
       if(keys[i].substring(0, oldKey.length) === oldKey){
@@ -171,14 +171,14 @@ export class Local implements IStorage {
         this.store.put(link, keys[i]);
       }
     }
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-  
+
   //
   // ISetStorage
-  //  
+  //
   // Save as an Object where key = itemId, value = add|rm|synced
-  // 
+  //
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise<void>
   {
     var
@@ -193,24 +193,24 @@ export class Local implements IStorage {
       // this.createCollectionLink(keyPath[0]);
       return Promise.resolved<void>();
     }
-    
+
     key = keyValue ? keyValue.key : key;
     _.each(itemIdsKeys, (id)=>{
       newIdKeys[id] = opts.insync ? 'insync' : 'add';
     })
     this.store.put(key, _.extend(oldItemIdsKeys, newIdKeys));
-    
-    return Promise.resolved();
+
+    return Promise.resolved(void 0);
   }
-  
+
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts): Promise<void>
   {
-    var 
+    var
       key = this.makeKey(keyPath),
       itemIdsKeys = this.contextualizeIds(itemsKeyPath, itemIds),
       keyValue = this.traverseLinks(key);
 
-    if(itemIds.length === 0) return Promise.resolved(); // do nothing
+    if(itemIds.length === 0) return Promise.resolved(void 0); // do nothing
 
     if(keyValue){
       var keysToDelete = keyValue.value;
@@ -224,23 +224,23 @@ export class Local implements IStorage {
         });
       });
       this.store.put(keyValue.key, keysToDelete);
-      return Promise.resolved()
+      return Promise.resolved(void 0)
     }else{
       return Promise.rejected<void>(InvalidKeyError());
     }
   }
-  
+
   find(keyPath: string[], query: {}, opts) : Promise<any[]>
   {
     var result = {};
-    
+
     var getItems = (collection) => {
       _.each(_.keys(collection), (key)=>{
         var op = collection[key]
         if(op !== 'rm' || !opts.snapshot){
           var keyValue = this.traverseLinks(key);
           if(keyValue){
-            var 
+            var
               item = keyValue.value,
               id = item._cid || item._id;
             if(!(result[id]) || op === 'insync'){
@@ -256,18 +256,18 @@ export class Local implements IStorage {
       }
       return values;
     }
-    
+
     if(keyPath.length === 1){
       var keyValue = this.traverseLinks(keyPath[0]);
-      return keyValue ? Promise.resolved(getItems(keyValue.value)) : 
+      return keyValue ? Promise.resolved(getItems(keyValue.value)) :
                         Promise.resolved([]);
     }else{
-      return this.fetch(keyPath).then((collection) => getItems(collection), 
+      return this.fetch(keyPath).then((collection) => getItems(collection),
         // This is wrong but necessary due to how .all api works right now...
         (err) => []);
     }
   }
-  
+
   //
   // ISeqStorage
   //
@@ -306,7 +306,7 @@ export class Local implements IStorage {
           visited[itemId] = true;
           traverse(item.next);
       };
-    
+
       var first = itemKeys[0].next;
       traverse(first);
       resolve(all);
@@ -327,19 +327,19 @@ export class Local implements IStorage {
       }
     }
   }
-  
+
   deleteItem(keyPath: string[], id: string, opts): Promise<void>
   {
-    return new Promise((resolve, reject) =>{
+    return new Promise<void>((resolve, reject) =>{
       var key = this.makeKey(keyPath);
       var keyValue = this.traverseLinks(key);
       var itemKeys = keyValue ? keyValue.value || [] : [];
       key = keyValue ? keyValue.key : key;
 
-      var item = _.find(itemKeys, (item) => {
+      var item = _.find(itemKeys, (item: ListItem) => {
         return item._id === id || item._cid === id;
       });
-    
+
       // We do not reject the promise if trying to delete an unexistent item.
       if(item){
         if(opts.insync || opts.noremote){ //noremote implies insync
@@ -353,10 +353,10 @@ export class Local implements IStorage {
         this.store.put(key, itemKeys);
       }
 
-      return resolve()
+      return resolve();
     });
   }
-  
+
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts): Promise<{id: string; refId: string}>
   {
     id = id || '##@_end';
@@ -370,7 +370,9 @@ export class Local implements IStorage {
 
       // Check for already inserted id
       if(opts.id){
-      var found = _.find(itemKeys, function(item){ return item._id === opts.id || item._cid === opts.id; });
+      var found = _.find(itemKeys, function(item: ListItem){
+        return item._id === opts.id || item._cid === opts.id;
+      });
       if(found){
         var next = itemKeys[found.next];
         if(next._id === id || next._cid === id){
@@ -383,13 +385,13 @@ export class Local implements IStorage {
       }
       }
 
-      var refItem = _.find(itemKeys, (item) => {
+      var refItem = _.find(itemKeys, (item: ListItem) => {
         return item._id === id || item._cid === id;
       });
 
       if(!refItem) return reject(Error('reference item not found'));
       var prevItem = itemKeys[refItem.prev];
-    
+
       var newItem: any = {
         key: itemKey,
         sync: opts.insync || opts.noremote ? 'insync' : 'ib', //noremote implied insync
@@ -418,13 +420,13 @@ export class Local implements IStorage {
     var itemKeys = keyValue ? keyValue.value || [] : [];
     key = keyValue ? keyValue.key : key;
 
-    var item = _.find(itemKeys, (item) => {
+    var item = _.find(itemKeys, (item: ListItem) => {
       return opts.op === 'ib' && item._cid === id ||
              opts.op === 'rm' && item._id === sid;
     });
     // If we get an ack for an item we didn't created ourself, just return. This
     // happens when having two synced sequences on the same client (i.e. during testing)
-    if(!item) return Promise.resolved();
+    if(!item) return Promise.resolved(void 0);
     // if(!item) return Promise.rejected(Error(''+ServerError.INVALID_ID));
 
     if(sid) item._id = sid;
@@ -441,7 +443,7 @@ export class Local implements IStorage {
         break;
     }
     this.store.put(key, itemKeys);
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
 }
 

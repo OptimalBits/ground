@@ -15,6 +15,27 @@
   @submodule Storage
 */
 module Gnd.Storage {
+
+  export type ListItem = {
+    next: any,
+    prev: any,
+    _id: string,
+    _cid: string,
+    sync: string
+  };
+
+  export enum EntityType {
+    Model,
+    Collection,
+    Sequence,
+    Invalid
+  };
+
+  export type Entity = {
+    type: EntityType,
+    bucket: string
+  };
+
 /*
 export enum ErrorCode {
   OK                      = 0,
@@ -29,7 +50,7 @@ export class StorageError {
 }
 
 TODO: Study if Error is the best return value for errors, or if a
-error code will be better, to help classify into different types of 
+error code will be better, to help classify into different types of
 errors, for example, temporal errors (may trigger a retry) versus
 persistent errors (should not retry).
 */
@@ -38,20 +59,20 @@ persistent errors (should not retry).
 /**
   A key path is just an array of strings specifying a location in a storage.
   Normally key paths are built alternating buckets with documents ids.
-  
+
   Example:
-  
+
       ['zoo', '12345123', 'animals', '52343']
-  
+
   @class KeyPath
 */
 
 /**
   Storage Interface. Any storage fullfilling this interface can be used by
-  Ground. 
-  
+  Ground.
+
   The basic storage interface follows CRUD semantics.
-  
+
   @class Storage.IStorage
   @uses Storage.ISetStorage
   @uses Storage.ISeqStorage
@@ -60,9 +81,22 @@ persistent errors (should not retry).
 export interface IStorage extends ISetStorage, ISeqStorage {
 
   /**
+   * Returns the entity type for the given keypath.
+   *
+   */
+  entityType? (keyPath): Promise<EntityType>;
+
+  /**
+   * Returns the entity description for the given keypath.
+   *
+   */
+  entity?(keyPath: string[]): Promise<Entity>
+
+
+  /**
     Creates a new document in the given key path in the storage. The key path
     should point to a bucket.
-  
+
     @method create
     @param keyPath {KeyPath} A keypath pointing to the place where to create
     the document.
@@ -72,10 +106,10 @@ export interface IStorage extends ISetStorage, ISeqStorage {
     document's id on the storage.
   */
   create(keyPath: string[], doc: {}, opts: {}): Promise<string>;
-  
+
   /**
     Modifies a document that resides in the given key path.
-    
+
     @method put
     @param keyPath {KeyPath} A keypath pointing to document to modify.
     @param doc {Object} Plain object with the properties to be modified.
@@ -83,37 +117,38 @@ export interface IStorage extends ISetStorage, ISeqStorage {
     @return {Promise} returns a promise that resolves to void.
   */
   put(keyPath: string[], doc: {}, opts: {}): Promise<void>;
-  
+
   /**
     Fetches (gets) a document from the storage at the given key path.
-  
+
     @method fetch
     @param keyPath {KeyPath} A keypath pointing to document to fetch.
+    @param fields {String} An optional string with space separated field names.
     @return {Promise} returns a promise that resolves to the fetched document.
   */
-  fetch(keyPath: string[]): Promise<any>;
-  
+  fetch(keyPath: string[], fields?: string): Promise<any>;
+
   /**
     Deletes a document from the storare at the given key path.
-    
+
     @method del
     @param keyPath {KeyPath} A keypath pointing to document to delete.
     @return {Promise} returns a promise that resolves to void.
   */
   del(keyPath: string[], opts: {}): Promise<void>;
-  
+
   /**
-    Links a document. 
-    
-    This method creates a link by specifying a new key path 
+    Links a document.
+
+    This method creates a link by specifying a new key path
     that can be used to access the same original document.
-  
-    This is an optional method only required in local storage implementations. 
+
+    This is an optional method only required in local storage implementations.
     It is used to link persisted documents to client documents, specifically when
     a document's key path created locally could already be used, so when the
     document gets persisted server side and receives a new id, we cannot just
     delete the old key path, instead we create a link.
-    
+
     @method link
     @param newKeyPath {KeyPath} A new key path.
     @param targetKeyPath {KeyPath} The key path pointing to the document to be
@@ -134,38 +169,38 @@ export interface IStorage extends ISetStorage, ISeqStorage {
   @class Storage.IStorageQuery
 */
 export interface IStorageQuery {
-  
+
   /**
     List of space separated fields. Leave undefined for retrieving all fields.
-  
+
     @property fields
     @optional
     @type String
     @default undefined
   */
   fields?: String;
-  
+
   /**
     Condition that all found documents need to pass to be part of the resulting
     set.
-  
+
     The syntax for the condition is based on MongoDB syntax.
-    
+
     TODO: Document Gnd condition syntax in detail.
-    
+
     @property cond
     @optional
     @type {Object}
   */
   cond?: {};
-  
+
   /**
     Options that affect the query result.
-    
+
     * limit: number Limits the result to max number of documents.
     * skip: number Skip given number of entries.
     * sort: string 'asc' Ascending order, 'desc' Descendig order.
-    
+
     @property opts
     @optional
     @type {Object}
@@ -174,42 +209,42 @@ export interface IStorageQuery {
 }
 
 /**
-  Defines the interface for Set / Unordered documents, used in Gnd by 
+  Defines the interface for Set / Unordered documents, used in Gnd by
   Collections.
 
   @class Storage.ISetStorage
 */
 export interface ISetStorage {
   /**
-    Adds documents to the given collection. The documents are specifyed by 
+    Adds documents to the given collection. The documents are specifyed by
     documents ids, as the one returned by the create method in IStorage.
-  
+
     @method add
     @param keyPath {KeyPath} key path pointing to the bucket holding the collection.
-    @param itemsKeyPath {KeyPath} key path pointing to the bucket holding the 
+    @param itemsKeyPath {KeyPath} key path pointing to the bucket holding the
     documents that are going to be added.
     @param itemIds {Array} Array of strings containing the ids of the documents
     to add to the collection.
     @return {Promise} promise resolving to void when the operation is completed.
   */
   add(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise<void>
-  
+
   /**
     Removes documents from the given collection.
-  
+
     @method remove
     @param keyPath {KeyPath} key path pointing to the bucket holding the collection.
-    @param itemsKeyPath {KeyPath} key path pointing to the bucket holding the 
+    @param itemsKeyPath {KeyPath} key path pointing to the bucket holding the
     documents that are going to be removed.
     @param itemIds {Array} Array of strings containing the ids of the documents
     to remove from the collection.
     @return {Promise} promise resolving to void when the operation is completed.
   */
   remove(keyPath: string[], itemsKeyPath: string[], itemIds:string[], opts: {}): Promise<void>
-  
+
   /**
     Finds documents matching the given query.
-  
+
     @method find
     @param keyPath {KeyPath} key path pointing to the bucket holding the collection.
     @param query {IStorageQuery} object specifying the query to be performed.
@@ -233,10 +268,10 @@ export interface IDoc {
   @class Storage.ISeqStorage
 */
 export interface ISeqStorage {
-  
+
   /**
     Gets all the documents for the given sequence.
-    
+
     @method all
     @param keyPath {KeyPath} key path pointing to the bucket where the sequence
     is located.
@@ -244,10 +279,10 @@ export interface ISeqStorage {
     @param opts {Object} NOT USED YET
   */
   all(keyPath: string[], query: {}, opts: {}): Promise<any[]>;
-  
+
   /**
     Deletes an item in the sequence.
-  
+
     @method deleteItem
     @param keyPath {KeyPath} key path pointing to the bucket where the sequence
     is located.
@@ -255,10 +290,10 @@ export interface ISeqStorage {
     @param opts {Object} NOT USED YET
   */
   deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
-  
+
   /**
     Inserts a document before the given document.
-  
+
     @method insertBefore
     @param keyPath {KeyPath} key path pointing to the bucket where the sequence
     is located.
@@ -266,12 +301,12 @@ export interface ISeqStorage {
     @param itemKeyPath {KeyPath} key path where the item to be inserted is located.
   */
   insertBefore(keyPath: string[], refId: string, itemKeyPath: string[], opts: {}): Promise<{id: string; refId: string;}>
-  
+
   /**
     This method is called internally by the storage to acknowledge that an item
-    has been inserted. This method is only required when implementing local 
+    has been inserted. This method is only required when implementing local
     storages.
-    
+
     TODO: Add more documentation about this...
 
     @method ack

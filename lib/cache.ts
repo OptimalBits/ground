@@ -1,17 +1,17 @@
 /**
   Local Storage Cache.
-  
+
   This Object spawns a cache mechanism on top of the Local Storage.
-  
+
   It acts as a middle layer between the local storage and the user.
-  Every value written includes a timestamp that is later used for 
+  Every value written includes a timestamp that is later used for
   the LRU replacement policy.
-  
+
   The API mimics local storage API so that it is as interchangeble
-  as possible, the main differences is that instead of key() it 
+  as possible, the main differences is that instead of key() it
   provides each() for faster iteration, and there are no getters
   and setters using [] syntax, it just provides getItem and setItem.
-  
+
   Impl. Notes:
   The Cache keeps a map object for quick translation of given
   key to special key+timestamp in the local storage.
@@ -35,7 +35,7 @@ class Index {
 
   private unusedKeys : number[];
 
-  constructor(){ 
+  constructor(){
     this.tail = {
       prev: 0,
       next: 0,
@@ -54,7 +54,7 @@ class Index {
       return this.index.length;
     }
   }
-    
+
   // Insert key first in the index
   addKey(key: string) : number {
     var elem = {
@@ -128,7 +128,7 @@ export class Cache extends Base {
   private index : Index;
   private length : number = 0;
   private storage;
-  
+
   constructor(useSession?: boolean, maxSize?: number){
     super();
     this.storage = useSession ? sessionStorage : localStorage;
@@ -145,7 +145,7 @@ export class Cache extends Base {
       if(result) return result;
     }
   }
-  
+
   getKeys(): string[]{
     return _.keys(this.map);
   }
@@ -170,7 +170,7 @@ export class Cache extends Base {
       value: undefined
     };
   }
-  
+
   getItem(key){
     var old = this.map[key], tVal, value;
     if(old){
@@ -180,20 +180,20 @@ export class Cache extends Base {
     }
     return value;
   }
-  
+
   setItem(key, value){
     var time = Date.now();
     var old = this.map[key];
     value = String(value);
     var requested = value.length;
     var idx;
-    
+
     if(old){
       requested -= old.size;
     }
     if(this.makeRoom(requested)){
       this.size += requested;
-    
+
       this.storage[key] = this.serialize(time, value);
 
       if(old){
@@ -209,7 +209,7 @@ export class Cache extends Base {
       };
     }
   }
-  
+
   removeItem(key){
     var item = this.map[key];
     if (item){
@@ -221,7 +221,7 @@ export class Cache extends Base {
       this.index.remove(item.idx);
     }
   }
-  
+
   clear(){
     for(var key in this.map){
       this.removeItem(key);
@@ -229,15 +229,15 @@ export class Cache extends Base {
     this.length = 0;
     this.size = 0;
   }
-  
+
   setMaxSize(size){
     this.maxSize = size;
   }
-  
+
   private remove(key){
     delete this.storage[key];
   }
-  
+
   private populate(){
     var ls = this.storage;
     var that = this;
@@ -253,7 +253,7 @@ export class Cache extends Base {
         list.push({
           time: tVal.time,
           key: key
-        });  
+        });
 
         this.map[key] = {
           size: size
@@ -272,9 +272,9 @@ export class Cache extends Base {
       that.map[elem.key].idx = idx;
     });
 
-    this.length = _.size(this.map);
+    this.length = _.size(_.keys(this.map));
   }
-  
+
   //
   // Remove items until required size is available
   //

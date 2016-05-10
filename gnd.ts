@@ -1,7 +1,8 @@
 /**
    Ground Web Framework (c) 2011-2013 OptimalBits - Licensed as MIT.
-   
+
 */
+/// <reference path="typings/main.d.ts" />
 
 /// <reference path="./lib/util.ts" />
 /// <reference path="./lib/timer.ts" />

@@ -1,6 +1,6 @@
 {
   "name": "gnd",
-  "version": "0.7.11",
+  "version": "0.8.0",
   "engines": {
     "node": ">=0.6.10"
   },
@@ -43,34 +43,37 @@
   },
   "dependencies": {
     "commander": "*",
-    "lodash": "^2.4.1",
+    "lodash": "^4.11.2",
     "mkdirp": "^0.5.0",
     "redis": "^2.4.2",
-    "socket.io": "^1.1.0"
+    "socket.io": "^1.1.0",
+    "typescript": "^1.8.9"
   },
   "devDependencies": {
     "bluebird": "^1.1.1",
+    "body-parser": "^1.15.0",
     "cabinet": "~0.2.13",
     "connect": "*",
     "cookie": "*",
+    "cookie-parser": "^1.4.1",
     "cookies": "*",
     "expect.js": "*",
-    "express": "~3.4.8",
+    "express": "^4.13.4",
     "grunt": "~0.4.2",
     "grunt-contrib-compress": "~0.5.0",
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-yuidoc": "~0.4.0",
-    "grunt-typescript": "0.2.5",
-    "mocha": "~1.17.0",
-    "mongoose": "^3.8.14",
+    "grunt-typescript": "^0.8.0",
+    "mocha": "^2.4.5",
+    "mongoose": "^4.4.12",
     "node-uuid": "*",
     "passport": "*",
     "passport-local": "*",
-    "posix": "~1.0.2",
+    "posix": "^4.0.1",
     "promises-aplus-tests": "*",
     "requirejs": "~2.1.8",
     "should": "~0.5.1",
-    "socket.io": "^1.0.6",
+    "socket.io": "^1.1.0",
     "time-grunt": "~0.1.1",
     "typescript": "*"
   },

@@ -11,7 +11,7 @@ module.exports = function(grunt) {
         options: {
           module: 'amd', //or commonjs
           target: 'es3', //or es5
-          //base_path: 'path/to/typescript/files',
+          //basePath: 'lib',
           sourcemap: true,
           fullSourceMapPath: true,
           declaration: true,
@@ -23,7 +23,7 @@ module.exports = function(grunt) {
         options: {
           module: 'amd', //or commonjs
           target: 'es5',
-          //base_path: 'path/to/typescript/files',
+          //basePath: 'lib',
           sourcemap: true,
           fullSourceMapPath: true,
           declaration: true,
@@ -39,18 +39,18 @@ module.exports = function(grunt) {
             warnings: false,
             unsafe: true,
           },
-          mangle: true, 
+          mangle: true,
           warnings: false
           // report: 'gzip',
         }
       }
     },
-    
+
     // Constants for the Gruntfile so we can easily change the path for
     // our environments.
     BASE_PATH: './',
     DEVELOPMENT_PATH: './',
-    
+
     // The YUIDoc plugin to generate documentation for code files.
     yuidoc: {
       compile: {

@@ -18,14 +18,14 @@
 */
 module Gnd.Storage {
 "use strict";
-  
+
   var QUEUE_STORAGE_KEY = 'meta@taskQueue'
-  
+
   //
   // The Queue needs a local storage (based on HTML5 local storage, IndexedDB, WebSQL, etc)
   // and a remote Storage.
   //
-  
+
   export interface Command {
     cmd: string;
     keyPath?: string[];
@@ -38,32 +38,32 @@ module Gnd.Storage {
     oldItemIds?: string[];
     fn?: (cb:()=>void)=>void; //for sync tasks
   }
-  
+
   /**
     The storage queue is in reality a Transaction Log.
-    
+
     With this in mind we need to implement it as such. Every cmd needs a
     unique ID. The transaction log needs a server counterpart so that processed
     IDs can be used to detect duplicated commands.
-  
+
   */
-  
+
 /**
   Storage Queue
-  
+
   This class allows offline support for the classes that need to
   save data in a remote storage. The Queue will save first all
   data in a local storage, and synchronize with the remote
-  storage as soon as it is available. It also caches all content that is 
+  storage as soon as it is available. It also caches all content that is
   accessed via its methods.
-  
+
   The queue also provides methods to read data from the storages. This methods
   take care of accessing first the cached versions if any, and then tries the
   remote ones (and cache accordingly).
-  
-  This is an internal class used by the framework and should never be used 
+
+  This is an internal class used by the framework and should never be used
   otherwise.
-  
+
   @class Storage.Queue
   @extends Base
   @uses Storage.IStorage
@@ -98,34 +98,34 @@ export class Queue extends Base implements IStorage
   private remoteStorage: IStorage = null;
   private useRemote: boolean;
   private autosync: boolean;
-  
+
   public static makeKey(keyPath: string[])
   {
     return keyPath.join(':');
   }
 
   private static itemEquals(item1, item2){
-    return (!item1 && !item2) || 
+    return (!item1 && !item2) ||
       (item1 && item2 && (item1.doc._cid === item2.doc._cid));
   }
 
   constructor(local: IStorage, remote?: IStorage, autosync?: boolean)
   {
     super();
-  
+
     this.localStorage = local;
     this.remoteStorage = remote;
     this.queue = [];
-    
+
     this.useRemote = !!this.remoteStorage;
     this.syncFn = <()=>void>_.bind(this.synchronize, this);
     this.autosync = typeof autosync === 'undefined' ? true : autosync;
   }
-  
+
   /**
     Initializes the queue. This method should be called after creating a queue
     to load the serialized queue.
-    
+
     @method init
     @param cb {Function} callback called after initializing the queue.
   */
@@ -134,39 +134,39 @@ export class Queue extends Base implements IStorage
     this.loadQueue();
     cb();
   }
-  
+
   /**
     Explicitly executes the queue. This method will start executing commands
     in the queue until the whole queue is processed. If the queue has been
     created with *autosync=true* then this method should not be called.
-    
+
     @method exec
     @return {Promise} promise resolved after executing all the commands.
   */
   exec(): Promise<void>
   {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       if(!this.currentTransfer && this.queue.length === 0){
-        return resolve();
+        return resolve(void 0);
       }
       this.once('synced:', ()=>{
-        resolve();
+        resolve(void 0);
       });
       this.syncFn();
     });
   }
-  
+
   /**
     Fetches a document from the storages. It will try first with the local
     storage, and after that the remote one.
-  
+
     @param keyPath {KeyPath} key path pointing to the document to fetch.
   */
   fetch(keyPath: string[]): Promise<any>
   {
     return this.localStorage.fetch(keyPath).then((doc)=>{
       var id = _.last(keyPath);
-      var remotePromise = this.useRemote && doc._persisted ? 
+      var remotePromise = this.useRemote && doc._persisted ?
         this.fetchRemote(keyPath) : Promise.resolved(doc);
 
         return [doc, remotePromise];
@@ -183,7 +183,7 @@ export class Queue extends Base implements IStorage
   {
     return this.localStorage.fetch(keyPath);
   }
-  
+
   fetchRemote(keyPath: string[]): Promise<any>
   {
     return this.remoteStorage.fetch(keyPath).then((docRemote) => {
@@ -196,7 +196,7 @@ export class Queue extends Base implements IStorage
   private execCmds(keyPath: string[], commands: MergeCommand[]): Promise<void[]>
   {
     var opts = {insync: true};
-    return Gnd.Promise.map(commands, (cmd: MergeCommand) => {
+    return Gnd.Promise.map<any>(commands, (cmd: MergeCommand) => {
       switch(cmd.cmd) {
         case 'insertBefore':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts).then(() => {
@@ -205,7 +205,7 @@ export class Queue extends Base implements IStorage
           });
         case 'removeItem':
           return this.localStorage.deleteItem(keyPath, cmd.id, opts);
-          
+
         case 'update':
           return this.localStorage.put(cmd.keyPath, cmd.doc, opts);
         default:
@@ -213,7 +213,7 @@ export class Queue extends Base implements IStorage
       }
     });
   }
-  
+
   private updateLocalSequence(keyPath: string[], opts: {}, remoteSeq: IDoc[]): Promise<any>
   {
     opts = _.extend({snapshot: false}, opts);
@@ -223,40 +223,40 @@ export class Queue extends Base implements IStorage
       return this.execCmds(keyPath, commands);
     });
   }
-  
+
   //
   // This method must be atomic, it can be achieved using the Mutex, since
   // the queue is a singleton.
-  // TODO: We need to fix "itemKeypath" since now it is always taken the 
+  // TODO: We need to fix "itemKeypath" since now it is always taken the
   // last keypath component, which is not correct if the model has defined
-  // the collection in a different property name different from the 
+  // the collection in a different property name different from the
   // item's collection.
   //
-  private updateLocalCollection(keyPath: string[], 
-                                query: IStorageQuery, 
+  private updateLocalCollection(keyPath: string[],
+                                query: IStorageQuery,
                                 options: {},
                                 newItems: any[]): Promise<any> // Promise<{}[]>
   {
-    var 
+    var
       storage = this.localStorage,
       itemKeyPath = [_.last(keyPath)],
       result = [];
-    
+
     query = query || {};
-    
+
     newItems = newItems || [];
     options = _.extend({snapshot: false}, options);
-    
+
     return storage.find(keyPath, query, options).then((oldItems) => {
       var itemsToRemove = [], itemsToAdd = [];
-        
+
       function findItem(items, itemToFind){
-        return _.find(items, function(item){
+        return _.find(items, function(item: ListItem){
             return (item._cid === itemToFind._cid);
         });
       }
-        
-      // Gather item ids to be removed from localStorage 
+
+      // Gather item ids to be removed from localStorage
       _.each(oldItems, (oldItem) => {
         if(Query.match(query.cond || {}, oldItem)){
           if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
@@ -266,15 +266,15 @@ export class Queue extends Base implements IStorage
           }
         }
       });
-        
-      // Gather item ids to be added to localStorage      
+
+      // Gather item ids to be added to localStorage
       _.each(newItems, (newItem) => {
         if(!findItem(oldItems, newItem)){
           itemsToAdd.push(newItem._cid);
           result.push(newItem);
         }
       });
-      
+
       return storage.remove(keyPath, itemKeyPath, itemsToRemove, {insync:true}).then(() =>
         // TODO: Do we really need to update all items here?
         Promise.map(newItems, (doc) => {
@@ -283,11 +283,11 @@ export class Queue extends Base implements IStorage
         })
         .then(() => storage.add(keyPath, itemKeyPath, itemsToAdd, {insync: true}))
         .then(() => result)
-        
+
       ).fail(); // catch this failure to avoid propagation.
-    
+
     // We cannot get the local items, so lets write all we got from remote
-    }).fail(() => 
+    }).fail(() =>
       storage.add(keyPath, itemKeyPath, _.pluck(newItems, '_cid'), {insync: true})
       .then(() => newItems));
   }
@@ -302,19 +302,19 @@ export class Queue extends Base implements IStorage
       return cid;
     });
   }
-  
+
   put(keyPath: string[], args:{}, opts: {}): Promise<void>
   {
     return this.putLocal(keyPath, args, opts).then<void>(()=>{
       this.addCmd({cmd:'update', keyPath: keyPath, args: args}, opts);
     });
   }
-  
+
   putLocal(keyPath: string[], args:{}, opts: {}): Promise<void>
   {
     return this.localStorage.put(keyPath, args, opts);
   }
-  
+
   del(keyPath: string[], opts: {}): Promise<void>
   {
     return this.localStorage.del(keyPath, opts).then(()=>{
@@ -324,52 +324,52 @@ export class Queue extends Base implements IStorage
       //}
     });
   }
-  
+
   add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {}): Promise<void>
   {
     return this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => {
       this.addCmd({cmd:'add', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:itemIds}, opts);
     });
   }
-  
+
   // itemIds: {[index: string]: boolean}
   remove(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise<void>
   {
     var localItemsIds = [];
     var remoteItemIds = [];
-    
+
     for(var id in itemIds){
       if(itemIds[id]){
         remoteItemIds.push(id);
       }
       localItemsIds.push(id);
     }
-    
+
     return this.localStorage.remove(keyPath, itemsKeyPath, localItemsIds, {}).then(() => {
       this.addCmd({
         cmd:'remove', keyPath: keyPath, itemsKeyPath: itemsKeyPath, itemIds:remoteItemIds
       }, opts);
     });
   }
-  
+
   findRemote(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean})
   {
     return this.remoteStorage.find(keyPath, query, opts).then(
       (items) => this.updateLocalCollection(keyPath, query, opts, items)
     );
   }
-  
+
   find(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean}): Promise<any[]>
   {
     return new Promise((resolve, reject) => {
       var remoteDeferred = Promise.defer();
       var useRemote = this.useRemote && !opts.noremote;
-    
+
       var localOpts = _.extend({snapshot:true}, opts);
-    
+
       this.localStorage.find(keyPath, query, localOpts).then((items)=>{
         resolve([items, remoteDeferred.promise]);
-      
+
         if(useRemote){
           this.findRemote(keyPath, query, opts)
             .then((itemsRemote) => remoteDeferred.resolve(itemsRemote))
@@ -389,7 +389,7 @@ export class Queue extends Base implements IStorage
       });
     });
   }
-  
+
   // This function is very similar to the find function, and it should be
   // possible to refactor it.
   all(keyPath: string[], query?: {}, opts?: {noremote?:boolean}): Promise<any[]>
@@ -399,12 +399,12 @@ export class Queue extends Base implements IStorage
     return new Promise((resolve, reject) => {
       var remoteDeferred = Promise.defer();
       var useRemote = this.useRemote && !opts.noremote;
-    
+
       var localOpts = _.extend({snapshot:true}, opts);
-     
+
       this.localStorage.all(keyPath, query, localOpts).then((result: any) => {
         resolve([result, remoteDeferred.promise]);
-      
+
         if(useRemote){
           this.allRemote(keyPath, query, opts)
             .then((itemsRemote) => remoteDeferred.resolve(itemsRemote))
@@ -420,15 +420,15 @@ export class Queue extends Base implements IStorage
           resolve([itemsRemote, remoteDeferred.promise]);
         }).fail((err) => {
           reject(err);
-        }); 
+        });
       });
     });
   }
-  
+
   allRemote(keyPath: string[], query: {noremote?:boolean}, opts: {})
   {
     var localOpts = _.extend({snapshot:true}, opts);
-    
+
     return this.remoteStorage.all(keyPath, query, opts)
       .then((remote) => this.updateLocalSequence(keyPath, opts, remote))
       .then(()=> this.localStorage.all(keyPath, {}, localOpts));
@@ -436,34 +436,34 @@ export class Queue extends Base implements IStorage
 
   deleteItem(keyPath: string[], id: string, opts: {}): Promise<void>
   {
-    return this.localStorage.deleteItem(keyPath, id, opts).then(() => 
+    return this.localStorage.deleteItem(keyPath, id, opts).then(() =>
       this.addCmd({cmd:'deleteItem', keyPath: keyPath, id: id}, opts)
     );
   }
-  
+
   insertBefore(keyPath: string[], id: string, itemKeyPath: string[], opts: {}): Promise<{id: string; refId: string;}>
   {
     return this.localStorage.insertBefore(keyPath, id, itemKeyPath, opts).then((res) => {
       this.addCmd({cmd:'insertBefore',
                   keyPath: keyPath,
                   id: id,
-                  itemKeyPath: itemKeyPath, 
+                  itemKeyPath: itemKeyPath,
                   cid: res.id}, opts);
       //return res.id; // wrong?
       return res;
     });
   }
-  
+
   /**
   TODO: Rename to commit, since what this does is commit operations
   */
   synchronize()
   {
     var done = <(err?, sid?)=>void>_.bind(this.completed, this);
-    
+
     if (!this.currentTransfer){
       if (this.queue.length){
-        var 
+        var
           obj = this.currentTransfer = this.queue[0],
           localStorage = this.localStorage,
           remoteStorage = this.remoteStorage,
@@ -475,7 +475,7 @@ export class Queue extends Base implements IStorage
         //
         // FIXME: Persistent errors will  block the queue forever.(we need a watchdog).
         //
-        
+
         switch (obj.cmd){
           case 'create':
             ((cid) => {
@@ -488,7 +488,7 @@ export class Queue extends Base implements IStorage
                 this.emit('created:'+cid, cid);
               }).then(done, done)
             })(args['_cid']);
-            
+
             break;
           case 'update':
             remoteStorage.put(keyPath, args, {}).then(done, done);
@@ -519,7 +519,7 @@ export class Queue extends Base implements IStorage
             obj.fn(done);
             break;
         }
-      } else {        
+      } else {
         // this.emit('synced:', this);
         var subQ = <any>(this.remoteStorage);
         if(this.autosync || !subQ.once){
@@ -534,10 +534,10 @@ export class Queue extends Base implements IStorage
       Gnd.log('busy with ', this.currentTransfer);
     }
   }
-  
+
   /**
     Waits until all commands have been executed.
-    
+
     @method waitUntilSynced
     @param cb {Function} Callback called after executing all commands or called
     directly if there are no commands left in the queue.
@@ -550,34 +550,34 @@ export class Queue extends Base implements IStorage
       cb();
     }
   }
-  
+
   /**
     Checks if the queue is empty.
-    
+
     @method isEmpty
     @return {Boolean} true if empty, false otherwise.
   */
   public isEmpty(){
     return !this.queue.length;
   }
-  
+
   private loadQueue()
   {
     this.queue = JSON.parse(localStorage[QUEUE_STORAGE_KEY] || '[]');
   }
-  
+
   private saveQueue()
   {
     localStorage[QUEUE_STORAGE_KEY] = JSON.stringify(this.queue);
   }
-  
+
   private enqueueCmd(cmd: Command)
   {
     this.queue.push(cmd);
     this.autosync && this.saveQueue();
   }
   private dequeueCmd(): Command
-  {  
+  {
     var cmd = this.queue.shift();
     this.autosync && this.saveQueue();
     return cmd;
@@ -604,21 +604,21 @@ export class Queue extends Base implements IStorage
   {
     var storage = this.localStorage;
     var syncFn = () => Util.nextTick(() => this.synchronize());
-    
-    if(!err){ // || (err.status >= 400 && err.status < 500)){ 
+
+    if(!err){ // || (err.status >= 400 && err.status < 500)){
       var cmd = this.dequeueCmd();
       if(!cmd) return;
-      
+
       Gnd.log("Completed queue command", cmd);
-      
+
       var opts = {insync: true};
-      
-      ((): Promise<void> => { 
+
+      ((): Promise<void> => {
         switch(cmd.cmd){
           case 'add':
             return storage.remove(cmd.keyPath, cmd.itemsKeyPath, cmd.oldItemIds || [], opts)
               .then<void>(() => storage.add(cmd.keyPath,
-                                            cmd.itemsKeyPath, 
+                                            cmd.itemsKeyPath,
                                             cmd.itemIds,
                                             opts));
           case 'remove':
@@ -627,14 +627,14 @@ export class Queue extends Base implements IStorage
           case 'deleteItem':
             return storage.ack(cmd.keyPath, null, cmd.id, {op: 'rm'});
         }
-        return Promise.resolved();
+        return Promise.resolved(void 0);
       })().ensure(() => syncFn());
-      
+
     }else{
       var errCode = ServerError[err.message];
-      
+
       Gnd.log("Queue error:", err, errCode, this.queue[0]);
-  
+
       switch(errCode){
         case ServerError.INVALID_ID:
         case ServerError.INVALID_SESSION:
@@ -650,7 +650,7 @@ export class Queue extends Base implements IStorage
         // Shouldn't we try to synchronize again after x seconds?
       }
     }
-    
+
     this.currentTransfer = null;
   }
 }

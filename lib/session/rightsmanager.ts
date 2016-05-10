@@ -4,7 +4,7 @@
 */
 
 /**
-  The right manager takes a RightsRules object as input and keeps updated 
+  The right manager takes a RightsRules object as input and keeps updated
   all the rights over models, collections and sequences.
 */
 
@@ -38,7 +38,7 @@ export interface PutRule {
 }
 
 export interface AddRule {
-  (userId: string, 
+  (userId: string,
    keyPath: string[],
    itemsKeyPath: string[],
    itemIds:string[]): Promise<void>;
@@ -46,21 +46,21 @@ export interface AddRule {
 
 export interface RemoveRule {
   (userId: string,
-   keyPath: string[], 
-   itemsKeyPath: string[], 
+   keyPath: string[],
+   itemsKeyPath: string[],
    itemIds:string[]): Promise<void>;
 }
 
 /**
   Policies interface.
-  
+
   A policies object containes policies for operations that imply the creation or
   destruction of resources.
-  
+
   A policies object must be defined for every application, with the specific
   rights relationships for that application.
 
-  Note: Documentation incomplete needs to be much more detailed and provide 
+  Note: Documentation incomplete needs to be much more detailed and provide
   examples.
 
   @class Policies
@@ -74,25 +74,25 @@ export interface Policies
   remove?: {[index: string]: RemoveRule;};
 }
 
-class PolicyManager 
+class PolicyManager
 {
   private policies: Policies;
   private acl: Acl;
-  
+
   constructor(acl: Acl, policies: Policies){
     this.policies = policies;
     this.acl = acl;
   }
-  
+
   applyPolicy(userId: string, policyType: string, keyPath: string[], ...args: any[]): Promise<void>
   {
     var policy = this.matchPolicy(policyType, keyPath);
     if(policy){
       return policy.apply(this.acl, [keyPath].concat(args));
     }
-    return Promise.resolved();
+    return Promise.resolved(void 0);
   }
-  
+
   applyCreate(userId: string, keyPath: string[], doc: any): Promise<void>
   {
     return this.applyPolicy(userId, 'create', keyPath, doc);
@@ -102,20 +102,20 @@ class PolicyManager
   {
     return this.applyPolicy(userId, 'put', keyPath, doc);
   }
-  
+
   applyDel(userId: string, keyPath: string[]): Promise<void>
   {
     return this.applyPolicy(userId, 'del', keyPath);
   }
-  
-  applyAdd(userId: string, 
+
+  applyAdd(userId: string,
            keyPath: string[],
            itemsKeyPath: string[],
            itemIds:string[]): Promise<void>
   {
     return this.applyPolicy(userId, 'add', keyPath, itemsKeyPath, itemIds);
   }
-  
+
   applyRemove(userId: string,
               keyPath: string[],
               itemsKeyPath: string[],
@@ -127,10 +127,10 @@ class PolicyManager
   private matchPolicy(policyType: string, keyPath: string[])
   {
     var policies = this.policies[policyType];
-    
+
     if(policies){
       var patterns = Object.keys(policies);
-    
+
       for(var i=0; i<patterns.length; i++){
         var pattern = patterns[i].split('/');
         if (pattern.length == keyPath.length){
@@ -155,21 +155,21 @@ class PolicyManager
   @param acl {Acl} an instance of the Acl module.
   @param policies {Policies} policies to be used by this rights manager.
 */
-export class RightsManager 
+export class RightsManager
 {
   private acl: Acl;
   private policyManager: PolicyManager;
-  
+
   constructor(acl?: Acl, rules?: Policies){
     this.acl = acl;
-    
+
     if(rules){
       this.policyManager = new PolicyManager(acl, rules);
     }
   }
-  
+
   checkRights(userId: string, keyPath: string[], rights: Rights): Promise<boolean>;
-  checkRights(userId: string, keyPath: string[], rights: Rights, doc: any): Promise<boolean>;  
+  checkRights(userId: string, keyPath: string[], rights: Rights, doc: any): Promise<boolean>;
   checkRights(userId: string, keyPath: string[], rights: Rights[]): Promise<boolean>;
   checkRights(userId: string, keyPath: string[], rights: Rights[], doc: any): Promise<boolean>;
   checkRights(userId: string, keyPath: string[], rights: any, doc?:any): Promise<boolean>
@@ -180,7 +180,7 @@ export class RightsManager
       return Promise.resolved(true);
     }
   }
-  
+
   create(userId: string, keyPath: string[], doc: any): Promise<string>
   {
     if(this.policyManager){
@@ -189,26 +189,26 @@ export class RightsManager
       return Promise.resolved();
     }
   }
-  
+
   put(userId: string, keyPath: string[], doc: any): Promise<void>
   {
     if(this.policyManager){
       this.policyManager.applyPut(userId, keyPath, doc);
     }else{
-      return Promise.resolved();
+      return Promise.resolved(void 0);
     }
   }
-  
+
   del(userId: string, keyPath: string[]): Promise<void>
   {
     if(this.policyManager){
       this.policyManager.applyDel(userId, keyPath);
     }else{
-      return Promise.resolved();
+      return Promise.resolved(void 0);
     }
   }
-  
-  add(userId: string, 
+
+  add(userId: string,
       keyPath: string[],
       itemsKeyPath: string[],
       itemIds:string[]): Promise<void>
@@ -219,36 +219,36 @@ export class RightsManager
       return Promise.resolved<void>();
     }
   }
-  
-  remove(userId: string, 
-         keyPath: string[], 
-         itemsKeyPath: string[], 
+
+  remove(userId: string,
+         keyPath: string[],
+         itemsKeyPath: string[],
          itemIds:string[]): Promise<void>
   {
     if(this.policyManager){
       return this.policyManager.applyRemove(userId, keyPath, itemsKeyPath, itemIds);
     }else{
-      return Promise.resolved();
-    }    
+      return Promise.resolved(void 0);
+    }
   }
 }
 
 // acl.addUserRoles(userId, userId)
 /*
 function(acl){
-  
+
   function addCreateRights(userId, keypath, doc){
     return acl.allow(userId, keypath.join('/'), [GET, PUT, DEL]);
   }
-  
+
   function removeRights(userId, keypath, cb){
     return acl.removeAllow(userId, keypath.join('/'), [GET, PUT, DEL], cb);
   }
-  
+
 return
 {
   create: {
-    '*': defaultCreateRights, 
+    '*': defaultCreateRights,
     'medias/:id': addCreateRights,
     'displays/:id': addCreateRights,
     'playlists/:id': () => {
@@ -264,27 +264,27 @@ return
       doc.permissions
       acl.
     }
-    
+
     'users/:id/playlists': addCreateRights,
     {
       acl.allow(userId, keypath.concat())
-      
+
       'playlists/:id/entries':
     },
-    
+
     'users/:id/calendars': addCreateRights,
     'users/:id/groups': addCreateRights,
   },
-  
+
   del:{
     '*': defaultRemoveRights,
-    'users/:id/medias', 
+    'users/:id/medias',
      'users/:id/displays',
      'users/:id/playlists',
      'users/:id/calendars',
      'users/:id/groups', removeRights;
   },
-  
+
   add: {
     'groups/:id/users': function(userId, keypath, itemsKeyPath, itemIds, doc){
       groupId = keypath[1];
@@ -296,14 +296,14 @@ return
         acl.addUserRoles(userId, groupId);
       });
     },
-    'groups/:id/resources': function(userId, keypath, itemsKeyPath, itemIds, doc){      
+    'groups/:id/resources': function(userId, keypath, itemsKeyPath, itemIds, doc){
         // Get resources, and add permissions accordingly.
         Resource.findById(itemIds){
           allow(keypath[1], resource.resourceId, resource.permissions);
         }
     },
     remove: {
-    
+
     }
   }
 

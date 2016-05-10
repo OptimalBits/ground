@@ -3,7 +3,6 @@
 
    Features:
    - Modular design.
-   - Builds on top of proven libraries such as jQuery and underscore.
    - Hierarchical routing system.
    - Clean class hierarchies, based on javascript prototypal inheritance.
    - Property bindings.
@@ -13,15 +12,14 @@
    - Keyboard handling.
    - Set of views for common web "widgets".
    - Canvas View.
-  
+
    Dependencies:
    - LoDash
 
    (c) 2011-2013 OptimalBits - Licensed as MIT.
 */
 
-// import _ = module('underscore');
-
+/// <reference path="typings/main.d.ts" />
 /// <reference path="lib/models/schema.ts" />
 
 /// <reference path="lib/task.ts" />
@@ -29,6 +27,7 @@
 /// <reference path="lib/session/sessionmanager.ts" />
 /// <reference path="lib/storage/socket-backend.ts" />
 /// <reference path="lib/storage/ajax-backend.ts" />
+/// <reference path="lib/storage/rest-backend.ts" />
 /// <reference path="lib/storage/mongoose-backend.ts" />
 
 

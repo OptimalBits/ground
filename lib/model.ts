@@ -6,7 +6,7 @@
   Model Class
 
   This class represents a Model in a MVC architecture.
-  The model supports persistent storage, offline operation 
+  The model supports persistent storage, offline operation
   and automatic client<->server synchronization.
 */
 
@@ -27,7 +27,7 @@ module Gnd {
   SingletonFactory
 
   Singleton class that keeps all the instanced models. This is fundamental
-  for the synchronization mechanism to work properly 
+  for the synchronization mechanism to work properly
   so that only one instance of every model exists at a given time.
 */
 // class SingeltonFactory // A factory that keeps a singleton for every kind of
@@ -50,6 +50,10 @@ class ModelDepot
       }
     }
 
+    //
+    // This function needs to be fixed because we cannot diferentiate between
+    // creating a model and trying to get an un-existing model (should return null)
+    //
     model = Model.__useDepot && keyPath ? this.models[this.key(keyPath)] : null;
 
     if(!model){
@@ -79,7 +83,7 @@ class ModelDepot
     var keyPath = this.key([model.bucket(), model.id()]);
 
     models[keyPath] = model;
-    
+
     model.once('destroy: deleted:', () => {
       delete models[keyPath];
     });
@@ -91,7 +95,7 @@ class ModelDepot
 //
 var modelDepot = new ModelDepot();
 
-export interface IModel 
+export interface IModel
 {
   new (args: {}, opts?: {}): Model;
   new (args: {}, bucket?: string, opts?: {}): Model;
@@ -118,7 +122,7 @@ export interface ModelEvents
   on(evt: string, ...args: any[]);
   once(evt: string, ...args: any[]);
   emit(evt: string, ...args: any[]);
-  
+
   /**
   * Fired when a model property changes.
   *
@@ -128,7 +132,7 @@ export interface ModelEvents
   * @deprecated
   */
   on(evt: 'updated:', model: Model, args:any); // Obsolete?
-  
+
   /**
   * Fired when a model has been removed from the storage.
   *
@@ -136,7 +140,7 @@ export interface ModelEvents
   * @param model {Model}
   */
   on(evt: 'deleted:', model: Model);
-  
+
   /**
   * Fired when a model has been persisted on a server storage
   *
@@ -150,7 +154,7 @@ export interface ModelEvents
 /**
   Model Schema Type. This class can be used to define models as properties
   in schemas.
-    
+
       var ChatSchema = new Schema({
         name: new ModelSchemaType(Name);
       });
@@ -164,12 +168,12 @@ export class ModelSchemaType extends SchemaType
 {
   public static type: IModel = Model;
   private model: IModel;
-  
+
   constructor(model: IModel)
   {
     super({type: model});
   }
-    
+
   fromObject(args: {module?: string}, opts?)
   {
     if(args instanceof this.definition.type){
@@ -183,7 +187,7 @@ export class ModelSchemaType extends SchemaType
       return this.definition.type.create(args, opts && opts.autosync);
     }
   }
-  
+
   toObject(obj)
   {
     if(obj instanceof ModelProxy){
@@ -198,24 +202,24 @@ export class ModelSchemaType extends SchemaType
 /**
   The {{#crossLink "Model"}}{{/crossLink}} class is used to represent data
   based on a predefined {{#crossLink "Schema"}}{{/crossLink}}. The Model can be
-  automatically synchronized with a server storage, as well as cached locally, 
+  automatically synchronized with a server storage, as well as cached locally,
   and provides property validation.
- 
+
   Models are subclasses of Promise. This is because the data in a Model is
   filled lazily when retrieven from the storage. This allows us to start using
   the model before all its data has been populated from the server. The promise
   resolves after the best possible data (cached or server side) has populated
-  the model, effectivelly given the posibility to wait until the model has 
+  the model, effectivelly given the posibility to wait until the model has
   received all its data.
- 
+
   The base Schema for models (the schema that all Models inherit):
-  
+
        Base model schema:
        {
          _cid: String,
          _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
        }
-  
+
   @class Model
   @extends Promise
   @constructor
@@ -231,7 +235,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   static __schema: Schema =
     new Schema({
-      _cid: String, 
+      _cid: String,
       _status: {type: String, enum: ['CREATED', 'COMMITING', 'COMMITED']},
 
       // TO DEPRECATE:
@@ -242,12 +246,12 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   static schema(){
     return this.__schema;
   }
-  
+
   // This is part of the extends hack for models....
   private _constructed: boolean;
 
   private _promise: Promise<Model>;
-  
+
   private __bucket: string;
   private __schema: Schema;
   private __strict: boolean;
@@ -259,7 +263,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   // Dirty could be an array of modified fields
   // that way we can only synchronize whats needed. Furthermore,
-  // when receiving a resync event we could check if there is a 
+  // when receiving a resync event we could check if there is a
   // conflict or not.
   private _dirty: boolean = true;
 
@@ -276,14 +280,14 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   constructor(args: {}, opts?: ModelOpts);
   constructor(args: {}, bucket?: any, opts?: ModelOpts){
     super();
-    
+
     args = args || {};
     if(!this.__strict){
       _.extend(this, args);
     }
-    this.__schema = this.__schema || this['constructor'].__schema;
+    this.__schema = this.__schema || this['constructor']['__schema'];
     _.extend(this, this.__schema.fromObject(args, opts));
-    
+
     this._cid = this._cid || Util.uuid();
 
     this.opts = (_.isString(bucket) ? opts : bucket) || {}
@@ -291,7 +295,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
     this.on('changed:', () => this._dirty = true);
 
-    this._storageQueue = 
+    this._storageQueue =
       using.storageQueue || new Storage.Queue(using.memStorage);
 
     if(!this.isPersisted()){
@@ -324,10 +328,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     this._promise.uncancellable = true;
 
     this.opts.autosync && this.keepSynced();
-    
+
     this.once('_persisted', (val) => val && this.emit('persisted:'));
   }
-  
+
   resync(args?): Promise<any>
   {
     if(args){
@@ -359,7 +363,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    *
    *  @method extend
    *  @static
-   *  @param {String} bucket A string representing a placeholder in the 
+   *  @param {String} bucket A string representing a placeholder in the
    *  storage where to save the model.
    *  @param {Schema} schema Schema that defines the data of this model.
    *  @return {IModel} A Model Subclass.
@@ -369,16 +373,16 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
        legs: Number,
        name: String
      });
-     
+
      var Animal = model.extend('animals', AnimalSchema);
-     
+
      var tiger = Animal.create({name: 'tiger', legs: 4});
    */
    // TODO: extensorFn?: (_super: Model) => any
   static extend(bucket: string, schema?: Schema)
   {
     var __super = this;
-    
+
     //
     // This is quite hacky right now. Large Model hierarchies are discouraged...
     //
@@ -391,7 +395,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       if(__super == constructor){
         this._constructed = true;
       }
-      
+
       // Call constructor if different from Model constructor and Base
       if(constructor && (constructor != Base) && !this._constructed){
         this._constructed = true;
@@ -402,7 +406,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     Util.inherits(__, this);
 
     // Copy Models static methods
-    var statics = 
+    var statics =
       ['schema',
        'extend',
        'create',
@@ -415,7 +419,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
     _.each(statics, (method) => __[method] = this[method]);
     // _.each(this, (property) => __[property] = this[property]);
-      
+
     __['__schema'] = Schema.extend(this.__schema, schema);
     __['__bucket'] = bucket;
     __['__strict'] = !!schema;
@@ -426,12 +430,12 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   // TODO: Create must first try to find the model in the depot,
   // and "merge" the args argument with the model properties from the depot.
   // if not available instantiate it and save it in the depot.
-  
+
   /**
    *
    *  Instantiates a Model. Models are never instantiated using new. The reason
    *  for this is that every instance must be unique for one model, in fact forcing
-   *  the singleton pattern for model instances. 
+   *  the singleton pattern for model instances.
    *
    *  @method create
    *  @static
@@ -439,8 +443,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    *  @param {Boolean} [autosync=false] Set to true to keep the model automatically synchronized with the storage.
    *  @return {Model} A Model instance.
    *
-   *  @example     
-     
+   *  @example
+
      var tiger = Animal.create({_id: '1234', name: 'tiger', legs: 4});
    */
   static create(args?: {}): Model;
@@ -466,7 +470,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
    *
-   *  Finds a Model by its Id. 
+   *  Finds a Model by its Id.
    *
    *  @method findById
    *  @static
@@ -475,10 +479,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    *  @param {Any} [args] Optional arguments to set to the found model instance.
    *  @return {Model} A Model instance.
    *
-   *  @example     
-     
+   *  @example
+
      var tiger = Animal.findById(['animals', '1234']);
-     
+
      var tiger = Animal.findById('1234');
    */
   static findById(keyPathOrId, autosync?: boolean, args?: {}): Model
@@ -498,7 +502,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       },
       'String': function(id){
         return this.findById(id, false, {});
-      }, 
+      },
     }).apply(this, arguments);
   }
 
@@ -512,8 +516,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
    *  @return {Promise} A promise that is resolved when the model instance has
    *  been removed.
    *
-   *  @example     
-     
+   *  @example
+
      Animal.removeById(['animals', '1234']).then(function(){
        // tiger removed
      }, function(err){
@@ -543,23 +547,23 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this.fromJSON(args, opts);
   }
-  
+
   willChange(key, val){
     var schema = this.__schema.getSchemaType(key);
     return schema ? schema.fromObject(val) : val;
   }
-  
+
   /**
-    Checks if the model has the given id. 
+    Checks if the model has the given id.
     @method checkId
   */
   checkId(id: string): boolean
   {
     return this._cid === id;
   }
-  
+
   /**
-    Destroys the model. This memory is called automatically by the memory 
+    Destroys the model. This memory is called automatically by the memory
     management system and should never be called directly.
 
     @method destroy
@@ -576,7 +580,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     super.destroy();
   }
 
-  /**  
+  /**
     @method init
     @deprecated
   */
@@ -584,15 +588,15 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return Promise.resolved(this);
   }
-  
+
   /**
-    Gets the model instance id. This method returns the persistent id if 
+    Gets the model instance id. This method returns the persistent id if
     available, otherwise just the client id.
-    
+
     @method id
     @return {String} persistent or client id.
-  */    
-  id(): string 
+  */
+  id(): string
   {
     return this._cid;
   }
@@ -600,10 +604,10 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   /**
     Gets a given property from the model. For some properties this function
     populates the property when getting it, allowing lazy properties in models.
-  
+
     TODO: define GetOptions interface, we need it to perform queries
     when getting collections
-    
+
     @method get
     @param key {String}
     @param args {Object}
@@ -618,9 +622,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       if (!_.isUndefined(value)){
         this[key] = value;
         if(value instanceof Base){
-          this.lazys.push(value); 
+          this.lazys.push(value);
         }
-      } 
+      }
    }
    return value;
   }
@@ -638,7 +642,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     }
     delete this[key];
   }
-  
+
   /**
     Resolves the promise when the given key is available with the keys
     value.
@@ -658,7 +662,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Gets the name of this Model.
-    
+
     @method getName
     @return {String} The model name.
   */
@@ -669,8 +673,8 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Gets the keypath for this model instance. Note that if the instance has not
-    yet been persisted, this function returns the same keypath as 
-    
+    yet been persisted, this function returns the same keypath as
+
     @method getKeyPath
     @return {Array} keypath for this instance.
   */
@@ -680,9 +684,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   }
 
   /**
-    Checks if this model instance is kept automatically synced with the 
+    Checks if this model instance is kept automatically synced with the
     storages.
-    
+
     @method isKeptSynced
     @return {Boolean}
     @deprecated Use isAutosync instead.
@@ -691,11 +695,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this._keepSynced;
   }
-  
+
   /**
-    Checks if this model instance is kept automatically synced with the 
+    Checks if this model instance is kept automatically synced with the
     storages.
-    
+
     @method isAutosync
     @return {Boolean}
   */
@@ -703,13 +707,13 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this._keepSynced;
   }
-  
+
   /**
     Checks if this model instance is persisted on a server storage.
-    
+
     @method isPersisted
     @return {Boolean}
-  */  
+  */
   isPersisted(): boolean
   {
     return this._persisted;
@@ -721,9 +725,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     @method whenPersisted
     @return {Promise} resolved when the model is persisted.
     @example
-    
+
     animal.whenPersisted().then(function(){
-      // do something 
+      // do something
     });
   */
   whenPersisted(): Promise<void>
@@ -739,7 +743,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Gets the bucket where this model is being store.
-    
+
     @method bucket
     @return {String}
   */
@@ -750,7 +754,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Triggers a manual update operation with the current model instance state.
-  
+
     @method save
     @return {Promise<void>} Promise resolved when the operation is completed.
   */
@@ -764,7 +768,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
       @method update
       @return {Promise<void>} Promise resolved when the operation is completed.
-      
+
       TODO: make private
   */
   update(args: {}): Promise<any>
@@ -772,9 +776,9 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     var
       bucket = this.__bucket,
       id = this.id();
-      
+
     if(!this._dirty) return Gnd.Promise.resolved();
-    
+
     if(this.isPersisted() || this._persisting){
       // It may be the case that we are not yet persisted, if so, we should
       // wait until we get persisted before we try to update the storage
@@ -794,11 +798,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       return this._storageQueue.create([bucket], args, {});
     }
   }
-  
+
   /**
     Removes this instance from the storage. The instance will still be kept in
     memory, and it is the users duty to release it.
-  
+
     @method remove
     @return {Promise<void>}
   */
@@ -814,7 +818,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   /**
     Tells the model to enable autosync. After calling this method the instance
     will be kept automatically in sync with its server side counterpart.
-  
+
     @method keepSynced
     @chainable
   */
@@ -826,11 +830,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     }
     return this.isAutosync();
   }
-  
+
   /**
     Tells the model to enable autosync. After calling this method the instance
     will be kept automatically in sync with its server side counterpart.
-  
+
     @method keepSynced
     @chainable
     @deprecated use autosync method instead
@@ -842,7 +846,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     this._keepSynced = true;
 
     using.syncManager && using.syncManager.observe(this);
-    
+
     this.on('changed:', (doc: any, options: any) => {
       if(doc){
         options = options || {};
@@ -859,7 +863,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   /**
     Returns a plain object with all the properties of the model according to
     its schema.
-    
+
     @method toArgs
   */
   toArgs(): any
@@ -867,7 +871,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
     return _.extend(this.__strict ? {} : this._toArgs(this),
                     this.__schema.toObject(this));
   }
-  
+
   private _toArgs(obj): any
   {
     var args = {};
@@ -899,13 +903,13 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Creates a collection filled with models according to the given parameters.
-    
+
     @method all
     @static
     @param {Model} parent
     @param {Mixed} [args]
     @param {String} [bucket]
-    
+
     @return {Collection} collection with all the models
   */
   // static all(parent: Model, bucket?: string): Collection;
@@ -915,7 +919,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       var opts = _.extend({key: _.last(keyPath)}, args);
       return Container.create(Collection, this, opts, parent);
     }
- 
+
     return overload({
       'Model Array Object': function(parent, keyPath, args){
         return allInstances(parent, keyPath, args);
@@ -944,7 +948,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Creates a sequence filled with models according to the given parameters.
-    
+
     @method seq
     @static
     @param {Model} parent
@@ -984,21 +988,21 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return model.seq(this, args, bucket);
   }
-  
+
   //
   // Promise Mixin
   //
   /**
-  
+
     Then method waits for a promise to resolve or reject, and returns a new
     promise that resolves directly if the onFulfilled callback returns a value,
-    or if the onFulfilled callback returns a promise then when 
+    or if the onFulfilled callback returns a promise then when
     the returned promise resolves.
-  
+
     @method then
     @param [onFulfilled] {Function}
     @param [onRejected] {Function}
-    @return {Promise} A promise according to the rules specified 
+    @return {Promise} A promise according to the rules specified
   **/
   then<U>(onFulfilled: (value: Model) => U, onRejected?: (reason: Error) => void): Promise<U>;
   then<U>(onFulfilled: (value: Model) => Promise<U>, onRejected?: (reason: Error) => void): Promise<U>;
@@ -1007,11 +1011,11 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this._promise.then.apply(this._promise, arguments);
   }
-  
+
   /**
     This method is syntactic sugar for then when only caring about a promise
     rejection.
-    
+
     @method fail
     @param onRejected {Function}
   **/
@@ -1019,12 +1023,12 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     return this._promise.fail.apply(this._promise, arguments);
   }
-  
+
   /**
     Ensures that the callback is called when the promise resolves or rejects.
-    
+
     @method ensure
-    @param always {Function} callback to be executed always independetly if the 
+    @param always {Function} callback to be executed always independetly if the
     project was resolved or rejected.
   **/
   ensure(always: () => any)
@@ -1034,7 +1038,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 
   /**
     Cancels the promise (rejects with reason CancelError)
-    
+
     @chainable
   **/
   cancel()
@@ -1049,32 +1053,33 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
 // TODO: Add support for generating virtual properties.
 Model.prototype.id['isVirtual'] = true;
 
-// -- 
+// --
 declare var curl;
 
 /**
   This class proxies all the events that the underlying model emits, and
   resolves to the concrete instance of a Model.
-  
+
   This class is used when declaring Abstract models in a Schema, i.e., when
   only the parent model is known when declaring the schema, and the concrete
   implementation is fetched from a remote storage at runtime.
-  
+
   Note: this class should be strictly private and not exported.
-  
+
   @class ModelProxy
 */
 // Investigate if we can derive directly from Model instead of a Promise.
 export class ModelProxy extends Promise<Model>
 {
   model: Model;
-  
+
   constructor(model: Model);
   constructor(modelOrArgs: any, classUrl?: string);
   constructor(modelOrArgs: any, classUrl?: string)
   {
+    var args = arguments;
     super((resolve, reject) =>{
-    
+
       // Should only check for instanceof Model...
       if(modelOrArgs instanceof Base){
         this.model = modelOrArgs.retain();
@@ -1082,7 +1087,7 @@ export class ModelProxy extends Promise<Model>
         this['__schema'] = this.model['__schema'];
       }else{
         _.extend(this, modelOrArgs);
-      
+
         curl([classUrl]).then(
           (modelClass: IModel) => {
             var fn = _.bind(_.omit, _, this);
@@ -1091,14 +1096,14 @@ export class ModelProxy extends Promise<Model>
             this['__schema'] = modelClass.schema();
             this.model.resync(args);
             this.model.on('*', () => {
-              this.emit.apply(this, arguments);
+              this.emit.apply(this, args);
             });
             resolve(this.model)
           },
           (err) => reject(err)
         );
       }
-    
+
     });
     this.uncancellable = true;
   }
@@ -1111,16 +1116,16 @@ export class ModelProxy extends Promise<Model>
     Base.release(this.model);
     super.destroy();
   }
-  
+
   get(keypath?: string, args?:{}, opts?: {})
   {
     return this.model ? this.model.get(keypath, args, opts) : super.get(keypath);
   }
-  
+
   //set(doc: {}, opts?: {});
   set(keyOrObj, val?: any, opts?: {}): Base
   {
-    this.model ? this.model.set(keyOrObj, val, opts) : 
+    this.model ? this.model.set(keyOrObj, val, opts) :
     super.set(keyOrObj, val, opts);
     return this;
   }

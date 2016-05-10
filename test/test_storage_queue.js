@@ -231,6 +231,19 @@ describe('Storage Queue', function(){
         socket.on('connect', storage.syncFn);
         done();
       });
+
+      beforeEach(function(done){
+        socket.connect();
+        socket.on('connect', function(){
+          done();
+        });
+      });
+
+      afterEach(function(done){
+        socket.io.close();
+        done();
+      })
+
       it('items are cached when going offline', function(done){
         socket.disconnect();
         storage.all(keyPath, {}, {}).then(function(result){
@@ -241,7 +254,6 @@ describe('Storage Queue', function(){
           expect(docs[0].doc).to.have.property('name', 'tiger');
           expect(docs[1]).to.have.property('doc');
           expect(docs[1].doc).to.have.property('name', 'monkey');
-          socket.socket.connect();
           done();
         });
       });
