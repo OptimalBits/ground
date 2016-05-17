@@ -239,10 +239,10 @@ export class EachBinder implements Binder
       this.collection.off('removed:', this.removedListener);
       this.collection.off('filterFn sorted:', this.refreshListener);
       this.collection.off('updated: inserted:', this.updatedListener);
-    }
 
-    this.removeNodes();
-    this.parent.appendChild(this.el);
+      this.removeNodes();
+      this.parent.appendChild(this.el);
+    }
   }
 
   private removeNode(id: string)
