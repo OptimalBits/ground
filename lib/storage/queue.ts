@@ -497,7 +497,7 @@ export class Queue extends Base implements IStorage
             remoteStorage.del(keyPath, {}).then(() => done(), (err) => done());
             break;
           case 'add':
-            remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(done, done);
+            remoteStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => done(), done);
             break;
           case 'remove':
             remoteStorage.remove(keyPath, itemsKeyPath, _.unique(itemIds), {}).then(done, done);
