@@ -247,9 +247,9 @@ export class Promise<T> extends Base
     @param err {Error} Reason for the rejection.
     @return {Promise} A rejected promise.
   **/
-  static rejected<U>(err: Error): Promise<U>
+  static rejected<U>(doc: any): Promise<U>
   {
-    return new Promise((resolve, reject) => reject(err));
+    return new Promise((resolve, reject) => reject(doc));
   }
 
   constructor(
