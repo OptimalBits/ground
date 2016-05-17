@@ -34,7 +34,7 @@ interface Callbacks
 
   Syntax: data-each="collection: itemContextName [| added:callback0] [| removed: callback1]"
 
-  callback signature: 
+  callback signature:
     added(el: HTMLElement, item: Model);
     removed(el: HTMLElement);
 
@@ -55,7 +55,7 @@ export class EachBinder implements Binder
   private mappings: {[index: string]: Element;} = {};
   private viewModel: ViewModel;
   private parent: HTMLElement;
-  
+
   private collection: Collection;
   private addedListener: (item: Model)=>void;
   private removedListener: (item: Model)=>void;
@@ -63,44 +63,44 @@ export class EachBinder implements Binder
   private updatedListener: (item: Model)=>void;
   private callbacks;
   private el;
-  
+
   bind(el: HTMLElement, value: string, viewModel: ViewModel)
   {
     var match = value.match(/((?:\w+\.?\w+)+)\s*:\s*(\w+)/);
-    
+
     if(!match){
       throw new Error("Syntax error in data-each:"+value);
     }
-    
+
     var callbacksRegExp = /\|\s*(added|removed)\s*:\s*(\w+)/g;
     var callbacks: Callbacks = this.callbacks = {};
     var matchArr;
     while(matchArr = callbacksRegExp.exec(value)){
-      callbacks[matchArr[1]] = 
+      callbacks[matchArr[1]] =
         viewModel.resolveContext([matchArr[2]]) || Util.noop;
     }
-    
+
     var
       mappings = this.mappings,
       nextSibling = el.nextSibling || null,
       keyPath = makeKeypathArray(match[1]),
       collection = <Collection> viewModel.resolveContext(keyPath),
       itemContextName = match[2];
-      
+
     var parent = this.parent = <HTMLElement> el.parentNode;
-      
+
     this.viewModel = viewModel;
-      
+
     //
     // Use createDocumentFragment http://ejohn.org/blog/dom-documentfragments/
     // Basically, first add all items to the fragment, then add the fragment.
-    // 
+    //
     if(collection instanceof Container){
       this.collection = collection;
 
       //
       // Remove the mold and save it for clean up.
-      // 
+      //
       parent.removeChild(el);
       this.el = el;
 
@@ -122,7 +122,7 @@ export class EachBinder implements Binder
       }
 
       var addNode = (item, nextSibling) => {
-        var 
+        var
           id = item.id(),
           existingNode = mappings[id];
 
@@ -130,7 +130,7 @@ export class EachBinder implements Binder
           var oldChild = <HTMLElement> parent.removeChild(existingNode);
           attachNode(oldChild, nextSibling, item);
         }else{
-          var 
+          var
             itemNode = <HTMLElement> el.cloneNode(true),
             modelListener = (newId) => {
               if(!(newId in mappings)){ // This check is necessary to avoid side-effects.
@@ -167,7 +167,7 @@ export class EachBinder implements Binder
         var el = mappings[id];
 
         if(collection.isFiltered(item)){
-          
+
           if(!append){
             // Find new pos.
             var items = collection.getItems();
@@ -185,9 +185,9 @@ export class EachBinder implements Binder
               }
             }
           }
-          
+
           nextItem = nextItem || nextSibling;
-          
+
           if(el){
             parent.insertBefore(el, nextItem);
           }else{
@@ -205,7 +205,7 @@ export class EachBinder implements Binder
       }
 
       refresh();
-      
+
       this.addedListener = (item: Model) => {
         if(collection.isFiltered(item)){
           addNode(item, nextSibling);
@@ -234,38 +234,39 @@ export class EachBinder implements Binder
   }
 
   unbind(){
-    this.collection.off('added:', this.addedListener);
-    this.collection.off('removed:', this.removedListener);
-    this.collection.off('filterFn sorted:', this.refreshListener);
-    this.collection.off('updated: inserted:', this.updatedListener);
+    if(this.collection){
+      this.collection.off('added:', this.addedListener);
+      this.collection.off('removed:', this.removedListener);
+      this.collection.off('filterFn sorted:', this.refreshListener);
+      this.collection.off('updated: inserted:', this.updatedListener);
+    }
 
     this.removeNodes();
-    
     this.parent.appendChild(this.el);
   }
-  
+
   private removeNode(id: string)
   {
-    var 
+    var
       node = this.mappings[id],
       item = node['gnd-obj'];
-    
+
     this.viewModel.cleanup(node['gnd-bindings']);
     item.off('id', node['gnd-listener']);
     item.release();
-    
+
     delete node['gnd-obj'];
     delete node['gnd-listener'];
     delete node['gnd-bindings'];
-    
+
     // TODO: in order to support animations, the remove callback
     // should have a done callback as last parameter...
     this.callbacks.removed && this.callbacks.removed(node);
-    
+
     this.parent.removeChild(node);
     delete this.mappings[id];
   }
-  
+
   private removeNodes()
   {
     for(var id in this.mappings){
