@@ -211,7 +211,7 @@ describe('Storage Queue', function(){
         });
       });
     });
-    describe('Offline', function(){
+    describe.skip('Offline', function(){
       beforeEach(function(done){
         storage.create(['animals'], {name:'tiger'}, {}).then(function(id){
           expect(id).to.be.ok();
