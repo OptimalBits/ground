@@ -256,18 +256,23 @@ export class Queue extends Base implements IStorage
         });
       }
 
-      // Gather item ids to be removed from localStorage
+      //
+      // Gather item ids to be removed/updated from localStorage
+      //
       _.each(oldItems, (oldItem) => {
         if(Query.match(query.cond || {}, oldItem)){
-          if(oldItem.__op === 'insync' && !findItem(newItems, oldItem)){
+          var newItem = findItem(newItems, oldItem);
+          if(oldItem.__op === 'insync' && !newItem){
             itemsToRemove.push(oldItem._cid);
           }else if(oldItem.__op !== 'rm'){
-            result.push(oldItem);
+            result.push(newItem);
           }
         }
       });
 
+      //
       // Gather item ids to be added to localStorage
+      //
       _.each(newItems, (newItem) => {
         if(!findItem(oldItems, newItem)){
           itemsToAdd.push(newItem._cid);
