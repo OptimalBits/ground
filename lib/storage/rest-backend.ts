@@ -81,6 +81,9 @@ module Gnd {
           }
         };
 
+         //
+        // TODO: We should return the total count if we are using skip and limit
+        // (or provide another REST API for getting counts)
         server.storage.entityType(keyPath).then(function (type) {
           switch (type) {
             case Storage.EntityType.Model:
