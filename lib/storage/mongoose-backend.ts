@@ -360,7 +360,7 @@ module Gnd.Storage {
         var extra = found.Model['extra'];
         if (extra && extra.pre && extra.pre.remove) {
           // Slower remove needed to apply middleware
-          found.Model.findOne({ _cid: _.last(keyPath) }).then(function (doc) {
+          return found.Model.findOne({ _cid: _.last(keyPath) }).exec().then(function (doc) {
             if (doc) {
               return doc.remove();
             }
