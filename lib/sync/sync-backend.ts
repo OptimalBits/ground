@@ -121,7 +121,7 @@ export class Hub {
             break;
           case 'deleteItem:':
             emitExcept(sio, id, clientId, 'deleteItem:', args.keyPath, args.id);
-            this.eventEmitter.emit(this.makeEvent('delete', args.keyPath), args.keyPath, args.id);
+            this.emit('delete', args.keyPath, args.keyPath, args.id);
             break;
         }
       });
@@ -133,8 +133,7 @@ export class Hub {
   }
 
   private makeEvent(evt: string, keyPath: string[]){
-    var arr = [evt];
-    arr.concat(keyPath)
+    var arr = [evt].concat(keyPath);
     return this.makeId(arr);
   }
 
