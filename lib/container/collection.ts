@@ -488,7 +488,7 @@ export class Collection extends Container implements CollectionEvents
     this['each'](function(item){
       var id = item.id(), shouldRemove = true;
       for(var i=0; i<items.length; i++){
-        if(id == items[i]._cid){
+        if(items[i] && id == items[i]._cid){
           item.resync(items[i]);
           shouldRemove = false;
           break;
