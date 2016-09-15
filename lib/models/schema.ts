@@ -101,7 +101,7 @@ module Gnd
         var src = obj[property];
         var value;
 
-        if(!_.isUndefined(src)){
+        if(!_.isUndefined(src) && !_.isNull(src)){
           value = (extra && extra[property] && extra[property].toObject(src)) ||
             type.toObject(src);
         }else{
