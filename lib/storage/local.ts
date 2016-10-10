@@ -189,8 +189,8 @@ export class Local implements IStorage {
       newIdKeys = {};
 
     if(keyPath.length === 1 && itemsKeyPath.length === 1){
-      // should be redundant...
-      // this.createCollectionLink(keyPath[0]);
+      // Can be redundant sometimes, but its cheap (and needed)
+      this.createCollectionLink(keyPath[0]);
       return Promise.resolved<void>();
     }
 
