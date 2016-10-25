@@ -341,7 +341,7 @@ export class View extends Base
       target.appendChild(this.fragment);
 
       return Promise.map(this.children, (child) => child.render(context))
-        .ensure(() => {
+        .then(() => {
           this.applyStyles({visibility: ''});
           return root;
         });
