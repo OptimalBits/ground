@@ -357,6 +357,15 @@ export class Queue extends Base implements IStorage
     });
   }
 
+  removeLocal(keyPath: string[], itemsKeyPath: string[], itemIds: any, opts: {}): Promise<void>{
+    var localItemsIds = [];
+    for(var id in itemIds){
+      localItemsIds.push(id);
+    }
+    return this.localStorage.remove(keyPath, itemsKeyPath, itemIds, {});
+  }
+
+
   findRemote(keyPath: string[], query: IStorageQuery, opts: {noremote?:boolean})
   {
     return this.remoteStorage.find(keyPath, query, opts).then(

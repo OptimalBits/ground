@@ -291,11 +291,15 @@ export class Collection extends Container implements CollectionEvents
 
         item.autorelease();
 
-        if((!opts || !opts.nosync) && keyPath){
+        if(keyPath){
           var itemKeyPath = _.initial(item.getKeyPath());
           var ids = {}
           ids[item.id()] = true;
-          return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
+          if(!opts || !opts.nosync){
+            return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
+          }else{
+            return this.storageQueue.removeLocal(keyPath, itemKeyPath, ids, opts);
+          }
         }
       }
       return Promise.resolved();
