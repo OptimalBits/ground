@@ -80,12 +80,14 @@ class ModelDepot
   {
     var models = this.models;
 
-    var keyPath = this.key([model.bucket(), model.id()]);
+    var keyPath = [model.bucket(), model.id()];
+    var keyPathString = this.key(keyPath);
 
-    models[keyPath] = model;
+    models[keyPathString] = model;
 
     model.once('destroy: deleted:', () => {
-      delete models[keyPath];
+      using.localQueue.delLocal(keyPath, {});
+      delete models[keyPathString];
     });
   }
 }
