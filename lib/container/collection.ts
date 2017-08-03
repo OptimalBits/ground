@@ -298,7 +298,9 @@ export class Collection extends Container implements CollectionEvents
           if(!opts || !opts.nosync){
             return this.storageQueue.remove(keyPath, itemKeyPath, ids, opts);
           }else{
-            return this.storageQueue.removeLocal(keyPath, itemKeyPath, ids, opts);
+            return this.storageQueue.removeLocal(keyPath, itemKeyPath, ids, opts).fail((err)=>{
+              console.warn(err);
+            });
           }
         }
       }
