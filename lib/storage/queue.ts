@@ -330,6 +330,11 @@ export class Queue extends Base implements IStorage
     });
   }
 
+  delLocal(keyPath: string[], opts: {}): Promise<void>
+  {
+    return this.localStorage.del(keyPath, opts);
+  }
+
   add(keyPath: string[], itemsKeyPath: string[], itemIds: string[], opts: {}): Promise<void>
   {
     return this.localStorage.add(keyPath, itemsKeyPath, itemIds, {}).then(() => {
