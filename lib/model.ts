@@ -86,9 +86,13 @@ class ModelDepot
     models[keyPathString] = model;
 
     model.once('destroy: deleted:', () => {
-      using.storageQueue.delLocal(keyPath, {});
       delete models[keyPathString];
     });
+
+    model.once('deleted:', () => {
+      using.storageQueue.delLocal(keyPath, {});
+    });
+
   }
 }
 
