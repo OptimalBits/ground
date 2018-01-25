@@ -401,7 +401,9 @@ export class Collection extends Container implements CollectionEvents
 
   private addItem(item: Model, opts): Promise<void>
   {
-    if(this.findById(item.id())) Promise.resolved();
+    if(this.findById(item.id())){
+      Promise.resolved();
+    } 
 
     if(this.sortByFn){
       this.sortedAdd(item);
@@ -504,7 +506,9 @@ export class Collection extends Container implements CollectionEvents
     });
 
     _.each(items, (item) => {
-      if(!this.findById(item._cid)) itemsToAdd.push(item);
+      if(item && !this.findById(item._cid)){
+        itemsToAdd.push(item);
+      } 
     })
 
     return this.remove(itemsToRemove, {nosync: true})
