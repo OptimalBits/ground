@@ -656,6 +656,9 @@ export class Queue extends Base implements IStorage
         if(err instanceof TypeError){
           errCode = TypeError;
         }
+        if (err.message == 'Socket disconnected'){
+          errCode = ServerError.NO_CONNECTION;
+        }
       }
 
       Gnd.log("Queue error:", err, errCode, this.queue[0]);
@@ -667,13 +670,14 @@ export class Queue extends Base implements IStorage
         case ServerError.MODEL_NOT_FOUND:
         case ServerError.MISSING_RIGHTS:
         case TypeError:
+        default:
           // Discard command
           this.dequeueCmd();
           this.emit('error:', err);
           syncFn();
           break;
-        default:
-        // Shouldn't we try to synchronize again after x seconds?
+        case ServerError.NO_CONNECTION:
+          // Wait for connection.
       }
     }
 
