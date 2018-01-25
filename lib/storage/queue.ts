@@ -652,6 +652,12 @@ export class Queue extends Base implements IStorage
     }else{
       var errCode = ServerError[err.message];
 
+      if(!errCode){
+        if(err instanceof TypeError){
+          errCode = TypeError;
+        }
+      }
+
       Gnd.log("Queue error:", err, errCode, this.queue[0]);
 
       switch(errCode){
@@ -660,6 +666,7 @@ export class Queue extends Base implements IStorage
         case ServerError.DOCUMENT_NOT_FOUND:
         case ServerError.MODEL_NOT_FOUND:
         case ServerError.MISSING_RIGHTS:
+        case TypeError:
           // Discard command
           this.dequeueCmd();
           this.emit('error:', err);
