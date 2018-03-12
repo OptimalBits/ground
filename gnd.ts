@@ -16,6 +16,10 @@
 /// <reference path="./lib/container/collection.ts" />
 /// <reference path="./lib/container/sequence.ts" />
 
+/// <reference path="./lib/model-schema.ts" />
+/// <reference path="./lib/container/collection-schema.ts" />
+/// <reference path="./lib/container/sequence-schema.ts" />
+
 /// <reference path="./lib/storage/queue.ts" />
 /// <reference path="./lib/storage/local.ts" />
 /// <reference path="./lib/storage/socket.ts" />
