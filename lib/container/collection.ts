@@ -19,7 +19,7 @@ module Gnd {
 
 export interface CollectionEvents
 {
-  on(evt: string, ...args: any[]);
+  on(evt: string, listener: (...args: any[]) => void): Base;
 
   /**
   * Fired when any model in the collection changes any property.
@@ -28,7 +28,7 @@ export interface CollectionEvents
   * @param item {Model}
   * @param args {any}
   */
-  on(evt: 'updated:', item: Model, args:any);
+  on(evt: 'updated:', listener: (item: Model, args:any) => void): Base;
 
   /**
   * Fired when the sortFn property changes and the collection has been resorted.
@@ -37,7 +37,7 @@ export interface CollectionEvents
   * @param items {Model[]}
   * @param oldItems {Model[]}
   */
-  on(evt: 'sorted:', items: Model[], oldItems: Model[]);
+  on(evt: 'sorted:', listener: (items: Model[], oldItems: Model[]) => void): Base;
 
   /**
   * Fired when a model has been added to the collection.
@@ -45,7 +45,7 @@ export interface CollectionEvents
   * @event added:
   * @param item {Model}
   */
-  on(evt: 'added:', item: Model);
+  on(evt: 'added:', listener: (item: Model) => void): Base;
 
   /**
   * Fired when a model has been removed from the collection.
@@ -53,60 +53,14 @@ export interface CollectionEvents
   * @event removed:
   * @param item {Model}
   */
-  on(evt: 'removed:', item: Model);
+  on(evt: 'removed:', listener: (item: Model) => void): Base;
 
   /**
   * Fired when the collection has been resynced.
   *
   * @event resynced:
   */
-  on(evt: 'resynced:');
-}
-
-/**
-  Collection Schema Type. This class can be used to define collection types
-  in schemas.
-
-      var ChatSchema = new Schema({
-          rooms: new ColectionSchemaType(Room, 'rooms');
-      });
-
-  @class CollectionSchemaType
-  @extends SchemaType
-  @constructor
-  @param mode {IModel} A model class defining the type of items to store in the
-  sequence.
-  @param bucket {String} Bucket where the items are stored in the server.
-*/
-export class CollectionSchemaType extends SchemaType
-{
-  public static type = Collection;
-
-  constructor(model: IModel, bucket?: string)
-  {
-    super({type: Collection, ref:{model: model, bucket: bucket || model.__bucket}});
-  }
-
-  init(property: string)
-  {
-    this.definition.ref.bucket = property;
-  }
-
-  toObject(obj)
-  {
-    // undefined since a collection is never serialized.
-  }
-
-  fromObject(arg)
-  {
-    // undefined since a collection is never deserialized
-  }
-
-  get(model, args?, opts?)
-  {
-    var def = this.definition;
-    return model.all(def.ref.model, args || {}, def.ref.bucket);
-  }
+  on(evt: 'resynced:', listener: () => void): Base;
 }
 
 /**

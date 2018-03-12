@@ -125,9 +125,9 @@ export interface ModelOpts
 
 export interface ModelEvents
 {
-  on(evt: string, ...args: any[]);
-  once(evt: string, ...args: any[]);
-  emit(evt: string, ...args: any[]);
+  on(evt: string, listener: (...args: any[]) => void): Base;
+
+  emit(evt: string, ...args: any[]): EventEmitter;
 
   /**
   * Fired when a model property changes.
@@ -137,7 +137,7 @@ export interface ModelEvents
   * @param args {any}
   * @deprecated
   */
-  on(evt: 'updated:', model: Model, args:any); // Obsolete?
+  on(evt: 'updated:', listener: (model: Model, args:any) => void): Base; // Obsolete?
 
   /**
   * Fired when a model has been removed from the storage.
@@ -145,64 +145,15 @@ export interface ModelEvents
   * @event deleted:
   * @param model {Model}
   */
-  on(evt: 'deleted:', model: Model);
+  on(evt: 'deleted:', listener: (model: Model) => void): Base;
 
   /**
   * Fired when a model has been persisted on a server storage
   *
   * @event persisted:
   */
-  once(evt: 'persisted:');
-  on(evt: 'persisted:');
-  emit(evt: 'persisted:');
-}
-
-/**
-  Model Schema Type. This class can be used to define models as properties
-  in schemas.
-
-      var ChatSchema = new Schema({
-        name: new ModelSchemaType(Name);
-      });
-
-  @class ModelSchemaType
-  @extends SchemaType
-  @constructor
-  @param model {IModel} A model class defining the type of the model.
-*/
-export class ModelSchemaType extends SchemaType
-{
-  public static type: IModel = Model;
-  private model: IModel;
-
-  constructor(model: IModel)
-  {
-    super({type: model});
-  }
-
-  fromObject(args: {module?: string}, opts?)
-  {
-    if(args instanceof this.definition.type){
-      return args;
-    }else if(_.isString(args)){
-      return this.definition.type.findById(args, opts && opts.autosync);
-    }else if(args.module){
-      return new ModelProxy(args, args.module);
-    }else{
-      args['_persisted'] = true; // To avoid triggering a creation server side.
-      return this.definition.type.create(args, opts && opts.autosync);
-    }
-  }
-
-  toObject(obj)
-  {
-    if(obj instanceof ModelProxy){
-      return obj.model.toArgs();
-    }else{
-      //return super.toObject(obj);
-      return obj.toArgs();
-    }
-  }
+  on(evt: 'persisted:', listener: () => void): Base;
+  emit(evt: 'persisted:', listener: () => void): EventEmitter;
 }
 
 /**
@@ -904,7 +855,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
       key: this.__bucket,
       query: query || {}
     }
-    return Container.create<Collection>(Collection, this, opts);
+    return Container.create<Collection>(Collection, <IModel>this, opts);
   }
 
   /**
@@ -923,7 +874,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     var allInstances = (parent: Model, keyPath: string[], args: {}) => {
       var opts = _.extend({key: _.last(keyPath)}, args);
-      return Container.create(Collection, this, opts, parent);
+      return Container.create(Collection, <IModel>this, opts, parent);
     }
 
     return overload({
@@ -969,7 +920,7 @@ export class Model extends Base implements Sync.ISynchronizable, ModelEvents
   {
     var allInstances = (parent: Model, keyPath: string[], args: {}) => {
       var opts = _.extend({key: _.last(keyPath)}, args);
-      return Container.create(Sequence, this, opts, parent);
+      return Container.create(Sequence, <IModel>this, opts, parent);
     }
 
     return overload({
@@ -1088,7 +1039,7 @@ export class ModelProxy extends Promise<Model>
 
       // Should only check for instanceof Model...
       if(modelOrArgs instanceof Base){
-        this.model = modelOrArgs.retain();
+        this.model = <Model>modelOrArgs.retain();
         resolve(modelOrArgs);
         this['__schema'] = this.model['__schema'];
       }else{

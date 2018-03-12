@@ -1,6 +1,6 @@
 {
   "name": "gnd",
-  "version": "0.8.17",
+  "version": "0.8.18",
   "engines": {
     "node": ">=0.6.10"
   },
@@ -43,16 +43,17 @@
   },
   "dependencies": {
     "commander": "*",
+    "grunt-ts": "^6.0.0-beta.17",
     "lodash": "^4.11.2",
     "mkdirp": "^0.5.0",
     "redis": "^2.4.2",
-    "socket.io": "^1.1.0",
-    "typescript": "^1.8.9"
+    "socket.io": "^1.1.0"
   },
   "devDependencies": {
-    "bluebird": "^1.1.1",
+    "@types/node": "^9.4.0",
+    "bluebird": "^3.5.1",
     "body-parser": "^1.15.0",
-    "cabinet": "~0.2.13",
+    "cabinet": "^0.3.9",
     "connect": "*",
     "cookie": "*",
     "cookie-parser": "^1.4.1",
@@ -75,7 +76,7 @@
     "should": "~0.5.1",
     "socket.io": "^1.1.0",
     "time-grunt": "~0.1.1",
-    "typescript": "*"
+    "typescript": "^2.7.1"
   },
   "scripts": {
     "test": "mocha tests/*",

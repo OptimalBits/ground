@@ -22,7 +22,7 @@ export enum Rights {
 
 export interface Acl
 {
-  isAllowed(userId: string, resource: string, permissions: string): Promise<Boolean>;
+  isAllowed(userId: string, resource: string, permissions: string): Promise<boolean>;
 }
 
 export interface CreateRule {

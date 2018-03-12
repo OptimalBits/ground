@@ -6,7 +6,6 @@
 /**
   Rest server backend.
 */
-/// <reference path="../../typings/main.d.ts/" />
 /// <reference path="../log.ts" />
 /// <reference path="../server.ts" />
 /// <reference path="../error.ts" />

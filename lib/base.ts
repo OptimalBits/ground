@@ -43,7 +43,8 @@ export interface IGettable
 
 export interface BaseEvents
 {
-  on(evt: string, listener: (...args: any[]) => void);
+  on(evt: string, listener: (...args: any[]) => void): Base;
+  once(evt: string, listener: (...args: any[]) => void): EventEmitter;
 
   /**
   * Fired when any property changes.
@@ -52,14 +53,14 @@ export interface BaseEvents
   * @param obj {any}
   * @param options {any}
   */
-  on(evt: 'changed:', listener: (obj?: any, options?: any) => void); // TODO: Define options interface
+  on(evt: 'changed:', listener: (obj?: any, options?: any) => void): Base; // TODO: Define options interface
 
   /**
   * Fired when the object is destroyed.
   *
   * @event destroy:
   */
-  on(evt: 'destroy:');
+  on(evt: 'destroy:', listener: () => void): Base;
 }
 
 interface EventCageItem
@@ -123,17 +124,17 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
    This is a specialized listener that takes into consideration keypaths.
 
   */
-  on(eventNames: string, listener: (...args: any[]) => void): EventEmitter
+  on(eventNames: string, listener: (...args: any[]) => void): Base
   {
     var res = findSubobject(this, eventNames, (obj, keypath) => {
       return obj.on(keypath, listener);
     });
     if(res) return res;
 
-    return super.on(eventNames, listener);
+    return <Base>super.on(eventNames, listener);
   }
 
-  off(eventNames?: string, listener?): EventEmitter
+  off(eventNames?: string, listener?): Base
   {
     if(eventNames){
       var res = findSubobject(this, eventNames, (obj, keypath) => {
@@ -141,7 +142,7 @@ export class Base extends EventEmitter implements ISettable, IGettable, BaseEven
       });
       if(res) return res;
     }
-    return super.off(eventNames, listener);
+    return <Base>super.off(eventNames, listener);
   }
 
   /**

@@ -129,7 +129,7 @@ module Gnd
     {
       super(def);
       var type = (def.type || def)[0];
-      this.schema = Schema.compileType(type, def);
+      this.schema = <Schema>Schema.compileType(type, def);
     }
 
     toObject(arr)

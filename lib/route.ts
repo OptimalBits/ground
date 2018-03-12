@@ -755,7 +755,7 @@ export class Request {
 
     var ctx = _.extend({}, locals, this.data);
 
-    var view: View = args instanceof View ? args.retain() : new View(args);
+    var view: View = args instanceof View ? <View>args.retain() : new View(args);
 
     // we need to get the pool for this node
     // this.autoreleasePool.autorelease(view);
