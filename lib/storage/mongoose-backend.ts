@@ -22,6 +22,13 @@
 /// <reference path="storage.ts" />
 /// <reference path="../model.ts" />
 /// <reference path="../error.ts" />
+/// <reference path="../container/collection-schema.ts" />
+/// <reference path="../container/collection.ts" />
+/// <reference path="../container/sequence-schema.ts" />
+/// <reference path="../container/sequence.ts" />
+/// <reference path="../model-schema.ts" />
+
+
 
 /*
 declare module 'mongoose' {
@@ -593,15 +600,12 @@ module Gnd.Storage {
         modelId: itemKey
       });
 
-      return newContainer.save().then(() => {
-        return this.ListContainer.update({ next: nextId }, { next: newContainer._cid });
-      }).then(() => {
+      return newContainer.save().then(() =>
+        this.ListContainer.update({ next: nextId, _cid: {$ne: newContainer._cid }}, { next: newContainer._cid })).then(() => {
         var delta = {};
         delta[name] = newContainer._cid;
         return ParentModel.update({ _cid: parentId }, { $push: delta });
-      }).then(() => {
-        return newContainer._cid;
-      }).catch((err) => {
+      }).then(() => newContainer._cid).catch((err) => {
         // rollback
         return newContainer.remove().then(() => {
           throw {
